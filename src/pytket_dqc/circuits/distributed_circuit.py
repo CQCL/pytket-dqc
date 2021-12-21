@@ -7,24 +7,33 @@ gateset_pred = GateSetPredicate(
 )
 
 
-class DistributedCircuit:
+class DistributedCircuit(Hypergraph):
     def __init__(self, circuit: Circuit):
 
         if not gateset_pred.verify(circuit):
             raise Exception("The inputted circuit is not in a valid gateset.")
 
-        self.circuit = circuit
-        self.__from_circuit()
+        super().__init__()
 
-    def get_hypergraph(self) -> Hypergraph:
-        return self.hypergraph
+        self.circuit = circuit
+        self.vertex_circuit_map: dict[int, str] = {}
+        self.__from_circuit()
 
     def get_circuit(self) -> Circuit:
         return self.circuit
 
-    def __from_circuit(self):
+    def get_vertex_circuit_map(self):
+        return self.vertex_circuit_map
 
-        n_qubits = self.circuit.n_qubits
+    def add_qubit_vertex(self, vertex: int):
+        self.add_vertex(vertex)
+        self.vertex_circuit_map[vertex] = 'qubit'
+
+    def add_gate_vertex(self, vertex: int):
+        self.add_vertex(vertex)
+        self.vertex_circuit_map[vertex] = 'gate'
+
+    def __from_circuit(self):
 
         command_list_count = []
         CZ_count = 0
@@ -37,11 +46,9 @@ class DistributedCircuit:
             else:
                 command_list_count.append({"command": command, "CZ count": -1})
 
-        self.hypergraph = Hypergraph()
-
         for qubit_index, qubit in enumerate(self.circuit.qubits):
 
-            self.hypergraph.add_vertex(qubit_index)
+            self.add_qubit_vertex(qubit_index)
 
             hyperedge = [qubit_index]
             qubit_commands = [
@@ -52,12 +59,12 @@ class DistributedCircuit:
 
             for command in qubit_commands:
                 if command["command"].op.type == OpType.CZ:
-                    vertex = command["CZ count"] + n_qubits
-                    self.hypergraph.add_vertex(vertex)
+                    vertex = command["CZ count"] + self.circuit.n_qubits
+                    self.add_gate_vertex(vertex)
                     hyperedge.append(vertex)
                 elif len(hyperedge) > 1:
-                    self.hypergraph.add_hyperedge(hyperedge)
+                    self.add_hyperedge(hyperedge)
                     hyperedge = [qubit_index]
 
             if len(hyperedge) > 1:
-                self.hypergraph.add_hyperedge(hyperedge)
+                self.add_hyperedge(hyperedge)

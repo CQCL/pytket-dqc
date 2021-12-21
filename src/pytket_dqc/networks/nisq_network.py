@@ -18,13 +18,13 @@ class NISQNetwork(Network):
             if server_list[0] not in server_qubits.keys():
                 raise Exception(
                     f"The qubits in server {server_list[0]}"
-                    "have not been specified."
+                    " have not been specified."
                 )
 
             if server_list[1] not in server_qubits.keys():
                 raise Exception(
                     f"The qubits in server {server_list[1]}"
-                    "have not been specified."
+                    " have not been specified."
                 )
 
         qubit_list = [
@@ -33,12 +33,25 @@ class NISQNetwork(Network):
             for qubit in qubit_list
         ]
         if not len(qubit_list) == len(set(qubit_list)):
-            raise Exception("Qubits may belong to only one server.")
+            raise Exception(
+                "Qubits may belong to only one server"
+                ", and should feature only once."
+            )
 
         self.server_coupling = server_coupling
         self.server_qubits = server_qubits
 
-    def get_nx(self) -> nx.Graph:
+    def get_server_qubits(self):
+        return self.server_qubits
+
+    def get_server_nx(self) -> nx.Graph:
+
+        G = nx.Graph()
+        for edge in self.server_coupling:
+            G.add_edge(edge[0], edge[1])
+        return G
+
+    def get_full_nx(self) -> nx.Graph:
 
         G = nx.Graph()
 
@@ -57,6 +70,6 @@ class NISQNetwork(Network):
 
     def draw(self):
 
-        G = self.get_nx()
+        G = self.get_full_nx()
         colors = [G[u][v]["color"] for u, v in G.edges()]
         nx.draw(G, with_labels=True, edge_color=colors)

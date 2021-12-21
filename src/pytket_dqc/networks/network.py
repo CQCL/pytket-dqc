@@ -7,7 +7,11 @@ class Network(ABC):
         super().__init__()
 
     @abstractmethod
-    def get_nx(self) -> nx.Graph:
+    def get_server_nx(self) -> nx.Graph:
+        pass
+
+    @abstractmethod
+    def get_full_nx(self) -> nx.Graph:
         pass
 
     @abstractmethod
