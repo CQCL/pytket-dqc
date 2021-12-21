@@ -1,27 +1,28 @@
-from pytket_dqc.hypergraph import Hypergraph
-from pytket.predicates import GateSetPredicate
+from .hypergraph import Hypergraph
+from pytket.predicates import GateSetPredicate  # type: ignore
 from pytket import OpType, Circuit
 
 gateset_pred = GateSetPredicate(
     {OpType.Rx, OpType.CZ, OpType.Rz, OpType.Measure}
 )
 
+
 class DistributedCircuit:
-
-    def __init__(self):
-
-        self.circuit = Circuit()
-        self.hypergraph = Hypergraph()
-
-    def get_hypergraph(self):
-        return self.hypergraph
-
-    def from_circuit(self, circuit: Circuit):
-
-        self.circuit = circuit
+    def __init__(self, circuit: Circuit):
 
         if not gateset_pred.verify(circuit):
             raise Exception("The inputted circuit is not in a valid gateset.")
+
+        self.circuit = circuit
+        self.__from_circuit()
+
+    def get_hypergraph(self) -> Hypergraph:
+        return self.hypergraph
+
+    def get_circuit(self) -> Circuit:
+        return self.circuit
+
+    def __from_circuit(self):
 
         n_qubits = self.circuit.n_qubits
 
@@ -29,10 +30,14 @@ class DistributedCircuit:
         CZ_count = 0
         for command in self.circuit.get_commands():
             if command.op.type == OpType.CZ:
-                command_list_count.append({"command": command, "CZ count": CZ_count})
+                command_list_count.append(
+                    {"command": command, "CZ count": CZ_count}
+                )
                 CZ_count += 1
             else:
                 command_list_count.append({"command": command, "CZ count": -1})
+
+        self.hypergraph = Hypergraph()
 
         for qubit_index, qubit in enumerate(self.circuit.qubits):
 
