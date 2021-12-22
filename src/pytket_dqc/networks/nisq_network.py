@@ -1,19 +1,18 @@
-from .network import Network
+from .server_network import ServerNetwork
 from itertools import combinations
 import networkx as nx  # type:ignore
 
 
-class NISQNetwork(Network):
+class NISQNetwork(ServerNetwork):
     def __init__(
         self,
         server_coupling: list[list[int]],
         server_qubits: dict[int, list[int]]
     ):
 
+        super().__init__(server_coupling)
+
         for server_list in server_coupling:
-            if not len(server_list) == 2:
-                raise Exception(
-                    "server_coupling should be a list of pairs of servers.")
 
             if server_list[0] not in server_qubits.keys():
                 raise Exception(
@@ -38,20 +37,12 @@ class NISQNetwork(Network):
                 ", and should feature only once."
             )
 
-        self.server_coupling = server_coupling
         self.server_qubits = server_qubits
 
     def get_server_qubits(self):
         return self.server_qubits
 
-    def get_server_nx(self) -> nx.Graph:
-
-        G = nx.Graph()
-        for edge in self.server_coupling:
-            G.add_edge(edge[0], edge[1])
-        return G
-
-    def get_full_nx(self) -> nx.Graph:
+    def get_nisq_nx(self) -> nx.Graph:
 
         G = nx.Graph()
 
@@ -68,8 +59,8 @@ class NISQNetwork(Network):
 
         return G
 
-    def draw(self):
+    def draw_nisq_network(self):
 
-        G = self.get_full_nx()
+        G = self.get_nisq_nx()
         colors = [G[u][v]["color"] for u, v in G.edges()]
         nx.draw(G, with_labels=True, edge_color=colors)
