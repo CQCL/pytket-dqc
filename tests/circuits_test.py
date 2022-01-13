@@ -3,6 +3,7 @@ from pytket import Circuit
 from pytket_dqc.networks import NISQNetwork
 
 
+# TODO: Include vertex type information in this test
 def test_distributed_circuit():
 
     circ = Circuit(2).CZ(0, 1)
@@ -11,9 +12,9 @@ def test_distributed_circuit():
     assert dist_circ.get_circuit() == circ
 
     vertex_circuit_map = dist_circ.get_vertex_circuit_map()
-    assert vertex_circuit_map[0] == 'qubit'
-    assert vertex_circuit_map[1] == 'qubit'
-    assert vertex_circuit_map[2] == 'gate'
+    assert vertex_circuit_map[0]['type'] == 'qubit'
+    assert vertex_circuit_map[1]['type'] == 'qubit'
+    assert vertex_circuit_map[2]['type'] == 'gate'
 
 
 def test_hypergraph():

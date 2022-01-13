@@ -4,6 +4,7 @@ from pytket import Circuit
 from pytket_dqc.networks import NISQNetwork
 from pytket_dqc.distributors.annealing import order_reducing_size
 from pytket_dqc.distributors import Brute
+from pytket_dqc.distributors import Routing
 
 
 def test_order_reducing_size():
@@ -52,3 +53,18 @@ def test_brute_distribute():
     placement_med = distributor.distribute(dist_med_circ, med_network)
     assert placement_med == {0: 2, 4: 2, 1: 2, 5: 2, 2: 0, 6: 1, 3: 1}
     assert dist_med_circ.placement_cost(placement_med, med_network) == 2
+
+# TODO: Add test of second circuit and network here
+
+
+def test_routing_distribute():
+
+    med_network = NISQNetwork([[0, 1], [0, 2]], {0: [0], 1: [1], 2: [2, 3]})
+    med_circ = Circuit(4).CZ(0, 1).CZ(1, 2).CZ(2, 3)
+    dist_med_circ = DistributedCircuit(med_circ)
+
+    distributor = Routing()
+    placement = distributor.distribute(dist_med_circ, med_network)
+    cost = dist_med_circ.placement_cost(placement, med_network)
+    assert placement == {0: 0, 4: 1, 5: 0, 1: 1, 2: 2, 6: 2, 3: 2}
+    assert cost == 2

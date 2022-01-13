@@ -2,12 +2,14 @@ from __future__ import annotations
 
 from .hypergraph import Hypergraph
 from pytket.predicates import GateSetPredicate  # type: ignore
-from pytket import OpType, Circuit
+from pytket import OpType
 import networkx as nx  # type: ignore
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from pytket_dqc.networks import NISQNetwork
+    from pytket.circuit import Command  # type: ignore
+    from pytekt import Circuit, Qubit  # type:ignore
 
 gateset_pred = GateSetPredicate(
     {OpType.Rx, OpType.CZ, OpType.Rz, OpType.Measure}
@@ -17,13 +19,17 @@ gateset_pred = GateSetPredicate(
 class DistributedCircuit(Hypergraph):
     def __init__(self, circuit: Circuit):
 
+        self.reset(circuit)
+
+    def reset(self, circuit: Circuit):
+
         if not gateset_pred.verify(circuit):
             raise Exception("The inputted circuit is not in a valid gateset.")
 
         super().__init__()
 
         self.circuit = circuit
-        self.vertex_circuit_map: dict[int, str] = {}
+        self.vertex_circuit_map: dict[int, dict] = {}
         self.__from_circuit()
 
     def placement_cost(
@@ -48,7 +54,7 @@ class DistributedCircuit(Hypergraph):
                 qubit_vertex_list = [
                     vertex
                     for vertex in hyperedge
-                    if self.vertex_circuit_map[vertex] == 'qubit'
+                    if self.vertex_circuit_map[vertex]['type'] == 'qubit'
                 ]
                 assert len(qubit_vertex_list) == 1
                 qubit_vertex = qubit_vertex_list[0]
@@ -76,13 +82,13 @@ class DistributedCircuit(Hypergraph):
     def get_vertex_circuit_map(self):
         return self.vertex_circuit_map
 
-    def add_qubit_vertex(self, vertex: int):
+    def add_qubit_vertex(self, vertex: int, qubit: Qubit):
         self.add_vertex(vertex)
-        self.vertex_circuit_map[vertex] = 'qubit'
+        self.vertex_circuit_map[vertex] = {'type': 'qubit', 'node': qubit}
 
-    def add_gate_vertex(self, vertex: int):
+    def add_gate_vertex(self, vertex: int, command: Command):
         self.add_vertex(vertex)
-        self.vertex_circuit_map[vertex] = 'gate'
+        self.vertex_circuit_map[vertex] = {'type': 'gate', 'command': command}
 
     def __from_circuit(self):
 
@@ -99,7 +105,7 @@ class DistributedCircuit(Hypergraph):
 
         for qubit_index, qubit in enumerate(self.circuit.qubits):
 
-            self.add_qubit_vertex(qubit_index)
+            self.add_qubit_vertex(qubit_index, qubit)
 
             hyperedge = [qubit_index]
             qubit_commands = [
@@ -111,7 +117,7 @@ class DistributedCircuit(Hypergraph):
             for command in qubit_commands:
                 if command["command"].op.type == OpType.CZ:
                     vertex = command["CZ count"] + self.circuit.n_qubits
-                    self.add_gate_vertex(vertex)
+                    self.add_gate_vertex(vertex, command['command'])
                     hyperedge.append(vertex)
                 elif len(hyperedge) > 1:
                     self.add_hyperedge(hyperedge)

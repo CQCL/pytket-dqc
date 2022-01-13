@@ -2,6 +2,8 @@ from .server_network import ServerNetwork
 from ..circuits import DistributedCircuit
 from itertools import combinations
 import networkx as nx  # type:ignore
+from pytket.routing import Architecture, NoiseAwarePlacement  # type:ignore
+from pytket.circuit import Node  # type:ignore
 
 
 class NISQNetwork(ServerNetwork):
@@ -34,6 +36,30 @@ class NISQNetwork(ServerNetwork):
 
         self.server_qubits = server_qubits
 
+    def get_architecture(self):
+
+        G = self.get_nisq_nx()
+        arc = Architecture([(Node(u), Node(v)) for u, v in G.edges])
+        node_qubit_map = {Node(u): u for u in G.nodes}
+
+        return arc, node_qubit_map
+
+    def get_placer(self):
+
+        G = self.get_nisq_nx()
+        link_errors = {}
+        for u, v in G.edges:
+            edge_data = G.get_edge_data(u, v)
+            link_errors[(Node(u), Node(v))] = edge_data['weight']
+
+        arc, node_qubit_map = self.get_architecture()
+
+        return (
+            arc,
+            node_qubit_map,
+            NoiseAwarePlacement(arc=arc, link_errors=link_errors)
+        )
+
     def is_circuit_placement(
         self,
         placement: dict[int, int],
@@ -55,7 +81,7 @@ class NISQNetwork(ServerNetwork):
             qubits = [
                 vertex
                 for vertex in vertices
-                if circuit.vertex_circuit_map[vertex] == 'qubit'
+                if circuit.vertex_circuit_map[vertex]['type'] == 'qubit'
             ]
             if len(qubits) > len(self.server_qubits[server]):
                 valid = False
@@ -71,13 +97,14 @@ class NISQNetwork(ServerNetwork):
 
         for qubits in self.server_qubits.values():
             for qubit_connection in combinations(qubits, 2):
-                G.add_edge(*qubit_connection, color="r")
+                G.add_edge(*qubit_connection, color="r", weight=0)
 
-        for edge in self.server_coupling:
+        for u, v in self.server_coupling:
             G.add_edge(
-                self.server_qubits[edge[0]][0],
-                self.server_qubits[edge[1]][0],
+                self.server_qubits[u][0],
+                self.server_qubits[v][0],
                 color="b",
+                weight=1,
             )
 
         return G

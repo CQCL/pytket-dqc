@@ -83,8 +83,8 @@ class Annealing(Distributor):
         # A list of all the vertices in the hypergraph which correspond to
         # qubits in the original circuit.
         qubit_vertex_list = [
-            vertex for vertex, vertex_type in vertex_circuit_map.items()
-            if vertex_type == 'qubit'
+            vertex for vertex, vertex_info in vertex_circuit_map.items()
+            if vertex_info['type'] == 'qubit'
         ]
 
         for server, qubit_list in server_qubits.items():
@@ -99,8 +99,8 @@ class Annealing(Distributor):
         # A list of all the vertices in the hypergraph which correspond to
         # gate in the original circuit.
         gate_vertex_list = [
-            vertex for vertex, vertex_type in vertex_circuit_map.items()
-            if vertex_type == 'gate'
+            vertex for vertex, vertex_info in vertex_circuit_map.items()
+            if vertex_info['type'] == 'gate'
         ]
 
         # Assign all gate vertices to the first server.

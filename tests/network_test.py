@@ -1,6 +1,34 @@
 from pytket_dqc.networks import NISQNetwork, ServerNetwork
 from pytket import Circuit
 from pytket_dqc import DistributedCircuit
+from pytket.routing import Architecture, NoiseAwarePlacement  # type:ignore
+from pytket.circuit import Node  # type:ignore
+import pytest
+
+
+def test_nisq_get_architecture():
+
+    med_network = NISQNetwork([[0, 1], [0, 2]], {0: [0], 1: [1], 2: [2, 3]})
+    med_arch = Architecture(
+        [(Node(2), Node(3)), (Node(2), Node(0)), (Node(0), Node(1))])
+    arc, node_qubit_map = med_network.get_architecture()
+    assert arc == med_arch
+    assert node_qubit_map == {Node(0): 0, Node(1): 1, Node(2): 2, Node(3): 3}
+
+
+@pytest.mark.skip(reason="This test needs to be fixed.")
+def test_nisq_get_placer():
+
+    med_network = NISQNetwork([[0, 1], [0, 2]], {0: [0], 1: [1], 2: [2, 3]})
+    med_arch = Architecture(
+        [(Node(2), Node(3)), (Node(2), Node(0)), (Node(0), Node(1))])
+    link_errors = {
+        (Node(2), Node(3)): 0,
+        (Node(2), Node(0)): 1,
+        (Node(0), Node(1)): 1,
+    }
+    placer = NoiseAwarePlacement(arc=med_arch, link_errors=link_errors)
+    assert med_network.get_placer() == placer
 
 
 def test_nisq_get_nx():
