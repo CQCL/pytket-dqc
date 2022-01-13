@@ -1,6 +1,11 @@
+from __future__ import annotations
+
 from pytket_dqc.distributors import Distributor
-from pytket_dqc import DistributedCircuit
-from pytket_dqc.networks import NISQNetwork
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pytket_dqc import DistributedCircuit
+    from pytket_dqc.networks import NISQNetwork
 
 
 def order_reducing_size(
