@@ -1,6 +1,13 @@
+from __future__ import annotations
+
 from .hypergraph import Hypergraph
 from pytket.predicates import GateSetPredicate  # type: ignore
 from pytket import OpType, Circuit
+import networkx as nx  # type: ignore
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pytket_dqc.networks import NISQNetwork
 
 gateset_pred = GateSetPredicate(
     {OpType.Rx, OpType.CZ, OpType.Rz, OpType.Measure}
@@ -18,6 +25,50 @@ class DistributedCircuit(Hypergraph):
         self.circuit = circuit
         self.vertex_circuit_map: dict[int, str] = {}
         self.__from_circuit()
+
+    def placement_cost(
+        self,
+        placement: dict[int, int],
+        network: NISQNetwork
+    ) -> int:
+
+        cost = 0
+        if network.is_circuit_placement(placement, self):
+
+            G = network.get_server_nx()
+
+            for hyperedge in self.hyperedge_list:
+                # Generate a list of where each vertex of the hyperedge
+                # is placed
+                hyperedge_placement = [
+                    placement[vertex] for vertex in hyperedge
+                ]
+
+                # Find the server where the qubit vertex is placed
+                qubit_vertex_list = [
+                    vertex
+                    for vertex in hyperedge
+                    if self.vertex_circuit_map[vertex] == 'qubit'
+                ]
+                assert len(qubit_vertex_list) == 1
+                qubit_vertex = qubit_vertex_list[0]
+                qubit_vertex_server = placement[qubit_vertex]
+
+                # The cost is equal to the distance between each of the
+                # vertices and the qubit vertex.
+                # TODO: This approach very naively assumes that the control is
+                # teleported back when a new server pair is interacted.
+                # There may be a better approach.
+                unique_servers_used = list(set(hyperedge_placement))
+                for server in unique_servers_used:
+                    cost += nx.shortest_path_length(
+                        G, qubit_vertex_server, server
+                    )
+
+        else:
+            raise Exception("This is not a valid placement.")
+
+        return cost
 
     def get_circuit(self) -> Circuit:
         return self.circuit

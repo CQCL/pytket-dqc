@@ -40,13 +40,13 @@ def test_placement_cost():
         {0: 0, 1: 1, 2: 2, 3: 1, 4: 2},
         three_line_network
     ) == 3
+    assert dist_two_CZ_circ.placement_cost(
+        {0: 0, 1: 1, 2: 2, 3: 1, 4: 0}, three_line_network) == 3
+    assert dist_two_CZ_circ.placement_cost(
+        {0: 1, 1: 0, 2: 2, 3: 0, 4: 2}, three_line_network) == 2
 
 
 def test_hypergraph_is_placement():
-
-    large_network = NISQNetwork([[0, 1], [0, 2], [1, 2]], {
-                                0: [0, 1, 2], 1: [3, 4, 5], 2: [6, 7, 8, 9]})
-    small_network = NISQNetwork([[0, 1]], {0: [0, 1], 1: [2, 3, 4]})
 
     small_circ = Circuit(2).CZ(0, 1)
     dist_small_circ = DistributedCircuit(small_circ)
@@ -55,14 +55,8 @@ def test_hypergraph_is_placement():
     dist_med_circ = DistributedCircuit(med_circ)
 
     assert dist_med_circ.is_placement(
-        {0: 1, 1: 1, 2: 1, 3: 0, 4: 1, 5: 1, 6: 1}, large_network)
-    assert dist_med_circ.is_placement(
-        {0: 1, 1: 1, 2: 1, 3: 0, 4: 1, 5: 1, 6: 1}, small_network)
-    assert not dist_med_circ.is_placement({0: 2, 1: 2, 2: 2}, large_network)
-    assert not dist_med_circ.is_placement({0: 2, 1: 2, 2: 2}, small_network)
+        {0: 1, 1: 1, 2: 1, 3: 0, 4: 1, 5: 1, 6: 1})
+    assert not dist_med_circ.is_placement({0: 2, 1: 2, 2: 2})
     assert not dist_small_circ.is_placement(
-        {0: 1, 1: 1, 2: 1, 3: 0, 4: 1, 5: 1, 6: 1}, large_network)
-    assert not dist_small_circ.is_placement(
-        {0: 1, 1: 1, 2: 1, 3: 0, 4: 1, 5: 1, 6: 1}, small_network)
-    assert dist_small_circ.is_placement({0: 2, 1: 2, 2: 2}, large_network)
-    assert not dist_small_circ.is_placement({0: 2, 1: 2, 2: 2}, small_network)
+        {0: 1, 1: 1, 2: 1, 3: 0, 4: 1, 5: 1, 6: 1})
+    assert dist_small_circ.is_placement({0: 2, 1: 2, 2: 2})

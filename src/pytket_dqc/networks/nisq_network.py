@@ -1,9 +1,11 @@
 from .server_network import ServerNetwork
+from ..circuits import DistributedCircuit
 from itertools import combinations
 import networkx as nx  # type:ignore
 
 
 class NISQNetwork(ServerNetwork):
+
     def __init__(
         self,
         server_coupling: list[list[int]],
@@ -12,17 +14,10 @@ class NISQNetwork(ServerNetwork):
 
         super().__init__(server_coupling)
 
-        for server_list in server_coupling:
-
-            if server_list[0] not in server_qubits.keys():
+        for server in self.get_server_list():
+            if server not in server_qubits.keys():
                 raise Exception(
-                    f"The qubits in server {server_list[0]}"
-                    " have not been specified."
-                )
-
-            if server_list[1] not in server_qubits.keys():
-                raise Exception(
-                    f"The qubits in server {server_list[1]}"
+                    f"The qubits in server {server}"
                     " have not been specified."
                 )
 
@@ -34,10 +29,38 @@ class NISQNetwork(ServerNetwork):
         if not len(qubit_list) == len(set(qubit_list)):
             raise Exception(
                 "Qubits may belong to only one server"
-                ", and should feature only once."
+                ", and should feature only once per server."
             )
 
         self.server_qubits = server_qubits
+
+    def is_circuit_placement(
+        self,
+        placement: dict[int, int],
+        circuit: DistributedCircuit
+    ) -> bool:
+
+        if not super().is_placement(placement):
+            return False
+        elif not circuit.is_placement(placement):
+            return False
+        else:
+            valid = True
+
+        # Check that no more qubits are allotted to a server than can be
+        # accommodated.
+        for server in list(set(placement.values())):
+            vertices = [vertex for vertex in placement.keys()
+                        if placement[vertex] == server]
+            qubits = [
+                vertex
+                for vertex in vertices
+                if circuit.vertex_circuit_map[vertex] == 'qubit'
+            ]
+            if len(qubits) > len(self.server_qubits[server]):
+                valid = False
+
+        return valid
 
     def get_server_qubits(self):
         return self.server_qubits
