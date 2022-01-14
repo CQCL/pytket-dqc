@@ -18,7 +18,9 @@ jobs:
       - name: install pytket-dqc
         run: pip install .
       - name: run tests
-        run: pytest tests/
+        run: |
+          pip install pytest
+          pytest tests/
       - name: run mypy
         run: mypy src/pytket_dqc tests
       - name: run flake8
