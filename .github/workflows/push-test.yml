@@ -1,0 +1,25 @@
+name: Push Test
+on:
+  push:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  ubuntu:
+    runs-on: ubuntu-latest
+    steps: 
+      - uses: actions/checkout@v2
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: install pytket-dqc
+        run: pip install .
+      - name: run tests
+        run: pytest tests/
+      - name: run mypy
+        run: mypy src/pytket_dqc tests
+      - name: run flake8
+        run: flake8 src/pytket_dqc tests
