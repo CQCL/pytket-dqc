@@ -90,4 +90,4 @@ class NISQNetwork(ServerNetwork):
 
         G = self.get_nisq_nx()
         colors = [G[u][v]["color"] for u, v in G.edges()]
-        nx.draw(G, with_labels=True, edge_color=colors)
+        nx.draw(G, with_labels=True, edge_color=colors, pos=nx.nx_agraph.graphviz_layout(G))

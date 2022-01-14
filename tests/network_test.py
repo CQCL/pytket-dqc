@@ -30,6 +30,11 @@ def test_nisq_get_placer():
     assert med_network.get_placer() == placer
 
 
+def test_nisq_draw():
+    network = NISQNetwork([[0,1], [0,2], [2,3]], {0:[0, 1], 1:[2,3,4], 2:[5,6,7,8], 3:[9]})
+    network.draw_nisq_network()
+
+
 def test_nisq_get_nx():
     network = NISQNetwork(
         [[0, 1], [0, 2]], {0: [0, 1, 2], 1: [3, 4, 5], 2: [6, 7, 8, 9]})
