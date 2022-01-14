@@ -16,7 +16,9 @@ jobs:
         with:
           python-version: 3.9
       - name: Install pytket-dqc
-        run: pip install .
+        run: | 
+          sudo apt-get install graphviz graphviz-dev
+          pip install .
       - name: Install testing requirements
         run: pip install -r tests/test_requirements.txt
       - name: Tests
