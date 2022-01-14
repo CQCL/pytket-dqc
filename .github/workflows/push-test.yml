@@ -18,7 +18,7 @@ jobs:
       - name: install pytket-dqc
         run: pip install .
       - name: install testing requirements
-        run: pip install tests/test_requirements.txt
+        run: pip install -r tests/test_requirements.txt
       - name: run tests
         run: pytest tests/
       - name: run mypy
