@@ -34,10 +34,6 @@ class Routing(Distributor):
         DecomposeSwapsToCXs(arch).apply(routed_circ)
         RebaseQuil().apply(routed_circ)
 
-        print("arch nodes", arch.nodes)
-        print("server qubits", network.server_qubits)
-        print("node_qubit_map", node_qubit_map)
-
         node_server_map = {}
         for node in routed_circ.qubits:
             qubit_found_in = [
@@ -49,10 +45,7 @@ class Routing(Distributor):
             assert len(qubit_found_in) == 1
             node_server_map[node] = qubit_found_in[0]
 
-        print("node_server_map", node_server_map)
-
         dist_circ.reset(routed_circ)
-        print("vertex_circuit_map", dist_circ.vertex_circuit_map)
 
         placement_dict = {}
         for vertex, vertex_info in dist_circ.vertex_circuit_map.items():
@@ -64,7 +57,4 @@ class Routing(Distributor):
             else:
                 raise Exception("Vertex type not recognised")
 
-        print(placement_dict)
-        placement = Placement(placement_dict)
-
-        return placement
+        return Placement(placement_dict)
