@@ -59,34 +59,6 @@ class NISQNetwork(ServerNetwork):
             NoiseAwarePlacement(arc=arc, link_errors=link_errors)
         )
 
-    # def is_circuit_placement(
-    #     self,
-    #     placement: dict[int, int],
-    #     circuit: DistributedCircuit
-    # ) -> bool:
-
-    #     if not super().is_placement(placement):
-    #         return False
-    #     elif not circuit.is_placement(placement):
-    #         return False
-    #     else:
-    #         valid = True
-
-    #     # Check that no more qubits are allotted to a server than can be
-    #     # accommodated.
-    #     for server in list(set(placement.values())):
-    #         vertices = [vertex for vertex in placement.keys()
-    #                     if placement[vertex] == server]
-    #         qubits = [
-    #             vertex
-    #             for vertex in vertices
-    #             if circuit.vertex_circuit_map[vertex]['type'] == 'qubit'
-    #         ]
-    #         if len(qubits) > len(self.server_qubits[server]):
-    #             valid = False
-
-    #     return valid
-
     def get_server_qubits(self):
         return self.server_qubits
 

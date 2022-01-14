@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+import networkx as nx
 
+from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from pytket_dqc.networks import NISQNetwork
     from pytket_dqc.circuits import DistributedCircuit
@@ -41,3 +42,47 @@ class Placement:
                 is_valid = False
 
         return is_valid
+
+    def cost(
+        self,
+        circuit: DistributedCircuit, 
+        network: NISQNetwork
+    ) -> int:
+
+        cost = 0
+        if self.valid(circuit, network):
+
+            G = network.get_server_nx()
+
+            for hyperedge in circuit.hyperedge_list:
+                # Generate a list of where each vertex of the hyperedge
+                # is placed
+                hyperedge_placement = [
+                    self.placement[vertex] for vertex in hyperedge
+                ]
+
+                # Find the server where the qubit vertex is placed
+                qubit_vertex_list = [
+                    vertex
+                    for vertex in hyperedge
+                    if circuit.vertex_circuit_map[vertex]['type'] == 'qubit'
+                ]
+                assert len(qubit_vertex_list) == 1
+                qubit_vertex = qubit_vertex_list[0]
+                qubit_vertex_server = self.placement[qubit_vertex]
+
+                # The cost is equal to the distance between each of the
+                # vertices and the qubit vertex.
+                # TODO: This approach very naively assumes that the control is
+                # teleported back when a new server pair is interacted.
+                # There may be a better approach.
+                unique_servers_used = list(set(hyperedge_placement))
+                for server in unique_servers_used:
+                    cost += nx.shortest_path_length(
+                        G, qubit_vertex_server, server
+                    )
+
+        else:
+            raise Exception("This is not a valid placement.")
+
+        return cost

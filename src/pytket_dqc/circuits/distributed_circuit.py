@@ -4,8 +4,8 @@ from .hypergraph import Hypergraph
 from pytket.predicates import GateSetPredicate  # type: ignore
 from pytket import OpType
 import networkx as nx  # type: ignore
-from typing import TYPE_CHECKING
 
+from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from pytket_dqc.networks import NISQNetwork
     from pytket.circuit import Command  # type: ignore
