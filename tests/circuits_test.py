@@ -9,9 +9,9 @@ def test_distributed_circuit():
     circ = Circuit(2).CZ(0, 1)
     dist_circ = DistributedCircuit(circ)
 
-    assert dist_circ.get_circuit() == circ
+    assert dist_circ.circuit == circ
 
-    vertex_circuit_map = dist_circ.get_vertex_circuit_map()
+    vertex_circuit_map = dist_circ.vertex_circuit_map
     assert vertex_circuit_map[0]['type'] == 'qubit'
     assert vertex_circuit_map[1]['type'] == 'qubit'
     assert vertex_circuit_map[2]['type'] == 'gate'
@@ -25,8 +25,8 @@ def test_hypergraph():
     hypgra.add_vertex(2)
     hypgra.add_hyperedge([0, 1])
     hypgra.add_hyperedge([2, 1])
-    assert hypgra.get_vertex_list() == [0, 1, 2]
-    assert hypgra.get_hyperedge_list() == [[0, 1], [2, 1]]
+    assert hypgra.vertex_list == [0, 1, 2]
+    assert hypgra.hyperedge_list == [[0, 1], [2, 1]]
 
 
 def test_hypergraph_is_placement():

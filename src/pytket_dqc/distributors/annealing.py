@@ -73,19 +73,14 @@ class Annealing(Distributor):
         # they are placed.
         vertex_server_map: dict[int, int] = {}
 
-        # A map from hypergraph vertices to properties they derive
-        # from the original circuit.
-        vertex_circuit_map = dist_circ.get_vertex_circuit_map()
-
-        # A map from servers to the qubits contained within.
-        server_qubits = network.get_server_qubits()
         # Order the servers so that the larger ones are used first
-        server_qubits = order_reducing_size(server_qubits)
+        server_qubits = order_reducing_size(network.server_qubits)
 
         # A list of all the vertices in the hypergraph which correspond to
         # qubits in the original circuit.
         qubit_vertex_list = [
-            vertex for vertex, vertex_info in vertex_circuit_map.items()
+            vertex
+            for vertex, vertex_info in dist_circ.vertex_circuit_map.items()
             if vertex_info['type'] == 'qubit'
         ]
 
@@ -101,7 +96,8 @@ class Annealing(Distributor):
         # A list of all the vertices in the hypergraph which correspond to
         # gate in the original circuit.
         gate_vertex_list = [
-            vertex for vertex, vertex_info in vertex_circuit_map.items()
+            vertex
+            for vertex, vertex_info in dist_circ.vertex_circuit_map.items()
             if vertex_info['type'] == 'gate'
         ]
 

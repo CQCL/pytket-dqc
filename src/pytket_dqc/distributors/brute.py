@@ -21,7 +21,7 @@ class Brute(Distributor):
     ) -> Placement:
 
         # List of all vertices to be placed
-        vertex_list = dist_circ.get_vertex_list()
+        vertex_list = dist_circ.vertex_list
         server_list = network.get_server_list()
 
         # List of all valid placements

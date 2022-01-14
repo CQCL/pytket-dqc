@@ -3,6 +3,7 @@ from itertools import combinations
 import networkx as nx  # type:ignore
 from pytket.routing import Architecture, NoiseAwarePlacement  # type:ignore
 from pytket.circuit import Node  # type:ignore
+from typing import Tuple
 
 
 class NISQNetwork(ServerNetwork):
@@ -15,6 +16,8 @@ class NISQNetwork(ServerNetwork):
 
         super().__init__(server_coupling)
 
+        # Check that each server has a collection of qubits 
+        # which belong to it specified.
         for server in self.get_server_list():
             if server not in server_qubits.keys():
                 raise Exception(
@@ -22,11 +25,13 @@ class NISQNetwork(ServerNetwork):
                     " have not been specified."
                 )
 
+        # Combine all lists of qubits belonging to each server into one list.
         qubit_list = [
             qubit
             for qubit_list in server_qubits.values()
             for qubit in qubit_list
         ]
+        # Check that each qubit belongs to only one server.
         if not len(qubit_list) == len(set(qubit_list)):
             raise Exception(
                 "Qubits may belong to only one server"
@@ -35,7 +40,7 @@ class NISQNetwork(ServerNetwork):
 
         self.server_qubits = server_qubits
 
-    def get_architecture(self):
+    def get_architecture(self) -> Tuple[Architecture, dict[Node, int]]:
 
         G = self.get_nisq_nx()
         arc = Architecture([(Node(u), Node(v)) for u, v in G.edges])
@@ -43,7 +48,11 @@ class NISQNetwork(ServerNetwork):
 
         return arc, node_qubit_map
 
-    def get_placer(self):
+    def get_placer(self) -> Tuple[
+        Architecture,
+        dict[Node, int],
+        NoiseAwarePlacement
+    ]:
 
         G = self.get_nisq_nx()
         link_errors = {}
@@ -58,9 +67,6 @@ class NISQNetwork(ServerNetwork):
             node_qubit_map,
             NoiseAwarePlacement(arc=arc, link_errors=link_errors)
         )
-
-    def get_server_qubits(self):
-        return self.server_qubits
 
     def get_nisq_nx(self) -> nx.Graph:
 

@@ -35,7 +35,7 @@ class Routing(Distributor):
         RebaseQuil().apply(routed_circ)
 
         print("arch nodes", arch.nodes)
-        print("server qubits", network.get_server_qubits())
+        print("server qubits", network.server_qubits)
         print("node_qubit_map", node_qubit_map)
 
         node_server_map = {}
@@ -43,7 +43,7 @@ class Routing(Distributor):
             qubit_found_in = [
                 server
                 for server, qubits
-                in network.get_server_qubits().items()
+                in network.server_qubits.items()
                 if node_qubit_map[node] in qubits
             ]
             assert len(qubit_found_in) == 1

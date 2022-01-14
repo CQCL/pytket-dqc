@@ -13,7 +13,7 @@ class Hypergraph:
         self.hyperedge_list: list[list[int]] = []
         self.vertex_list: list[int] = []
 
-    def is_placement(self, placement: Placement):
+    def is_placement(self, placement: Placement) -> bool:
 
         valid = True
 
@@ -36,12 +36,6 @@ class Hypergraph:
             scenes[str(i)] = set(edge)
         H = hnx.Hypergraph(scenes)
         hnx.drawing.draw(H)
-
-    def get_hyperedge_list(self):
-        return self.hyperedge_list
-
-    def get_vertex_list(self):
-        return self.vertex_list
 
     def add_vertex(self, vertex: int):
         if vertex not in self.vertex_list:
