@@ -16,7 +16,7 @@ class NISQNetwork(ServerNetwork):
 
         super().__init__(server_coupling)
 
-        # Check that each server has a collection of qubits 
+        # Check that each server has a collection of qubits
         # which belong to it specified.
         for server in self.get_server_list():
             if server not in server_qubits.keys():

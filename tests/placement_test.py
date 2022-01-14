@@ -4,7 +4,7 @@ from pytket_dqc.placement import Placement
 from pytket import Circuit
 
 
-# TODO: Add tests with circuits where one or more qubits are unused 
+# TODO: Add tests with circuits where one or more qubits are unused
 
 
 def test_placement_valid():

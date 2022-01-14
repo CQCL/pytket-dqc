@@ -63,18 +63,41 @@ def test_brute_distribute():
         {0: 2, 4: 2, 1: 2, 5: 2, 2: 0, 6: 1, 3: 1})
     assert placement_med.cost(dist_med_circ, med_network) == 2
 
-# TODO: Add test of second circuit and network here
-
 
 def test_routing_distribute():
 
-    med_network = NISQNetwork([[0, 1], [0, 2]], {0: [0], 1: [1], 2: [2, 3]})
-    med_circ = Circuit(4).CZ(0, 1).CZ(1, 2).CZ(2, 3)
-    dist_med_circ = DistributedCircuit(med_circ)
+    small_network = NISQNetwork([[0, 1], [0, 2]], {0: [0], 1: [1], 2: [2, 3]})
+    small_circ = Circuit(4).CZ(0, 1).CZ(1, 2).CZ(2, 3)
+    dist_small_circ = DistributedCircuit(small_circ)
 
     distributor = Routing()
-    routing_placement = distributor.distribute(dist_med_circ, med_network)
+    routing_placement = distributor.distribute(dist_small_circ, small_network)
     ideal_placement = Placement({0: 0, 4: 1, 5: 0, 1: 1, 2: 2, 6: 2, 3: 2})
-    cost = routing_placement.cost(dist_med_circ, med_network)
+    cost = routing_placement.cost(dist_small_circ, small_network)
     assert routing_placement == ideal_placement
     assert cost == 2
+
+    med_network = NISQNetwork([[0, 1]], {0: [0, 1], 1: [2, 3, 4]})
+    med_circ = Circuit(5).CZ(0, 1).CZ(1, 2).CZ(0, 2).CZ(2, 3).CZ(3, 4).CZ(3, 2)
+    dist_med_circ = DistributedCircuit(med_circ)
+
+    routing_placement = distributor.distribute(dist_med_circ, med_network)
+    cost = routing_placement.cost(dist_med_circ, med_network)
+    ideal_placement = Placement(
+        {0: 0, 8: 1, 9: 0, 10: 0, 1: 0, 2: 1, 6: 1, 7: 1, 3: 1, 5: 1, 4: 1})
+
+    assert routing_placement == ideal_placement
+    assert cost == 2
+
+    med_circ_flipped = Circuit(5).CZ(0, 1).CZ(
+        1, 2).CZ(0, 2).CZ(2, 3).CZ(3, 4).CZ(2, 3)
+    dist_med_circ_flipped = DistributedCircuit(med_circ_flipped)
+
+    routing_placement = distributor.distribute(
+        dist_med_circ_flipped, med_network)
+    cost = routing_placement.cost(dist_med_circ_flipped, med_network)
+    ideal_placement = Placement(
+        {0: 0, 8: 1, 9: 0, 10: 1, 1: 0, 2: 1, 6: 1, 7: 1, 3: 1, 5: 1, 4: 1})
+
+    assert routing_placement == ideal_placement
+    assert cost == 1
