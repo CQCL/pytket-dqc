@@ -74,13 +74,13 @@ class NISQNetwork(ServerNetwork):
 
         for qubits in self.server_qubits.values():
             for qubit_connection in combinations(qubits, 2):
-                G.add_edge(*qubit_connection, color="r", weight=0)
+                G.add_edge(*qubit_connection, color="red", weight=0)
 
         for u, v in self.server_coupling:
             G.add_edge(
                 self.server_qubits[u][0],
                 self.server_qubits[v][0],
-                color="b",
+                color="blue",
                 weight=1,
             )
 
@@ -90,4 +90,9 @@ class NISQNetwork(ServerNetwork):
 
         G = self.get_nisq_nx()
         colors = [G[u][v]["color"] for u, v in G.edges()]
-        nx.draw(G, with_labels=True, edge_color=colors, pos=nx.nx_agraph.graphviz_layout(G))
+        nx.draw(
+            G,
+            with_labels=True,
+            edge_color=colors,
+            pos=nx.nx_agraph.graphviz_layout(G)
+        )
