@@ -1,4 +1,11 @@
+from __future__ import annotations
+
 import hypernetx as hnx  # type: ignore
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pytket_dqc.placement import Placement
 
 
 class Hypergraph:
@@ -6,18 +13,18 @@ class Hypergraph:
         self.hyperedge_list: list[list[int]] = []
         self.vertex_list: list[int] = []
 
-    def is_placement(self, placement: dict[int, int]):
+    def is_placement(self, placement: Placement):
 
         valid = True
 
         # Check that every vertex is placed by this placement.
         for vertex in self.vertex_list:
-            if vertex not in placement.keys():
+            if vertex not in placement.placement.keys():
                 valid = False
 
         # Check that every vertex placed by this placement
         # is in the hypergraph.
-        for vertex in placement.keys():
+        for vertex in placement.placement.keys():
             if vertex not in self.vertex_list:
                 valid = False
 

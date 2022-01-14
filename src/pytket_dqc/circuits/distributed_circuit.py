@@ -9,7 +9,8 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from pytket_dqc.networks import NISQNetwork
     from pytket.circuit import Command  # type: ignore
-    from pytekt import Circuit, Qubit  # type:ignore
+    from pytket import Circuit, Qubit  # type:ignore
+    from pytket_dqc.placement import Placement
 
 gateset_pred = GateSetPredicate(
     {OpType.Rx, OpType.CZ, OpType.Rz, OpType.Measure}
@@ -23,9 +24,6 @@ class DistributedCircuit(Hypergraph):
 
     def reset(self, circuit: Circuit):
 
-        if not gateset_pred.verify(circuit):
-            raise Exception("The inputted circuit is not in a valid gateset.")
-
         super().__init__()
 
         self.circuit = circuit
@@ -34,12 +32,12 @@ class DistributedCircuit(Hypergraph):
 
     def placement_cost(
         self,
-        placement: dict[int, int],
+        placement: Placement,
         network: NISQNetwork
     ) -> int:
 
         cost = 0
-        if network.is_circuit_placement(placement, self):
+        if placement.valid(self, network):
 
             G = network.get_server_nx()
 
@@ -47,7 +45,7 @@ class DistributedCircuit(Hypergraph):
                 # Generate a list of where each vertex of the hyperedge
                 # is placed
                 hyperedge_placement = [
-                    placement[vertex] for vertex in hyperedge
+                    placement.placement[vertex] for vertex in hyperedge
                 ]
 
                 # Find the server where the qubit vertex is placed
@@ -58,7 +56,7 @@ class DistributedCircuit(Hypergraph):
                 ]
                 assert len(qubit_vertex_list) == 1
                 qubit_vertex = qubit_vertex_list[0]
-                qubit_vertex_server = placement[qubit_vertex]
+                qubit_vertex_server = placement.placement[qubit_vertex]
 
                 # The cost is equal to the distance between each of the
                 # vertices and the qubit vertex.
@@ -91,6 +89,9 @@ class DistributedCircuit(Hypergraph):
         self.vertex_circuit_map[vertex] = {'type': 'gate', 'command': command}
 
     def __from_circuit(self):
+
+        if not gateset_pred.verify(self.circuit):
+            raise Exception("The inputted circuit is not in a valid gateset.")
 
         command_list_count = []
         CZ_count = 0

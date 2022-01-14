@@ -4,6 +4,7 @@ from pytket_dqc import DistributedCircuit
 from pytket.routing import Architecture, NoiseAwarePlacement  # type:ignore
 from pytket.circuit import Node  # type:ignore
 import pytest
+from pytket_dqc.placement import Placement
 
 
 def test_nisq_get_architecture():
@@ -65,15 +66,19 @@ def test_server_network_is_placement():
     large_network = ServerNetwork([[0, 1], [0, 2], [1, 2]])
     small_network = ServerNetwork([[0, 1]])
 
-    assert large_network.is_placement(
-        {0: 1, 1: 1, 2: 1, 3: 0, 4: 1, 5: 1, 6: 1})
-    assert large_network.is_placement({0: 2, 1: 2, 2: 2})
-    assert large_network.is_placement({0: 0, 1: 0, 2: 0})
-    assert large_network.is_placement({0: 0, 1: 0, 2: 0, 3: 0})
-    assert not large_network.is_placement({0: 2, 1: 2, 2: 3})
-    assert small_network.is_placement(
-        {0: 1, 1: 1, 2: 1, 3: 0, 4: 1, 5: 1, 6: 1})
-    assert not small_network.is_placement({0: 2, 1: 2, 2: 2})
+    placement_one = Placement({0: 1, 1: 1, 2: 1, 3: 0, 4: 1, 5: 1, 6: 1})
+    placement_two = Placement({0: 2, 1: 2, 2: 2})
+    placement_three = Placement({0: 0, 1: 0, 2: 0})
+    placement_four = Placement({0: 0, 1: 0, 2: 0, 3: 0})
+    placement_five = Placement({0: 2, 1: 2, 2: 3})
+
+    assert large_network.is_placement(placement_one)
+    assert large_network.is_placement(placement_two)
+    assert large_network.is_placement(placement_three)
+    assert large_network.is_placement(placement_four)
+    assert not large_network.is_placement(placement_five)
+    assert small_network.is_placement(placement_one)
+    assert not small_network.is_placement(placement_two)
 
 
 def test_nisq_network_is_placement():
@@ -88,21 +93,22 @@ def test_nisq_network_is_placement():
     med_circ = Circuit(4).CZ(0, 1).CZ(1, 2).CZ(2, 3)
     dist_med_circ = DistributedCircuit(med_circ)
 
-    assert not large_network.is_circuit_placement(
-        {0: 1, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1}, dist_med_circ)
-    assert large_network.is_circuit_placement(
-        {0: 1, 1: 1, 2: 1, 3: 0, 4: 0, 5: 0, 6: 2}, dist_med_circ)
-    assert large_network.is_circuit_placement(
-        {0: 2, 1: 2, 2: 2, 3: 2, 4: 0, 5: 0, 6: 0}, dist_med_circ)
-    assert large_network.is_circuit_placement(
-        {0: 0, 1: 0, 2: 0, 3: 2, 4: 0, 5: 0, 6: 0}, dist_med_circ)
-    assert not large_network.is_circuit_placement(
-        {0: 0, 1: 0, 2: 0, 3: 0}, dist_med_circ)
-    assert not large_network.is_circuit_placement(
-        {0: 2, 1: 2, 2: 3}, dist_med_circ)
-    assert not small_network.is_circuit_placement(
-        {0: 1, 1: 1, 2: 1, 3: 0, 4: 1, 5: 1, 6: 1}, dist_small_circ)
-    assert small_network.is_circuit_placement(
-        {0: 1, 1: 0, 2: 1}, dist_small_circ)
-    assert not small_network.is_circuit_placement(
-        {0: 2, 1: 2, 2: 2}, dist_small_circ)
+    placement_one = Placement({0: 1, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1})
+    placement_two = Placement({0: 1, 1: 1, 2: 1, 3: 0, 4: 0, 5: 0, 6: 2})
+    placement_three = Placement({0: 2, 1: 2, 2: 2, 3: 2, 4: 0, 5: 0, 6: 0})
+    placement_four = Placement({0: 0, 1: 0, 2: 0, 3: 2, 4: 0, 5: 0, 6: 0})
+    placement_five = Placement({0: 0, 1: 0, 2: 0, 3: 0})
+    placement_six = Placement({0: 2, 1: 2, 2: 3})
+    placement_seven = Placement({0: 1, 1: 1, 2: 1, 3: 0, 4: 1, 5: 1, 6: 1})
+    placement_eight = Placement({0: 1, 1: 0, 2: 1})
+    placement_nine = Placement({0: 2, 1: 2, 2: 2})
+
+    assert not placement_one.valid(dist_med_circ, large_network)
+    assert placement_two.valid(dist_med_circ, large_network)
+    assert placement_three.valid(dist_med_circ, large_network)
+    assert placement_four.valid(dist_med_circ, large_network)
+    assert not placement_five.valid(dist_med_circ, large_network)
+    assert not placement_six.valid(dist_med_circ, large_network)
+    assert not placement_seven.valid(dist_small_circ, small_network)
+    assert placement_eight.valid(dist_small_circ, small_network)
+    assert not placement_nine.valid(dist_small_circ, small_network)

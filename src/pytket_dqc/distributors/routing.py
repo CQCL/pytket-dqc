@@ -7,6 +7,7 @@ from pytket.passes import (  # type:ignore
     RebaseQuil,
     PlacementPass,
 )
+from pytket_dqc.placement import Placement
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -22,7 +23,7 @@ class Routing(Distributor):
         self,
         dist_circ: DistributedCircuit,
         network: NISQNetwork
-    ) -> dict[int, int]:
+    ) -> Placement:
 
         arch, node_qubit_map, pl = network.get_placer()
 
@@ -53,16 +54,17 @@ class Routing(Distributor):
         dist_circ.reset(routed_circ)
         print("vertex_circuit_map", dist_circ.vertex_circuit_map)
 
-        placement = {}
+        placement_dict = {}
         for vertex, vertex_info in dist_circ.vertex_circuit_map.items():
             if vertex_info['type'] == 'qubit':
-                placement[vertex] = node_server_map[vertex_info['node']]
+                placement_dict[vertex] = node_server_map[vertex_info['node']]
             elif vertex_info['type'] == 'gate':
                 node = vertex_info['command'].qubits[0]
-                placement[vertex] = node_server_map[node]
+                placement_dict[vertex] = node_server_map[node]
             else:
                 raise Exception("Vertex type not recognised")
 
-        print(placement)
+        print(placement_dict)
+        placement = Placement(placement_dict)
 
         return placement

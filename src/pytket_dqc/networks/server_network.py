@@ -1,4 +1,11 @@
+from __future__ import annotations
+
 import networkx as nx  # type: ignore
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pytket_dqc.placement import Placement
 
 
 class ServerNetwork:
@@ -12,13 +19,13 @@ class ServerNetwork:
 
         self.server_coupling = server_coupling
 
-    def is_placement(self, placement: dict[int, int]) -> bool:
+    def is_placement(self, placement: Placement) -> bool:
 
         valid = True
 
         # Check that every server vertices are placed onto is in this network.
         server_list = self.get_server_list()
-        for server in placement.values():
+        for server in placement.placement.values():
             if server not in server_list:
                 valid = False
 

@@ -1,7 +1,13 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from pytket_dqc import DistributedCircuit
 from pytket_dqc.networks import NISQNetwork
 from typing import Union
+
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from pytket_dqc.placement import Placement
 
 
 class Distributor(ABC):
@@ -13,5 +19,5 @@ class Distributor(ABC):
         self,
         dist_circ: DistributedCircuit,
         network: Union[NISQNetwork]
-    ) -> dict[int, int]:
+    ) -> Placement:
         pass

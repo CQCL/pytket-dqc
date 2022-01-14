@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pytket_dqc.distributors import Distributor
+from pytket_dqc.placement import Placement
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -51,21 +52,22 @@ class Annealing(Distributor):
         self,
         dist_circ: DistributedCircuit,
         network: NISQNetwork
-    ) -> dict[int, int]:
+    ) -> Placement:
 
         # Get a naive initial placement of the vertices onto the servers.
-        vertex_server_dict = self.initial_placement(dist_circ, network)
+        vertex_server_placement = self.initial_placement(dist_circ, network)
 
-        placement_cost = dist_circ.placement_cost(vertex_server_dict, network)
+        placement_cost = dist_circ.placement_cost(
+            vertex_server_placement, network)
         print("placement_cost", placement_cost)
 
-        return vertex_server_dict
+        return vertex_server_placement
 
     def initial_placement(
         self,
         dist_circ: DistributedCircuit,
         network: NISQNetwork
-    ) -> dict[int, int]:
+    ) -> Placement:
 
         # A map from hypergraph vertices to the server on which
         # they are placed.
@@ -108,4 +110,6 @@ class Annealing(Distributor):
         for vertex in gate_vertex_list:
             vertex_server_map[vertex] = first_server
 
-        return vertex_server_map
+        placement = Placement(vertex_server_map)
+
+        return placement

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pytket_dqc.distributors import Distributor
 import itertools
+from pytket_dqc.placement import Placement
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -17,7 +18,7 @@ class Brute(Distributor):
         self,
         dist_circ: DistributedCircuit,
         network: NISQNetwork
-    ) -> dict[int, int]:
+    ) -> Placement:
 
         # List of all vertices to be placed
         vertex_list = dist_circ.get_vertex_list()
@@ -40,11 +41,12 @@ class Brute(Distributor):
         for placement_list in all_placement_list:
 
             # build placement from list of vertices and servers.
-            placement = {vertex: server for vertex, server in zip(
+            placement_dict = {vertex: server for vertex, server in zip(
                 vertex_list, placement_list)}
+            placement = Placement(placement_dict)
 
             # Append to list is placement is valid.
-            if network.is_circuit_placement(placement, dist_circ):
+            if placement.valid(dist_circ, network):
                 valid_placement_list.append(placement)
 
         # Raise exception if there are no valid placements. This could happen
