@@ -17,10 +17,10 @@ jobs:
           python-version: 3.9
       - name: install pytket-dqc
         run: pip install .
+      - name: install testing requirements
+        run: pip install tests/test_requirements.txt
       - name: run tests
-        run: |
-          pip install pytest
-          pytest tests/
+        run: pytest tests/
       - name: run mypy
         run: mypy src/pytket_dqc tests
       - name: run flake8
