@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import networkx as nx
+import networkx as nx  # type: ignore
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -45,7 +45,7 @@ class Placement:
 
     def cost(
         self,
-        circuit: DistributedCircuit, 
+        circuit: DistributedCircuit,
         network: NISQNetwork
     ) -> int:
 

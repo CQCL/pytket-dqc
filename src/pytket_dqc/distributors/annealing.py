@@ -57,8 +57,8 @@ class Annealing(Distributor):
         # Get a naive initial placement of the vertices onto the servers.
         vertex_server_placement = self.initial_placement(dist_circ, network)
 
-        placement_cost = dist_circ.placement_cost(
-            vertex_server_placement, network)
+        placement_cost = vertex_server_placement.cost(
+            dist_circ, network)
         print("placement_cost", placement_cost)
 
         return vertex_server_placement

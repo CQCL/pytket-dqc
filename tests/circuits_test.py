@@ -1,6 +1,5 @@
 from pytket_dqc import DistributedCircuit, Hypergraph
 from pytket import Circuit
-from pytket_dqc.networks import NISQNetwork
 from pytket_dqc.placement import Placement
 
 
@@ -28,27 +27,6 @@ def test_hypergraph():
     hypgra.add_hyperedge([2, 1])
     assert hypgra.get_vertex_list() == [0, 1, 2]
     assert hypgra.get_hyperedge_list() == [[0, 1], [2, 1]]
-
-
-def test_placement_cost():
-
-    two_CZ_circ = Circuit(3).CZ(0, 1).CZ(0, 2)
-    dist_two_CZ_circ = DistributedCircuit(two_CZ_circ)
-
-    three_line_network = NISQNetwork(
-        [[0, 1], [1, 2]], {0: [0], 1: [1], 2: [2]})
-
-    placement_one = Placement({0: 0, 1: 1, 2: 2, 3: 1, 4: 2})
-    assert dist_two_CZ_circ.placement_cost(
-        placement_one,
-        three_line_network
-    ) == 3
-    placement_two = Placement({0: 0, 1: 1, 2: 2, 3: 1, 4: 0})
-    assert dist_two_CZ_circ.placement_cost(
-        placement_two, three_line_network) == 3
-    placement_three = Placement({0: 1, 1: 0, 2: 2, 3: 0, 4: 2})
-    assert dist_two_CZ_circ.placement_cost(
-        placement_three, three_line_network) == 2
 
 
 def test_hypergraph_is_placement():

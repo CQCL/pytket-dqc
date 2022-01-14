@@ -56,12 +56,12 @@ class Brute(Distributor):
 
         # Initialise minimum placement cost to be that of the first
         # valid placement.
-        minimum_placement_cost = dist_circ.placement_cost(
-            valid_placement_list[0], network)
+        minimum_placement_cost = valid_placement_list[0].cost(
+            dist_circ, network)
         minimum_cost_placement = valid_placement_list[0]
         # Check if any of the other valid placements have smaller cost.
         for placement in valid_placement_list[1:]:
-            placement_cost = dist_circ.placement_cost(placement, network)
+            placement_cost = placement.cost(dist_circ, network)
             if placement_cost < minimum_placement_cost:
                 minimum_cost_placement = placement
 

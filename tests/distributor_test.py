@@ -56,12 +56,12 @@ def test_brute_distribute():
 
     placement_small = distributor.distribute(dist_small_circ, small_network)
     assert placement_small == Placement({0: 0, 2: 0, 1: 0})
-    assert dist_small_circ.placement_cost(placement_small, small_network) == 0
+    assert placement_small.cost(dist_small_circ, small_network) == 0
 
     placement_med = distributor.distribute(dist_med_circ, med_network)
     assert placement_med == Placement(
         {0: 2, 4: 2, 1: 2, 5: 2, 2: 0, 6: 1, 3: 1})
-    assert dist_med_circ.placement_cost(placement_med, med_network) == 2
+    assert placement_med.cost(dist_med_circ, med_network) == 2
 
 # TODO: Add test of second circuit and network here
 
@@ -75,6 +75,6 @@ def test_routing_distribute():
     distributor = Routing()
     routing_placement = distributor.distribute(dist_med_circ, med_network)
     ideal_placement = Placement({0: 0, 4: 1, 5: 0, 1: 1, 2: 2, 6: 2, 3: 2})
-    cost = dist_med_circ.placement_cost(routing_placement, med_network)
+    cost = routing_placement.cost(dist_med_circ, med_network)
     assert routing_placement == ideal_placement
     assert cost == 2
