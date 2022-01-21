@@ -10,14 +10,14 @@ jobs:
   ubuntu:
     runs-on: ubuntu-latest
     steps: 
-      - name: Setup cmake
-        uses: jwlawson/actions-setup-cmake@v1.12
-        with:
-          cmake-version: '3.16.x'
       - name: Install boost
         uses: MarkusJx/install-boost@v2.1.0
         with:
           boost_version: 1.73.0
+      - name: Setup cmake
+        uses: jwlawson/actions-setup-cmake@v1.12
+        with:
+          cmake-version: 3.16.x
       - name: Checkout kahypar
         uses: actions/checkout@v2
         with: 
