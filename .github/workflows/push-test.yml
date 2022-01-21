@@ -40,9 +40,15 @@ jobs:
           echo ==================================================
           ls
           python -m site
+          echo ==================================================
+          pip list
+          echo ==================================================
           # pip install kahypar.cpython-39-x86_64-linux-gnu.so
-          mkdir /home/runner/.local/lib/python3.9/site-packages
-          cp kahypar.cpython-39-x86_64-linux-gnu.so /home/runner/.local/lib/python3.9/site-packages
+          # mkdir /home/runner/.local/lib/python3.9/site-packages
+          # cp kahypar.cpython-39-x86_64-linux-gnu.so /home/runner/.local/lib/python3.9/site-packages
+          cp kahypar.cpython-39-x86_64-linux-gnu.so /opt/hostedtoolcache/Python/3.9.10/x64/lib/python3.9/site-packages
+          echo ==================================================
+          pip list
       - uses: actions/checkout@v2
       - name: Install pytket-dqc
         run: | 
