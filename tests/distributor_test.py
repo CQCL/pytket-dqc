@@ -30,9 +30,9 @@ def test_kahypar_install():
     context.suppressOutput(True)
 
     kahypar.partition(hypergraph, context)
+    placement = [hypergraph.blockID(i) for i in range(hypergraph.numNodes())]
 
-    assert [hypergraph.blockID(i) for i in range(
-        hypergraph.numNodes())] == [0, 0, 1, 1]
+    assert (placement == [0, 0, 1, 1] or placement == [1, 1, 0, 0])
 
 
 def test_order_reducing_size():
