@@ -11,11 +11,11 @@ import kahypar as kahypar  # type:ignore
 
 def test_kahypar_install():
 
-    num_nodes = 7
-    num_nets = 4
+    num_nodes = 4
+    num_nets = 3
 
-    hyperedge_indices = [0, 2, 6, 9, 12]
-    hyperedges = [0, 2, 0, 1, 3, 4, 3, 4, 6, 2, 5, 6]
+    hyperedge_indices = [0, 2, 4, 6]
+    hyperedges = [0, 1, 1, 2, 2, 3]
 
     k = 2
 
@@ -31,8 +31,8 @@ def test_kahypar_install():
 
     kahypar.partition(hypergraph, context)
 
-    assert [hypergraph.blockID(i) for i in range(hypergraph.numNodes())] == [
-        1, 0, 1, 0, 0, 1, 1]
+    assert [hypergraph.blockID(i) for i in range(
+        hypergraph.numNodes())] == [0, 0, 1, 1]
 
 
 def test_order_reducing_size():
