@@ -6,7 +6,7 @@ from pytket_dqc.distributors.annealing import order_reducing_size
 from pytket_dqc.distributors import Brute
 from pytket_dqc.distributors import Routing
 from pytket_dqc.placement import Placement
-import kahypar  # type:ignore
+import kahypar as kahypar # type:ignore
 
 
 def test_kahypar_install():

@@ -40,7 +40,8 @@ jobs:
           echo ==================================================
           ls
           python -m site
-          cp kahypar.cpython-39-x86_64-linux-gnu.so /opt/hostedtoolcache/Python/3.9.10/x64/lib/python3.9/site-packages
+          pip install .
+          # cp kahypar.cpython-39-x86_64-linux-gnu.so /opt/hostedtoolcache/Python/3.9.10/x64/lib/python3.9/site-packages
       - uses: actions/checkout@v2
       - name: Install pytket-dqc
         run: | 
@@ -49,7 +50,9 @@ jobs:
       - name: Install testing requirements
         run: pip install -r tests/test_requirements.txt
       - name: Tests
-        run: pytest tests/
+        run: |
+          pip list
+          pytest tests/
       - name: Type check
         run: mypy src/pytket_dqc tests
       - name: Code format check
