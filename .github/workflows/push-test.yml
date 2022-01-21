@@ -11,9 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps: 
       - name: Install boost
-        uses: MarkusJx/install-boost@v2.1.0
-        with:
-          boost_version: 1.73.0
+        run: sudo apt-get install libboost-all-dev
       - name: Setup cmake
         uses: jwlawson/actions-setup-cmake@v1.12
         with:
