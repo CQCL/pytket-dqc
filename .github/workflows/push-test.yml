@@ -26,6 +26,7 @@ jobs:
         run: |
           mkdir build && cd build
           cmake .. -DCMAKE_BUILD_TYPE=RELEASE -DBUILD_TESTING=OFF -DKAHYPAR_PYTHON_INTERFACE=1
+          make
           cd ../python
           make
           python -m site
