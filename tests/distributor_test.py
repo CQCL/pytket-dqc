@@ -6,6 +6,33 @@ from pytket_dqc.distributors.annealing import order_reducing_size
 from pytket_dqc.distributors import Brute
 from pytket_dqc.distributors import Routing
 from pytket_dqc.placement import Placement
+import kahypar  # type:ignore
+
+
+def test_kahypar_install():
+
+    num_nodes = 7
+    num_nets = 4
+
+    hyperedge_indices = [0, 2, 6, 9, 12]
+    hyperedges = [0, 2, 0, 1, 3, 4, 3, 4, 6, 2, 5, 6]
+
+    k = 2
+
+    hypergraph = kahypar.Hypergraph(
+        num_nodes, num_nets, hyperedge_indices, hyperedges, k)
+
+    context = kahypar.Context()
+    context.loadINIconfiguration("km1_kKaHyPar_sea20.ini")
+
+    context.setK(k)
+    context.setEpsilon(0.03)
+    context.suppressOutput(True)
+
+    kahypar.partition(hypergraph, context)
+
+    assert [hypergraph.blockID(i) for i in range(hypergraph.numNodes())] == [
+        1, 0, 1, 0, 0, 1, 1]
 
 
 def test_order_reducing_size():
