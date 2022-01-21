@@ -19,6 +19,10 @@ class ServerNetwork:
 
         self.server_coupling = server_coupling
 
+        # Check that the resulting network is connected.
+        if not nx.is_connected(self.get_server_nx()):
+            raise Exception("This server network is unconnected.")
+
     def is_placement(self, placement: Placement) -> bool:
 
         valid = True

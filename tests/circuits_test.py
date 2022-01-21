@@ -1,6 +1,12 @@
 from pytket_dqc import DistributedCircuit, Hypergraph
+from pytket_dqc.circuits import RegularGraphDistributedCircuit
 from pytket import Circuit
 from pytket_dqc.placement import Placement
+from pytket_dqc.distributors import Brute
+from pytket_dqc.networks import NISQNetwork
+
+
+# TODO: Test new circuit classes
 
 
 # TODO: Include vertex type information in this test
@@ -15,6 +21,18 @@ def test_distributed_circuit():
     assert vertex_circuit_map[0]['type'] == 'qubit'
     assert vertex_circuit_map[1]['type'] == 'qubit'
     assert vertex_circuit_map[2]['type'] == 'gate'
+
+
+def test_regular_graph_distributed_circuit():
+
+    dist_circ = RegularGraphDistributedCircuit(3, 2, 1, seed=0)
+    network = NISQNetwork([[0, 1], [0, 2]], {0: [0, 1], 1: [2, 3, 4], 2: [5]})
+    distributor = Brute()
+    placement = distributor.distribute(dist_circ, network)
+    cost = placement.cost(dist_circ, network)
+
+    assert cost == 0
+    assert placement == Placement({0: 1, 3: 1, 4: 1, 1: 1, 5: 1, 2: 1})
 
 
 def test_hypergraph():

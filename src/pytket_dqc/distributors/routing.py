@@ -14,6 +14,8 @@ if TYPE_CHECKING:
     from pytket_dqc import DistributedCircuit
     from pytket_dqc.networks import NISQNetwork
 
+import json
+
 
 class Routing(Distributor):
     def __init__(self):
@@ -28,6 +30,13 @@ class Routing(Distributor):
         arch, node_qubit_map, pl = network.get_placer()
 
         routed_circ = dist_circ.circuit.copy()
+
+        with open("unplaced_circ.json", 'w') as fp:
+            json.dump(routed_circ.to_dict(), fp)
+        with open("unplaced_arch.json", 'w') as fp:
+            json.dump(arch.to_dict(), fp)
+        with open("unplaced_pl.json", 'w') as fp:
+            json.dump(pl.to_dict(), fp)
 
         PlacementPass(pl).apply(routed_circ)
         routed_circ = route(routed_circ, arch)
