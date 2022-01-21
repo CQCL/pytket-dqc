@@ -9,6 +9,8 @@ on:
 jobs:
   ubuntu:
     runs-on: ubuntu-latest
+    env: 
+      Boost_INCLUDE_DIR: boost
     steps: 
       - name: Checkout kahypar
         uses: actions/checkout@v2
@@ -24,6 +26,7 @@ jobs:
         uses: MarkusJx/install-boost@v2.1.0
         with:
           boost_version: 1.73.0
+          boost_install_dir: Boost_INCLUDE_DIR
       - name: Install kahypar
         run: |
           ls
