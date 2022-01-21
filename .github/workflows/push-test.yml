@@ -13,7 +13,7 @@ jobs:
       - name: Checkout kahypar
         uses: actions/checkout@v2
         with: 
-          name: SebastianSchlag/kahypar.git
+          name: kahypar/kahypar
       - name: Setup cmake
         uses: jwlawson/actions-setup-cmake@v1.12
         with:
@@ -22,6 +22,7 @@ jobs:
         run: |
           ls
           mkdir build && cd build
+          ls
           cmake .. -DCMAKE_BUILD_TYPE=RELEASE
           make
           cd ../python
