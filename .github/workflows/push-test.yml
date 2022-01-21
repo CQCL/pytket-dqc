@@ -10,57 +10,52 @@ jobs:
   ubuntu:
     runs-on: ubuntu-latest
     steps: 
+
       - name: Set up Python 3.9
         uses: actions/setup-python@v2
         with:
           python-version: 3.9
+
       - name: Install boost
         run: sudo apt-get install libboost-all-dev
+
       - name: Setup cmake
         uses: jwlawson/actions-setup-cmake@v1.12
         with:
           cmake-version: 3.16.x
+
       - name: Checkout kahypar
         uses: actions/checkout@v2
         with: 
           repository: kahypar/kahypar
           submodules: recursive
           fetch-depth: 1
+
       - name: Install kahypar
         run: |
           mkdir build && cd build
           cmake .. -DCMAKE_BUILD_TYPE=RELEASE -DKAHYPAR_PYTHON_INTERFACE=1 -DBUILD_TESTING=OFF
           make
-          echo ==================================================
-          ls
-          echo ==================================================
           cd python
-          ls
           make
-          echo ==================================================
-          ls
-          python -m site
-          echo ==================================================
-          pip list
-          echo ==================================================
-          # pip install kahypar.cpython-39-x86_64-linux-gnu.so
-          # mkdir /home/runner/.local/lib/python3.9/site-packages
-          # cp kahypar.cpython-39-x86_64-linux-gnu.so /home/runner/.local/lib/python3.9/site-packages
           cp kahypar.cpython-39-x86_64-linux-gnu.so /opt/hostedtoolcache/Python/3.9.10/x64/lib/python3.9/site-packages
-          echo ==================================================
-          pip list
-      - uses: actions/checkout@v2
+
+      - name: Checkout pytket-dqc
+        uses: actions/checkout@v2
+
       - name: Install pytket-dqc
         run: | 
           sudo apt-get install graphviz graphviz-dev
           pip install .
+
       - name: Install testing requirements
         run: pip install -r tests/test_requirements.txt
+
       - name: Tests
-        run: |
-          pip list
-          pytest tests/
+        run: pytest tests/
+
       - name: Type check
         run: mypy src/pytket_dqc tests
+        
       - name: Code format check
         run: flake8 src/pytket_dqc tests
