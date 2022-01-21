@@ -24,10 +24,9 @@ jobs:
           fetch-depth: 1
       - name: Install kahypar
         run: |
-          ls
           mkdir build && cd build
-          ls
-          cmake .. -DCMAKE_BUILD_TYPE=RELEASE -BUILD_TESTING=OFF
+          cmake .. -DCMAKE_BUILD_TYPE=RELEASE -DKAHYPAR_ENABLE_HEAVY_PREPROCESSING_ASSERTIONS=OFF
+          cd ../
           make
           cd ../python
           make
