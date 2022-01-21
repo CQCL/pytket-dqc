@@ -10,6 +10,10 @@ jobs:
   ubuntu:
     runs-on: ubuntu-latest
     steps: 
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
       - name: Install boost
         run: sudo apt-get install libboost-all-dev
       - name: Setup cmake
@@ -34,12 +38,10 @@ jobs:
           ls
           make
           echo ==================================================
+          ls
           python -m site
+          cp kahypar.so <path-to-site-packages>
       - uses: actions/checkout@v2
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v2
-        with:
-          python-version: 3.9
       - name: Install pytket-dqc
         run: | 
           sudo apt-get install graphviz graphviz-dev
