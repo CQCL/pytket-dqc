@@ -26,7 +26,7 @@ jobs:
         run: |
           mkdir build && cd build
           cmake .. -DCMAKE_BUILD_TYPE=RELEASE -DKAHYPAR_ENABLE_HEAVY_PREPROCESSING_ASSERTIONS=OFF
-          cd ../
+          ls
           make
           cd ../python
           make
