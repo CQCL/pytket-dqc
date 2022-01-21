@@ -22,6 +22,8 @@ jobs:
           cmake-version: '3.16.x'
       - name: Install boost
         uses: MarkusJx/install-boost@v2.1.0
+        with:
+          boost_version: 1.73.0
       - name: Install kahypar
         run: |
           ls
