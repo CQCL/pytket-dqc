@@ -27,7 +27,7 @@ jobs:
           ls
           mkdir build && cd build
           ls
-          cmake .. -DCMAKE_BUILD_TYPE=RELEASE
+          cmake .. -DCMAKE_BUILD_TYPE=RELEASE -BUILD_TESTING=OFF
           make
           cd ../python
           make
