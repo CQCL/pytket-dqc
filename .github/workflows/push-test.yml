@@ -15,6 +15,16 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: 3.9
+      - name: Install kahypar
+        run: |
+          git clone --depth=1 --recursive git@github.com:SebastianSchlag/kahypar.git
+          cd kahypar
+          mkdir build && cd build
+          cmake .. -DCMAKE_BUILD_TYPE=RELEASE
+          make
+          cd ../python
+          make
+          python -m site
       - name: Install pytket-dqc
         run: | 
           sudo apt-get install graphviz graphviz-dev
