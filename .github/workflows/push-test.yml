@@ -10,21 +10,24 @@ jobs:
   ubuntu:
     runs-on: ubuntu-latest
     steps: 
-      - uses: actions/checkout@v2
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v2
-        with:
-          python-version: 3.9
+      - name: Checkout kahypar
+        uses: actions/checkout@v2
+        with: 
+          name: SebastianSchlag/kahypar.git
       - name: Install kahypar
         run: |
-          git clone --depth=1 --recursive git@github.com:SebastianSchlag/kahypar.git
-          cd kahypar
+          ls
           mkdir build && cd build
           cmake .. -DCMAKE_BUILD_TYPE=RELEASE
           make
           cd ../python
           make
           python -m site
+      - uses: actions/checkout@v2
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
       - name: Install pytket-dqc
         run: | 
           sudo apt-get install graphviz graphviz-dev
