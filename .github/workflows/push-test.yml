@@ -25,7 +25,7 @@ jobs:
       - name: Install kahypar
         run: |
           mkdir build && cd build
-          cmake .. -DCMAKE_BUILD_TYPE=RELEASE -DKAHYPAR_ENABLE_HEAVY_PREPROCESSING_ASSERTIONS=OFF -DKAHYPAR_PYTHON_INTERFACE=1
+          cmake .. -DCMAKE_BUILD_TYPE=RELEASE -DBUILD_TESTING=OFF -DKAHYPAR_PYTHON_INTERFACE=1
           cd ../python
           make
           python -m site
