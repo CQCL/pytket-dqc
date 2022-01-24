@@ -8,6 +8,14 @@ from pytket_dqc.networks import NISQNetwork
 
 # TODO: Test new circuit classes
 
+def test_hypergraph_is_valid():
+
+    hypgraph = Hypergraph()
+    hypgraph.add_vertices([1, 2, 3])
+    assert not hypgraph.is_valid()
+    hypgraph.add_vertex(0)
+    assert hypgraph.is_valid()
+
 
 # TODO: Include vertex type information in this test
 def test_distributed_circuit():

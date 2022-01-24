@@ -5,7 +5,6 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from pytket_dqc.placement import Placement
-    from pytket_dqc import DistributedCircuit
 
 
 class Distributor(ABC):
@@ -16,7 +15,7 @@ class Distributor(ABC):
     @abstractmethod
     def distribute(
         self,
-        dist_circ: DistributedCircuit,
+        dist_circ: Any,
         network: Any
     ) -> Placement:
         pass

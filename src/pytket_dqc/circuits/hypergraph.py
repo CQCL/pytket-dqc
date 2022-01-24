@@ -30,6 +30,18 @@ class Hypergraph:
 
         return valid
 
+    # TODO: Is it possible to ensure this condition at the point of design
+    def is_valid(self) -> bool:
+
+        vertex_list_sorted = self.vertex_list.copy()
+        vertex_list_sorted.sort()
+        unique_vertex_list_sorted = list(set(vertex_list_sorted))
+
+        ideal_vertex_list = [i for i in range(max(self.vertex_list) + 1)]
+
+        # The vertices in the hypergraph must be a continuous list of integers.
+        return unique_vertex_list_sorted == ideal_vertex_list
+
     def draw(self):
         scenes = {}
         for i, edge in enumerate(self.hyperedge_list):

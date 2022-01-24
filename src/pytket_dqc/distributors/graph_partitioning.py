@@ -15,11 +15,16 @@ class GraphPartitioning(Distributor):
     def __init__(self, epsilon: float = 0.03):
         self.epsilon = epsilon
 
+    # TODO: dist_circ does not need to be a DistributedCircuit and could be a
+    # Hypergraph. Is there a way of specifying this in the typing?
     def distribute(
         self,
         dist_circ: DistributedCircuit,
         network: ServerNetwork
     ) -> Placement:
+
+        if not dist_circ.is_valid():
+            raise Exception("This hypergraph is not valid.")
 
         hyperedge_indices, hyperedges = dist_circ.kahypar_hyperedges()
 
