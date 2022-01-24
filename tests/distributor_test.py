@@ -57,6 +57,21 @@ def test_order_reducing_size():
         2: [5, 6, 7, 8], 1: [2, 3, 4], 0: [0, 1]}
 
 
+def test_annealing_random_initial_placement():
+
+    circ = Circuit(3).CZ(0, 2).CZ(1, 2)
+    dist_circ = DistributedCircuit(circ)
+
+    network = NISQNetwork([[0, 1], [0, 2]], {0: [0, 1], 1: [2, 3], 2: [4]})
+
+    distributor = Annealing()
+    placement = distributor.random_initial_placement(
+        dist_circ, network, seed=0)
+
+    assert placement == Placement({0: 1, 3: 1, 1: 0, 4: 1, 2: 2})
+    assert placement.cost(dist_circ, network) == 3
+
+
 def test_annealing_initial_placement():
 
     small_circ = Circuit(2).CZ(0, 1)

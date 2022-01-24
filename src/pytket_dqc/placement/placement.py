@@ -82,9 +82,10 @@ class Placement:
                 # There may be a better approach.
                 unique_servers_used = list(set(hyperedge_placement))
                 for server in unique_servers_used:
-                    cost += nx.shortest_path_length(
+                    shortest_path_length = nx.shortest_path_length(
                         G, qubit_vertex_server, server
                     )
+                    cost += shortest_path_length
 
         else:
             raise Exception("This is not a valid placement.")

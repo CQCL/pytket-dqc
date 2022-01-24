@@ -3,6 +3,7 @@ from __future__ import annotations
 from pytket_dqc.distributors import Distributor
 from pytket_dqc.placement import Placement
 from typing import TYPE_CHECKING
+import random
 
 if TYPE_CHECKING:
     from pytket_dqc import DistributedCircuit
@@ -51,7 +52,9 @@ class Annealing(Distributor):
     def distribute(
         self,
         dist_circ: DistributedCircuit,
-        network: NISQNetwork
+        network: NISQNetwork,
+        seed: int = None,
+        interations: int = 10000
     ) -> Placement:
 
         # Get a naive initial placement of the vertices onto the servers.
@@ -62,6 +65,50 @@ class Annealing(Distributor):
         print("placement_cost", placement_cost)
 
         return vertex_server_placement
+
+    def random_initial_placement(
+        self,
+        dist_c: DistributedCircuit,
+        network: NISQNetwork,
+        seed: int = None
+    ) -> Placement:
+
+        # TODO: Add test that the number of qubits is big enough
+
+        random.seed(seed)
+
+        placement_dict: dict[int, int] = {}
+
+        server_list = network.get_server_list()
+
+        for vertex in dist_c.vertex_list:
+
+            server_full = True
+
+            while server_full:
+
+                random_server = random.choice(server_list)
+
+                vertices_places = [
+                    placed_v
+                    for placed_v, server in placement_dict.items()
+                    if server == random_server
+                ]
+                vertices_places = [
+                    placed_v
+                    for placed_v in vertices_places
+                    if dist_c.vertex_circuit_map[placed_v]['type'] == 'qubit'
+                ]
+
+                server_full = (len(vertices_places) == len(
+                    network.server_qubits[random_server]))
+
+            placement_dict[vertex] = random_server
+
+        placement = Placement(placement_dict)
+        assert placement.is_placement(dist_c, network)
+
+        return placement
 
     def initial_placement(
         self,
@@ -107,5 +154,7 @@ class Annealing(Distributor):
             vertex_server_map[vertex] = first_server
 
         placement = Placement(vertex_server_map)
+
+        assert placement.is_placement(dist_circ, network)
 
         return placement
