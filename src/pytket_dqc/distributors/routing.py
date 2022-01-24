@@ -8,13 +8,12 @@ from pytket.passes import (  # type:ignore
     PlacementPass,
 )
 from pytket_dqc.placement import Placement
+import json
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from pytket_dqc import DistributedCircuit
     from pytket_dqc.networks import NISQNetwork
-
-import json
 
 
 class Routing(Distributor):

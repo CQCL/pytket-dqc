@@ -1,12 +1,27 @@
 from pytket_dqc.distributors import Annealing
 from pytket_dqc import DistributedCircuit
 from pytket import Circuit
-from pytket_dqc.networks import NISQNetwork
+from pytket_dqc.networks import NISQNetwork, ServerNetwork
 from pytket_dqc.distributors.annealing import order_reducing_size
-from pytket_dqc.distributors import Brute
-from pytket_dqc.distributors import Routing
+from pytket_dqc.distributors import Routing, GraphPartitioning, Brute
 from pytket_dqc.placement import Placement
 import kahypar as kahypar  # type:ignore
+
+
+def test_grpah_partitioning():
+
+    network = ServerNetwork([[0, 1]])
+
+    circ = Circuit(3).CZ(0, 1).CZ(0, 2)
+    dist_circ = DistributedCircuit(circ)
+    dist_circ.draw()
+
+    distributor = GraphPartitioning()
+
+    placement = distributor.distribute(dist_circ, network)
+
+    assert (placement == Placement({0: 0, 1: 1, 2: 0, 3: 1, 4: 0})) or (
+        placement == Placement({0: 1, 1: 0, 2: 1, 3: 0, 4: 1}))
 
 
 def test_kahypar_install():

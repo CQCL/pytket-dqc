@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hypernetx as hnx  # type: ignore
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Tuple
 
 if TYPE_CHECKING:
     from pytket_dqc.placement import Placement
@@ -41,6 +41,10 @@ class Hypergraph:
         if vertex not in self.vertex_list:
             self.vertex_list.append(vertex)
 
+    def add_vertices(self, vertices: list[int]):
+        for vertex in vertices:
+            self.add_vertex(vertex)
+
     def add_hyperedge(self, hyperedge: list[int]):
 
         for vertex in hyperedge:
@@ -53,3 +57,17 @@ class Hypergraph:
                 )
 
         self.hyperedge_list.append(hyperedge)
+
+    def kahypar_hyperedges(self) -> Tuple[list[int], list[int]]:
+
+        hyperedges = [
+            vertex
+            for hyperedge in self.hyperedge_list
+            for vertex in hyperedge
+        ]
+
+        hyperedge_indices = [0]
+        for hyperedge in self.hyperedge_list:
+            hyperedge_indices.append(len(hyperedge) + hyperedge_indices[-1])
+
+        return hyperedge_indices, hyperedges

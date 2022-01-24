@@ -53,4 +53,4 @@ class ServerNetwork:
     def draw_server_network(self):
 
         G = self.get_server_nx()
-        nx.draw(G, with_labels=True)
+        nx.draw(G, with_labels=True, pos=nx.nx_agraph.graphviz_layout(G))

@@ -62,3 +62,18 @@ def test_hypergraph_is_placement():
     placement_two = Placement({0: 2, 1: 2, 2: 2})
     assert not dist_med_circ.is_placement(placement_two)
     assert dist_small_circ.is_placement(placement_two)
+
+
+def test_hypergrpah_kahypar_hyperedges():
+
+    hypgraph = Hypergraph()
+
+    hypgraph.add_vertices([i+1 for i in range(6)])
+    hypgraph.add_hyperedge([3, 6, 2])
+    hypgraph.add_hyperedge([3, 1])
+    hypgraph.add_hyperedge([4, 5, 6])
+
+    hyperedge_indices, hyperedges = hypgraph.kahypar_hyperedges()
+
+    assert hyperedge_indices == [0, 3, 5, 8]
+    assert hyperedges == [3, 6, 2, 3, 1, 4, 5, 6]
