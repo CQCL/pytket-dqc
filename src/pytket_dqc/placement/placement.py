@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-import networkx as nx  # type: ignore
-
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from pytket_dqc.networks import NISQNetwork
     from pytket_dqc.circuits import DistributedCircuit
+
+import networkx as nx  # type: ignore
 
 
 class Placement:
@@ -19,7 +19,11 @@ class Placement:
             return self.placement == other.placement
         return False
 
-    def valid(self, circuit: DistributedCircuit, network: NISQNetwork) -> bool:
+    def is_placement(
+        self,
+        circuit: DistributedCircuit,
+        network: NISQNetwork
+    ) -> bool:
 
         if not circuit.is_placement(self):
             return False
@@ -50,7 +54,7 @@ class Placement:
     ) -> int:
 
         cost = 0
-        if self.valid(circuit, network):
+        if self.is_placement(circuit, network):
 
             G = network.get_server_nx()
 

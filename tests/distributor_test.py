@@ -19,9 +19,10 @@ def test_grpah_partitioning():
     distributor = GraphPartitioning()
 
     placement = distributor.distribute(dist_circ, network)
+    placement_1 = Placement({0: 0, 1: 1, 2: 0, 3: 1, 4: 0})
+    placement_2 = Placement({0: 1, 1: 0, 2: 1, 3: 0, 4: 1})
 
-    assert (placement == Placement({0: 0, 1: 1, 2: 0, 3: 1, 4: 0})) or (
-        placement == Placement({0: 1, 1: 0, 2: 1, 3: 0, 4: 1}))
+    assert (placement == placement_1) or (placement == placement_2)
 
 
 def test_kahypar_install():

@@ -29,15 +29,15 @@ def test_placement_valid():
     placement_eight = Placement({0: 1, 1: 0, 2: 1})
     placement_nine = Placement({0: 2, 1: 2, 2: 2})
 
-    assert not placement_one.valid(dist_med_circ, large_network)
-    assert placement_two.valid(dist_med_circ, large_network)
-    assert placement_three.valid(dist_med_circ, large_network)
-    assert placement_four.valid(dist_med_circ, large_network)
-    assert not placement_five.valid(dist_med_circ, large_network)
-    assert not placement_six.valid(dist_med_circ, large_network)
-    assert not placement_seven.valid(dist_small_circ, small_network)
-    assert placement_eight.valid(dist_small_circ, small_network)
-    assert not placement_nine.valid(dist_small_circ, small_network)
+    assert not placement_one.is_placement(dist_med_circ, large_network)
+    assert placement_two.is_placement(dist_med_circ, large_network)
+    assert placement_three.is_placement(dist_med_circ, large_network)
+    assert placement_four.is_placement(dist_med_circ, large_network)
+    assert not placement_five.is_placement(dist_med_circ, large_network)
+    assert not placement_six.is_placement(dist_med_circ, large_network)
+    assert not placement_seven.is_placement(dist_small_circ, small_network)
+    assert placement_eight.is_placement(dist_small_circ, small_network)
+    assert not placement_nine.is_placement(dist_small_circ, small_network)
 
 
 def test_placement_cost():

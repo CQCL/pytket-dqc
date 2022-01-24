@@ -46,7 +46,7 @@ class Brute(Distributor):
             placement = Placement(placement_dict)
 
             # Append to list is placement is valid.
-            if placement.valid(dist_circ, network):
+            if placement.is_placement(dist_circ, network):
                 valid_placement_list.append(placement)
 
         # Raise exception if there are no valid placements. This could happen
