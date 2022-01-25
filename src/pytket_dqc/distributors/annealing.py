@@ -54,17 +54,93 @@ class Annealing(Distributor):
         dist_circ: DistributedCircuit,
         network: NISQNetwork,
         seed: int = None,
-        interations: int = 10000
+        iterations: int = 10000
     ) -> Placement:
 
+        random.seed(seed)
+
         # Get a naive initial placement of the vertices onto the servers.
-        vertex_server_placement = self.initial_placement(dist_circ, network)
+        placement = self.initial_placement(dist_circ, network)
+        cost = placement.cost(dist_circ, network)
+        print("initial placement", placement.placement)
+        print("placement_cost", cost)
 
-        placement_cost = vertex_server_placement.cost(
-            dist_circ, network)
-        print("placement_cost", placement_cost)
+        # TODO: Check that the initial placement does not have cost 0, and
+        # that not all qubits are already in the same server etc.
 
-        return vertex_server_placement
+        print("===============")
+
+        for i in range(iterations):
+
+            print("iteration:", i)
+
+            vertex = random.choice(dist_circ.vertex_list)
+            print("vertex chosen:", vertex)
+
+            print("vertex type:", dist_circ.vertex_circuit_map[vertex]['type'])
+
+            server = placement.placement[vertex]
+
+            print("vertex server:", server)
+
+            # TODO: This is set up to swap qubit vertices. Change it so that 
+            # empty spaces in servers which have at least one qubit in them 
+            # can also be used.
+
+            if dist_circ.vertex_circuit_map[vertex]['type'] == 'qubit':
+
+                # List qubit vertices
+                qubit_list = [
+                    qubit_vertex 
+                    for qubit_vertex in dist_circ.vertex_list 
+                    if (dist_circ.vertex_circuit_map[qubit_vertex]['type'] == 'qubit') 
+                ]
+                print("all qubit vertices:", qubit_list)
+                # Remove chosen vertex
+                qubit_list.remove(vertex)
+                # remove qubits in the same server
+                qubit_list = [
+                    qubit_vertex 
+                    for qubit_vertex in qubit_list 
+                    if (not (placement.placement[qubit_vertex] == server))
+                ]
+                print("qubit_list:", qubit_list)
+
+                assert len(qubit_list) >= 1
+
+                swap_vertex = random.choice(qubit_list)
+                swap_server = placement.placement[swap_vertex]
+
+                print("swap_vertex", swap_vertex)
+
+                swap_placement_dict = placement.placement.copy()
+                swap_placement_dict[vertex] = swap_server
+                swap_placement_dict[swap_vertex] = server
+
+                print("swap_placement_dict", swap_placement_dict)
+
+                swap_placement = Placement(swap_placement_dict)
+                swap_cost = swap_placement.cost(dist_circ, network)
+
+                print("swap_cost", swap_cost)
+
+                if swap_cost < cost:
+                    placement = swap_placement
+                    cost = swap_cost
+
+
+                
+
+
+
+            elif dist_circ.vertex_circuit_map[vertex]['type'] == 'gate':
+                pass
+
+            else:
+                raise Exception("Type not recognised")
+
+            print("===== iteration end =====")
+        return placement
 
     def random_initial_placement(
         self,
