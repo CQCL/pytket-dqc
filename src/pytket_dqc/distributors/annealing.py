@@ -58,16 +58,17 @@ class Annealing(Distributor):
 
         seed = kwargs.get("seed", None)
         iterations = kwargs.get("iterations", 10000)
-        initial_place_method = kwargs.get("initial_place_method", 'ordered')
+        place_method = kwargs.get("initial_place_method", 'ordered')
 
         random.seed(seed)
 
-        if initial_place_method == 'ordered':
+        if place_method == 'ordered':
             placement = self.initial_placement(dist_circ, network)
-        elif initial_place_method == 'random':
+        elif place_method == 'random':
             placement = self.random_initial_placement(dist_circ, network)
         else:
-            raise Exception(f"'{initial_place_method}' is not a vlid initial placement method")
+            raise Exception(
+                f"'{place_method}' is not a valid initial placement method")
         cost = placement.cost(dist_circ, network)
 
         # TODO: Check that the initial placement does not have cost 0, and
