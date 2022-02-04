@@ -122,9 +122,10 @@ class CyclicDistributedCircuit(DistributedCircuit):
     def __init__(self, n_qubits, n_layers):
 
         circ = Circuit(n_qubits)
-        for qubit in range(n_qubits-1):
-            circ.CZ(qubit, qubit+1)
-        circ.CZ(n_qubits-1, 0)
+        for _ in range(n_layers):
+            for qubit in range(n_qubits-1):
+                circ.CZ(qubit, qubit+1)
+            circ.CZ(n_qubits-1, 0)
 
         super().__init__(circ)
 

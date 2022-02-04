@@ -23,7 +23,8 @@ class Routing(Distributor):
     def distribute(
         self,
         dist_circ: DistributedCircuit,
-        network: NISQNetwork
+        network: NISQNetwork,
+        **kwargs
     ) -> Placement:
 
         arch, node_qubit_map, pl = network.get_placer()

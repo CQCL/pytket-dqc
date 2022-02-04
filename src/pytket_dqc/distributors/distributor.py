@@ -16,6 +16,7 @@ class Distributor(ABC):
     def distribute(
         self,
         dist_circ: Any,
-        network: Any
+        network: Any,
+        **kwargs
     ) -> Placement:
         pass

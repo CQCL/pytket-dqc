@@ -53,93 +53,69 @@ class Annealing(Distributor):
         self,
         dist_circ: DistributedCircuit,
         network: NISQNetwork,
-        seed: int = None,
-        iterations: int = 10000
+        **kwargs
     ) -> Placement:
+
+        seed = kwargs.get("seed", None)
+        iterations = kwargs.get("iterations", 10000)
 
         random.seed(seed)
 
         # Get a naive initial placement of the vertices onto the servers.
         placement = self.initial_placement(dist_circ, network)
         cost = placement.cost(dist_circ, network)
-        print("initial placement", placement.placement)
-        print("placement_cost", cost)
 
         # TODO: Check that the initial placement does not have cost 0, and
         # that not all qubits are already in the same server etc.
 
-        print("===============")
+        for _ in range(iterations):
 
-        for i in range(iterations):
+            vertex_to_move = random.choice(dist_circ.vertex_list)
 
-            print("iteration:", i)
+            home_server = placement.placement[vertex_to_move]
 
-            vertex = random.choice(dist_circ.vertex_list)
-            print("vertex chosen:", vertex)
+            # Pick a random server to move to
+            possible_servers = network.get_server_list()
+            possible_servers.remove(placement.placement[vertex_to_move])
+            destination_server = random.choice(possible_servers)
 
-            print("vertex type:", dist_circ.vertex_circuit_map[vertex]['type'])
+            swap_placement_dict = placement.placement.copy()
 
-            server = placement.placement[vertex]
-
-            print("vertex server:", server)
-
-            # TODO: This is set up to swap qubit vertices. Change it so that 
-            # empty spaces in servers which have at least one qubit in them 
-            # can also be used.
-
-            if dist_circ.vertex_circuit_map[vertex]['type'] == 'qubit':
+            if dist_circ.vertex_circuit_map[vertex_to_move]['type'] == 'qubit':
 
                 # List qubit vertices
-                qubit_list = [
-                    qubit_vertex 
-                    for qubit_vertex in dist_circ.vertex_list 
-                    if (dist_circ.vertex_circuit_map[qubit_vertex]['type'] == 'qubit') 
+                destination_server_qubit_list = [
+                    v for v in dist_circ.vertex_list
+                    if (dist_circ.vertex_circuit_map[v]['type'] == 'qubit')
                 ]
-                print("all qubit vertices:", qubit_list)
-                # Remove chosen vertex
-                qubit_list.remove(vertex)
+
                 # remove qubits in the same server
-                qubit_list = [
-                    qubit_vertex 
-                    for qubit_vertex in qubit_list 
-                    if (not (placement.placement[qubit_vertex] == server))
+                destination_server_qubit_list = [
+                    v for v in destination_server_qubit_list
+                    if (placement.placement[v] == destination_server)
                 ]
-                print("qubit_list:", qubit_list)
 
-                assert len(qubit_list) >= 1
+                q_in_dest = len(destination_server_qubit_list)
+                size_dest = len(network.server_qubits[destination_server])
 
-                swap_vertex = random.choice(qubit_list)
-                swap_server = placement.placement[swap_vertex]
+                if q_in_dest == size_dest:
+                    swap_vertex = random.choice(destination_server_qubit_list)
+                    swap_placement_dict[swap_vertex] = home_server
 
-                print("swap_vertex", swap_vertex)
+            swap_placement_dict[vertex_to_move] = destination_server
 
-                swap_placement_dict = placement.placement.copy()
-                swap_placement_dict[vertex] = swap_server
-                swap_placement_dict[swap_vertex] = server
+            swap_placement = Placement(swap_placement_dict)
+            swap_cost = swap_placement.cost(dist_circ, network)
 
-                print("swap_placement_dict", swap_placement_dict)
+            if swap_cost < cost:
+                placement = swap_placement
+                cost = swap_cost
 
-                swap_placement = Placement(swap_placement_dict)
-                swap_cost = swap_placement.cost(dist_circ, network)
+            assert placement.is_placement(dist_circ, network)
 
-                print("swap_cost", swap_cost)
+            if cost == 0:
+                break
 
-                if swap_cost < cost:
-                    placement = swap_placement
-                    cost = swap_cost
-
-
-                
-
-
-
-            elif dist_circ.vertex_circuit_map[vertex]['type'] == 'gate':
-                pass
-
-            else:
-                raise Exception("Type not recognised")
-
-            print("===== iteration end =====")
         return placement
 
     def random_initial_placement(

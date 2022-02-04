@@ -8,6 +8,29 @@ from pytket_dqc.placement import Placement
 import kahypar as kahypar  # type:ignore
 
 
+def test_annealing_distribute():
+
+    network = NISQNetwork([[0, 1], [0, 2]], {0: [0], 1: [1, 2], 2: [3, 4]})
+
+    circ = Circuit(4).CZ(0, 3).Rz(0.5, 3).CZ(
+        1, 3).Rz(0.5, 3).CZ(2, 3).Rz(0.5, 3)
+    dist_circ = DistributedCircuit(circ)
+
+    distributor = Annealing()
+
+    placement = distributor.distribute(
+        dist_circ, network, seed=2, iterations=1)
+
+    assert placement == Placement({0: 1, 1: 1, 2: 2, 3: 0, 4: 1, 5: 1, 6: 1})
+    assert placement.cost(dist_circ, network) == 5
+
+    placement = distributor.distribute(
+        dist_circ, network, seed=1, iterations=1)
+
+    assert placement == Placement({0: 1, 1: 1, 2: 2, 3: 2, 4: 1, 5: 1, 6: 1})
+    assert placement.cost(dist_circ, network) == 8
+
+
 def test_grpah_partitioning():
 
     network = ServerNetwork([[0, 1]])
@@ -100,6 +123,21 @@ def test_annealing_initial_placement():
     assert distributor_placement_two == placement_two
 
 
+def test_brute_distribute_small_hyperedge():
+
+    network = NISQNetwork([[0, 1], [0, 2]], {0: [0], 1: [1, 2], 2: [3, 4]})
+
+    circ = Circuit(4).CZ(0, 3).Rz(0.5, 3).CZ(
+        1, 3).Rz(0.5, 3).CZ(2, 3).Rz(0.5, 3)
+    dist_circ = DistributedCircuit(circ)
+
+    distributor = Brute()
+    placement = distributor.distribute(dist_circ, network)
+
+    assert placement.cost(dist_circ, network) == 3
+    assert placement == Placement({0: 0, 4: 0, 1: 1, 5: 0, 2: 2, 6: 2, 3: 2})
+
+
 def test_brute_distribute():
 
     small_network = NISQNetwork([[0, 1]], {0: [0, 1], 1: [2]})
@@ -118,7 +156,7 @@ def test_brute_distribute():
 
     placement_med = distributor.distribute(dist_med_circ, med_network)
     assert placement_med == Placement(
-        {0: 2, 4: 2, 1: 2, 5: 2, 2: 0, 6: 1, 3: 1})
+        {0: 0, 4: 0, 1: 1, 5: 0, 2: 2, 6: 2, 3: 2})
     assert placement_med.cost(dist_med_circ, med_network) == 2
 
 

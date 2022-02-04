@@ -17,7 +17,8 @@ class Brute(Distributor):
     def distribute(
         self,
         dist_circ: DistributedCircuit,
-        network: NISQNetwork
+        network: NISQNetwork,
+        **kwargs
     ) -> Placement:
 
         # List of all vertices to be placed
@@ -64,6 +65,7 @@ class Brute(Distributor):
             placement_cost = placement.cost(dist_circ, network)
             if placement_cost < minimum_placement_cost:
                 minimum_cost_placement = placement
+                minimum_placement_cost = placement_cost
             if placement_cost == 0:
                 break
 

@@ -20,7 +20,8 @@ class GraphPartitioning(Distributor):
     def distribute(
         self,
         dist_circ: DistributedCircuit,
-        network: ServerNetwork
+        network: ServerNetwork,
+        **kwargs
     ) -> Placement:
 
         if not dist_circ.is_valid():
@@ -47,10 +48,6 @@ class GraphPartitioning(Distributor):
 
         partition_list = [hypergraph.blockID(i)
                           for i in range(hypergraph.numNodes())]
-
-        print("hyperedges", hyperedges)
-        print("partition_list", partition_list)
-        print("hyperedge_indices", hyperedge_indices)
 
         placement_dict = {i: server for i, server in enumerate(partition_list)}
 
