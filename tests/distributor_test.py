@@ -1,12 +1,21 @@
-from pytket_dqc.distributors import Annealing, Random
+from pytket_dqc.distributors import (
+    Annealing,
+    Random,
+    Ordered,
+    Routing,
+    GraphPartitioning,
+    Brute
+)
 from pytket_dqc import DistributedCircuit
 from pytket import Circuit
 from pytket_dqc.networks import NISQNetwork, ServerNetwork
-from pytket_dqc.distributors.annealing import order_reducing_size
-from pytket_dqc.distributors import Routing, GraphPartitioning, Brute
+from pytket_dqc.distributors.ordered import order_reducing_size
 from pytket_dqc.placement import Placement
 import kahypar as kahypar  # type:ignore
 
+
+# TODO: Test that the placement returned by routing does not
+# have any cost two edges
 
 def test_annealing_distribute():
 
@@ -95,7 +104,7 @@ def test_random_distributor():
     assert placement.cost(dist_circ, network) == 3
 
 
-def test_annealing_initial_placement():
+def test_ordered_distributor():
 
     small_circ = Circuit(2).CZ(0, 1)
     dist_small_circ = DistributedCircuit(small_circ)
@@ -108,13 +117,13 @@ def test_annealing_initial_placement():
     large_network = NISQNetwork(
         [[0, 1], [0, 2]], {0: [0, 1, 2], 1: [3, 4, 5], 2: [6, 7, 8, 9]})
 
-    distributor = Annealing()
+    distributor = Ordered()
 
     placement_one = Placement({0: 2, 1: 2, 2: 2})
-    distributor_placement_one = distributor.initial_placement(
+    distributor_placement_one = distributor.distribute(
         dist_small_circ, large_network)
     placement_two = Placement({0: 1, 1: 1, 2: 1, 3: 0, 4: 1, 5: 1, 6: 1})
-    distributor_placement_two = distributor.initial_placement(
+    distributor_placement_two = distributor.distribute(
         dist_med_circ,
         small_network
     )
