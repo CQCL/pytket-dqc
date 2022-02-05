@@ -63,6 +63,7 @@ jobs:
       - name: Build documentation
         run: |
           cd docs
+          pip install docs_requirements.txt
           make html
 
       - name: Save documentation

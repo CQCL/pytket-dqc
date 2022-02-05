@@ -1,0 +1,1 @@
+.. autofunction:: pytket_dqc.distributors.ordered.order_reducing_size

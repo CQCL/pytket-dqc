@@ -13,6 +13,7 @@ Check out the :doc:`usage` section for further information, including how to
 
 .. toctree::
    usage
+   distributors
    api
    :maxdepth: 2
    :caption: Contents:
