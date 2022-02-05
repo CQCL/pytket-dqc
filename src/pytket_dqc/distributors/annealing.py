@@ -4,6 +4,7 @@ from pytket_dqc.distributors import Distributor
 from pytket_dqc.placement import Placement
 from typing import TYPE_CHECKING
 import random
+from .random import Random
 
 if TYPE_CHECKING:
     from pytket_dqc import DistributedCircuit
@@ -65,7 +66,9 @@ class Annealing(Distributor):
         if place_method == 'ordered':
             placement = self.initial_placement(dist_circ, network)
         elif place_method == 'random':
-            placement = self.random_initial_placement(dist_circ, network)
+            initial_distributor = Random()
+            placement = initial_distributor.distribute(dist_circ, network)
+            # placement = self.random_initial_placement(dist_circ, network)
         else:
             raise Exception(
                 f"'{place_method}' is not a valid initial placement method")
@@ -75,6 +78,9 @@ class Annealing(Distributor):
         # that not all qubits are already in the same server etc.
 
         for _ in range(iterations):
+
+            if cost == 0:
+                break
 
             vertex_to_move = random.choice(dist_circ.vertex_list)
 
@@ -118,53 +124,6 @@ class Annealing(Distributor):
                 cost = swap_cost
 
             assert placement.is_placement(dist_circ, network)
-
-            if cost == 0:
-                break
-
-        return placement
-
-    def random_initial_placement(
-        self,
-        dist_c: DistributedCircuit,
-        network: NISQNetwork,
-        seed: int = None
-    ) -> Placement:
-
-        # TODO: Add test that the number of qubits is big enough
-
-        random.seed(seed)
-
-        placement_dict: dict[int, int] = {}
-
-        server_list = network.get_server_list()
-
-        for vertex in dist_c.vertex_list:
-
-            server_full = True
-
-            while server_full:
-
-                random_server = random.choice(server_list)
-
-                vertices_places = [
-                    placed_v
-                    for placed_v, server in placement_dict.items()
-                    if server == random_server
-                ]
-                vertices_places = [
-                    placed_v
-                    for placed_v in vertices_places
-                    if dist_c.vertex_circuit_map[placed_v]['type'] == 'qubit'
-                ]
-
-                server_full = (len(vertices_places) == len(
-                    network.server_qubits[random_server]))
-
-            placement_dict[vertex] = random_server
-
-        placement = Placement(placement_dict)
-        assert placement.is_placement(dist_c, network)
 
         return placement
 

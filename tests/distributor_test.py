@@ -1,4 +1,4 @@
-from pytket_dqc.distributors import Annealing
+from pytket_dqc.distributors import Annealing, Random
 from pytket_dqc import DistributedCircuit
 from pytket import Circuit
 from pytket_dqc.networks import NISQNetwork, ServerNetwork
@@ -80,15 +80,15 @@ def test_order_reducing_size():
         2: [5, 6, 7, 8], 1: [2, 3, 4], 0: [0, 1]}
 
 
-def test_annealing_random_initial_placement():
+def test_random_distributor():
 
     circ = Circuit(3).CZ(0, 2).CZ(1, 2)
     dist_circ = DistributedCircuit(circ)
 
     network = NISQNetwork([[0, 1], [0, 2]], {0: [0, 1], 1: [2, 3], 2: [4]})
 
-    distributor = Annealing()
-    placement = distributor.random_initial_placement(
+    distributor = Random()
+    placement = distributor.distribute(
         dist_circ, network, seed=0)
 
     assert placement == Placement({0: 1, 3: 1, 1: 0, 4: 1, 2: 2})
