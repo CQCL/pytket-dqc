@@ -20,11 +20,33 @@ gateset_pred = GateSetPredicate(allowed_gateset)
 
 
 class DistributedCircuit(Hypergraph):
+    """Class representing circuit to be distributed on a network.
+    DistributedCircuit is a child of Hypergraph. DistributedCircuit adds
+    additional information on top of Hypergraph which describes the
+    correspondence to a circuit.
+
+    :param circuit: Circuit to be distributed.
+    :type circuit: Circuit
+    :param vertex_circuit_map: Map from hypergraph vertices to circuit
+        commands.
+    :type vertex_circuit_map: dict[int, dict]
+    """
+
     def __init__(self, circuit: Circuit):
+        """ Initialisation function
+
+        :param circuit: Circuit to be distributed.
+        :type circuit: Circuit
+        """
 
         self.reset(circuit)
 
     def reset(self, circuit: Circuit):
+        """Reset object with a new circuit.
+
+        :param circuit: Circuit to reinitialise object with.
+        :type circuit: Circuit
+        """
 
         super().__init__()
 
@@ -33,14 +55,37 @@ class DistributedCircuit(Hypergraph):
         self.from_circuit()
 
     def add_qubit_vertex(self, vertex: int, qubit: Qubit):
+        """Add a vertex to the underlying hypergraph which corresponds to a
+        qubit. Adding vertices in this way allow for the distinction between
+        qubit vertices and gate vertices to be tracked.
+
+        :param vertex: Vertex to be added to hypergraph.
+        :type vertex: int
+        :param qubit: Qubit to which the vertex should correspond
+        :type qubit: Qubit
+        """
         self.add_vertex(vertex)
         self.vertex_circuit_map[vertex] = {'type': 'qubit', 'node': qubit}
 
     def add_gate_vertex(self, vertex: int, command: Command):
+        """Add a vertex to the underlying hypergraph which corresponds to a
+        gate. Adding vertices in this way allows for the distinction between
+        qubit and gate vertices to be tracked.
+
+        :param vertex: Vertex to be added to the hypergraph.
+        :type vertex: int
+        :param command: Command to which the vertex corresponds.
+        :type command: Command
+        """
         self.add_vertex(vertex)
         self.vertex_circuit_map[vertex] = {'type': 'gate', 'command': command}
 
     def from_circuit(self):
+        """Method to create a hypergraph from a circuit.
+
+        :raises Exception: Raised if the circuit whose hypergraph is to be
+        created is not in the Rx, Rz, CZ gate set.
+        """
 
         if not gateset_pred.verify(self.circuit):
             raise Exception("The inputted circuit is not in a valid gateset.")
@@ -57,7 +102,7 @@ class DistributedCircuit(Hypergraph):
                 )
                 CZ_count += 1
             else:
-                command_list_count.append({"command": command, "CZ count": -1})
+                command_list_count.append({"command": command})
 
         # Construct the hypergraph corresponding to this circuit.
         # For each qubit, add commands acting on the qubit in an uninterrupted
@@ -93,17 +138,30 @@ class DistributedCircuit(Hypergraph):
 
 
 class RandomDistributedCircuit(DistributedCircuit):
+    """Generates circuit to be distributed, where the circuit is a random
+    circuit of the form used in quantum volume experiments.
+    """
 
-    def __init__(self, n_qubits, n_layers):
+    def __init__(self, n_qubits: int, n_layers: int):
+        """Initialisation function.
+
+        :param n_qubits: The number of qubits the circuit covers.
+        :type n_qubits: int
+        :param n_layers: The number of layers of random 2-qubit gates.
+        :type n_layers: int
+        """
 
         circ = Circuit(n_qubits)
 
         for _ in range(n_layers):
 
+            # Generate a random bipartition (a collection of pairs) of
+            # the qubits.
             qubits = np.random.permutation([i for i in range(n_qubits)])
             qubit_pairs = [[qubits[i], qubits[i + 1]]
                            for i in range(0, n_qubits - 1, 2)]
 
+            # Act a random 2-qubit unitary between each pair.
             for pair in qubit_pairs:
 
                 SU4 = unitary_group.rvs(4)  # random unitary in SU4
@@ -111,6 +169,7 @@ class RandomDistributedCircuit(DistributedCircuit):
 
                 circ.add_unitary2qbox(Unitary2qBox(SU4), *pair)
 
+        # Rebase to a valid gate set.
         DecomposeBoxes().apply(circ)
         RebaseQuil().apply(circ)
 
@@ -118,8 +177,18 @@ class RandomDistributedCircuit(DistributedCircuit):
 
 
 class CyclicDistributedCircuit(DistributedCircuit):
+    """Particular instance of the DistributedCircuit class, where the circuit
+    is constructed from CZ gates acting in a loop accross all qubits.
+    """
 
-    def __init__(self, n_qubits, n_layers):
+    def __init__(self, n_qubits: int, n_layers: int):
+        """Initialisation function.
+
+        :param n_qubits: The number of qubits the circuit covers.
+        :type n_qubits: int
+        :param n_layers: The number of layers of loops of CZ gates.
+        :type n_layers: int
+        """
 
         circ = Circuit(n_qubits)
         for _ in range(n_layers):
@@ -131,8 +200,29 @@ class CyclicDistributedCircuit(DistributedCircuit):
 
 
 class RegularGraphDistributedCircuit(DistributedCircuit):
+    """DistributedCircuit constructed by acting CZ gates between qubits which
+    neighbour each other in a random regular graph.
+    """
 
-    def __init__(self, n_qubits: int, degree: int, n_layers: int, seed=None):
+    def __init__(
+        self,
+        n_qubits: int,
+        degree: int,
+        n_layers: int,
+        seed: int = None,
+    ):
+        """Initialisation function
+
+        :param n_qubits: The number of qubits on which the circuit acts.
+        :type n_qubits: int
+        :param degree: The degree of the random regular graph.
+        :type degree: int
+        :param n_layers: The number of random regular graphs to generate.
+        :type n_layers: int
+        :param seed: Seed for the random generation of regular graphs,
+            defaults to None
+        :type seed: int, optional
+        """
 
         circ = Circuit(n_qubits)
         for _ in range(n_layers):

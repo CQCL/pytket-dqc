@@ -5,6 +5,8 @@ Distributors
 
 .. autoclass:: pytket_dqc.distributors.ordered.Ordered
 
+    .. automethod:: Ordered.distribute
+
 .. autoclass:: pytket_dqc.distributors.annealing.Annealing
 
 .. autoclass:: pytket_dqc.distributors.brute.Brute

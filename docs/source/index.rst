@@ -14,6 +14,7 @@ Check out the :doc:`usage` section for further information, including how to
 .. toctree::
    usage
    distributors
+   circuits
    :maxdepth: 2
    :caption: Contents:
 
