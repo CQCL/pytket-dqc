@@ -59,3 +59,14 @@ jobs:
         
       - name: Code format check
         run: flake8 src/pytket_dqc tests
+
+      - name: Build documentation
+        run: |
+          cd docs
+          make html
+
+      - name: Save documentation
+        uses: actions/upload-artifact@v2
+        with:
+          name: docs_html
+          path: build

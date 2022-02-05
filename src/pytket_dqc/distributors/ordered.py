@@ -12,6 +12,13 @@ if TYPE_CHECKING:
 def order_reducing_size(
     server_qubits: dict[int, list[int]]
 ) -> dict[int, list[int]]:
+    """text
+
+    :param server_qubits: text
+    :type server_qubits: dict[int, list[int]]
+    :return: text
+    :rtype: dict[int, list[int]]
+    """
 
     # List of servers whose position in a ranking by size is unknown
     position_unknown = list(server_qubits.keys())
