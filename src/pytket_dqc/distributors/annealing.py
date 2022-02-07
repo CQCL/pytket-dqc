@@ -6,12 +6,15 @@ from typing import TYPE_CHECKING
 import random
 from .random import Random
 import math
-from tqdm import tqdm  # type: ignore
 
 if TYPE_CHECKING:
     from pytket_dqc import DistributedCircuit
     from pytket_dqc.networks import NISQNetwork
 
+
+# Credit to
+# machinelearningmastery.com/simulated-annealing-from-scratch-in-python/
+# for details of this implementation.
 
 def acceptance_criterion(
     new: int,
@@ -89,7 +92,7 @@ class Annealing(Distributor):
         # placement to see if it improves. Change to new placement if there is
         # an improvement. Change to new placement with small probability if
         # there is no improvement.
-        for i in tqdm(range(iterations), total=iterations):
+        for i in range(iterations):
 
             if current_cost == 0:
                 break
