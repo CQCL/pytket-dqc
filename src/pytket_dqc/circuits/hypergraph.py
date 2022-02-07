@@ -9,11 +9,32 @@ if TYPE_CHECKING:
 
 
 class Hypergraph:
+    """A representation of a hypergraph. Hypergraphs are represented by
+    vertices and hyperedges, where hyperedges consist of a collection of
+    two or more vertices.
+
+    :param hyperedge_list: List of hyperedges
+    :type hyperedge_list: list[list[int]]
+    :param vertex_list: List of vertices.
+    :type vertex_list: list[int]
+    """
+
     def __init__(self):
+        """Initialisation function. The hypergraph initialises as empty.
+        """
         self.hyperedge_list: list[list[int]] = []
         self.vertex_list: list[int] = []
 
     def is_placement(self, placement: Placement) -> bool:
+        """Checks if a given placement is a valid placement of this hypergraph.
+        Checks for example that all vertices are placed, and that every vertex
+        placed is in the hypergraph.
+
+        :param placement: The placement to check for validity
+        :type placement: Placement
+        :return: Is the placement valid.
+        :rtype: bool
+        """
 
         valid = True
 
@@ -32,6 +53,12 @@ class Hypergraph:
 
     # TODO: Is it possible to ensure this condition at the point of design
     def is_valid(self) -> bool:
+        """Checks if this is a valid hypergraph. In particular vertices must
+        be a continuous list of integers.
+
+        :return: Is hypergraph valid.
+        :rtype: bool
+        """
 
         vertex_list_sorted = self.vertex_list.copy()
         vertex_list_sorted.sort()
@@ -43,6 +70,8 @@ class Hypergraph:
         return unique_vertex_list_sorted == ideal_vertex_list
 
     def draw(self):
+        """Draw hypergraph, using hypernetx package.
+        """
         scenes = {}
         for i, edge in enumerate(self.hyperedge_list):
             scenes[str(i)] = set(edge)
@@ -50,14 +79,36 @@ class Hypergraph:
         hnx.drawing.draw(H)
 
     def add_vertex(self, vertex: int):
+        """Add vertex to hypergraph.
+
+        :param vertex: Index of vertex.
+        :type vertex: int
+        """
         if vertex not in self.vertex_list:
             self.vertex_list.append(vertex)
 
     def add_vertices(self, vertices: list[int]):
+        """Add list ov vertices to hypergraph.
+
+        :param vertices: List of vertex indices
+        :type vertices: list[int]
+        """
         for vertex in vertices:
             self.add_vertex(vertex)
 
     def add_hyperedge(self, hyperedge: list[int]):
+        """Add hyperedge to hypergraph
+
+        :param hyperedge: List of vertices in hyperedge
+        :type hyperedge: list[int]
+        :raises Exception: Raised if hyperedge does not contain at least
+            2 vetices
+        :raises Exception: Raised if vertices in hyperedge are not in
+            hypergraph.
+        """
+
+        if len(hyperedge) < 2:
+            raise Exception("Hyperedges must contain at least 2 vertices.")
 
         for vertex in hyperedge:
             if vertex not in self.vertex_list:
@@ -71,13 +122,24 @@ class Hypergraph:
         self.hyperedge_list.append(hyperedge)
 
     def kahypar_hyperedges(self) -> Tuple[list[int], list[int]]:
+        """Return hypergraph in format used by kahypar package. In particular
+        a list of vertices ``hyperedges``, and a list ``hyperedge_indices`` of
+        indices of ``hyperedges``. ``hyperedge_indices`` gives a list of
+        intervals, where each interval defines a hyperedge.
 
+        :return: Hypergraph in format used by kahypar package.
+        :rtype: Tuple[list[int], list[int]]
+        """
+
+        # List all hyper edges as continuous list of vertices.
         hyperedges = [
             vertex
             for hyperedge in self.hyperedge_list
             for vertex in hyperedge
         ]
 
+        # Create list of intervals of hyperedges list which correspond to
+        # hyperedges.
         hyperedge_indices = [0]
         for hyperedge in self.hyperedge_list:
             hyperedge_indices.append(len(hyperedge) + hyperedge_indices[-1])
