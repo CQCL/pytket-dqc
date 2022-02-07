@@ -14,7 +14,7 @@ class Brute(Distributor):
     """Brute force distributor which searches through all placements
     for the best one.
     """
-    def __init__(self):
+    def __init__(self) -> None:
         pass
 
     def distribute(

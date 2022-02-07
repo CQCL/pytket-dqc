@@ -12,11 +12,14 @@ if TYPE_CHECKING:
 def order_reducing_size(
     server_qubits: dict[int, list[int]]
 ) -> dict[int, list[int]]:
-    """text
+    """Reorder ``server_qubits`` dictionary so that servers are in
+    reducing size.
 
-    :param server_qubits: text
+    :param server_qubits: Dictionary mapping servers to the qubits
+        they contain.
     :type server_qubits: dict[int, list[int]]
-    :return: text
+    :return: Dictionary mapping servers to the qubits they contain,
+        in order from largest to smallest server.
     :rtype: dict[int, list[int]]
     """
 
@@ -52,7 +55,10 @@ def order_reducing_size(
 
 
 class Ordered(Distributor):
-    def __init__(self):
+    """Distribute hypergraph vertices onto servers, populating the largest
+    servers first until all vertices are assigned.
+    """
+    def __init__(self) -> None:
         pass
 
     def distribute(
@@ -61,8 +67,18 @@ class Ordered(Distributor):
         network: NISQNetwork,
         **kwargs
     ) -> Placement:
+        """Distribute ``dist_circ`` onto ``network`` by placing quibts onto
+        servers, in decreasing order of size, until they are full.
 
-        # A map from hypergraph vertices to the server on which
+        :param dist_circ: Circuit to distribute.
+        :type dist_circ: DistributedCircuit
+        :param network: Network onto which ``dist_circ`` should be distributed.
+        :type network: NISQNetwork
+        :return: Placement of ``dist_circ`` onto ``network``.
+        :rtype: Placement
+        """
+
+        # Initialise a map from hypergraph vertices to the server on which
         # they are placed.
         vertex_server_map: dict[int, int] = {}
 
@@ -71,6 +87,8 @@ class Ordered(Distributor):
 
         # A list of all the vertices in the hypergraph which correspond to
         # qubits in the original circuit.
+        # TODO: Turn this into a method of DistributedCircuit as
+        # it is used often.
         qubit_vertex_list = [
             vertex
             for vertex, vertex_info in dist_circ.vertex_circuit_map.items()
@@ -88,6 +106,8 @@ class Ordered(Distributor):
 
         # A list of all the vertices in the hypergraph which correspond to
         # gate in the original circuit.
+        # TODO: Turn this into a method of DistributedCircuit as
+        # it is used often.
         gate_vertex_list = [
             vertex
             for vertex, vertex_info in dist_circ.vertex_circuit_map.items()
@@ -95,6 +115,8 @@ class Ordered(Distributor):
         ]
 
         # Assign all gate vertices to the first server.
+        # TODO: This can certainly be improved. Possible assign gates to
+        # the same server as one of it's target qubits.
         first_server = list(server_qubits.keys())[0]
         for vertex in gate_vertex_list:
             vertex_server_map[vertex] = first_server

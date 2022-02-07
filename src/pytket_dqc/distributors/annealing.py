@@ -15,7 +15,7 @@ class Annealing(Distributor):
     """Distributor taking a simulated annealing approach to quantum circuit
     distribution.
     """
-    def __init__(self):
+    def __init__(self) -> None:
         pass
 
     def distribute(

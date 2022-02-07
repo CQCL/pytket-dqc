@@ -8,12 +8,28 @@ import random
 
 
 class NISQNetwork(ServerNetwork):
+    """Class for the management of NISQ networks of quantum computers. Child
+    class of ServerNetwork. Adds additional functionality to manage information
+    about the internal architectures of servers.
+    """
 
     def __init__(
         self,
         server_coupling: list[list[int]],
         server_qubits: dict[int, list[int]]
-    ):
+    ) -> None:
+        """Initialisation function. Performs checks on inputted network
+        description.
+
+        :param server_coupling: List of pairs of server indices. Each pair
+            specifies that there is a connection between those two servers.
+        :type server_coupling: list[list[int]]
+        :param server_qubits: Dictionary from server index to qubits it
+            contains.
+        :type server_qubits: dict[int, list[int]]
+        :raises Exception: Raised if a server is empty.
+        :raises Exception: Raised if a server is in more than server.
+        """
 
         super().__init__(server_coupling)
 
@@ -37,10 +53,14 @@ class NISQNetwork(ServerNetwork):
             )
 
         # Check that the resulting network is connected.
-        if not nx.is_connected(self.get_nisq_nx()):
-            raise Exception("This server network is unconnected.")
+        assert nx.is_connected(self.get_nisq_nx())
 
     def get_qubit_list(self) -> list[int]:
+        """Return list of qubit indices.
+
+        :return: List of qubit indices.
+        :rtype: list[int]
+        """
 
         # Combine all lists of qubits belonging to each server into one list.
         qubit_list = [
@@ -52,9 +72,21 @@ class NISQNetwork(ServerNetwork):
         return qubit_list
 
     def get_architecture(self) -> Tuple[Architecture, dict[Node, int]]:
+        """Return `tket Architecture
+        <https://cqcl.github.io/tket/pytket/api/routing.html#pytket.routing.Architecture>`  # noqa:E501
+        corresponding to network and map from architecture nodes to
+        network qubits.
+
+        :return: `tket Architecture
+            <https://cqcl.github.io/tket/pytket/api/routing.html#pytket.routing.Architecture>`  # noqa:E501
+            corresponding to network and map from architecture nodes to
+            network qubits.
+        :rtype: Tuple[Architecture, dict[Node, int]]
+        """
 
         G = self.get_nisq_nx()
         arc = Architecture([(Node(u), Node(v)) for u, v in G.edges])
+        # Map from architecture nodes to network qubits
         node_qubit_map = {Node(u): u for u in G.nodes}
 
         return arc, node_qubit_map
@@ -64,9 +96,29 @@ class NISQNetwork(ServerNetwork):
         dict[Node, int],
         NoiseAwarePlacement
     ]:
+        """Return `tket NoiseAwarePlacement
+        <https://cqcl.github.io/tket/pytket/api/routing.html#pytket.routing.NoiseAwarePlacement>`  # noqa:E501
+        which places onto the network, taking edges between servers to be
+        noisy. Return `tket Architecture
+        <https://cqcl.github.io/tket/pytket/api/routing.html#pytket.routing.Architecture>`  # noqa:E501
+        corresponding to network and map from architecture nodes to
+        network qubits.
+
+        :return: `tket Architecture
+            <https://cqcl.github.io/tket/pytket/api/routing.html#pytket.routing.Architecture>`  # noqa:E501
+            corresponding to network. Map from architecture nodes to
+            network qubits.
+            `tket NoiseAwarePlacement
+            <https://cqcl.github.io/tket/pytket/api/routing.html#pytket.routing.NoiseAwarePlacement>`  # noqa:E501
+            which places onto the network, taking edges between servers to be
+            noisy.
+        :rtype: Tuple[ Architecture, dict[Node, int], NoiseAwarePlacement ]
+        """
 
         G = self.get_nisq_nx()
         link_errors = {}
+        # For each edge in network graph, add noise corresponding
+        # to edge weight.
         for u, v in G.edges:
             edge_data = G.get_edge_data(u, v)
             link_errors[(Node(u), Node(v))] = edge_data['weight']
@@ -80,13 +132,22 @@ class NISQNetwork(ServerNetwork):
         )
 
     def get_nisq_nx(self) -> nx.Graph:
+        """Return networkx graph corresponding to network.
+
+        :return: networkx graph corresponding to network.
+        :rtype: nx.Graph
+        """
 
         G = nx.Graph()
 
+        # For each server, add a connection between each of the qubits
+        # internal to the server.
         for qubits in self.server_qubits.values():
             for qubit_connection in combinations(qubits, 2):
                 G.add_edge(*qubit_connection, color="red", weight=0)
 
+        # Add edges between one in one server to one qubit in another server
+        # if the two servers are connected.
         for u, v in self.server_coupling:
             G.add_edge(
                 self.server_qubits[u][0],
@@ -97,7 +158,9 @@ class NISQNetwork(ServerNetwork):
 
         return G
 
-    def draw_nisq_network(self):
+    def draw_nisq_network(self) -> None:
+        """Draw network using netwrokx draw method.
+        """
 
         G = self.get_nisq_nx()
         colors = [G[u][v]["color"] for u, v in G.edges()]
@@ -109,7 +172,17 @@ class NISQNetwork(ServerNetwork):
         )
 
 
-def random_connected_graph(n_nodes, edge_prob):
+def random_connected_graph(n_nodes: int, edge_prob: float) -> list[list[int]]:
+    """Generate random connected graph.
+
+    :param n_nodes: The number of vertices in the graph.
+    :type n_nodes: int
+    :param edge_prob: The probability of an edge between two vertices.
+    :type edge_prob: float
+    :raises Exception: Raise if the probability is invalid.
+    :return: A coupling map, consisting of a list of pairs of vertices.
+    :rtype: list[list[int]]
+    """
 
     if not (edge_prob >= 0 and edge_prob <= 1):
         raise Exception("edge_prob must be between 0 and 1.")
@@ -136,8 +209,22 @@ def random_connected_graph(n_nodes, edge_prob):
 
 
 class RandomNISQNetwork(NISQNetwork):
+    """NISQNetwok with underlying server network that is random but connected.
+    """
 
     def __init__(self, n_servers: int, n_qubits: int, edge_prob: float = 0.5):
+        """Initialisation function.
+
+        :param n_servers: The number of servers.
+        :type n_servers: int
+        :param n_qubits: The total number of qubits.
+        :type n_qubits: int
+        :param edge_prob: The probability of an edge between two servers,
+            defaults to 0.5
+        :type edge_prob: float, optional
+        :raises Exception: Raised if the number of qubits is less than the
+            number of servers.
+        """
 
         if n_qubits < n_servers:
             raise Exception(
@@ -146,7 +233,9 @@ class RandomNISQNetwork(NISQNetwork):
 
         server_coupling = random_connected_graph(n_servers, edge_prob)
 
+        # Assign at least one qubit to each server
         server_qubits = {i: [i] for i in range(n_servers)}
+        # Assign remaining qubits randomly.
         for qubit in range(n_servers, n_qubits):
             server = random.randrange(n_servers)
             server_qubits[server] = server_qubits[server] + [qubit]

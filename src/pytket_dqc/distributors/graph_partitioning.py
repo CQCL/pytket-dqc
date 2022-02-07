@@ -18,7 +18,7 @@ class GraphPartitioning(Distributor):
     vertices onto servers.
     """
 
-    def __init__(self, epsilon: float = 0.03):
+    def __init__(self, epsilon: float = 0.03) -> None:
         """Initialisation function.
 
         :param epsilon: Load imbalance tolerance, defaults to 0.03

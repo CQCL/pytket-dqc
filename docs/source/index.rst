@@ -13,8 +13,9 @@ Check out the :doc:`usage` section for further information, including how to
 
 .. toctree::
    usage
-   distributors
    circuits
+   networks
+   distributors
    :maxdepth: 2
    :caption: Contents:
 
