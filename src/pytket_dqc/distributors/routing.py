@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
 class Routing(Distributor):
     """Distribute quantum circuits using routing tools available in
-    `tket <https://cqcl.github.io/tket/pytket/api/routing.html>`. Note that
+    `tket <https://cqcl.github.io/tket/pytket/api/routing.html>`_. Note that
     this distributor will alter the initial circuit.
     """
     def __init__(self) -> None:
@@ -30,7 +30,7 @@ class Routing(Distributor):
         **kwargs
     ) -> Placement:
         """Distribute quantum circuits using routing tools available in
-        `tket <https://cqcl.github.io/tket/pytket/api/routing.html>`. Note
+        `tket <https://cqcl.github.io/tket/pytket/api/routing.html>`_. Note
         that this distributor will alter the initial circuit.
 
         :param dist_circ: Circuit to distribute.

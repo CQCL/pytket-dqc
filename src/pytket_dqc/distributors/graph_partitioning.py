@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
 class GraphPartitioning(Distributor):
     """Distribution technique, making use of existing tools for hypergraph
-    partitioning available through the `kahypar <https://kahypar.org/>`
+    partitioning available through the `kahypar <https://kahypar.org/>`_
     package. This distributor is not guaranteed to return a valid placement
     as it will perform load balancing, which is to say an even placement of
     vertices onto servers.
@@ -35,7 +35,7 @@ class GraphPartitioning(Distributor):
         **kwargs
     ) -> Placement:
         """Distribute ``dist_circ`` onto ``network`` using graph partitioning
-        tools available in `kahypar <https://kahypar.org/>` package. This
+        tools available in `kahypar <https://kahypar.org/>`_ package. This
         may not return a valid placement.
 
         :param dist_circ: Circuit to distribute.

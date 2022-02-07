@@ -73,12 +73,12 @@ class NISQNetwork(ServerNetwork):
 
     def get_architecture(self) -> Tuple[Architecture, dict[Node, int]]:
         """Return `tket Architecture
-        <https://cqcl.github.io/tket/pytket/api/routing.html#pytket.routing.Architecture>`  # noqa:E501
+        <https://cqcl.github.io/tket/pytket/api/routing.html#pytket.routing.Architecture>`_  # noqa:E501
         corresponding to network and map from architecture nodes to
         network qubits.
 
         :return: `tket Architecture
-            <https://cqcl.github.io/tket/pytket/api/routing.html#pytket.routing.Architecture>`  # noqa:E501
+            <https://cqcl.github.io/tket/pytket/api/routing.html#pytket.routing.Architecture>`_  # noqa:E501
             corresponding to network and map from architecture nodes to
             network qubits.
         :rtype: Tuple[Architecture, dict[Node, int]]
@@ -97,19 +97,19 @@ class NISQNetwork(ServerNetwork):
         NoiseAwarePlacement
     ]:
         """Return `tket NoiseAwarePlacement
-        <https://cqcl.github.io/tket/pytket/api/routing.html#pytket.routing.NoiseAwarePlacement>`  # noqa:E501
+        <https://cqcl.github.io/tket/pytket/api/routing.html#pytket.routing.NoiseAwarePlacement>`_  # noqa:E501
         which places onto the network, taking edges between servers to be
         noisy. Return `tket Architecture
-        <https://cqcl.github.io/tket/pytket/api/routing.html#pytket.routing.Architecture>`  # noqa:E501
+        <https://cqcl.github.io/tket/pytket/api/routing.html#pytket.routing.Architecture>`_  # noqa:E501
         corresponding to network and map from architecture nodes to
         network qubits.
 
         :return: `tket Architecture
-            <https://cqcl.github.io/tket/pytket/api/routing.html#pytket.routing.Architecture>`  # noqa:E501
+            <https://cqcl.github.io/tket/pytket/api/routing.html#pytket.routing.Architecture>`_  # noqa:E501
             corresponding to network. Map from architecture nodes to
             network qubits.
             `tket NoiseAwarePlacement
-            <https://cqcl.github.io/tket/pytket/api/routing.html#pytket.routing.NoiseAwarePlacement>`  # noqa:E501
+            <https://cqcl.github.io/tket/pytket/api/routing.html#pytket.routing.NoiseAwarePlacement>`_  # noqa:E501
             which places onto the network, taking edges between servers to be
             noisy.
         :rtype: Tuple[ Architecture, dict[Node, int], NoiseAwarePlacement ]
