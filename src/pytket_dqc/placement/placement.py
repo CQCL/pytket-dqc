@@ -9,6 +9,12 @@ import networkx as nx  # type: ignore
 
 
 class Placement:
+    """Placement of hypergraph onto server network.
+
+    :param placement: Dictionary mapping hypergraph vertices to
+        server indexes.
+    :type placement: dict[int, int]
+    """
 
     def __init__(self, placement: dict[int, int]):
         self.placement = placement
@@ -24,6 +30,16 @@ class Placement:
         circuit: DistributedCircuit,
         network: NISQNetwork
     ) -> bool:
+        """Check if placement is valid. In particular check that no more
+        qubits are allotted to a server than can be accommodated.
+
+        :param circuit: Circuit being placed onto ``network`` by placement.
+        :type circuit: DistributedCircuit
+        :param network: Network ``circuit`` is placed onto by placement.
+        :type network: NISQNetwork
+        :return: Is a valid placement.
+        :rtype: bool
+        """
 
         if not circuit.is_placement(self):
             return False
@@ -52,6 +68,19 @@ class Placement:
         circuit: DistributedCircuit,
         network: NISQNetwork
     ) -> int:
+        """Cost of placement of ``circuit`` onto ``network``. The cost is
+        measured as the number of e-bits which would be required.
+
+        :param circuit: Circuit placed onto ``network`` by placement.
+        :type circuit: DistributedCircuit
+        :param network: Network onto which ``circuit`` is placed by placement.
+        :type network: NISQNetwork
+        :raises Exception: Raised if this is not a valid placement of
+            ``circuit`` onto ``network``.
+        :return: Cost, in e-bits required, of this placement of ``circuit``
+            onto ``network``.
+        :rtype: int
+        """
 
         cost = 0
         if self.is_placement(circuit, network):

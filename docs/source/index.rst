@@ -7,7 +7,7 @@ Welcome to pytket-dqc's documentation!
 ======================================
 
 **pytket-dqc** is a Python library for the distribution of quantum circuits. 
-The source code can be found at <https://github.com/CQCL/pytket-dqc>. 
+The source code can be found at `here <https://github.com/CQCL/pytket-dqc>`. 
 Check out the :doc:`usage` section for further information, including how to
 :ref:`install <installation>` the project.
 
@@ -16,6 +16,7 @@ Check out the :doc:`usage` section for further information, including how to
    circuits
    networks
    distributors
+   placement
    :maxdepth: 2
    :caption: Contents:
 
