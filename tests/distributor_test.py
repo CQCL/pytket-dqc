@@ -6,6 +6,7 @@ from pytket_dqc.distributors import (
     GraphPartitioning,
     Brute
 )
+from pytket_dqc.distributors.annealing import acceptance_criterion
 from pytket_dqc import DistributedCircuit
 from pytket import Circuit
 from pytket_dqc.networks import NISQNetwork, ServerNetwork
@@ -28,16 +29,32 @@ def test_annealing_distribute():
     distributor = Annealing()
 
     placement = distributor.distribute(
-        dist_circ, network, seed=2, iterations=1)
+        dist_circ,
+        network,
+        seed=2,
+        iterations=1,
+        initial_place_method=Ordered()
+    )
 
     assert placement == Placement({0: 1, 1: 1, 2: 2, 3: 0, 4: 1, 5: 1, 6: 1})
     assert placement.cost(dist_circ, network) == 5
 
     placement = distributor.distribute(
-        dist_circ, network, seed=1, iterations=1)
+        dist_circ,
+        network,
+        seed=1,
+        iterations=1,
+        initial_place_method=Ordered()
+    )
 
-    assert placement == Placement({0: 1, 1: 1, 2: 2, 3: 2, 4: 1, 5: 1, 6: 1})
+    assert placement == Placement({0: 1, 1: 1, 2: 2, 3: 2, 4: 0, 5: 1, 6: 1})
     assert placement.cost(dist_circ, network) == 8
+
+
+def test_acceptance_criterion():
+
+    assert acceptance_criterion(0, 1, 10) >= 1
+    assert acceptance_criterion(1, 0, 10) < 1
 
 
 def test_grpah_partitioning():
