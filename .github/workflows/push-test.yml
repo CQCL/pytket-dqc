@@ -62,7 +62,7 @@ jobs:
 
       - name: Build documentation
         run: |
-          pip install sphinx sphinx-rtd-theme
+          pip install -r docs/docs_requirements.txt
           cd docs
           make html
 
