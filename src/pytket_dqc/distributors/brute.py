@@ -3,6 +3,7 @@ from __future__ import annotations
 from pytket_dqc.distributors import Distributor
 import itertools
 from pytket_dqc.placement import Placement
+from tqdm import tqdm  # type: ignore
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -58,7 +59,7 @@ class Brute(Distributor):
 
         # Iterate over all placements, even those that are not valid.
         # Determin if they are valid, and add them to list if so.
-        for placement_list in all_placement_list:
+        for placement_list in tqdm(all_placement_list, total=len(all_placement_list)):  # noqa:E501
 
             # build placement from list of vertices and servers.
             placement_dict = {vertex: server for vertex, server in zip(
@@ -80,7 +81,7 @@ class Brute(Distributor):
             dist_circ, network)
         minimum_cost_placement = valid_placement_list[0]
         # Check if any of the other valid placements have smaller cost.
-        for placement in valid_placement_list[1:]:
+        for placement in tqdm(valid_placement_list[1:], total=len(valid_placement_list[1:])):  # noqa:E501
             placement_cost = placement.cost(dist_circ, network)
             if placement_cost < minimum_placement_cost:
                 minimum_cost_placement = placement

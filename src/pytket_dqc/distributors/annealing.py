@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 import random
 from .random import Random
 import math
+from tqdm import tqdm  # type: ignore
 
 if TYPE_CHECKING:
     from pytket_dqc import DistributedCircuit
@@ -33,7 +34,11 @@ def acceptance_criterion(
     """
 
     temperature = initial_temperature / (iteration + 1)
-    return math.exp(-(new - current)/temperature)
+    try:
+        acceptance = math.exp(-(new - current)/temperature)
+    except OverflowError:
+        acceptance = float('inf')
+    return acceptance
 
 
 class Annealing(Distributor):
@@ -84,7 +89,7 @@ class Annealing(Distributor):
         # placement to see if it improves. Change to new placement if there is
         # an improvement. Change to new placement with small probability if
         # there is no improvement.
-        for i in range(iterations):
+        for i in tqdm(range(iterations), total=iterations):
 
             if current_cost == 0:
                 break
