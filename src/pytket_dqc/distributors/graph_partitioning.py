@@ -11,8 +11,19 @@ if TYPE_CHECKING:
 
 
 class GraphPartitioning(Distributor):
+    """Distribution technique, making use of existing tools for hypergraph
+    partitioning available through the `kahypar <https://kahypar.org/>`
+    package. This distributor is not guaranteed to return a valid placement
+    as it will perform load balancing, which is to say an even placement of
+    vertices onto servers.
+    """
 
     def __init__(self, epsilon: float = 0.03):
+        """Initialisation function.
+
+        :param epsilon: Load imbalance tolerance, defaults to 0.03
+        :type epsilon: float, optional
+        """
         self.epsilon = epsilon
 
     # TODO: dist_circ does not need to be a DistributedCircuit and could be a
@@ -23,24 +34,38 @@ class GraphPartitioning(Distributor):
         network: ServerNetwork,
         **kwargs
     ) -> Placement:
+        """Distribute ``dist_circ`` onto ``network`` using graph partitioning
+        tools available in `kahypar <https://kahypar.org/>` package. This
+        may not return a valid placement.
+
+        :param dist_circ: Circuit to distribute.
+        :type dist_circ: DistributedCircuit
+        :param network: Network onto which ``dist_circ`` should be placed.
+        :type network: ServerNetwork
+        :return: Placement of ``dist_circ`` onto ``network``.
+        :rtype: Placement
+        """
 
         if not dist_circ.is_valid():
             raise Exception("This hypergraph is not valid.")
 
         hyperedge_indices, hyperedges = dist_circ.kahypar_hyperedges()
 
-        num_nets = len(hyperedge_indices) - 1
-        num_nodes = len(list(set(hyperedges)))
-
-        k = len(network.get_server_list())
+        num_hyperedges = len(hyperedge_indices) - 1
+        num_vertices = len(list(set(hyperedges)))
+        num_servers = len(network.get_server_list())
 
         hypergraph = kahypar.Hypergraph(
-            num_nodes, num_nets, hyperedge_indices, hyperedges, k)
+            num_vertices,
+            num_hyperedges,
+            hyperedge_indices,
+            hyperedges,
+            num_servers
+        )
 
         context = kahypar.Context()
         context.loadINIconfiguration("km1_kKaHyPar_sea20.ini")
-
-        context.setK(k)
+        context.setK(num_servers)
         context.setEpsilon(self.epsilon)
         context.suppressOutput(True)
 

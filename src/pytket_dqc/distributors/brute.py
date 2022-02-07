@@ -11,6 +11,9 @@ if TYPE_CHECKING:
 
 
 class Brute(Distributor):
+    """Brute force distributor which searches through all placements
+    for the best one.
+    """
     def __init__(self):
         pass
 
@@ -20,12 +23,24 @@ class Brute(Distributor):
         network: NISQNetwork,
         **kwargs
     ) -> Placement:
+        """Distribute quantum circuit by looking at all possible placements
+        and returning the one with the lowest cost.
+
+        :param dist_circ: Circuit to distribute.
+        :type dist_circ: DistributedCircuit
+        :param network: Network onto which ``dist_circ`` should be distributed.
+        :type network: NISQNetwork
+        :raises Exception: Raised if no valid placement could be found.
+        :return: Placement of ``dist_circ`` onto ``network``.
+        :rtype: Placement
+        """
 
         # List of all vertices to be placed
         vertex_list = dist_circ.vertex_list
+        # List of all servers which could be used
         server_list = network.get_server_list()
 
-        # List of all valid placements
+        # Initialise list of all valid placements
         valid_placement_list = []
 
         # A list of all possible lists, of length equal to the number of
@@ -37,8 +52,12 @@ class Brute(Distributor):
             in itertools.product(server_list, repeat=len(vertex_list))
         ]
 
+        # TODO: It would be preferable to only check placement which are valid.
+        # It may also be more memory efficient to not store a list of all
+        # valid placements but to check their cost as they are generated.
+
         # Iterate over all placements, even those that are not valid.
-        # determin if they are valid, and add them to list if so.
+        # Determin if they are valid, and add them to list if so.
         for placement_list in all_placement_list:
 
             # build placement from list of vertices and servers.

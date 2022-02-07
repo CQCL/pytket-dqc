@@ -16,8 +16,6 @@ class Annealing(Distributor):
     distribution.
     """
     def __init__(self):
-        """Initialisation function. No inputs required.
-        """
         pass
 
     def distribute(
@@ -32,7 +30,7 @@ class Annealing(Distributor):
         :type dist_circ: DistributedCircuit
         :param network: Network onto which circuit is to be distributed.
         :type network: NISQNetwork
-        :return: Placement of ``dist_circ`` onto ``network``
+        :return: Placement of ``dist_circ`` onto ``network``.
         :rtype: Placement
 
         :key seed: Seed for randomness. Default is None
