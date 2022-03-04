@@ -13,8 +13,8 @@ class Hypergraph:
     vertices and hyperedges, where hyperedges consist of a collection of
     two or more vertices.
 
-    :param hyperedge_list: List of hyperedges
-    :type hyperedge_list: list[list[int]]
+    :param hyperedge_list: List of hyperedges and weights
+    :type hyperedge_list: list[dict[str, Union[int, list[int]]]]
     :param vertex_list: List of vertices.
     :type vertex_list: list[int]
     """
@@ -96,11 +96,13 @@ class Hypergraph:
         for vertex in vertices:
             self.add_vertex(vertex)
 
-    def add_hyperedge(self, hyperedge: list[int]):
+    def add_hyperedge(self, hyperedge: list[int], weight: int = 1):
         """Add hyperedge to hypergraph
 
         :param hyperedge: List of vertices in hyperedge
         :type hyperedge: list[int]
+        :param weight: Hyperedge weight
+        :type weight: int
         :raises Exception: Raised if hyperedge does not contain at least
             2 vetices
         :raises Exception: Raised if vertices in hyperedge are not in
@@ -119,7 +121,7 @@ class Hypergraph:
                     ).format(hyperedge, self.vertex_list)
                 )
 
-        self.hyperedge_list.append({'hyperedge': hyperedge, 'weight': 1})
+        self.hyperedge_list.append({'hyperedge': hyperedge, 'weight': weight})
 
     def kahypar_hyperedges(self) -> Tuple[list[int], list[int]]:
         """Return hypergraph in format used by kahypar package. In particular
