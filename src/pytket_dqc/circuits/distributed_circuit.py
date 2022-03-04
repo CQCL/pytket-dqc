@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from pytket.circuit import Command  # type: ignore
     from pytket import Qubit  # type: ignore
+    from pytket_dqc.placement import Placement
 
 allowed_gateset = {OpType.Rx, OpType.CZ, OpType.Rz, OpType.Measure}
 gateset_pred = GateSetPredicate(allowed_gateset)
@@ -40,6 +41,11 @@ class DistributedCircuit(Hypergraph):
         """
 
         self.reset(circuit)
+
+    def place(self, placement: Placement):
+
+        if not self.is_placement(placement):
+            raise Exception("This is not a valid placement of this circuit")
 
     def reset(self, circuit: Circuit):
         """Reset object with a new circuit.
