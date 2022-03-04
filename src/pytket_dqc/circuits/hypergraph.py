@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hypernetx as hnx  # type: ignore
 
-from typing import TYPE_CHECKING, Tuple
+from typing import TYPE_CHECKING, Tuple, Union, cast
 
 if TYPE_CHECKING:
     from pytket_dqc.placement import Placement
@@ -22,7 +22,7 @@ class Hypergraph:
     def __init__(self):
         """Initialisation function. The hypergraph initialises as empty.
         """
-        self.hyperedge_list: list[list[int]] = []
+        self.hyperedge_list: list[dict[str, Union[int, list[int]]]] = []
         self.vertex_list: list[int] = []
 
     def is_placement(self, placement: Placement) -> bool:
@@ -74,7 +74,7 @@ class Hypergraph:
         """
         scenes = {}
         for i, edge in enumerate(self.hyperedge_list):
-            scenes[str(i)] = set(edge)
+            scenes[str(i)] = set(edge['hyperedge'])
         H = hnx.Hypergraph(scenes)
         hnx.drawing.draw(H)
 
@@ -119,7 +119,7 @@ class Hypergraph:
                     ).format(hyperedge, self.vertex_list)
                 )
 
-        self.hyperedge_list.append(hyperedge)
+        self.hyperedge_list.append({'hyperedge': hyperedge, 'weight': 1})
 
     def kahypar_hyperedges(self) -> Tuple[list[int], list[int]]:
         """Return hypergraph in format used by kahypar package. In particular
@@ -135,13 +135,15 @@ class Hypergraph:
         hyperedges = [
             vertex
             for hyperedge in self.hyperedge_list
-            for vertex in hyperedge
+            for vertex in cast(list[int], hyperedge['hyperedge'])
         ]
 
         # Create list of intervals of hyperedges list which correspond to
         # hyperedges.
         hyperedge_indices = [0]
         for hyperedge in self.hyperedge_list:
-            hyperedge_indices.append(len(hyperedge) + hyperedge_indices[-1])
+            hyperedge_indices.append(
+                len(cast(list[int], hyperedge['hyperedge'])) +
+                hyperedge_indices[-1])
 
         return hyperedge_indices, hyperedges

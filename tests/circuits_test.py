@@ -52,7 +52,8 @@ def test_hypergraph():
     hypgra.add_hyperedge([0, 1])
     hypgra.add_hyperedge([2, 1])
     assert hypgra.vertex_list == [0, 1, 2]
-    assert hypgra.hyperedge_list == [[0, 1], [2, 1]]
+    assert hypgra.hyperedge_list == [
+        {"hyperedge": [0, 1], "weight":1}, {"hyperedge": [2, 1], "weight":1}]
 
 
 def test_hypergraph_is_placement():
