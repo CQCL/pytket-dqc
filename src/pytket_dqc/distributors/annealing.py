@@ -70,7 +70,7 @@ class Annealing(Distributor):
         :key seed: Seed for randomness. Default is None
         :key iterations: The number of iterations in the annealing procedure.
             Default is 10000.
-        :initial_place_method: Distributor to use to find the initial
+        :key initial_place_method: Distributor to use to find the initial
             placement. Default is Random.
         """
 
