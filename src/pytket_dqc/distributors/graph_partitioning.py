@@ -15,7 +15,9 @@ class GraphPartitioning(Distributor):
     partitioning available through the `kahypar <https://kahypar.org/>`_
     package. This distributor is not guaranteed to return a valid placement
     as it will perform load balancing, which is to say an even placement of
-    vertices onto servers.
+    vertices onto servers. This distributor will ignore weighted hypergraphs
+    and assume all hyperedges have weight 1. This distributor will ignore the
+    connectivity of the NISQNetwork.
     """
 
     def __init__(self, epsilon: float = 0.03) -> None:
