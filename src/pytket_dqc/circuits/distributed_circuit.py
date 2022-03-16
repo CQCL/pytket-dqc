@@ -178,7 +178,6 @@ class RandomDistributedCircuit(DistributedCircuit):
 
         # Rebase to a valid gate set.
         DecomposeBoxes().apply(circ)
-        # RebaseQuil().apply(circ)
         auto_rebase_pass({OpType.CZ, OpType.Rz, OpType.Rx}).apply(circ)
 
         super().__init__(circ)
