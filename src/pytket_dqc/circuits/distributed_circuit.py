@@ -5,10 +5,11 @@ from pytket.predicates import GateSetPredicate  # type: ignore
 from pytket import OpType, Circuit
 from scipy.stats import unitary_group  # type: ignore
 import numpy as np
-from pytket.passes import DecomposeBoxes, RebaseQuil  # type: ignore
+from pytket.passes import DecomposeBoxes  # type: ignore
 from pytket.circuit import Unitary2qBox  # type: ignore
 import networkx as nx  # type: ignore
 import random
+from pytket.passes import auto_rebase_pass
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -177,7 +178,8 @@ class RandomDistributedCircuit(DistributedCircuit):
 
         # Rebase to a valid gate set.
         DecomposeBoxes().apply(circ)
-        RebaseQuil().apply(circ)
+        # RebaseQuil().apply(circ)
+        auto_rebase_pass({OpType.CZ, OpType.Rz, OpType.Rx}).apply(circ)
 
         super().__init__(circ)
 

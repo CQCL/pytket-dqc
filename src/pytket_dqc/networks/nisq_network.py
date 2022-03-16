@@ -1,7 +1,8 @@
 from .server_network import ServerNetwork
 from itertools import combinations
 import networkx as nx  # type:ignore
-from pytket.routing import Architecture, NoiseAwarePlacement  # type:ignore
+from pytket.placement import NoiseAwarePlacement  # type:ignore
+from pytket.architecture import Architecture  # type:ignore
 from pytket.circuit import Node  # type:ignore
 from typing import Tuple
 import random
