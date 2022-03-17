@@ -1,18 +1,19 @@
 from __future__ import annotations
 
 from pytket_dqc.distributors import Distributor
-from pytket.routing import route  # type:ignore
 from pytket.passes import (  # type:ignore
     DecomposeSwapsToCXs,
-    RebaseQuil,
     PlacementPass,
+    RoutingPass
 )
+from pytket.passes import auto_rebase_pass
 from pytket_dqc.placement import Placement
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from pytket_dqc import DistributedCircuit
     from pytket_dqc.networks import NISQNetwork
+from pytket.circuit import OpType  # type:ignore
 
 
 class Routing(Distributor):
@@ -47,10 +48,12 @@ class Routing(Distributor):
 
         # Place and route circuit onto architecture.
         PlacementPass(pl).apply(routed_circ)
-        routed_circ = route(routed_circ, arch)
+
+        RoutingPass(arch).apply(routed_circ)
+
         DecomposeSwapsToCXs(arch).apply(routed_circ)
         # TODO: Add some optimisation to account for impact of adding SWAPs.
-        RebaseQuil().apply(routed_circ)
+        auto_rebase_pass({OpType.CZ, OpType.Rz, OpType.Rx}).apply(routed_circ)
 
         # Map of vertices to servers
         node_server_map = {}

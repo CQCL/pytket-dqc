@@ -1,5 +1,6 @@
 from pytket_dqc.networks import NISQNetwork, ServerNetwork
-from pytket.routing import Architecture, NoiseAwarePlacement  # type:ignore
+from pytket.placement import NoiseAwarePlacement  # type:ignore
+from pytket.architecture import Architecture  # type:ignore
 from pytket.circuit import Node  # type:ignore
 import pytest
 from pytket_dqc.placement import Placement
