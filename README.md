@@ -38,7 +38,4 @@ Note that the `-DKAHYPAR_USE_MINIMAL_BOOST=ON` flag is used. It may not be possi
 
 ### Install pytket-dqc
 
-1. Go to \<path-to-pytket-dqc-directory\>, rename setup.py -> setup_old.py (or some other name that you desire which is not setup.py).
-1. Copy the setup.py found in \<path-to-pytket-dqc-directory\>/M1 directory and place it in \<path-to-pytket-dqc-directory\>.
-1. `cd <path-to-pytket-dqc-directory>`
 1. `pip install .`
