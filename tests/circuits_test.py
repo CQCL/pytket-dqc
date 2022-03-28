@@ -102,3 +102,43 @@ def test_q_control_box_circuits():
     assert dist_circ.vertex_list == [0, 2, 1]
     assert dist_circ.hyperedge_list == [
         {'hyperedge': [0, 2], 'weight': 2}, {'hyperedge': [1, 2], 'weight': 1}]
+
+    circ = Circuit(2)
+    circ.CZ(0, 1)
+    circ.add_qcontrolbox(cv, [1, 0])
+    circ.Rz(0.3, 1)
+    circ.CZ(1, 0)
+
+    dist_circ = DistributedCircuit(circ)
+
+    assert dist_circ.hyperedge_list == [
+        {'hyperedge': [0, 2], 'weight': 1},
+        {'hyperedge': [0, 3], 'weight': 2},
+        {'hyperedge': [0, 4], 'weight': 1},
+        {'hyperedge': [1, 2, 3], 'weight': 1},
+        {'hyperedge': [1, 4], 'weight': 1}
+    ]
+    assert dist_circ.vertex_list == [0, 2, 3, 4, 1]
+
+    circ = Circuit(2)
+    circ.add_qcontrolbox(cv, [0, 1])
+    circ.add_qcontrolbox(cv, [0, 1])
+    circ.Rz(0.3, 0)
+    circ.add_qcontrolbox(cv, [0, 1])
+    circ.Rx(0.3, 0)
+    circ.add_qcontrolbox(cv, [0, 1])
+    circ.add_qcontrolbox(cv, [0, 1])
+
+    dist_circ = DistributedCircuit(circ)
+
+    assert dist_circ.hyperedge_list == [
+        {'hyperedge': [0, 2, 3], 'weight': 1},
+        {'hyperedge': [0, 4], 'weight': 1},
+        {'hyperedge': [0, 5, 6], 'weight': 1},
+        {'hyperedge': [1, 2], 'weight': 2},
+        {'hyperedge': [1, 3], 'weight': 2},
+        {'hyperedge': [1, 4], 'weight': 2},
+        {'hyperedge': [1, 5], 'weight': 2},
+        {'hyperedge': [1, 6], 'weight': 2}
+    ]
+    assert dist_circ.vertex_list == [0, 2, 3, 4, 5, 6, 1]
