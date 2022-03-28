@@ -4,6 +4,7 @@ from pytket import Circuit
 from pytket_dqc.placement import Placement
 from pytket_dqc.distributors import Brute
 from pytket_dqc.networks import NISQNetwork
+from pytket.circuit import QControlBox, Op, OpType  # type: ignore
 
 
 # TODO: Test new circuit classes
@@ -86,3 +87,18 @@ def test_hypergrpah_kahypar_hyperedges():
 
     assert hyperedge_indices == [0, 3, 5, 8]
     assert hyperedges == [3, 6, 2, 3, 1, 4, 5, 6]
+
+
+def test_q_control_box_circuits():
+
+    op = Op.create(OpType.V)
+    cv = QControlBox(op, 1)
+
+    circ = Circuit(2)
+    circ.add_qcontrolbox(cv, [1, 0])
+
+    dist_circ = DistributedCircuit(circ)
+
+    assert dist_circ.vertex_list == [0, 2, 1]
+    assert dist_circ.hyperedge_list == [
+        {'hyperedge': [0, 2], 'weight': 2}, {'hyperedge': [1, 2], 'weight': 1}]

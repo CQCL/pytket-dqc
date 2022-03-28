@@ -17,7 +17,8 @@ if TYPE_CHECKING:
     from pytket import Qubit  # type: ignore
     from pytket_dqc.placement import Placement
 
-allowed_gateset = {OpType.Rx, OpType.CZ, OpType.Rz, OpType.Measure}
+allowed_gateset = {OpType.Rx, OpType.CZ,
+                   OpType.Rz, OpType.Measure, OpType.QControlBox}
 gateset_pred = GateSetPredicate(allowed_gateset)
 
 
@@ -91,30 +92,43 @@ class DistributedCircuit(Hypergraph):
         """Method to create a hypergraph from a circuit.
 
         :raises Exception: Raised if the circuit whose hypergraph is to be
-        created is not in the Rx, Rz, CZ gate set.
+        created is not in the Rx, Rz, CZ, QControlBox gate set.
+        :raises Exception: Raised if any of the QControlBox gates do not have
+        a single control and a single target.
         """
 
         if not gateset_pred.verify(self.circuit):
             raise Exception("The inputted circuit is not in a valid gateset.")
 
         command_list_count = []
-        CZ_count = 0
+        two_q_gate_count = 0
         # For each command in the circuit, add the command to a list.
-        # If the command is a CZ gate, store n, where the command is
-        # the nth CZ gate in the circuit.
+        # If the command is a CZ gate or QControlBox, store n, where the
+        # command is the nth 2 qubit gate in the circuit.
         for command in self.circuit.get_commands():
             if command.op.type == OpType.CZ:
                 command_list_count.append(
-                    {"command": command, "CZ count": CZ_count}
+                    {"command": command, "two q gate count": two_q_gate_count}
                 )
-                CZ_count += 1
+                two_q_gate_count += 1
+            elif command.op.type == OpType.QControlBox:
+                if len(command.qubits) != 2:
+                    raise Exception(
+                        "QControlBox must have one target and one control")
+                command_list_count.append(
+                    {"command": command, "two q gate count": two_q_gate_count}
+                )
+                two_q_gate_count += 1
             else:
                 command_list_count.append({"command": command})
 
         # Construct the hypergraph corresponding to this circuit.
         # For each qubit, add commands acting on the qubit in an uninterrupted
         # sequence (i.e. not separated by single qubit gates) to the
-        # same hyperedge, along with the qubit.
+        # same hyperedge, along with the qubit. If the gate is a QControlBox,
+        # add the gate vertex when the control is intercepted, and add a new
+        # weight 2 hyper edge if the control is intercepted. The weight 2
+        # hyperedge corresponds to performing a possible teleportation.
         for qubit_index, qubit in enumerate(self.circuit.qubits):
 
             self.add_qubit_vertex(qubit_index, qubit)
@@ -131,9 +145,37 @@ class DistributedCircuit(Hypergraph):
                 # If the command is a CZ gate add it to the current working
                 # hyperedge.
                 if command["command"].op.type == OpType.CZ:
-                    vertex = command["CZ count"] + self.circuit.n_qubits
+                    vertex = command["two q gate count"] + \
+                        self.circuit.n_qubits
                     self.add_gate_vertex(vertex, command['command'])
                     hyperedge.append(vertex)
+                # If the command is a QControlBox, add it to the current
+                # working hyperedge, is the working qubit is the control.
+                # Otherwise start a fresh weight 2 hyper edge, add the two
+                # vertex hyperedge consisting of the gate and the qubit, and
+                # start a fresh hyper edge again.
+                # TODO: Note that this method of adding a QControlBox is very
+                # lazy. Indeed, in the case where a teleportation is required,
+                # a new hyper edge need not be started, as other gates which
+                # follow may also benefit from the teleportation.
+                elif command["command"].op.type == OpType.QControlBox:
+                    if qubit == command['command'].qubits[0]:
+                        vertex = command["two q gate count"] + \
+                            self.circuit.n_qubits
+                        self.add_gate_vertex(vertex, command['command'])
+                        hyperedge.append(vertex)
+                    else:
+                        # Add current working hyperedge.
+                        if len(hyperedge) > 1:
+                            self.add_hyperedge(hyperedge)
+                        # Add two vertex weight 2 hyperedge
+                        vertex = command["two q gate count"] + \
+                            self.circuit.n_qubits
+                        self.add_gate_vertex(vertex, command['command'])
+                        hyperedge = [qubit_index, vertex]
+                        self.add_hyperedge(hyperedge, weight=2)
+                        # Start a fresh hyperedge
+                        hyperedge = [qubit_index]
                 # Otherwise add the hyperedge to the hypergraph and start
                 # a new working hyperedge.
                 elif len(hyperedge) > 1:
