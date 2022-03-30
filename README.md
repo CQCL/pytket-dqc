@@ -1,13 +1,13 @@
 # pytket-dqc
 
-This package additionally requires the instillation of
-[kahypar](https://github.com/kahypar/kahypar) and 
+This package additionally requires the installation of
+[kahypar](https://github.com/kahypar/kahypar) %%Add proper instructions to install this package. There must be a mistake in the author's ones.%% and 
 [graphviz](https://graphviz.org/download/). With these packages installed,
 running `pip install .` will install pytket-dqc. Auto generated html 
 documentation can be found as an artifact of the latest push action. 
 You may also find the `example_notebook.ipynb` instructive.
 
-## Using with M1 devices
+## Using with M1 devices %%I think we can ommit this and only discuss "previously-installed boost.build vs non-previously-installed boost.build%%
 
 Please follow these instructions to install this package on a device with an M1 processor.
 Instructions formatted as `code` should be run from the terminal.
