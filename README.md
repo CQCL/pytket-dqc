@@ -21,7 +21,7 @@ Note that this guide was made assuming the use of `homebrew`.
 ### Install kahypar with python interface
 
 1. `cd ~`
-1. `git clone --depth=1 --recursive git@github.com:SebastianSchlag/kahypar.git`
+1. `git clone --depth=1 --recursive https://github.com/kahypar/kahypar.git`
 1. `cd kahypar`
 1. `mkdir build && cd build`
 1. `cmake .. -DCMAKE_BUILD_TYPE=RELEASE -DKAHYPAR_PYTHON_INTERFACE=1 -DKAHYPAR_USE_MINIMAL_BOOST=ON`
