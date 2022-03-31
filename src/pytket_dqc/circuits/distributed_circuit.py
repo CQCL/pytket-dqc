@@ -72,7 +72,11 @@ class DistributedCircuit(Hypergraph):
         self.vertex_circuit_map[vertex] = {'type': 'qubit', 'node': qubit}
 
     def get_qubit_vertices(self):
-        return [vertex for vertex in self.vertex_list if self.vertex_circuit_map[vertex]['type'] == 'qubit']
+        return [
+            vertex
+            for vertex in self.vertex_list
+            if self.vertex_circuit_map[vertex]['type'] == 'qubit'
+        ]
 
     def add_gate_vertex(self, vertex: int, command: Command):
         """Add a vertex to the underlying hypergraph which corresponds to a
@@ -199,21 +203,35 @@ class DistributedCircuit(Hypergraph):
             raise Exception("This is not a valid placement for this circuit.")
 
         qubit_vertices = self.get_qubit_vertices()
-        servers_used = set([server for vertex, server in placement.placement.items() if vertex in qubit_vertices])
-        server_to_vertex_dict = {server:[vertex for vertex in qubit_vertices if placement.placement[vertex] == server] for server in servers_used}
-        
+        servers_used = set([
+            server
+            for vertex, server in placement.placement.items()
+            if vertex in qubit_vertices
+        ])
+        server_to_vertex_dict = {
+            server: [
+                vertex
+                for vertex in qubit_vertices
+                if placement.placement[vertex] == server
+            ]
+            for server in servers_used
+        }
+
         circ = Circuit()
         server_register_map = {}
         for server, vertex_list in server_to_vertex_dict.items():
-            server_register_map[server] = circ.add_q_register(f'Server {server}', len(vertex_list))
-                        
+            server_register_map[server] = circ.add_q_register(
+                f'Server {server}', len(vertex_list))
+
         qubit_qubit_map = {}
-        for server, register in server_register_map.items():            
+        for server, register in server_register_map.items():
             for i, qubit_vertex in enumerate(server_to_vertex_dict[server]):
-                qubit_qubit_map[self.vertex_circuit_map[qubit_vertex]['node']] = register[i]
-                
+                qubit_qubit_map[self.vertex_circuit_map[qubit_vertex]
+                                ['node']] = register[i]
+
         for gate in self.circuit.get_commands():
-            circ.add_gate(gate.op, [qubit_qubit_map[orig_qubit] for orig_qubit in gate.args])
+            circ.add_gate(gate.op, [qubit_qubit_map[orig_qubit]
+                          for orig_qubit in gate.args])
 
         return circ
 
