@@ -13,6 +13,7 @@ from pytket_dqc.networks import NISQNetwork, ServerNetwork
 from pytket_dqc.distributors.ordered import order_reducing_size
 from pytket_dqc.placement import Placement
 import kahypar as kahypar  # type:ignore
+from pytket.circuit import QControlBox, Op, OpType  # type:ignore
 
 
 # TODO: Test that the placement returned by routing does not
@@ -223,3 +224,30 @@ def test_routing_distribute():
 
     assert routing_placement == ideal_placement
     assert cost == 1
+
+
+def test_q_control_box_circuits():
+
+    network = NISQNetwork([[0, 1]], {0: [0], 1: [1]})
+
+    op = Op.create(OpType.V)
+    cv = QControlBox(op, 1)
+
+    circ = Circuit(2)
+    circ.add_qcontrolbox(cv, [0, 1])
+    circ.add_qcontrolbox(cv, [0, 1])
+    circ.Rz(0.3, 0)
+    circ.add_qcontrolbox(cv, [0, 1])
+    circ.Rx(0.3, 0)
+    circ.add_qcontrolbox(cv, [0, 1])
+    circ.add_qcontrolbox(cv, [0, 1])
+
+    dist_circ = DistributedCircuit(circ)
+
+    distributor = Brute()
+
+    placement = distributor.distribute(dist_circ, network)
+    ideal_placement = Placement({0: 0, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 1: 1})
+
+    assert placement == ideal_placement
+    assert placement.cost(dist_circ, network) == 3
