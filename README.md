@@ -4,7 +4,7 @@ This package additionally requires the installation of
 [kahypar](https://github.com/kahypar/kahypar) and 
 [graphviz](https://graphviz.org/download/). When installing
 kahypar, please replace the command line on step '1. Clone
-the repository including submodules' by git clone git clone --depth=1 --recursive https://github.com/kahypar/kahypar.git.
+the repository including submodules' by 'git clone git clone --depth=1 --recursive https://github.com/kahypar/kahypar.git'.
 
 In the Requirements section of [kahypar](https://github.com/kahypar/kahypar), if you are not sure you have Boost.build installed or if you want to install it, please check https://www.boost.org/doc/libs/1_78_0/tools/build/doc/html/index.html#bbv2.installation.
 
