@@ -259,16 +259,16 @@ class DistributedCircuit(Hypergraph):
 
         return circ
 
-    def to_pytket_circuit(dist_circ, placement):
+    def to_pytket_circuit(self, placement):
             
-        if not dist_circ.is_placement(placement):
+        if not self.is_placement(placement):
             raise Exception("This is not a valid placement for this circuit.")
             
-        # A dictionary maping servers to the qubit vertices it contains 
+        # A dictionary mapping servers to the qubit vertices it contains 
         server_to_qubit_vertex_list = {
             server: [
                 vertex
-                for vertex in dist_circ.get_qubit_vertices()
+                for vertex in self.get_qubit_vertices()
                 if placement.placement[vertex] == server
             ]
             for server in set(placement.placement.values())
@@ -279,32 +279,38 @@ class DistributedCircuit(Hypergraph):
         # A dictionary mapping servers to the qubit registers
         # they contain. 
         server_to_register = {}
+        server_to_link_register = {}
         # Here a register is defined for each server. It contains a number of qubits
         # equal to the number of qubit vertices which are placed in the server, +1 
         # qubit for each server in the network.
         # TODO: It actually adds a qubit for each server with index smaller than the 
         # server with the highest index which is used. This is not ver nice and should
-        # be replaced. Possibly by adding seperate registers for the ancilla qubits.
+        # be replaced. Possibly by adding separate registers for the link qubits.
         for server, qubit_vertex_list in server_to_qubit_vertex_list.items():
-            server_to_register[server] = circ.add_q_register(
-                f'Server {server}', len(qubit_vertex_list) + max(placement.placement.values()) + 1)
+            # server_to_register[server] = circ.add_q_register(f'Server {server}', len(qubit_vertex_list) + max(placement.placement.values()) + 1)
+            server_to_register[server] = circ.add_q_register(f'Server {server}', len(qubit_vertex_list))
+            server_to_link_register[server] = {}
+            for link_server in set(placement.placement.values()):
+                register = circ.add_q_register(f'Server {server} Link {link_server}', 1)
+                server_to_link_register[server][link_server] = register[0]
 
         # Dictionary mapping qubits in original circuit to 
         # qubits in new registers
         circuit_qubit_to_server_qubit = {}
         for server, register in server_to_register.items():
             for i, qubit_vertex in enumerate(server_to_qubit_vertex_list[server]):
-                circuit_qubit_to_server_qubit[dist_circ.vertex_circuit_map[qubit_vertex]
+                circuit_qubit_to_server_qubit[self.vertex_circuit_map[qubit_vertex]
                                 ['node']] = register[i]
 
         # Dictionary mapping gate vertices to command information
-        gate_vertex_to_command = {vertex:data for vertex, data in dist_circ.vertex_circuit_map.items() if data['type'] == 'gate'}
+        gate_vertex_to_command = {vertex:data for vertex, data in self.vertex_circuit_map.items() if data['type'] == 'gate'}
         
         # Dictionary mapping circuit qubits to hypergraph vertices
-        circuit_qubit_to_vertex = {info['node']:vertex for vertex, info in dist_circ.vertex_circuit_map.items() if info['type'] == 'qubit'}
+        circuit_qubit_to_vertex = {info['node']:vertex for vertex, info in self.vertex_circuit_map.items() if info['type'] == 'qubit'}
         
         print("server_to_qubit_vertex_list", server_to_qubit_vertex_list)
         print("server_to_register", server_to_register)
+        print("server_to_link_register", server_to_link_register)
         print("circuit_qubit_to_server_qubit", circuit_qubit_to_server_qubit)
         print("gate_vertex_to_command", gate_vertex_to_command)
         print("circuit_qubit_to_vertex", circuit_qubit_to_vertex)
@@ -330,17 +336,19 @@ class DistributedCircuit(Hypergraph):
             # If not, move the control to the ancilla qubits of the server
             # to which the gate has been assigned
             else:
-                new_register = server_to_register[gate_server]
-                new_ctrl = new_register[len(server_to_qubit_vertex_list[gate_server]) + orig_ctrl_server]
+                # new_register = server_to_register[gate_server]
+                # new_ctrl = new_register[len(server_to_qubit_vertex_list[gate_server]) + orig_ctrl_server]
+                new_ctrl = server_to_link_register[gate_server][orig_ctrl_server]
                 
             # Similarly for the target qubit
             if orig_targ_server == gate_server:
                 new_targ = circuit_qubit_to_server_qubit[orig_targ_circuit_qubit]
             else:
-                new_register = server_to_register[gate_server]
-                new_targ = new_register[len(server_to_qubit_vertex_list[gate_server]) + orig_targ_server]
+                # new_register = server_to_register[gate_server]
+                # new_targ = new_register[len(server_to_qubit_vertex_list[gate_server]) + orig_targ_server]
+                new_targ = server_to_link_register[gate_server][orig_targ_server]
             
-            # Update the dictionary from gate vertices to conmmands to
+            # Update the dictionary from gate vertices to commands to
             # include these new server qubits.
             gate_vertex_to_command[gate_vertex]['args'] = [new_ctrl, new_targ]
             
@@ -355,12 +363,12 @@ class DistributedCircuit(Hypergraph):
                 
         print("new_command_list", new_command_list)
         
-        for edge in dist_circ.hyperedge_list:
+        for edge in self.hyperedge_list:
             
             print("==============")
             print("edge", edge)
             
-            gate_vertex_list = [vertex for vertex in edge['hyperedge'] if dist_circ.vertex_circuit_map[vertex]['type'] == 'gate']
+            gate_vertex_list = [vertex for vertex in edge['hyperedge'] if self.vertex_circuit_map[vertex]['type'] == 'gate']
             print("gate_vertex_list", gate_vertex_list)
             
             first_gate_found = False
@@ -389,10 +397,10 @@ class DistributedCircuit(Hypergraph):
             print("first_gate", first_gate)
             print("last_gate", last_gate)
             
-            unique_server_list = list(set([placement.placement[vertex] for vertex in edge['hyperedge'] if dist_circ.vertex_circuit_map[vertex]['type'] == 'gate']))
+            unique_server_list = list(set([placement.placement[vertex] for vertex in edge['hyperedge'] if self.vertex_circuit_map[vertex]['type'] == 'gate']))
             print("unique_server_list", unique_server_list)
             
-            qubit_list = [vertex for vertex in edge['hyperedge'] if dist_circ.vertex_circuit_map[vertex]['type'] == 'qubit']
+            qubit_list = [vertex for vertex in edge['hyperedge'] if self.vertex_circuit_map[vertex]['type'] == 'qubit']
             print("qubit_list", qubit_list)
             assert len(qubit_list) == 1
             qubit_vertex = qubit_list[0]
@@ -402,17 +410,18 @@ class DistributedCircuit(Hypergraph):
             
             for server in unique_server_list:
                 print("server", server)
-                print("len(server_to_qubit_vertex_list[server]) + server", len(server_to_qubit_vertex_list[server]) + server)
                 if server == qubit_server:
                     continue
                 else:
-                    new_command_list.insert(last_gate+1, {'role':'end', 'args':[server_to_register[server][len(server_to_qubit_vertex_list[server]) + qubit_server], server_to_register[qubit_server][0]]})
+                    # new_command_list.insert(last_gate+1, {'role':'end', 'args':[server_to_register[server][len(server_to_qubit_vertex_list[server]) + qubit_server], server_to_register[qubit_server][0]]})
+                    new_command_list.insert(last_gate+1, {'role':'end', 'args':[server_to_link_register[server][qubit_server], server_to_register[qubit_server][0]]})
             
             for server in unique_server_list:
                 if server == qubit_server:
                     continue
                 else:
-                    new_command_list.insert(first_gate, {'role':'start', 'args':[server_to_register[qubit_server][0], server_to_register[server][len(server_to_qubit_vertex_list[server]) + qubit_server]]})
+                    # new_command_list.insert(first_gate, {'role':'start', 'args':[server_to_register[qubit_server][0], server_to_register[server][len(server_to_qubit_vertex_list[server]) + qubit_server]]})
+                    new_command_list.insert(first_gate, {'role':'start', 'args':[server_to_register[qubit_server][0], server_to_link_register[server][qubit_server]]})
             
         print("new_command_list", new_command_list)
 
