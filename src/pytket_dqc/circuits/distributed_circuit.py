@@ -26,7 +26,8 @@ def_circ = Circuit(2)
 def_circ.add_barrier([0, 1])
 
 start_proc = CustomGateDef.define("StartingProcess", def_circ, [])
-end_proc = CustomGateDef.define("EndingingProcess", def_circ, [])
+end_proc = CustomGateDef.define("EndingProcess", def_circ, [])
+telep_proc = CustomGateDef.define("Teleportation", def_circ, [])
 
 class DistributedCircuit(Hypergraph):
     """Class representing circuit to be distributed on a network.
@@ -245,8 +246,9 @@ class DistributedCircuit(Hypergraph):
 
         return circ
 
-    def to_pytket_circuit(self, placement):
+    def to_pytket_circuit(self, placement:Placement):
             
+        # Initial check that placement is valid
         if not self.is_placement(placement):
             raise Exception("This is not a valid placement for this circuit.")
             
@@ -260,23 +262,25 @@ class DistributedCircuit(Hypergraph):
             for server in set(placement.placement.values())
         }
 
+        # New circuit including distribution gates
         circ = Circuit()
             
-        # A dictionary mapping servers to the qubit registers
-        # they contain. 
+        # A dictionary mapping servers to the qubit registers they contain. 
         server_to_register = {}
+        # A dictionary mapping (server, server) pairs to link qubits. The first
+        # index is the server the link qubit is contained in. The second
+        # index is the server the qubit links to.
         server_to_link_register = {}
         # Here a register is defined for each server. It contains a number of qubits
         # equal to the number of qubit vertices which are placed in the server, +1 
-        # qubit for each server in the network.
-        # TODO: It actually adds a qubit for each server with index smaller than the 
-        # server with the highest index which is used. This is not ver nice and should
-        # be replaced. Possibly by adding separate registers for the link qubits.
+        # qubit for each other used server in the network.
         for server, qubit_vertex_list in server_to_qubit_vertex_list.items():
-            # server_to_register[server] = circ.add_q_register(f'Server {server}', len(qubit_vertex_list) + max(placement.placement.values()) + 1)
             server_to_register[server] = circ.add_q_register(f'Server {server}', len(qubit_vertex_list))
+
             server_to_link_register[server] = {}
-            for link_server in set(placement.placement.values()):
+            servers_used = set(placement.placement.values())
+            servers_used.remove(server)
+            for link_server in servers_used:                    
                 register = circ.add_q_register(f'Server {server} Link {link_server}', 1)
                 server_to_link_register[server][link_server] = register[0]
 
@@ -287,6 +291,13 @@ class DistributedCircuit(Hypergraph):
             for i, qubit_vertex in enumerate(server_to_qubit_vertex_list[server]):
                 circuit_qubit_to_server_qubit[self.vertex_circuit_map[qubit_vertex]
                                 ['node']] = register[i]
+
+        # Dictionary mapping qubit vertices in hypergraph to server qubit 
+        # registers
+        qubit_vertex_to_server_qubit = {}
+        for server, register in server_to_register.items():
+            for i, qubit_vertex in enumerate(server_to_qubit_vertex_list[server]):
+                qubit_vertex_to_server_qubit[qubit_vertex] = register[i]
 
         # Dictionary mapping gate vertices to command information
         gate_vertex_to_command = {vertex:data for vertex, data in self.vertex_circuit_map.items() if data['type'] == 'gate'}
@@ -300,6 +311,7 @@ class DistributedCircuit(Hypergraph):
         print("circuit_qubit_to_server_qubit", circuit_qubit_to_server_qubit)
         print("gate_vertex_to_command", gate_vertex_to_command)
         print("circuit_qubit_to_vertex", circuit_qubit_to_vertex)
+        print("qubit_vertex_to_server_qubit", qubit_vertex_to_server_qubit)
         
         for gate_vertex, command in gate_vertex_to_command.items():
             
@@ -399,18 +411,25 @@ class DistributedCircuit(Hypergraph):
                 if server == qubit_server:
                     continue
                 else:
-                    # new_command_list.insert(last_gate+1, {'role':'end', 'args':[server_to_register[server][len(server_to_qubit_vertex_list[server]) + qubit_server], server_to_register[qubit_server][0]]})
-                    new_command_list.insert(last_gate+1, {'role':'end', 'args':[server_to_link_register[server][qubit_server], server_to_register[qubit_server][0]]})
+                    # new_command = {'role':'end', 'args':[server_to_link_register[server][qubit_server], server_to_register[qubit_server][0]]}
+                    new_command = {'role':'end', 'args':[server_to_link_register[server][qubit_server], qubit_vertex_to_server_qubit[qubit_vertex]]}
+                    print("new_command", new_command)
+                    new_command_list.insert(last_gate+1, new_command)
             
             for server in unique_server_list:
                 if server == qubit_server:
                     continue
                 else:
-                    # new_command_list.insert(first_gate, {'role':'start', 'args':[server_to_register[qubit_server][0], server_to_register[server][len(server_to_qubit_vertex_list[server]) + qubit_server]]})
-                    new_command_list.insert(first_gate, {'role':'start', 'args':[server_to_register[qubit_server][0], server_to_link_register[server][qubit_server]]})
+                    # new_command = {'role':'start', 'args':[server_to_register[qubit_server][0], server_to_link_register[server][qubit_server]]}
+                    new_command = {'role':'start', 'args':[qubit_vertex_to_server_qubit[qubit_vertex], server_to_link_register[server][qubit_server]]}
+                    print("new_command", new_command)
+                    new_command_list.insert(first_gate, new_command)
             
         print("new_command_list", new_command_list)
 
+        # TODO: The gate added here needs to depend on the weight of the hypergraph
+        # TODO: I think there will also need to be a barrier accross all qubits
+        # in the server to stop other parts of the server using the link quibt.
         for command in new_command_list:
             
             print("command", command)
