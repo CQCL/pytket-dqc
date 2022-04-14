@@ -117,13 +117,11 @@ def connected_vertices(graph, vertex, matching, in_matching, include_original = 
     :return: All the vertices connected to the given vertex by edges that are/aren't in the matching.
     :rtype: set
     """
-    #find all the vertices connected to a vertex by an edge that is/isn't in the matching
-    #does not include original vertex by default
-    #returns a set
+
     connected = graph.full_graph[vertex]
     vertices = set()
     for connected_vertex in connected:
-        if in_matching == in_Matching(matching, (vertex, connected_vertex)):
+        if in_matching == in_matching(matching, (vertex, connected_vertex)):
             vertices.add(connected_vertex)
             
     if include_original:
@@ -131,7 +129,7 @@ def connected_vertices(graph, vertex, matching, in_matching, include_original = 
     
     return vertices
     
-def in_Matching(matching, edge):
+def in_matching(matching, edge):
     """Is a given edge in a given matching.
 
     :param matching: The matching to check against.
@@ -176,7 +174,6 @@ def to_bipartite(circ):
     :return: A bipartite grpah representing the circuit
     :rtype: .BipartiteGraph
     """
-    #Takes a two server circuit and converts it into a bipartite graph, with vertices being packable sets of gates
     
     #initialise everything we need
     graph = {} #map from each vertex to all the vertices it is connected to
