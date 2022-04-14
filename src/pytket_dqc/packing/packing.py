@@ -87,21 +87,21 @@ def connected_by_alternating_path(graph, vertex, matching):
     vertices_to_check = {vertex}
     checked_vertices = set()
     vertices = {vertex}
-    in_matching = True
+    check_in_matching = True
     
     while bool(vertices_to_check): #while the set is non-empty
         next_vertices_to_check = set()
         for current_vertex in vertices_to_check:
-            connected = connected_vertices(graph, current_vertex, matching, not in_matching)
+            connected = connected_vertices(graph, current_vertex, matching, not check_in_matching)
             next_vertices_to_check.update(connected)
             vertices.update(connected)
             checked_vertices.add(current_vertex)
         vertices_to_check = next_vertices_to_check - checked_vertices
-        in_matching = not in_matching
+        check_in_matching = not check_in_matching
     
     return vertices
         
-def connected_vertices(graph, vertex, matching, in_matching, include_original = False):
+def connected_vertices(graph, vertex, matching, check_in_matching, include_original = False):
     """Finds all vertices directly connected to the given vertex by edges that are/aren't in the matching.
 
     :param graph: The bipartite graph in question.
@@ -110,8 +110,8 @@ def connected_vertices(graph, vertex, matching, in_matching, include_original = 
     :type vertex: int
     :param matching: A matching on the bipartite graph.
     :type matching: dict{int: int}
-    :param in_matching: If True, search for vertices connected to given vertex by an edge that is in the matching.
-    :type in_matching: bool
+    :param check_in_matching: If True, search for vertices connected to given vertex by an edge that is in the matching.
+    :type check_in_matching: bool
     :param include_original: Include the given vertex in the resulting set of vertices, defaults to False
     :type include_original: bool, optional
     :return: All the vertices connected to the given vertex by edges that are/aren't in the matching.
@@ -121,7 +121,7 @@ def connected_vertices(graph, vertex, matching, in_matching, include_original = 
     connected = graph.full_graph[vertex]
     vertices = set()
     for connected_vertex in connected:
-        if in_matching == in_matching(matching, (vertex, connected_vertex)):
+        if check_in_matching == in_matching(matching, (vertex, connected_vertex)):
             vertices.add(connected_vertex)
             
     if include_original:
