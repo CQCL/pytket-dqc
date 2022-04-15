@@ -58,7 +58,8 @@ class Hypergraph:
 
     # TODO: Is it possible to ensure this condition at the point of design
     # TODO: check that the hyperedges are unique
-    # TODO: There are other checks to do like that each hyperedge has one qubit and each gate is in at most two edges.
+    # TODO: There are other checks to do like that each hyperedge has one
+    # qubit and each gate is in at most two edges.
     def is_valid(self) -> bool:
         """Checks if this is a valid hypergraph. In particular vertices must
         be a continuous list of integers.

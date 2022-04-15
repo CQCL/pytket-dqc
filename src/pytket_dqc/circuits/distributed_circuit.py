@@ -283,9 +283,9 @@ class DistributedCircuit(Hypergraph):
         # A dictionary mapping servers to the qubit registers they contain.
         server_to_register = {}
 
-        # A dictionary mapping (server, hyperedge) pairs to link qubits. The first 
-        # index is the server the link qubit is contained in. The second
-        # index is the hyperedge the link qubit is consumed by.
+        # A dictionary mapping (server, hyperedge) pairs to link qubits.
+        # The first index is the server the link qubit is contained in.
+        # The second index is the hyperedge the link qubit is consumed by.
         server_to_link_register: dict[int, QubitRegister] = {}
 
         # Here a register is defined for each server. It contains a number of
@@ -302,29 +302,29 @@ class DistributedCircuit(Hypergraph):
 
             server_to_link_register[server] = {}
             # For each hyperedge, add the necessary link qubits
-            for hyperedge_index, hyperedge in enumerate(self.hyperedge_list):
+            for index, hyperedge in enumerate(self.hyperedge_list):
 
                 # List of gate vertices in this hyperedge
                 gate_vertex_list = [
                     vertex
-                    for vertex in hyperedge['hyperedge']
+                    for vertex in cast(list[int], hyperedge['hyperedge'])
                     if self.vertex_circuit_map[vertex]['type'] == 'gate'
                 ]
 
                 # Find the one unique vertex in the hyperedge which
                 # corresponds to a qubit.
-                qubit_vertex = [
+                hyperedge_qubit_vertex_list = [
                     vertex
-                    for vertex in hyperedge['hyperedge']
+                    for vertex in cast(list[int], hyperedge['hyperedge'])
                     if vertex not in gate_vertex_list
                 ]
-                assert len(qubit_vertex) == 1
-                qubit_vertex = qubit_vertex[0]
+                assert len(hyperedge_qubit_vertex_list) == 1
+                hyperedge_qubit_vertex = hyperedge_qubit_vertex_list[0]
 
                 # Add a link qubits if the qubit of the hyperedge is not
                 # placed in this server, but there is a gate vertex in this
                 # hyperedge which is placed in this server.
-                if not (placement.placement[qubit_vertex] == server):
+                if not (placement.placement[hyperedge_qubit_vertex] == server):
 
                     unique_server_used = set([
                         placement.placement[gate_vertex]
@@ -332,8 +332,8 @@ class DistributedCircuit(Hypergraph):
                     ])
                     if server in unique_server_used:
                         register = circ.add_q_register(
-                            f'Server {server} Link Edge {hyperedge_index}', 1)
-                        server_to_link_register[server][hyperedge_index] = register[0]
+                            f'Server {server} Link Edge {index}', 1)
+                        server_to_link_register[server][index] = register[0]
 
         # Dictionary mapping qubit vertices in hypergraph to server qubit
         # registers
@@ -392,9 +392,20 @@ class DistributedCircuit(Hypergraph):
                     # Find the hyperedge to which the qubit and gate vertex
                     # belong. This should be unique. Use this to locate
                     # the correct link qubit.
-                    for hyperedge_index, hyperedge in enumerate(self.hyperedge_list):
-                        if (gate_vertex in hyperedge['hyperedge']) and (qubit_vertex in hyperedge['hyperedge']):
-                            new_qubit.append(server_to_link_register[gate_server][hyperedge_index])
+                    for index, hyperedge in enumerate(self.hyperedge_list):
+                        if (
+                            (
+                                gate_vertex
+                                in cast(list[int], hyperedge['hyperedge'])
+                            )
+                            and
+                            (
+                                qubit_vertex
+                                in cast(list[int], hyperedge['hyperedge'])
+                            )
+                        ):
+                            new_qubit.append(
+                                server_to_link_register[gate_server][index])
 
             assert len(orig_server) == len(new_qubit)
 
@@ -474,8 +485,8 @@ class DistributedCircuit(Hypergraph):
                         'args': [
                             qubit_vertex_to_server_qubit[qubit_vertex],
                             server_to_link_register[server][edge_index]
-                            ]
-                        }
+                        ]
+                    }
                     new_command_list.insert(first, new_command)
                 else:
                     raise Exception(
