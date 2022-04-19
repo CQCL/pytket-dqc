@@ -2,7 +2,8 @@ from pytket import Circuit
 from hopcroftkarp import HopcroftKarp as hk
 import numpy as np
 from scipy.linalg import schur
-from pytket.circuit import Unitary1qBox, Unitary2qBox, Op, OpType, Command
+from pytket.circuit import Unitary1qBox, Unitary2qBox, Op, OpType, Command, QubitRegister, Qubit
+from warnings import warn
 
 def is_global(command):
     """Boolean function that determines if a given two qubit command is global.
@@ -166,70 +167,143 @@ def minimum_vertex_cover(graph):
 
     return ((L - Z) | (R & Z))
 
-def to_bipartite(circ):
+def to_bipartite(circ, ancilla_limits = (-1, -1)):
     """Generate a bipartite graph for a given circuit, with specific rules to determine which commands can be grouped together into a single vertex.
 
     :param circ: The circuit in question.
     :type circ: pytket.Circuit
-    :return: A bipartite grpah representing the circuit
+    :param ancilla_limits: The limits on the number of ancilla on server 0 and server 1 respectively.
+    :return: A bipartite graph representing the circuit
     :rtype: .BipartiteGraph
+
+    ::TODO Fix terrible naming schemes::
     """
     
     #initialise everything we need
     graph = {} #map from each vertex to all the vertices it is connected to
-    vertices = {} #map from the qubit to vertex information
     
-    left_server = circ.q_registers[0] #LHS of the bipartite graph
-    right_server = circ.q_registers[1] #RHS of the bipartite graph
-    left_vertices = set() #set of 'left' vertices in the bipartite graph
-    right_vertices = set() #set of 'right' vertices in the bipartite graph
+    servers = {
+        circ.q_registers[0].name: BipartiteQReg(circ.q_registers[0], ancilla_limits[0], 'left'), #assign 0th server LHS
+        circ.q_registers[1].name: BipartiteQReg(circ.q_registers[1], ancilla_limits[1], 'right') #assign 1st server RHS
+    }
+
+    left_qreg = servers[circ.q_registers[0].name]
+    right_qreg = servers[circ.q_registers[1].name]
     
     current_vertex_index = 0 #tracks how many vertices have been made
+
+    bipartite_qubits = {}
     
     #create empty vertices for each qubit
     for qubit in circ.qubits:
-        vertices[qubit] = {
-            "current_vertex": current_vertex_index, #the current working vertex of this qubit
-            "all_vertex_indices": set([current_vertex_index]), #the set of all vertices associated with the qubit
-            "vertex_gates": {current_vertex_index: []}, #a map from a vertex index to all commands in the vertex
-        }
-        if qubit.reg_name == left_server.name:
-            left_vertices.add(current_vertex_index)
-        else:
-            right_vertices.add(current_vertex_index)
-        graph[current_vertex_index] = set()
-        current_vertex_index += 1
-    
+        bipartite_qubit = BipartiteQubit(qubit)
+        bipartite_qubits[qubit] = bipartite_qubit
+
+    #count the number of commands acting on each qubit
+    #TODO: look at efficiency of this - loop through circ.get_commands() twice which might not be very optimal
+    #could maybe add each of the commands explicitly then remove as they are implemented?
     for cmd in circ.get_commands():
-        q0 = cmd.qubits[0]
-        q0_current_vertex = vertices[q0]["current_vertex"]
+        for qubit in cmd.qubits:
+            bipartite_qubits[qubit].commands.append(cmd)
+    
+    #create the vertices
+    for cmd in circ.get_commands():
+        q0 = bipartite_qubits[cmd.qubits[0]]
+        server0 = servers[q0.reg_name]
+
+        #Case: global command
         if len(cmd.qubits) > 1 and is_global(cmd):
-            q1 = cmd.qubits[1]
-            q1_current_vertex = vertices[q1]["current_vertex"]
-            
-            #add the cmds to the working vertex
-            vertices[q0]["vertex_gates"][q0_current_vertex].append(cmd)
-            vertices[q1]["vertex_gates"][q1_current_vertex].append(cmd)
+            q1 = bipartite_qubits[cmd.qubits[1]]
+            server1 = servers[q1.reg_name]
+
+            #if there is no active vertex on q0, open one
+            if q0.current_vertex == None:
+                if server1.is_full(): #close the most recently opened vertex on this server
+                #This is not optimal choice
+                    server0.close_prev_vertex(server1)
+
+                q0.open_vertex(current_vertex_index, server0)
+                server1.currently_packing.append(q0.current_vertex)
+                graph[q0.current_vertex] = set()
+                current_vertex_index += 1
+
+            #elif there is an active vertex but we are only now adding global gates to it
+            elif q0.current_vertex not in server1.currently_packing:
+                if server1.is_full():
+                    server0.close_prev_vertex(server1)
+
+                server1.currently_packing.append(q0.current_vertex)
+                graph[q0.current_vertex] = set()
+
+            #repeat of the above if, elif statements
+            if q1.current_vertex == None:
+                if server0.is_full():
+                    server1.close_prev_vertex(server0)
+
+                q1.open_vertex(current_vertex_index, server1)
+                server0.currently_packing.append(q1.current_vertex)
+                graph[q1.current_vertex] = set()
+                current_vertex_index += 1
+
+            elif q1.current_vertex not in server0.currently_packing:
+                if server0.is_full():
+                    server1.close_prev_vertex(server0)
+
+                graph[q1.current_vertex] = set()
+                server0.currently_packing.append(q1.current_vertex)
             
             #connect the vertices in the graph
-            graph[q0_current_vertex].add(q1_current_vertex)
-            graph[q1_current_vertex].add(q0_current_vertex)
-            
-        elif is_diagonal(cmd) or is_antidiagonal(cmd):
-            vertices[q0]["vertex_gates"][q0_current_vertex].append(cmd)
-            
-        else: #else cannot be packed, so we need a new vertex for this qubit
-            vertices[q0]["current_vertex"] = current_vertex_index
-            vertices[q0]["all_vertex_indices"].add(current_vertex_index)
-            vertices[q0]["vertex_gates"][current_vertex_index] = []
-            if q0.reg_name == left_server.name:
-                left_vertices.add(current_vertex_index)
-            else:
-                right_vertices.add(current_vertex_index)
-            graph[current_vertex_index] = set()
-            current_vertex_index += 1
+            graph[q0.current_vertex].add(q1.current_vertex)
+            graph[q1.current_vertex].add(q0.current_vertex)
 
-    return BipartiteGraph(graph, left_vertices, right_vertices), vertices
+            #add the commands to their relevant vertices
+            q0.add_cmd_to_current_vertex(cmd)
+            q1.add_cmd_to_current_vertex(cmd)
+
+            #close off vertex if there are no more commands on the qubit to pack
+            if q0.commands_to_pack() == 0:
+                server1.currently_packing.remove(q0.current_vertex)
+                q0.close_vertex()
+            
+            if q1.commands_to_pack() == 0:
+                server0.currently_packing.remove(q1.current_vertex)
+                q1.close_vertex()
+        
+        #Case: diagonal or antidiagonal gate -> can keep packing!
+        elif is_diagonal(cmd) or is_antidiagonal(cmd):
+            #if there is no active vertex on this qubit, add one
+            if q0.current_vertex == None:
+                q0.open_vertex(current_vertex_index, server0)
+                current_vertex_index += 1
+
+            q0.add_cmd_to_current_vertex(cmd)
+            if q0.commands_to_pack() == 0:
+                server1 = [qreg for qreg in servers.values() if qreg != server0][0]
+                server1.currently_packing.remove(q0.current_vertex) #the other qreg!!
+                q0.close_vertex()
+
+        #Case: a local unitary that cannot be packed -> if the vertex is being packed, add the command and close the vertex, else open a new vertex
+        else:
+            if q0.current_vertex == None:
+                q0.open_vertex(current_vertex_index, server0)
+                current_vertex_index += 1
+
+            q0.add_cmd_to_current_vertex(cmd)
+            server1 = [qreg for qreg in servers.values() if qreg != server0][0]
+
+            #end the vertex if it was being packed
+            if q0.current_vertex in server1.currently_packing:
+                server1.currently_packing.remove(q0.current_vertex)
+                q0.close_vertex()
+
+    for bpqubit in bipartite_qubits.values():
+        print(f'server{bpqubit.reg_name} index{bpqubit.index}')
+        for key in bpqubit.vertices.keys():
+            print(f'Vertex {key}')
+            print(bpqubit.vertices[key])
+        print()
+        print()
+    return BipartiteGraph(graph, set(left_qreg.vertices.keys()), set(right_qreg.vertices.keys()))
 
 def cmd_to_CZ(command, circ):
     """Convert a two qubit controlled unitary gate into a controlled phase gate and local unitary gates.
@@ -321,3 +395,60 @@ class BipartiteGraph:
         for vertex in self.left_vertices:
             del right_only[vertex]
         return right_only
+
+class BipartiteQReg:
+    # Quantum register extended to also contain the vertices that it contains in a bipartite graph
+    def __init__(self, qubit_register, ancilla_limit, half):
+        self.name = qubit_register.name
+        self.size = qubit_register.size
+        self.vertices = {} #map from a vertex on this server to the BipartiteQubit it corresponds to
+        self.ancilla_limit = ancilla_limit #how many ancilla are allowed on this server
+        self.half = half #which half of the bipartite graph does this register belong: 'left' or 'right'
+        self.currently_packing = [] #list of vertices on the other server that are currently being packed TODO: Rethink this logic!!
+
+    def is_full(self):
+        if self.ancilla_limit == -1: #-1 corresponds to no limit on the number of ancilla being packed on this server
+            return False
+        elif self.ancilla_limit < len(self.currently_packing):
+            raise ValueError(f'For some reason, too many vertices are being packed at once on server {self.name}')
+        return self.ancilla_limit == len(self.currently_packing)
+
+    def close_prev_vertex(self, other_qreg, newly_opened_vertex = None):
+        vertex_to_close = other_qreg.currently_packing[-1]
+        other_qreg.currently_packing.remove(vertex_to_close)
+        self.vertices[vertex_to_close].close_vertex() #TODO: naming is terrible here.. needs a rethink
+
+class BipartiteQubit:
+    #Extension of qubit class to include the number of commands acting on it and information about bipartite graph vertices on this qubit
+    def __init__(self, qubit):
+        self.index = qubit.index
+        self.reg_name = qubit.reg_name
+        self.commands = []
+        self.packed_commands = []
+        self.is_packing = False
+        self.current_vertex = None
+        self.vertices = {} #map from a vertex index to a list of all the commands acting on it
+
+    def open_vertex(self, new_vertex_number, qreg):
+        if self.current_vertex != None:
+            warn(f"A new vertex has been opened on qubit {self.name} before the previous one was closed. The previous vertex on this qubit has been closed (perhaps prematurely). Is this what you wanted?")
+        self.current_vertex = new_vertex_number
+        self.vertices[self.current_vertex] = []
+        qreg.vertices[self.current_vertex] = self #add (key: value) pair (vertex: BipartiteQubit) to the quantum register
+
+    def close_vertex(self):
+        if self.current_vertex == None:
+            warn(f"There wasn't a vertex open on qubit {self.reg_name} {self.index} in the first place. A possible error?")
+        self.current_vertex = None
+
+    def get_packed_commands(self):
+        packed_commands = []
+        for packed_commands_list in self.vertices.values():
+            packed_commands += packed_commands_list
+        return packed_commands
+
+    def commands_to_pack(self):
+        return len(self.commands) - len(self.get_packed_commands())
+
+    def add_cmd_to_current_vertex(self, cmd):
+        self.vertices[self.current_vertex].append(cmd)
