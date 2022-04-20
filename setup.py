@@ -15,6 +15,14 @@ setuptools.setup(
     package_dir={"": "src"},
     packages=setuptools.find_packages(where="src"),
     python_requires=">=3.9",
-    install_requires=['numpy>=1.11', 'pytket>=0.17', 'hypernetx>=1.2', 'celluloid>=0.2', 'igraph>=0.9.8', 'decorator>=5.1.0', 'pygraphviz>=1.7', 'importlib_resources>=5.7.1'],
-    include_package_data=True,
+    install_requires=[
+        'numpy>=1.11',
+        'pytket>=0.17', 
+        'hypernetx>=1.2', 
+        'celluloid>=0.2', 
+        'igraph>=0.9.8', 
+        'decorator>=5.1.0', 
+        'pygraphviz>=1.7',
+        'networkx>=2.7.1' # Is this satisfied by hypernetx and therefore redundant?
+        ]
 )

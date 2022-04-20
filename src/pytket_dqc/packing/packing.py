@@ -4,6 +4,7 @@ import numpy as np
 from scipy.linalg import schur
 from pytket.circuit import Unitary1qBox, Unitary2qBox, Op, OpType, Command, QubitRegister, Qubit
 from warnings import warn
+import networkx as nx
 
 def is_global(command):
     """Boolean function that determines if a given two qubit command is global.
@@ -167,7 +168,7 @@ def minimum_vertex_cover(graph):
 
     return ((L - Z) | (R & Z))
 
-def to_bipartite(circ, ancilla_limits = (-1, -1)):
+def to_bipartite(circ, ancilla_limits = (-1, -1), debugging = False):
     """Generate a bipartite graph for a given circuit, with specific rules to determine which commands can be grouped together into a single vertex.
 
     :param circ: The circuit in question.
@@ -176,6 +177,8 @@ def to_bipartite(circ, ancilla_limits = (-1, -1)):
     :return: A bipartite graph representing the circuit
     :rtype: .BipartiteGraph
 
+    ::TODO Test how it works on local two qubit gates::
+    ::TODO Fix documentation::
     ::TODO Fix terrible naming schemes::
     """
     
@@ -296,13 +299,14 @@ def to_bipartite(circ, ancilla_limits = (-1, -1)):
                 server1.currently_packing.remove(q0.current_vertex)
                 q0.close_vertex()
 
-    for bpqubit in bipartite_qubits.values():
-        print(f'server{bpqubit.reg_name} index{bpqubit.index}')
-        for key in bpqubit.vertices.keys():
-            print(f'Vertex {key}')
-            print(bpqubit.vertices[key])
-        print()
-        print()
+    if debugging:
+        for bpqubit in bipartite_qubits.values():
+            print(f'server{bpqubit.reg_name} index{bpqubit.index}')
+            for key in bpqubit.vertices.keys():
+                print(f'Vertex {key}')
+                print(bpqubit.vertices[key])
+            print()
+            print()
     return BipartiteGraph(graph, set(left_qreg.vertices.keys()), set(right_qreg.vertices.keys()))
 
 def cmd_to_CZ(command, circ):
@@ -373,6 +377,10 @@ class BipartiteGraph:
         self.full_graph = full_graph
         self.left_vertices = left_vertices
         self.right_vertices = right_vertices
+        self.nx_graph = {}
+        for key, value in self.full_graph.items():
+            self.nx_graph[key] = list(value)
+        self.nx_graph = nx.from_dict_of_lists(self.nx_graph)
     
     def edges_from_left_only(self):
         """Return an equivalent bipartite graph with only the left vertices as keys, listing the right vertices they are connected to.
