@@ -168,7 +168,7 @@ def minimum_vertex_cover(graph):
 
     return ((L - Z) | (R & Z))
 
-def to_bipartite(circ, ancilla_limits = (-1, -1), debugging = False):
+def to_bipartite(circ, ancilla_limits = (-1, -1), simultaneous_max = False, debugging = False):
     """Generate a bipartite graph for a given circuit, with specific rules to determine which commands can be grouped together into a single vertex.
 
     :param circ: The circuit in question.
@@ -226,7 +226,7 @@ def to_bipartite(circ, ancilla_limits = (-1, -1), debugging = False):
                     server0.close_prev_vertex(server1)
 
                 q0.open_vertex(current_vertex_index, server0)
-                server1.currently_packing.append(q0.current_vertex)
+                server1.add_to_packing(q0.current_vertex)
                 graph[q0.current_vertex] = set()
                 current_vertex_index += 1
 
@@ -235,7 +235,7 @@ def to_bipartite(circ, ancilla_limits = (-1, -1), debugging = False):
                 if server1.is_full():
                     server0.close_prev_vertex(server1)
 
-                server1.currently_packing.append(q0.current_vertex)
+                server1.add_to_packing(q0.current_vertex)
                 graph[q0.current_vertex] = set()
 
             #repeat of the above if, elif statements
@@ -244,7 +244,7 @@ def to_bipartite(circ, ancilla_limits = (-1, -1), debugging = False):
                     server1.close_prev_vertex(server0)
 
                 q1.open_vertex(current_vertex_index, server1)
-                server0.currently_packing.append(q1.current_vertex)
+                server0.add_to_packing(q1.current_vertex)
                 graph[q1.current_vertex] = set()
                 current_vertex_index += 1
 
@@ -253,7 +253,7 @@ def to_bipartite(circ, ancilla_limits = (-1, -1), debugging = False):
                     server1.close_prev_vertex(server0)
 
                 graph[q1.current_vertex] = set()
-                server0.currently_packing.append(q1.current_vertex)
+                server0.add_to_packing(q1.current_vertex)
             
             #connect the vertices in the graph
             graph[q0.current_vertex].add(q1.current_vertex)
@@ -267,10 +267,25 @@ def to_bipartite(circ, ancilla_limits = (-1, -1), debugging = False):
             if q0.commands_to_pack() == 0:
                 server1.currently_packing.remove(q0.current_vertex)
                 q0.close_vertex()
+
+            # close off vertex if the next command is a non (anti) diagonal gate
+            # fixes issues with memory count problems
+            else:
+                next_command = q0.next_command()
+                if not(is_diagonal(next_command) or is_antidiagonal(next_command)):
+                    server1.currently_packing.remove(q0.current_vertex)
+                    q0.close_vertex()
             
             if q1.commands_to_pack() == 0:
                 server0.currently_packing.remove(q1.current_vertex)
                 q1.close_vertex()
+
+            else:
+                next_command = q1.next_command()
+                if not(is_diagonal(next_command) or is_antidiagonal(next_command)):
+                    server0.currently_packing.remove(q1.current_vertex)
+                    q1.close_vertex()
+                
         
         #Case: diagonal or antidiagonal gate -> can keep packing!
         elif is_diagonal(cmd) or is_antidiagonal(cmd):
@@ -292,13 +307,14 @@ def to_bipartite(circ, ancilla_limits = (-1, -1), debugging = False):
                 current_vertex_index += 1
 
             q0.add_cmd_to_current_vertex(cmd)
-            server1 = [qreg for qreg in servers.values() if qreg != server0][0]
 
             #end the vertex if it was being packed
+            server1 = [qreg for qreg in servers.values() if qreg != server0][0]
             if q0.current_vertex in server1.currently_packing:
                 server1.currently_packing.remove(q0.current_vertex)
                 q0.close_vertex()
 
+    # Explicit output if needed
     if debugging:
         for bpqubit in bipartite_qubits.values():
             print(f'server{bpqubit.reg_name} index{bpqubit.index}')
@@ -307,6 +323,11 @@ def to_bipartite(circ, ancilla_limits = (-1, -1), debugging = False):
                 print(bpqubit.vertices[key])
             print()
             print()
+
+    # Return the maximum number of simultaneous qubits needed
+    if simultaneous_max:
+        return BipartiteGraph(graph, set(left_qreg.vertices.keys()), set(right_qreg.vertices.keys())), (left_qreg.simultaneous_max, right_qreg.simultaneous_max)
+
     return BipartiteGraph(graph, set(left_qreg.vertices.keys()), set(right_qreg.vertices.keys()))
 
 def cmd_to_CZ(command, circ):
@@ -413,18 +434,24 @@ class BipartiteQReg:
         self.ancilla_limit = ancilla_limit #how many ancilla are allowed on this server
         self.half = half #which half of the bipartite graph does this register belong: 'left' or 'right'
         self.currently_packing = [] #list of vertices on the other server that are currently being packed TODO: Rethink this logic!!
+        self.simultaneous_max = 0
 
     def is_full(self):
         if self.ancilla_limit == -1: #-1 corresponds to no limit on the number of ancilla being packed on this server
             return False
         elif self.ancilla_limit < len(self.currently_packing):
-            raise ValueError(f'For some reason, too many vertices are being packed at once on server {self.name}')
+            raise ValueError(f'Too many vertices are being packed at once on server {self.name} - this is likely a bug with pytket-dqc.packing')
         return self.ancilla_limit == len(self.currently_packing)
 
     def close_prev_vertex(self, other_qreg, newly_opened_vertex = None):
         vertex_to_close = other_qreg.currently_packing[-1]
         other_qreg.currently_packing.remove(vertex_to_close)
         self.vertices[vertex_to_close].close_vertex() #TODO: naming is terrible here.. needs a rethink
+
+    def add_to_packing(self, vertex_number):
+        self.currently_packing.append(vertex_number)
+        if self.simultaneous_max < len(self.currently_packing):
+            self.simultaneous_max = len(self.currently_packing)
 
 class BipartiteQubit:
     #Extension of qubit class to include the number of commands acting on it and information about bipartite graph vertices on this qubit
@@ -449,14 +476,17 @@ class BipartiteQubit:
             warn(f"There wasn't a vertex open on qubit {self.reg_name} {self.index} in the first place. A possible error?")
         self.current_vertex = None
 
-    def get_packed_commands(self):
-        packed_commands = []
-        for packed_commands_list in self.vertices.values():
-            packed_commands += packed_commands_list
-        return packed_commands
+    def next_command(self):
+        #get the next command that hasn't been included in a vertex yet on this qubit
+        if len(self.packed_commands) == len(self.commands):
+            raise Exception('All the commands have been packed')
+        
+        i = len(self.packed_commands) - len(self.commands)
+        return self.commands[i]
 
     def commands_to_pack(self):
-        return len(self.commands) - len(self.get_packed_commands())
+        return len(self.commands) - len(self.packed_commands)
 
     def add_cmd_to_current_vertex(self, cmd):
         self.vertices[self.current_vertex].append(cmd)
+        self.packed_commands.append(cmd)
