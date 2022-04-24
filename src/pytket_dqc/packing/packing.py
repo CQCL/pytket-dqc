@@ -14,10 +14,10 @@ def is_global(command):
     :return: If the command is global.
     :rtype: bool
     """
-    if len(command.qubits) != 2:
-        raise Exception("This command is not a two qubit command")
+    if len(command.qubits) > 2:
+        raise Exception("This command is not a one/two qubit command")
     
-    return (len(command.qubits) > 1) and (not command.qubits[0].reg_name == command.qubits[1].reg_name)
+    return (len(command.qubits) > 1) and (command.qubits[0].reg_name != command.qubits[1].reg_name)
 
 def is_diagonal(command):
     """Boolean function that determines if a given command has an associated matrix representation (in the computational basis) that is diagonal.
@@ -28,7 +28,8 @@ def is_diagonal(command):
     :return: If the command is diagonal.
     :rtype: bool
     """
-
+    if command.op.type == OpType.Rz: #::TODO There is probably a better way to handle symbolic gates..
+        return True
     array = command.op.get_unitary()
     i, j = array.shape
     test = array.reshape(-1)[:-1].reshape(i-1, j+1)
@@ -144,26 +145,26 @@ def in_matching(matching, edge):
     vertex = edge[0]
     return (vertex in matching.keys()) and (matching[vertex] == edge[1]) #this may break if short circuiting is removed at somepoint
 
-def minimum_vertex_cover(graph):
+def minimum_vertex_cover(bipartite_graph):
     """Find a minimum vertex cover of a graph. The notation and algorithm is taken from https://en.wikipedia.org/wiki/K%C5%91nig%27s_theorem_(graph_theory)
 
-    :param graph: The graph in question.
-    :type graph: .BipartiteGraph
+    :param bipartite_graph: The graph in question.
+    :type bipartite_graph: .BipartiteGraph
     :return: A minimum vertex cover.
     :rtype: set
     """
 
-    L = graph.left_vertices
-    R = graph.right_vertices
-    M = hk(graph.edges_from_left_only()).maximum_matching()
-    U = unmatched_vertices(graph, M, L)
+    L = bipartite_graph.left_vertices
+    R = bipartite_graph.right_vertices
+    M = hk(bipartite_graph.edges_from_left_only()).maximum_matching()
+    U = unmatched_vertices(bipartite_graph, M, L)
     Z = set()
     Z.update(U)
-    n_vertices = len(graph.full_graph)
+    n_vertices = len(bipartite_graph.full_graph)
     
     #find all the vertices connected by an alternating path
     for vertex in U:
-        connected = connected_by_alternating_path(graph, vertex, M)
+        connected = connected_by_alternating_path(bipartite_graph, vertex, M)
         Z.update(connected)
 
     return ((L - Z) | (R & Z))
@@ -287,6 +288,50 @@ def to_bipartite(circ, ancilla_limits = (-1, -1), simultaneous_max = False, debu
                     q1.close_vertex()
                 
         
+        #Case: local controlled gate
+        elif len(cmd.qubits) == 2:
+            q1 = bipartite_qubits[cmd.qubits[1]]
+            server1 = server0
+
+            #if there is no active vertex on q0, open one
+            if q0.current_vertex == None:
+                q0.open_vertex(current_vertex_index, server0)
+                current_vertex_index += 1
+
+            #repeat of the above if statements
+            if q1.current_vertex == None:
+                q1.open_vertex(current_vertex_index, server1)
+                current_vertex_index += 1
+
+            #add the commands to their relevant vertices
+            q0.add_cmd_to_current_vertex(cmd)
+            q1.add_cmd_to_current_vertex(cmd)
+
+            #close off vertex if there are no more commands on the qubit to pack <----------------- you are here
+            if q0.commands_to_pack() == 0:
+                server1 = [qreg for qreg in servers.values() if qreg != server0][0]
+                if q0.current_vertex in server1.currently_packing:
+                    server1.currently_packing.remove(q0.current_vertex)
+                q0.close_vertex()
+
+            # close off vertex if the next command is a non (anti) diagonal gate
+            # fixes issues with memory count problems
+            else:
+                next_command = q0.next_command()
+                if not(is_diagonal(next_command) or is_antidiagonal(next_command)):
+                    server1.currently_packing.remove(q0.current_vertex)
+                    q0.close_vertex()
+            
+            if q1.commands_to_pack() == 0:
+                server0.currently_packing.remove(q1.current_vertex)
+                q1.close_vertex()
+
+            else:
+                next_command = q1.next_command()
+                if not(is_diagonal(next_command) or is_antidiagonal(next_command)):
+                    server0.currently_packing.remove(q1.current_vertex)
+                    q1.close_vertex()
+
         #Case: diagonal or antidiagonal gate -> can keep packing!
         elif is_diagonal(cmd) or is_antidiagonal(cmd):
             #if there is no active vertex on this qubit, add one
@@ -295,6 +340,7 @@ def to_bipartite(circ, ancilla_limits = (-1, -1), simultaneous_max = False, debu
                 current_vertex_index += 1
 
             q0.add_cmd_to_current_vertex(cmd)
+
             if q0.commands_to_pack() == 0:
                 server1 = [qreg for qreg in servers.values() if qreg != server0][0]
                 server1.currently_packing.remove(q0.current_vertex) #the other qreg!!
@@ -344,7 +390,7 @@ def cmd_to_CZ(command, circ):
     tar = command.qubits[1]
     
     #Notation from Matsui-san's master's thesis, renamed to alpha for consistency with tket conventions
-    U = command.op.get_unitary()[[2,3],:][:, [2,3]]
+    U = command.op.get_unitary()[[2,3],:][:, [2,3]] # only works if the command is a controlled unitary (i.e. do nothing if ctr is 0)
     D, W = schur(U, output = 'complex')
     theta1 = np.angle(D[0][0])
     alpha1 = theta1 / np.pi
@@ -356,10 +402,9 @@ def cmd_to_CZ(command, circ):
     circ.add_unitary1qbox(Unitary1qBox(W), tar) #add W gate
     circ.CRz(alpha2 - alpha1, ctr, tar) #add control phase gate
     circ.add_unitary1qbox(Unitary1qBox(W.conj().T), tar) #add gate to complete decomposition
-    
     return
 
-def circ_to_CZ(circ):
+def circ_to_CZ(circ, globals_only = True):
     """Given a circuit of local gates and controlled unitary gates, return an equivalent circuit that only utilises controlled phase gates as two qubit gates.
 
     :param circ: The circuit to be converted.
@@ -374,9 +419,9 @@ def circ_to_CZ(circ):
         new_circ.add_q_register(q_reg.name, q_reg.size)
     
     for cmd in circ.get_commands():
-        if is_global(cmd):
+        if (globals_only and is_global(cmd)) or (not globals_only and len(cmd.qubits) == 2):
             cmd_to_CZ(cmd, new_circ)
-            
+
         else:
             new_circ.add_gate(cmd.op, cmd.args)
             
@@ -411,7 +456,8 @@ class BipartiteGraph:
         """
         left_only = self.full_graph.copy()
         for vertex in self.right_vertices:
-            del left_only[vertex]
+            if vertex in self.full_graph.keys():
+                del left_only[vertex]
         return left_only
 
     def edges_from_right_only(self):
