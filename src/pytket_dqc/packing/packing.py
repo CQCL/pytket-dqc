@@ -1,10 +1,10 @@
 from pytket import Circuit
-from hopcroftkarp import HopcroftKarp as hk
 import numpy as np
 from scipy.linalg import schur
 from pytket.circuit import Unitary1qBox, Unitary2qBox, Op, OpType, Command, QubitRegister, Qubit
 from warnings import warn
-import networkx as nx
+from networkx import from_dict_of_lists
+from networkx.bipartite import maximum_matching, to_vertex_cover
 
 def is_global(command):
     """Boolean function that determines if a given two qubit command is global.
@@ -50,125 +50,6 @@ def is_antidiagonal(command):
     test = array.reshape(-1)[:-1].reshape(i-1, j+1)
     return ~np.any(test[:, 1:])
 
-def unmatched_vertices(graph, matching, left_only = True):
-    """Given a graph and a matching, return a list of the vertices in the graph that are not in the matching. By default, only returns the vertices in the 'left hand side' of the bipartite graph (this is what is needed for finding minimum vertex cover).
-
-    :param graph: The graph of interest.
-    :type graph: .BipartiteGraph
-    :param matching: Maps between vertices representing edges in the matching.
-    :type matching: dict{int: int}
-    :param left_only: If True, only the vertices in the LHS of the graph are returned.
-    :type left_only: bool
-    :return: The vertices in the graph that are not in the matching.
-    :rtype: set
-    """
-
-    vertices = set()
-    for vertex in graph.full_graph.keys():
-        if vertex not in matching.keys():
-            vertices.add(vertex)
-    n_vertices = len(graph.full_graph.keys())
-    
-    if left_only:
-        vertices = vertices & graph.left_vertices
-    
-    return vertices
-
-def connected_by_alternating_path(graph, vertex, matching):
-    """Given a matching for a bipartite graph and a vertex not in the matching of that graph, return a set of vertices that are connected to the given vertex by a path that alternates between edges in the matching and not in the matching.
-
-    :param graph: The graph of interest.
-    :type graph: .BipartiteGraph
-    :param vertex: The vertex to start the alternating paths from.
-    :type vertex: int
-    :param matching: All the edges of the graph in the matching.
-    :type matching: dict{int: int}
-    :return: All the vertices connected to the starting vertex by an alternating path.
-    :rtype: set
-    """
-    
-    vertices_to_check = {vertex}
-    checked_vertices = set()
-    vertices = {vertex}
-    check_in_matching = True
-    
-    while bool(vertices_to_check): #while the set is non-empty
-        next_vertices_to_check = set()
-        for current_vertex in vertices_to_check:
-            connected = connected_vertices(graph, current_vertex, matching, not check_in_matching)
-            next_vertices_to_check.update(connected)
-            vertices.update(connected)
-            checked_vertices.add(current_vertex)
-        vertices_to_check = next_vertices_to_check - checked_vertices
-        check_in_matching = not check_in_matching
-    
-    return vertices
-        
-def connected_vertices(graph, vertex, matching, check_in_matching, include_original = False):
-    """Finds all vertices directly connected to the given vertex by edges that are/aren't in the matching.
-
-    :param graph: The bipartite graph in question.
-    :type graph: .BipartiteGraph
-    :param vertex: The vertex to search from.
-    :type vertex: int
-    :param matching: A matching on the bipartite graph.
-    :type matching: dict{int: int}
-    :param check_in_matching: If True, search for vertices connected to given vertex by an edge that is in the matching.
-    :type check_in_matching: bool
-    :param include_original: Include the given vertex in the resulting set of vertices, defaults to False
-    :type include_original: bool, optional
-    :return: All the vertices connected to the given vertex by edges that are/aren't in the matching.
-    :rtype: set
-    """
-
-    connected = graph.full_graph[vertex]
-    vertices = set()
-    for connected_vertex in connected:
-        if check_in_matching == in_matching(matching, (vertex, connected_vertex)):
-            vertices.add(connected_vertex)
-            
-    if include_original:
-        vertices.add(vertex)
-    
-    return vertices
-    
-def in_matching(matching, edge):
-    """Is a given edge in a given matching.
-
-    :param matching: The matching to check against.
-    :type matching: dict{int: int}
-    :param edge: The edge of the graph to query with. Assumed the edge is pulled from graph.full_graph.items, hence tuple.
-    :type edge: tuple
-    :return: Is the given edge in the matching.
-    :rtype: bool
-    """
-    vertex = edge[0]
-    return (vertex in matching.keys()) and (matching[vertex] == edge[1]) #this may break if short circuiting is removed at somepoint
-
-def minimum_vertex_cover(bipartite_graph):
-    """Find a minimum vertex cover of a graph. The notation and algorithm is taken from https://en.wikipedia.org/wiki/K%C5%91nig%27s_theorem_(graph_theory)
-
-    :param bipartite_graph: The graph in question.
-    :type bipartite_graph: .BipartiteGraph
-    :return: A minimum vertex cover.
-    :rtype: set
-    """
-
-    L = bipartite_graph.left_vertices
-    R = bipartite_graph.right_vertices
-    M = hk(bipartite_graph.edges_from_left_only()).maximum_matching()
-    U = unmatched_vertices(bipartite_graph, M, L)
-    Z = set()
-    Z.update(U)
-    n_vertices = len(bipartite_graph.full_graph)
-    
-    #find all the vertices connected by an alternating path
-    for vertex in U:
-        connected = connected_by_alternating_path(bipartite_graph, vertex, M)
-        Z.update(connected)
-
-    return ((L - Z) | (R & Z))
-
 def to_bipartite(circ, ancilla_limits = (-1, -1), simultaneous_max = False, debugging = False):
     """Generate a bipartite graph for a given circuit, with specific rules to determine which commands can be grouped together into a single vertex.
 
@@ -196,7 +77,7 @@ def to_bipartite(circ, ancilla_limits = (-1, -1), simultaneous_max = False, debu
     
     current_vertex_index = 0 #tracks how many vertices have been made
 
-    bipartite_qubits = {}
+    bipartite_qubits = {} #dictionary tracking all the qubits
     
     #create empty vertices for each qubit
     for qubit in circ.qubits:
@@ -215,58 +96,65 @@ def to_bipartite(circ, ancilla_limits = (-1, -1), simultaneous_max = False, debu
         q0 = bipartite_qubits[cmd.qubits[0]]
         server0 = servers[q0.reg_name]
 
-        #Case: global command
+        #Case: CZ
         if len(cmd.qubits) > 1 and is_global(cmd):
             q1 = bipartite_qubits[cmd.qubits[1]]
             server1 = servers[q1.reg_name]
 
-            #if there is no active vertex on q0, open one
-            if q0.current_vertex == None:
-                if server1.is_full(): #close the most recently opened vertex on this server
-                #This is not optimal choice
-                    server0.close_prev_vertex(server1)
+            #Case: Global CZ
+            if is_global(cmd):
+                #if there is no active vertex on q0, open one
+                if q0.current_vertex == None:
+                    if server1.is_full(): #close the most recently opened vertex on this server
+                    #This is not optimal choice
+                        server0.close_prev_vertex(server1)
 
-                q0.open_vertex(current_vertex_index, server0)
-                server1.add_to_packing(q0.current_vertex)
-                graph[q0.current_vertex] = set()
-                current_vertex_index += 1
+                    q0.open_vertex(current_vertex_index, server0)
+                    server1.add_to_packing(q0.current_vertex)
+                    graph[q0.current_vertex] = set()
+                    current_vertex_index += 1
 
-            #elif there is an active vertex but we are only now adding global gates to it
-            elif q0.current_vertex not in server1.currently_packing:
-                if server1.is_full():
-                    server0.close_prev_vertex(server1)
+                #elif there is an active vertex but we are only now adding global gates to it
+                elif q0.current_vertex not in server1.currently_packing:
+                    if server1.is_full():
+                        server0.close_prev_vertex(server1)
 
-                server1.add_to_packing(q0.current_vertex)
-                graph[q0.current_vertex] = set()
+                    server1.add_to_packing(q0.current_vertex)
+                    graph[q0.current_vertex] = set()
 
-            #repeat of the above if, elif statements
-            if q1.current_vertex == None:
-                if server0.is_full():
-                    server1.close_prev_vertex(server0)
+                #repeat of the above if, elif statements
+                if q1.current_vertex == None:
+                    if server0.is_full():
+                        server1.close_prev_vertex(server0)
 
-                q1.open_vertex(current_vertex_index, server1)
-                server0.add_to_packing(q1.current_vertex)
-                graph[q1.current_vertex] = set()
-                current_vertex_index += 1
+                    q1.open_vertex(current_vertex_index, server1)
+                    server0.add_to_packing(q1.current_vertex)
+                    graph[q1.current_vertex] = set()
+                    current_vertex_index += 1
 
-            elif q1.current_vertex not in server0.currently_packing:
-                if server0.is_full():
-                    server1.close_prev_vertex(server0)
+                elif q1.current_vertex not in server0.currently_packing:
+                    if server0.is_full():
+                        server1.close_prev_vertex(server0)
 
-                graph[q1.current_vertex] = set()
-                server0.add_to_packing(q1.current_vertex)
+                    graph[q1.current_vertex] = set()
+                    server0.add_to_packing(q1.current_vertex)
+                
+                #connect the vertices in the graph
+                graph[q0.current_vertex].add(q1.current_vertex)
+                graph[q1.current_vertex].add(q0.current_vertex)
+
+            #Case: Local CZ
+            else:
+                continue
             
-            #connect the vertices in the graph
-            graph[q0.current_vertex].add(q1.current_vertex)
-            graph[q1.current_vertex].add(q0.current_vertex)
-
             #add the commands to their relevant vertices
             q0.add_cmd_to_current_vertex(cmd)
             q1.add_cmd_to_current_vertex(cmd)
 
             #close off vertex if there are no more commands on the qubit to pack
             if q0.commands_to_pack() == 0:
-                server1.currently_packing.remove(q0.current_vertex)
+                if is_global(cmd):
+                    server1.currently_packing.remove(q0.current_vertex)
                 q0.close_vertex()
 
             # close off vertex if the next command is a non (anti) diagonal gate
@@ -274,63 +162,22 @@ def to_bipartite(circ, ancilla_limits = (-1, -1), simultaneous_max = False, debu
             else:
                 next_command = q0.next_command()
                 if not(is_diagonal(next_command) or is_antidiagonal(next_command)):
-                    server1.currently_packing.remove(q0.current_vertex)
+                    if is_global(cmd): #maybe don't need this condition since won't be removed if not there?
+                        server1.currently_packing.remove(q0.current_vertex)
                     q0.close_vertex()
             
             if q1.commands_to_pack() == 0:
-                server0.currently_packing.remove(q1.current_vertex)
+                if is_global(cmd):
+                    server0.currently_packing.remove(q1.current_vertex)
                 q1.close_vertex()
 
             else:
                 next_command = q1.next_command()
                 if not(is_diagonal(next_command) or is_antidiagonal(next_command)):
-                    server0.currently_packing.remove(q1.current_vertex)
+                    if is_global(cmd):
+                        server0.currently_packing.remove(q1.current_vertex)
                     q1.close_vertex()
                 
-        
-        #Case: local controlled gate
-        elif len(cmd.qubits) == 2:
-            q1 = bipartite_qubits[cmd.qubits[1]]
-            server1 = server0
-
-            #if there is no active vertex on q0, open one
-            if q0.current_vertex == None:
-                q0.open_vertex(current_vertex_index, server0)
-                current_vertex_index += 1
-
-            #repeat of the above if statements
-            if q1.current_vertex == None:
-                q1.open_vertex(current_vertex_index, server1)
-                current_vertex_index += 1
-
-            #add the commands to their relevant vertices
-            q0.add_cmd_to_current_vertex(cmd)
-            q1.add_cmd_to_current_vertex(cmd)
-
-            #close off vertex if there are no more commands on the qubit to pack <----------------- you are here
-            if q0.commands_to_pack() == 0:
-                server1 = [qreg for qreg in servers.values() if qreg != server0][0]
-                if q0.current_vertex in server1.currently_packing:
-                    server1.currently_packing.remove(q0.current_vertex)
-                q0.close_vertex()
-
-            # close off vertex if the next command is a non (anti) diagonal gate
-            # fixes issues with memory count problems
-            else:
-                next_command = q0.next_command()
-                if not(is_diagonal(next_command) or is_antidiagonal(next_command)):
-                    server1.currently_packing.remove(q0.current_vertex)
-                    q0.close_vertex()
-            
-            if q1.commands_to_pack() == 0:
-                server0.currently_packing.remove(q1.current_vertex)
-                q1.close_vertex()
-
-            else:
-                next_command = q1.next_command()
-                if not(is_diagonal(next_command) or is_antidiagonal(next_command)):
-                    server0.currently_packing.remove(q1.current_vertex)
-                    q1.close_vertex()
 
         #Case: diagonal or antidiagonal gate -> can keep packing!
         elif is_diagonal(cmd) or is_antidiagonal(cmd):
@@ -427,6 +274,18 @@ def circ_to_CZ(circ, globals_only = True):
             
     return new_circ
 
+class BipartiteCircuit:
+
+    def __init__(self, circuit):
+        self.circuit = circuit
+    
+    def get_bipartite_graph(self):
+        return to_bipartite(self.circuit)
+
+    def minimum_vertex_cover(self):
+        bipartite_graph = self.get_bipartite_graph()
+        return minimum_vertex_cover(bipartite_graph.graph)
+
 class BipartiteGraph:
     """A class that contains different descriptions of the same bipartite graph.
     """
@@ -440,36 +299,13 @@ class BipartiteGraph:
         :param right_vertices: The set of vertices in the 'right hand side' of the bipartite graph.
         :type right_vertices: set
         """
-        self.full_graph = full_graph
+        self.graph = full_graph
         self.left_vertices = left_vertices
         self.right_vertices = right_vertices
         self.nx_graph = {}
         for key, value in self.full_graph.items():
             self.nx_graph[key] = list(value)
-        self.nx_graph = nx.from_dict_of_lists(self.nx_graph)
-    
-    def edges_from_left_only(self):
-        """Return an equivalent bipartite graph with only the left vertices as keys, listing the right vertices they are connected to.
-
-        :return: The bipartite graph with only left vertices as keys
-        :rtype: dict{int: set(int)}
-        """
-        left_only = self.full_graph.copy()
-        for vertex in self.right_vertices:
-            if vertex in self.full_graph.keys():
-                del left_only[vertex]
-        return left_only
-
-    def edges_from_right_only(self):
-        """Return an equivalent bipartite graph with only the right vertices as keys, listing the left vertices they are connected to.
-
-        :return: The bipartite graph with only right vertices as keys
-        :rtype: dict{int: set(int)}
-        """
-        right_only = self.full_graph.copy()
-        for vertex in self.left_vertices:
-            del right_only[vertex]
-        return right_only
+        self.nx_graph = from_dict_of_lists(self.nx_graph)
 
 class BipartiteQReg:
     # Quantum register extended to also contain the vertices that it contains in a bipartite graph
