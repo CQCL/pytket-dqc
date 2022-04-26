@@ -2,6 +2,7 @@ from pytket import Circuit
 import numpy as np
 from scipy.linalg import schur
 from pytket.circuit import Unitary1qBox, Unitary2qBox, Op, OpType, Command, QubitRegister, Qubit
+from pytket.transform import Transform
 from warnings import warn
 from networkx import from_dict_of_lists
 from networkx.algorithms.bipartite import maximum_matching, to_vertex_cover
@@ -249,16 +250,41 @@ def cmd_to_CZ(command, circ):
     #Notation from Matsui-san's master's thesis, renamed to alpha for consistency with tket conventions
     U = command.op.get_unitary()[[2,3],:][:, [2,3]] # only works if the command is a controlled unitary (i.e. do nothing if ctr is 0)
     D, W = schur(U, output = 'complex')
+
+    H = 2**(-0.5) * np.matrix([
+        [1, 1],
+        [1, -1]
+    ])
+
+    I = np.identity(2)
+
     theta1 = np.angle(D[0][0])
     alpha1 = theta1 / np.pi
     
     theta2 = np.angle(D[1][1])
     alpha2 = theta2 / np.pi
     
-    circ.Rz(alpha1, ctr) #add local phase gate
-    circ.add_unitary1qbox(Unitary1qBox(W), tar) #add W gate
-    circ.CRz(alpha2 - alpha1, ctr, tar) #add control phase gate
-    circ.add_unitary1qbox(Unitary1qBox(W.conj().T), tar) #add gate to complete decomposition
+    if alpha1 != 0.0: #don't bother if they rotation angle is 0
+        circ.Rz(alpha1, ctr) #add local phase gate
+
+    if W.all() == I.all() or W.all() == (-1 * I).all(): #don't do anything
+        pass
+    elif (W @ H).round(10).all() == I.all() or (W @ H).round(10).all() == (-1 * I).all(): #if W is Hadamard, then add that
+        circ.H(tar)
+    else:
+        circ.add_unitary1qbox(Unitary1qBox(W), tar) #add W gate
+
+    if alpha2 - alpha1 == 1.0: #if it's a Cz, add that
+        circ.CZ(ctr, tar)
+    else:
+        circ.CRz(alpha2 - alpha1, ctr, tar) # else add arbitrary control phase gate
+
+    if W.all() == I.all() or W.all() == (-1 * I).all():
+        pass
+    elif (W @ H).round(10).all() == I.all() or (W @ H).round(10).all() == (-1 * I).all(): #if W is Hadamard, then add that
+        circ.H(tar)
+    else:
+        circ.add_unitary1qbox(Unitary1qBox(W.conj().T), tar) #add W gate
     return
 
 def circ_to_CZ(circ, globals_only = True):
@@ -287,17 +313,28 @@ def circ_to_CZ(circ, globals_only = True):
 def is_packable(command):
     return command.op.type == OpType.CZ or is_diagonal(command) or is_antidiagonal(command)
 
+def preprocess(circuit): #convert the circuit to CZ and local gates, then merge together local gates where possible
+        new_circuit = circ_to_CZ(circuit, globals_only=False)
+        Transform.while_repeat(
+            Transform.RemoveRedundancies(),
+            Transform.CommuteThroughMultis()
+            ).apply(new_circuit)
+        return new_circuit
+
 class BipartiteCircuit:
 
     def __init__(self, circuit):
-        self.circuit = circuit
+        self.circuit = preprocess(circuit)
     
     def get_bipartite_graph(self):
         return to_bipartite(self.circuit)
 
     def minimum_vertex_cover(self):
         bipartite_graph = self.get_bipartite_graph()
-        matching = maximum_matching(bipartite_graph.nx_graph, top_nodes = bipartite_graph.left_vertices)
+        matching = maximum_matching(
+            bipartite_graph.nx_graph,
+            top_nodes = bipartite_graph.left_vertices
+            )
         return to_vertex_cover(bipartite_graph.nx_graph, matching, bipartite_graph.left_vertices)
 
 class BipartiteGraph:
