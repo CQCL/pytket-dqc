@@ -4,7 +4,7 @@ from scipy.linalg import schur
 from pytket.circuit import Unitary1qBox, Unitary2qBox, Op, OpType, Command, QubitRegister, Qubit
 from warnings import warn
 from networkx import from_dict_of_lists
-from networkx.bipartite import maximum_matching, to_vertex_cover
+from networkx.algorithms.bipartite import maximum_matching, to_vertex_cover
 
 def is_global(command):
     """Boolean function that determines if a given two qubit command is global.
@@ -97,7 +97,7 @@ def to_bipartite(circ, ancilla_limits = (-1, -1), simultaneous_max = False, debu
         server0 = servers[q0.reg_name]
 
         #Case: CZ
-        if len(cmd.qubits) > 1 and is_global(cmd):
+        if len(cmd.qubits) > 1:
             q1 = bipartite_qubits[cmd.qubits[1]]
             server1 = servers[q1.reg_name]
 
@@ -145,7 +145,16 @@ def to_bipartite(circ, ancilla_limits = (-1, -1), simultaneous_max = False, debu
 
             #Case: Local CZ
             else:
-                continue
+                #open a vertex if none is open
+                if q0.current_vertex == None:
+                    q0.open_vertex(current_vertex_index, server0)
+                    current_vertex_index += 1
+
+
+                #repeat of the above if, elif statements
+                if q1.current_vertex == None:
+                    q1.open_vertex(current_vertex_index, server1)
+                    current_vertex_index += 1
             
             #add the commands to their relevant vertices
             q0.add_cmd_to_current_vertex(cmd)
@@ -153,7 +162,7 @@ def to_bipartite(circ, ancilla_limits = (-1, -1), simultaneous_max = False, debu
 
             #close off vertex if there are no more commands on the qubit to pack
             if q0.commands_to_pack() == 0:
-                if is_global(cmd):
+                if q0.current_vertex in server1.currently_packing:
                     server1.currently_packing.remove(q0.current_vertex)
                 q0.close_vertex()
 
@@ -161,26 +170,27 @@ def to_bipartite(circ, ancilla_limits = (-1, -1), simultaneous_max = False, debu
             # fixes issues with memory count problems
             else:
                 next_command = q0.next_command()
-                if not(is_diagonal(next_command) or is_antidiagonal(next_command)):
-                    if is_global(cmd): #maybe don't need this condition since won't be removed if not there?
+                if not(is_packable(next_command)):
+                    if q0.current_vertex in server1.currently_packing:
                         server1.currently_packing.remove(q0.current_vertex)
                     q0.close_vertex()
+                del next_command
             
             if q1.commands_to_pack() == 0:
-                if is_global(cmd):
+                if q1.current_vertex in server0.currently_packing:
                     server0.currently_packing.remove(q1.current_vertex)
                 q1.close_vertex()
 
             else:
                 next_command = q1.next_command()
-                if not(is_diagonal(next_command) or is_antidiagonal(next_command)):
-                    if is_global(cmd):
+                if not is_packable(next_command):
+                    if q1.current_vertex in server0.currently_packing:
                         server0.currently_packing.remove(q1.current_vertex)
                     q1.close_vertex()
+                del next_command
                 
-
-        #Case: diagonal or antidiagonal gate -> can keep packing!
-        elif is_diagonal(cmd) or is_antidiagonal(cmd):
+        #Case: 1 qubit diagonal or antidiagonal gate -> can keep packing! Note this conditions is true also if the command is CZ, but if command is CZ earlier if should have triggered
+        elif is_packable(cmd):
             #if there is no active vertex on this qubit, add one
             if q0.current_vertex == None:
                 q0.open_vertex(current_vertex_index, server0)
@@ -193,7 +203,7 @@ def to_bipartite(circ, ancilla_limits = (-1, -1), simultaneous_max = False, debu
                 server1.currently_packing.remove(q0.current_vertex) #the other qreg!!
                 q0.close_vertex()
 
-        #Case: a local unitary that cannot be packed -> if the vertex is being packed, add the command and close the vertex, else open a new vertex
+        #Case: a 1 qubit unitary that cannot be packed -> if the vertex is being packed, add the command and close the vertex, else open a new vertex
         else:
             if q0.current_vertex == None:
                 q0.open_vertex(current_vertex_index, server0)
@@ -274,6 +284,9 @@ def circ_to_CZ(circ, globals_only = True):
             
     return new_circ
 
+def is_packable(command):
+    return command.op.type == OpType.CZ or is_diagonal(command) or is_antidiagonal(command)
+
 class BipartiteCircuit:
 
     def __init__(self, circuit):
@@ -284,7 +297,8 @@ class BipartiteCircuit:
 
     def minimum_vertex_cover(self):
         bipartite_graph = self.get_bipartite_graph()
-        return minimum_vertex_cover(bipartite_graph.graph)
+        matching = maximum_matching(bipartite_graph.nx_graph, top_nodes = bipartite_graph.left_vertices)
+        return to_vertex_cover(bipartite_graph.nx_graph, matching, bipartite_graph.left_vertices)
 
 class BipartiteGraph:
     """A class that contains different descriptions of the same bipartite graph.
@@ -303,7 +317,7 @@ class BipartiteGraph:
         self.left_vertices = left_vertices
         self.right_vertices = right_vertices
         self.nx_graph = {}
-        for key, value in self.full_graph.items():
+        for key, value in self.graph.items():
             self.nx_graph[key] = list(value)
         self.nx_graph = from_dict_of_lists(self.nx_graph)
 
