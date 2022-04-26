@@ -94,6 +94,7 @@ class DistributedCircuit(Hypergraph):
         self.add_vertex(vertex)
         self.vertex_circuit_map[vertex] = {'type': 'qubit', 'node': qubit}
 
+    # TODO: I don't think this is sufficiently useful to justify having
     def get_qubit_vertices(self):
         return [
             vertex
@@ -134,7 +135,6 @@ class DistributedCircuit(Hypergraph):
         if not dqc_gateset_predicate.verify(self.circuit):
             raise Exception("The inputted circuit is not in a valid gateset.")
 
-        # command_list_count = []
         two_q_gate_count = 0
         # For each command in the circuit, add the command to a list.
         # If the command is a CZ, CRz or CX, store n, where the
@@ -232,17 +232,33 @@ class DistributedCircuit(Hypergraph):
             if len(hyperedge) > 1:
                 self.add_hyperedge(hyperedge)
 
-    def to_relabeled_registers(self, placement: Placement):
+    def to_relabeled_registers(self, placement: Placement) -> Circuit:
+        """Relabel qubits to match their placement.
+
+        :param placement: Placement of hypergraph vertices onto servers.
+        :type placement: Placement
+        :raises Exception: Raised if the placement is not valid.
+        :return: Circuit with qubits relabeled to match servers.
+        :rtype: Circuit
+        """
 
         if not self.is_placement(placement):
             raise Exception("This is not a valid placement for this circuit.")
 
-        qubit_vertices = self.get_qubit_vertices()
+        # List of vertices which correspond to qubits.
+        qubit_vertices = [
+            vertex
+            for vertex in self.vertex_list
+            if self.vertex_circuit_map[vertex]['type'] == 'qubit'
+        ]
+        # List of servers used by qubits in the placements.
         servers_used = set([
             server
             for vertex, server in placement.placement.items()
             if vertex in qubit_vertices
         ])
+        # Dictionary mapping servers to a list of the qubits which have been
+        # placed there.
         server_to_vertex_dict = {
             server: [
                 vertex
@@ -253,24 +269,37 @@ class DistributedCircuit(Hypergraph):
         }
 
         circ = Circuit()
+        # Map from servers to the qubit registers it contains.
         server_register_map = {}
+        # Add registers to new circuit.
         for server, vertex_list in server_to_vertex_dict.items():
             server_register_map[server] = circ.add_q_register(
                 f'Server {server}', len(vertex_list))
 
+        # Build map from circuit qubits to server registers
         qubit_qubit_map = {}
         for server, register in server_register_map.items():
             for i, qubit_vertex in enumerate(server_to_vertex_dict[server]):
                 qubit_qubit_map[self.vertex_circuit_map[qubit_vertex]
                                 ['node']] = register[i]
 
+        # Rebuild circuit using mapping from circuit qubits to server
+        # registers.
         for gate in self.circuit.get_commands():
             circ.add_gate(gate.op, [qubit_qubit_map[orig_qubit]
                           for orig_qubit in gate.args])
 
         return circ
 
-    def to_pytket_circuit(self, placement: Placement):
+    def to_pytket_circuit(self, placement: Placement) -> Circuit:
+        """Convert circuit to one including required distributed gates.
+
+        :param placement: Placement of hypergraph vertices onto servers.
+        :type placement: Placement
+        :raises Exception: Raised if the placement is not valid.
+        :return: Circuit including distributed gates.
+        :rtype: Circuit
+        """
 
         # Initial check that placement is valid
         if not self.is_placement(placement):

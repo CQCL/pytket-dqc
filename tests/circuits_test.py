@@ -13,7 +13,7 @@ from pytket_dqc.placement import Placement
 from pytket_dqc.distributors import Brute
 from pytket_dqc.networks import NISQNetwork
 from pytket.circuit import QControlBox, Op, OpType  # type: ignore
-import pytest
+from pytket.circuit import CustomGateDef  # type: ignore
 
 
 # TODO: Test new circuit classes
@@ -199,21 +199,23 @@ def test_q_control_box_circuits():
     assert dist_circ.vertex_list == [0, 2, 3, 4, 5, 6, 1]
 
 
-def test_to_pytket_circ_CRz():
+def test_to_pytket_circuit():
 
-    network = NISQNetwork(
-        [[0, 1], [1, 2], [0, 2]],
-        {0: [0], 1: [1], 2: [2]}
-    )
+    def_circ = Circuit(2)
+    def_circ.add_barrier([0, 1])
 
-    circ = Circuit(2).CRz(0.3, 0, 1).Rx(0.3, 0).CZ(0, 1).CRz(0.3, 1, 0)
+    start_proc = CustomGateDef.define("StartingProcess", def_circ, [])
+    end_proc = CustomGateDef.define("EndingProcess", def_circ, [])
+    telep_proc = CustomGateDef.define("Teleportation", def_circ, [])
+
+    circ = Circuit(2).CZ(0, 1).Rx(0.3, 0).CZ(0, 1)
     dist_circ = DistributedCircuit(circ)
 
-    placement = Placement({0: 1, 1: 2, 2: 0, 3: 0, 4: 0})
+    placement = Placement({0: 1, 1: 2, 2: 0, 3: 0})
 
     assert dist_circ.is_placement(placement)
 
-    circ_with_dist = dist_circ.to_pytket_circuit(placement, network)
+    circ_with_dist = dist_circ.to_pytket_circuit(placement)
 
     test_circ = Circuit()
 
@@ -228,13 +230,12 @@ def test_to_pytket_circ_CRz():
         start_proc, [], [server_1[0], server_0_link_0[0]])
     test_circ.add_custom_gate(
         start_proc, [], [server_2[0], server_0_link_2[0]])
-    test_circ.CRz(0.3, server_0_link_0[0], server_0_link_2[0])
+    test_circ.CZ(server_0_link_0[0], server_0_link_2[0])
     test_circ.add_custom_gate(end_proc, [], [server_0_link_0[0], server_1[0]])
     test_circ.Rx(0.3, server_1[0])
     test_circ.add_custom_gate(
         start_proc, [], [server_1[0], server_0_link_1[0]])
     test_circ.CZ(server_0_link_1[0], server_0_link_2[0])
-    test_circ.CRz(0.3, server_0_link_2[0], server_0_link_1[0])
     test_circ.add_custom_gate(end_proc, [], [server_0_link_1[0], server_1[0]])
     test_circ.add_custom_gate(end_proc, [], [server_0_link_2[0], server_2[0]])
 
@@ -251,268 +252,3 @@ def test_to_pytket_circ_CRz():
         command.qubits for command in circ_with_dist.get_commands()]
 
     assert test_circ_command_qubits == circ_with_dist_command_qubits
-
-
-def test_to_pytket_circuit_detached_gate():
-    # This test tests the case where the gate is acted on a server to which
-    # the no qubit has been assigned.
-
-    network = NISQNetwork(
-        [[0, 1], [1, 2]],
-        {0: [0], 1: [1], 2: [2]}
-    )
-
-    circ = Circuit(2).CZ(0, 1).Rx(0.3, 0).CZ(0, 1)
-    dist_circ = DistributedCircuit(circ)
-
-    placement = Placement({0: 1, 1: 2, 2: 0, 3: 0})
-
-    assert dist_circ.is_placement(placement)
-
-    circ_with_dist = dist_circ.to_pytket_circuit(placement, network)
-
-    test_circ = Circuit()
-
-    server_1 = test_circ.add_q_register('Server 1', 1)
-    server_2 = test_circ.add_q_register('Server 2', 1)
-
-    server_0_link_0 = test_circ.add_q_register('Server 0 Link Edge 0', 1)
-    server_0_link_1 = test_circ.add_q_register('Server 0 Link Edge 1', 1)
-    server_0_link_2 = test_circ.add_q_register('Server 0 Link Edge 2', 1)
-
-    server_1_link_2 = test_circ.add_q_register('Server 1 Link Edge 2', 1)
-
-    test_circ.add_custom_gate(
-        start_proc, [], [server_1[0], server_0_link_0[0]])
-    test_circ.add_custom_gate(
-        start_proc, [], [server_2[0], server_1_link_2[0]])
-    test_circ.add_custom_gate(
-        start_proc, [], [server_1_link_2[0], server_0_link_2[0]])
-    test_circ.CZ(server_0_link_0[0], server_0_link_2[0])
-    test_circ.add_custom_gate(end_proc, [], [server_0_link_0[0], server_1[0]])
-    test_circ.Rx(0.3, server_1[0])
-    test_circ.add_custom_gate(
-        start_proc, [], [server_1[0], server_0_link_1[0]])
-    test_circ.CZ(server_0_link_1[0], server_0_link_2[0])
-    test_circ.add_custom_gate(end_proc, [], [server_0_link_1[0], server_1[0]])
-    test_circ.add_custom_gate(
-        end_proc, [], [server_0_link_2[0], server_1_link_2[0]])
-    test_circ.add_custom_gate(end_proc, [], [server_1_link_2[0], server_2[0]])
-
-    # TODO: Ideally we would compare the circuits directly here, rather than
-    # checking the command names. This is prevented by a feature of TKET
-    # which required each new box have its own unique ID. This is currently
-    # being looked into.
-
-    test_circ_command_names = [command.op.get_name()
-                               for command in test_circ.get_commands()]
-    circ_with_dist_command_names = [
-        command.op.get_name() for command in circ_with_dist.get_commands()]
-
-    assert test_circ_command_names == circ_with_dist_command_names
-
-    test_circ_command_qubits = [
-        command.qubits for command in test_circ.get_commands()]
-    circ_with_dist_command_qubits = [
-        command.qubits for command in circ_with_dist.get_commands()]
-
-    assert test_circ_command_qubits == circ_with_dist_command_qubits
-
-    assert test_circ.q_registers == circ_with_dist.q_registers
-
-
-def test_to_pytket_circuit_gates_on_different_servers():
-
-    network = NISQNetwork(
-        [[0, 1], [1, 2]],
-        {0: [0], 1: [1], 2: [2]}
-    )
-
-    circ = Circuit(2).CZ(0, 1).Rx(0.3, 1).CZ(0, 1)
-    dist_circ = DistributedCircuit(circ)
-
-    placement = Placement({0: 1, 1: 2, 2: 0, 3: 1})
-
-    assert dist_circ.is_placement(placement)
-
-    circ_with_dist = dist_circ.to_pytket_circuit(placement, network)
-
-    test_circ = Circuit()
-
-    server_1 = test_circ.add_q_register('Server 1', 1)
-    server_2 = test_circ.add_q_register('Server 2', 1)
-
-    server_0_link_0 = test_circ.add_q_register('Server 0 Link Edge 0', 1)
-    server_0_link_1 = test_circ.add_q_register('Server 0 Link Edge 1', 1)
-    server_1_link_1 = test_circ.add_q_register('Server 1 Link Edge 1', 1)
-    server_1_link_2 = test_circ.add_q_register('Server 1 Link Edge 2', 1)
-
-    test_circ.add_custom_gate(
-        start_proc, [], [server_1[0], server_0_link_0[0]])
-    test_circ.add_custom_gate(
-        start_proc, [], [server_2[0], server_1_link_1[0]])
-    test_circ.add_custom_gate(
-        start_proc, [], [server_1_link_1[0], server_0_link_1[0]])
-    test_circ.CZ(server_0_link_0[0], server_0_link_1[0])
-    test_circ.add_custom_gate(
-        end_proc, [], [server_0_link_1[0], server_1_link_1[0]])
-    test_circ.add_custom_gate(end_proc, [], [server_1_link_1[0], server_2[0]])
-    test_circ.Rx(0.3, server_2[0])
-    test_circ.add_custom_gate(
-        start_proc, [], [server_2[0], server_1_link_2[0]])
-    test_circ.CZ(server_1[0], server_1_link_2[0])
-    test_circ.add_custom_gate(end_proc, [], [server_0_link_0[0], server_1[0]])
-    test_circ.add_custom_gate(end_proc, [], [server_1_link_2[0], server_2[0]])
-
-    test_circ_command_names = [command.op.get_name()
-                               for command in test_circ.get_commands()]
-    circ_with_dist_command_names = [
-        command.op.get_name() for command in circ_with_dist.get_commands()]
-
-    assert test_circ_command_names == circ_with_dist_command_names
-
-    test_circ_command_qubits = [
-        command.qubits for command in test_circ.get_commands()]
-    circ_with_dist_command_qubits = [
-        command.qubits for command in circ_with_dist.get_commands()]
-
-    assert test_circ_command_qubits == circ_with_dist_command_qubits
-
-    assert test_circ.q_registers == circ_with_dist.q_registers
-
-
-def test_to_pytket_circuit_with_branching_distribution_tree():
-
-    network = NISQNetwork(
-        [[2, 1], [1, 0], [1, 3], [0, 4]],
-        {0: [0], 1: [1], 2: [2], 3: [3], 4: [4]}
-    )
-
-    two_CZ_circ = Circuit(3).CZ(0, 1).CZ(0, 2)
-    dist_two_CZ_circ = DistributedCircuit(two_CZ_circ)
-
-    placement_two = Placement({0: 0, 1: 2, 2: 3, 3: 2, 4: 3})
-    circ_with_dist = dist_two_CZ_circ.to_pytket_circuit(placement_two, network)
-
-    test_circ = Circuit()
-
-    server_0 = test_circ.add_q_register('Server 0', 1)
-    server_2 = test_circ.add_q_register('Server 2', 1)
-    server_3 = test_circ.add_q_register('Server 3', 1)
-
-    server_1_link_0 = test_circ.add_q_register('Server 1 Link Edge 0', 1)
-    server_2_link_0 = test_circ.add_q_register('Server 2 Link Edge 0', 1)
-    server_3_link_0 = test_circ.add_q_register('Server 3 Link Edge 0', 1)
-
-    test_circ.add_custom_gate(
-        start_proc, [], [server_0[0], server_1_link_0[0]])
-    test_circ.add_custom_gate(
-        start_proc, [], [server_1_link_0[0], server_2_link_0[0]])
-    test_circ.add_custom_gate(
-        start_proc, [], [server_1_link_0[0], server_3_link_0[0]])
-
-    test_circ.CZ(server_2_link_0[0], server_2[0])
-    test_circ.CZ(server_3_link_0[0], server_3[0])
-
-    test_circ.add_custom_gate(
-        end_proc, [], [server_3_link_0[0], server_1_link_0[0]])
-    test_circ.add_custom_gate(
-        end_proc, [], [server_2_link_0[0], server_1_link_0[0]])
-    test_circ.add_custom_gate(
-        end_proc, [], [server_1_link_0[0], server_0[0]])
-
-    test_circ_command_names = [command.op.get_name()
-                               for command in test_circ.get_commands()]
-    circ_with_dist_command_names = [
-        command.op.get_name() for command in circ_with_dist.get_commands()]
-
-    assert test_circ_command_names == circ_with_dist_command_names
-
-    test_circ_command_qubits = [
-        command.qubits for command in test_circ.get_commands()]
-    circ_with_dist_command_qubits = [
-        command.qubits for command in circ_with_dist.get_commands()]
-
-    assert test_circ_command_qubits == circ_with_dist_command_qubits
-
-    assert test_circ.q_registers == circ_with_dist.q_registers
-
-
-def test_to_pytket_circuit_with_teleportation():
-
-    network = NISQNetwork(
-        [[0, 1], [1, 2], [1, 3]],
-        {0: [0], 1: [1], 2: [2], 3: [3]}
-    )
-
-    circ = Circuit(2).CZ(0, 1).Rx(0.3, 1).CX(1, 0)
-    dist_circ = DistributedCircuit(circ)
-
-    placement = Placement({0: 1, 1: 2, 2: 0, 3: 2})
-    assert dist_circ.is_placement(placement)
-
-    circ_with_dist = dist_circ.to_pytket_circuit(placement, network)
-
-    test_circ = Circuit()
-
-    server_1 = test_circ.add_q_register('Server 1', 1)
-    server_2 = test_circ.add_q_register('Server 2', 1)
-
-    server_0_link_0 = test_circ.add_q_register('Server 0 Link Edge 0', 1)
-    server_0_link_2 = test_circ.add_q_register('Server 0 Link Edge 2', 1)
-    server_1_link_2 = test_circ.add_q_register('Server 1 Link Edge 2', 1)
-    server_2_link_1 = test_circ.add_q_register('Server 2 Link Edge 1', 1)
-
-    test_circ.add_custom_gate(
-        start_proc, [], [server_1[0], server_0_link_0[0]])
-    test_circ.add_custom_gate(
-        start_proc, [], [server_2[0], server_1_link_2[0]])
-    test_circ.add_custom_gate(
-        start_proc, [], [server_1_link_2[0], server_0_link_2[0]])
-    test_circ.CZ(server_0_link_0[0], server_0_link_2[0])
-    test_circ.add_custom_gate(end_proc, [], [server_0_link_0[0], server_1[0]])
-    test_circ.add_custom_gate(
-        end_proc, [], [server_0_link_2[0], server_1_link_2[0]])
-    test_circ.add_custom_gate(end_proc, [], [server_1_link_2[0], server_2[0]])
-    test_circ.Rx(0.3, server_2[0])
-    test_circ.add_custom_gate(
-        telep_proc, [], [server_1[0], server_2_link_1[0]])
-    test_circ.CX(server_2[0], server_2_link_1[0])
-    test_circ.add_custom_gate(
-        telep_proc, [], [server_2_link_1[0], server_1[0]])
-
-    test_circ_command_names = [command.op.get_name()
-                               for command in test_circ.get_commands()]
-    circ_with_dist_command_names = [
-        command.op.get_name() for command in circ_with_dist.get_commands()]
-
-    assert test_circ_command_names == circ_with_dist_command_names
-
-    test_circ_command_qubits = [
-        command.qubits for command in test_circ.get_commands()]
-    circ_with_dist_command_qubits = [
-        command.qubits for command in circ_with_dist.get_commands()]
-
-    assert test_circ_command_qubits == circ_with_dist_command_qubits
-
-    assert test_circ.q_registers == circ_with_dist.q_registers
-
-
-def test_to_relabeled_registers():
-
-    circ = Circuit(3)
-    circ.CZ(0, 1).Rx(0.3, 0).CZ(0, 1)
-    dist_circ = DistributedCircuit(circ)
-
-    placement = Placement({0: 1, 1: 2, 2: 2, 3: 0, 4: 1})
-    assert dist_circ.is_placement(placement)
-
-    circ_with_dist = dist_circ.to_relabeled_registers(placement)
-
-    test_circ = Circuit()
-    server_1 = test_circ.add_q_register('Server 1', 1)
-    server_2 = test_circ.add_q_register('Server 2', 2)
-    test_circ.CZ(server_1[0], server_2[0]).Rx(
-        0.3, server_1[0]).CZ(server_1[0], server_2[0])
-
-    assert circ_with_dist == test_circ
