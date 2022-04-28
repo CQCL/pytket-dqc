@@ -30,9 +30,6 @@ jobs:
           submodules: recursive
           fetch-depth: 1
 
-      - name: Check site-package location
-        run: python -m site
-
       - name: Install kahypar
         run: |
           mkdir build && cd build
@@ -40,6 +37,7 @@ jobs:
           make
           cd python
           make
+          python -m site
           cp kahypar.cpython-39-x86_64-linux-gnu.so /opt/hostedtoolcache/Python/3.9.12/x64/lib/python3.9/site-packages
 
       - name: Checkout pytket-dqc
