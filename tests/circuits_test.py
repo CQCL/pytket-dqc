@@ -185,6 +185,11 @@ def test_to_pytket_circuit():
     test_circ.add_custom_gate(end_proc, [], [server_0_link_1[0], server_1[0]])
     test_circ.add_custom_gate(end_proc, [], [server_0_link_2[0], server_2[0]])
 
+    #TODO: Ideally we would compare the circuits directly here, rather than
+    # checking the command names. This is prevented by a feature of TKET
+    # which required each new box have its own unique ID. This is currently
+    # being looked into.
+
     test_circ_command_names = [command.op.get_name()
                                for command in test_circ.get_commands()]
     circ_with_dist_command_names = [
@@ -198,3 +203,21 @@ def test_to_pytket_circuit():
         command.qubits for command in circ_with_dist.get_commands()]
 
     assert test_circ_command_qubits == circ_with_dist_command_qubits
+
+def test_to_relabeled_registers():
+
+    circ = Circuit(3)
+    circ.CZ(0,1).Rx(0.3,0).CZ(0,1)
+    dist_circ = DistributedCircuit(circ)
+
+    placement = Placement({0:1, 1:2, 2:2, 3:0, 4:1})
+    assert dist_circ.is_placement(placement)
+
+    circ_with_dist = dist_circ.to_relabeled_registers(placement)
+
+    test_circ = Circuit()
+    server_1 = test_circ.add_q_register('Server 1', 1)
+    server_2 = test_circ.add_q_register('Server 2', 2)
+    test_circ.CZ(server_1[0], server_2[0]).Rx(0.3,server_1[0]).CZ(server_1[0], server_2[0])
+
+    assert circ_with_dist == test_circ
