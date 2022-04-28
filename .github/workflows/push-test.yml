@@ -40,8 +40,10 @@ jobs:
           submodules: recursive
           fetch-depth: 1
 
-      - name: Build kahypar
-        if: ${{ steps.cache-kahypar.outputs.cache-hit != 'true' }}
+      - name: Check site-package location
+        run: python -m site
+
+      - name: Install kahypar
         run: |
           mkdir build && cd build
           cmake .. -DCMAKE_BUILD_TYPE=RELEASE -DKAHYPAR_PYTHON_INTERFACE=1 -DBUILD_TESTING=OFF
