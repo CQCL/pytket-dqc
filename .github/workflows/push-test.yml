@@ -30,6 +30,9 @@ jobs:
           submodules: recursive
           fetch-depth: 1
 
+      - name: Check site-package location
+        run: python -m site
+
       - name: Install kahypar
         run: |
           mkdir build && cd build
