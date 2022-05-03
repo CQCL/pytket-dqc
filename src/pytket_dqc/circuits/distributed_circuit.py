@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from .hypergraph import Hypergraph
-from pytket.predicates import GateSetPredicate  # type: ignore
 from pytket import OpType, Circuit
 from scipy.stats import unitary_group  # type: ignore
 import numpy as np
@@ -10,16 +9,13 @@ from pytket.circuit import Unitary2qBox  # type: ignore
 import networkx as nx  # type: ignore
 import random
 from pytket.passes import auto_rebase_pass
+from pytket_dqc.utils.gateset import dqc_gateset_predicate
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from pytket.circuit import Command  # type: ignore
     from pytket import Qubit  # type: ignore
     from pytket_dqc.placement import Placement
-
-allowed_gateset = {OpType.Rx, OpType.CZ,
-                   OpType.Rz, OpType.Measure, OpType.QControlBox}
-gateset_pred = GateSetPredicate(allowed_gateset)
 
 
 class DistributedCircuit(Hypergraph):
@@ -97,7 +93,7 @@ class DistributedCircuit(Hypergraph):
         a single control and a single target.
         """
 
-        if not gateset_pred.verify(self.circuit):
+        if not dqc_gateset_predicate.verify(self.circuit):
             raise Exception("The inputted circuit is not in a valid gateset.")
 
         command_list_count = []
