@@ -5,7 +5,7 @@ from pytket.passes import (  # type: ignore
 )
 
 #: Allowed gateset for distributors in pytket-dqc
-dqc_gateset = {OpType.Rx, OpType.CZ, OpType.Rz,
+dqc_gateset = {OpType.Rx, OpType.CZ, OpType.Rz, OpType.CX,
                OpType.Measure, OpType.QControlBox}
 
 #: Predicate for checking gateset is valid
