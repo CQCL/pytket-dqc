@@ -10,10 +10,10 @@ jobs:
     runs-on: ubuntu-latest
     steps: 
 
-      - name: Set up Python 3.9
+      - name: Set up Python 3.9.12
         uses: actions/setup-python@v2
         with:
-          python-version: 3.9
+          python-version: 3.9.12
 
       - name: Install boost
         run: sudo apt-get install libboost-all-dev
@@ -37,7 +37,7 @@ jobs:
           make
           cd python
           make
-          cp kahypar.cpython-39-x86_64-linux-gnu.so /opt/hostedtoolcache/Python/3.9.10/x64/lib/python3.9/site-packages
+          cp kahypar.cpython-39-x86_64-linux-gnu.so /opt/hostedtoolcache/Python/3.9.12/x64/lib/python3.9/site-packages
 
       - name: Checkout pytket-dqc
         uses: actions/checkout@v2
