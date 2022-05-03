@@ -17,6 +17,7 @@ Check out the :doc:`usage` section for further information, including how to
    networks
    distributors
    placement
+   utils
    :maxdepth: 2
    :caption: Contents:
 
