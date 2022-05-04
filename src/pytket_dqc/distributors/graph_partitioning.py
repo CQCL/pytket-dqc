@@ -72,8 +72,6 @@ class GraphPartitioning(Distributor):
 
         context = kahypar.Context()
 
-        # TODO: This method of loading the ini gives me some anxiety but I
-        # don't know of another way :P
         package_path = importlib_resources.files("pytket_dqc")
         default_ini = f"{package_path}/distributors/km1_kKaHyPar_sea20.ini"
         ini_path = kwargs.get("ini_path", default_ini)
