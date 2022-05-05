@@ -60,7 +60,7 @@ If you get an error saying that the file `kahypar.so` does not exist, try to fin
 
 #### Test KaHyPar
 
-You should now be able to use KaHyPar in Python. To test this, run `pytest tests/`. If an error is thrown saying either that the line `import kahypar as kahypar` fails or "Hypergraph is not an attribute of kahypar module" this means that Python cannot access the dynamic library (the `.so` file). If you get such an error it is likely something went wrong in step 6 from the instructions above, i.e. the path you copied the `.so` file is not the right one, or you copied the wrong `.so` file.
+You should now be able to use KaHyPar in Python. To test this, run `pytest tests/`. If an error is thrown saying either that the line `import kahypar as kahypar` fails or "Hypergraph is not an attribute of kahypar module" this means that Python cannot access the dynamic library (the `.so` file). If you get such an error it is likely something went wrong in step 6 from the instructions above, i.e. the path you copied to is not the right one, or you copied the wrong `.so` file.
 
 
 ### Install graphviz
