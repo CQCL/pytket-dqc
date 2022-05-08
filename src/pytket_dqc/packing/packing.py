@@ -201,7 +201,8 @@ def to_bipartite(circ, ancilla_limits = (-1, -1), simultaneous_max = False, debu
 
             if q0.commands_to_pack() == 0:
                 server1 = [qreg for qreg in servers.values() if qreg != server0][0]
-                server1.currently_packing.remove(q0.current_vertex) #the other qreg!!
+                if q0.current_vertex in server1.currently_packing:
+                    server1.currently_packing.remove(q0.current_vertex)
                 q0.close_vertex()
 
         #Case: a 1 qubit unitary that cannot be packed -> if the vertex is being packed, add the command and close the vertex, else open a new vertex
@@ -228,11 +229,22 @@ def to_bipartite(circ, ancilla_limits = (-1, -1), simultaneous_max = False, debu
             print()
             print()
 
+    #cleanse any vertices that aren't actually a part of the bipartite graph
+    top_vertices = set()
+    for vertex in left_qreg.vertices.keys():
+        if vertex in graph.keys():
+            top_vertices.add(vertex)
+
+    bottom_vertices = set()
+    for vertex in right_qreg.vertices.keys():
+        if vertex in graph.keys():
+            bottom_vertices.add(vertex)
+
     # Return the maximum number of simultaneous qubits needed
     if simultaneous_max:
-        return BipartiteGraph(graph, set(left_qreg.vertices.keys()), set(right_qreg.vertices.keys())), (left_qreg.simultaneous_max, right_qreg.simultaneous_max)
+        return BipartiteGraph(graph, top_vertices, bottom_vertices), (left_qreg.simultaneous_max, right_qreg.simultaneous_max)
 
-    return BipartiteGraph(graph, set(left_qreg.vertices.keys()), set(right_qreg.vertices.keys()))
+    return BipartiteGraph(graph, top_vertices, bottom_vertices)
 
 def cmd_to_CZ(command, circ):
     """Convert a two qubit controlled unitary gate into a controlled phase gate and local unitary gates.
@@ -326,8 +338,8 @@ class BipartiteCircuit:
     def __init__(self, circuit):
         self.circuit = preprocess(circuit)
     
-    def get_bipartite_graph(self):
-        return to_bipartite(self.circuit)
+    def get_bipartite_graph(self, debugging = False):
+        return to_bipartite(self.circuit, debugging = debugging)
 
     def minimum_vertex_cover(self):
         bipartite_graph = self.get_bipartite_graph()
