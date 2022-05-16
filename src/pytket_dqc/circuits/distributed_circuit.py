@@ -88,6 +88,17 @@ class DistributedCircuit(Hypergraph):
         self.add_vertex(vertex)
         self.vertex_circuit_map[vertex] = {'type': 'gate', 'command': command}
 
+    def is_qubit_vertex(self, vertex: int) -> bool:
+        """Checks if the given vertex corresponds to a qubit.
+
+        :param vertex: Vertex to be checked.
+        :type vertex: int
+        :return: Is it a qubit vertex.
+        :rtype: bool
+        """
+        vertex_type = self.vertex_circuit_map[vertex]['type']
+        return True if vertex_type == 'qubit' else False
+
     def from_circuit(self):
         """Method to create a hypergraph from a circuit.
 
