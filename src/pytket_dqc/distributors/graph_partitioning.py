@@ -5,6 +5,7 @@ from pytket_dqc.distributors import Distributor
 from pytket_dqc.placement import Placement
 
 from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
     from pytket_dqc import DistributedCircuit
     from pytket_dqc.networks import NISQNetwork
@@ -29,10 +30,7 @@ class GraphPartitioning(Distributor):
     # TODO: dist_circ does not need to be a DistributedCircuit and could be a
     # Hypergraph. Is there a way of specifying this in the typing?
     def distribute(
-        self,
-        dist_circ: DistributedCircuit,
-        network: NISQNetwork,
-        **kwargs
+        self, dist_circ: DistributedCircuit, network: NISQNetwork, **kwargs
     ) -> Placement:
         """Distribute ``dist_circ`` onto ``network`` using graph partitioning
         tools available in `kahypar <https://kahypar.org/>`_ package. This
@@ -60,9 +58,9 @@ class GraphPartitioning(Distributor):
         hyperedge_weights = [1 for i in range(0, num_hyperedges)]
         # Qubit vertices are given weight 1, gate vertices are given weight 0
         num_qubits = len(dist_circ.circuit.qubits)
-        vertex_weights = \
-            [1 for i in range(0, num_qubits)] + \
-            [0 for i in range(num_qubits, num_vertices)]
+        vertex_weights = [1 for i in range(0, num_qubits)] + [
+            0 for i in range(num_qubits, num_vertices)
+        ]
         # TODO: the weight assignment to vertices assumes that the index of the
         # qubit vertices range from 0 to `num_qubits`, and the rest of them
         # correspond to gates. This is currently guaranteed by construction
@@ -75,7 +73,7 @@ class GraphPartitioning(Distributor):
             hyperedges,
             num_servers,
             hyperedge_weights,
-            vertex_weights
+            vertex_weights,
         )
 
         context = kahypar.Context()
@@ -87,8 +85,9 @@ class GraphPartitioning(Distributor):
 
         kahypar.partition(hypergraph, context)
 
-        partition_list = [hypergraph.blockID(i)
-                          for i in range(hypergraph.numNodes())]
+        partition_list = [
+            hypergraph.blockID(i) for i in range(hypergraph.numNodes())
+        ]
 
         placement_dict = {i: server for i, server in enumerate(partition_list)}
 
