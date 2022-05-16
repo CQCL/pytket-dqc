@@ -7,7 +7,7 @@ from pytket_dqc.placement import Placement
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from pytket_dqc import DistributedCircuit
-    from pytket_dqc.networks import ServerNetwork
+    from pytket_dqc.networks import NISQNetwork
 
 
 class GraphPartitioning(Distributor):
