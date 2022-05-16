@@ -9,7 +9,7 @@ from pytket_dqc.distributors import (
 from pytket_dqc.distributors.annealing import acceptance_criterion
 from pytket_dqc import DistributedCircuit
 from pytket import Circuit
-from pytket_dqc.networks import NISQNetwork, ServerNetwork
+from pytket_dqc.networks import NISQNetwork
 from pytket_dqc.distributors.ordered import order_reducing_size
 from pytket_dqc.placement import Placement
 import kahypar as kahypar  # type:ignore
