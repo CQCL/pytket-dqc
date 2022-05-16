@@ -57,12 +57,12 @@ class GraphPartitioning(Distributor):
         num_servers = len(server_list)
         server_sizes = [len(network.server_qubits[s]) for s in server_list]
         # For now, all hyperedges are assumed to have the same weight
-        hyperedge_weights = [1 for i in range(0,num_hyperedges)]
+        hyperedge_weights = [1 for i in range(0, num_hyperedges)]
         # Qubit vertices are given weight 1, gate vertices are given weight 0
         num_qubits = len(dist_circ.circuit.qubits)
         vertex_weights = \
-            [1 for i in range(0,num_qubits)] + \
-            [0 for i in range(num_qubits,num_vertices)]
+            [1 for i in range(0, num_qubits)] + \
+            [0 for i in range(num_qubits, num_vertices)]
         # TODO: the weight assignment to vertices assumes that the index of the
         # qubit vertices range from 0 to `num_qubits`, and the rest of them
         # correspond to gates. This is currently guaranteed by construction
