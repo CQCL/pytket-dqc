@@ -58,21 +58,22 @@ def test_acceptance_criterion():
     assert acceptance_criterion(1, 0, 10) < 1
 
 
-def test_grpah_partitioning():
+def test_graph_partitioning():
 
-    network = ServerNetwork([[0, 1]])
+    network = NISQNetwork([[0, 1], [0, 2]], {0: [0], 1: [1, 2], 2: [3, 4]})
 
-    circ = Circuit(3).CZ(0, 1).CZ(0, 2)
+    circ = Circuit(4).CZ(0, 3).Rz(0.5, 3).CZ(
+        1, 3).Rz(0.5, 3).CZ(2, 3).Rz(0.5, 3)
     dist_circ = DistributedCircuit(circ)
-    dist_circ.draw()
 
     distributor = GraphPartitioning()
 
     placement = distributor.distribute(dist_circ, network)
-    placement_1 = Placement({0: 0, 1: 1, 2: 0, 3: 1, 4: 0})
-    placement_2 = Placement({0: 1, 1: 0, 2: 1, 3: 0, 4: 1})
+    cost = placement.cost(dist_circ, network)
+    optimal = 3
+    print(cost)
 
-    assert (placement == placement_1) or (placement == placement_2)
+    assert cost == optimal
 
 
 def test_kahypar_install():
