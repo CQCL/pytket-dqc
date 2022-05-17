@@ -341,7 +341,6 @@ def case6(qt, ops_list, dc_op_dict):
     qt.increment_s_qubit_i()
     return False
 
-
 def op_list_to_ordered_ops(op_list):
     #convert a dict of qubit: [all the op_lists whose op that act on qubit] to an ordered list of op_dicts where each op occurs once
     #code here is broken
