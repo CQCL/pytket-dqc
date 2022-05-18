@@ -14,6 +14,7 @@ from pytket_dqc.distributors.ordered import order_reducing_size
 from pytket_dqc.placement import Placement
 import kahypar as kahypar  # type:ignore
 from pytket.circuit import QControlBox, Op, OpType  # type:ignore
+import importlib_resources
 
 
 # TODO: Test that the placement returned by routing does not
@@ -89,7 +90,10 @@ def test_kahypar_install():
         num_nodes, num_nets, hyperedge_indices, hyperedges, k)
 
     context = kahypar.Context()
-    context.loadINIconfiguration("km1_kKaHyPar_sea20.ini")
+
+    package_path = importlib_resources.files("pytket_dqc")
+    ini_path = f"{package_path}/distributors/km1_kKaHyPar_sea20.ini"
+    context.loadINIconfiguration(ini_path)
 
     context.setK(k)
     context.setEpsilon(0.03)
