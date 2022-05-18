@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from .hypergraph import Hypergraph
-from pytket.predicates import GateSetPredicate  # type: ignore
 from pytket import OpType, Circuit
 from scipy.stats import unitary_group  # type: ignore
 import numpy as np
@@ -10,16 +9,13 @@ from pytket.circuit import Unitary2qBox  # type: ignore
 import networkx as nx  # type: ignore
 import random
 from pytket.passes import auto_rebase_pass
+from pytket_dqc.utils.gateset import dqc_gateset_predicate
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from pytket.circuit import Command  # type: ignore
     from pytket import Qubit  # type: ignore
     from pytket_dqc.placement import Placement
-
-allowed_gateset = {OpType.Rx, OpType.CZ,
-                   OpType.Rz, OpType.Measure, OpType.QControlBox}
-gateset_pred = GateSetPredicate(allowed_gateset)
 
 
 class DistributedCircuit(Hypergraph):
@@ -97,7 +93,7 @@ class DistributedCircuit(Hypergraph):
         a single control and a single target.
         """
 
-        if not gateset_pred.verify(self.circuit):
+        if not dqc_gateset_predicate.verify(self.circuit):
             raise Exception("The inputted circuit is not in a valid gateset.")
 
         command_list_count = []
@@ -111,7 +107,7 @@ class DistributedCircuit(Hypergraph):
                     {"command": command, "two q gate count": two_q_gate_count}
                 )
                 two_q_gate_count += 1
-            elif command.op.type == OpType.QControlBox:
+            elif command.op.type in [OpType.QControlBox, OpType.CX]:
                 if len(command.qubits) != 2:
                     raise Exception(
                         "QControlBox must have one target and one control")
@@ -119,6 +115,12 @@ class DistributedCircuit(Hypergraph):
                     {"command": command, "two q gate count": two_q_gate_count}
                 )
                 two_q_gate_count += 1
+            elif command.op.n_qubits >= 2:
+                # This elif should never be reached if the gate set predicate
+                # has been verified. This is a fail safe.
+                raise Exception(
+                    "A greater than two qubit command cannot be distributed \
+                    if it is not in the valid gate set.")
             else:
                 command_list_count.append({"command": command})
 
@@ -158,7 +160,10 @@ class DistributedCircuit(Hypergraph):
                 # lazy. Indeed, in the case where a teleportation is required,
                 # a new hyper edge need not be started, as other gates which
                 # follow may also benefit from the teleportation.
-                elif command["command"].op.type == OpType.QControlBox:
+                elif command["command"].op.type in [
+                    OpType.QControlBox,
+                    OpType.CX
+                ]:
                     if qubit == command['command'].qubits[0]:
                         vertex = command["two q gate count"] + \
                             self.circuit.n_qubits
