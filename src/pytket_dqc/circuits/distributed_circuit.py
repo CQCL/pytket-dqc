@@ -18,12 +18,9 @@ if TYPE_CHECKING:
     from pytket.circuit import QubitRegister  # type: ignore
     from pytket_dqc.placement import Placement
 
-def_circ = Circuit(2)
-def_circ.add_barrier([0, 1])
-
-start_proc = CustomGateDef.define("StartingProcess", def_circ, [])
-end_proc = CustomGateDef.define("EndingProcess", def_circ, [])
-telep_proc = CustomGateDef.define("Teleportation", def_circ, [])
+allowed_gateset = {OpType.Rx, OpType.CZ,
+                   OpType.Rz, OpType.Measure, OpType.QControlBox}
+gateset_pred = GateSetPredicate(allowed_gateset)
 
 def_circ = Circuit(2)
 def_circ.add_barrier([0, 1])
@@ -132,7 +129,7 @@ class DistributedCircuit(Hypergraph):
         created is not in the valid gate set.
         """
 
-        if not dqc_gateset_predicate.verify(self.circuit):
+        if not gateset_pred.verify(self.circuit):
             raise Exception("The inputted circuit is not in a valid gateset.")
 
         two_q_gate_count = 0
@@ -196,10 +193,7 @@ class DistributedCircuit(Hypergraph):
                 # lazy. Indeed, in the case where a teleportation is required,
                 # a new hyper edge need not be started, as other gates which
                 # follow may also benefit from the teleportation.
-                elif command["command"].op.type in [
-                    OpType.CX
-                ]:
-                    # Check if working qubit is the control
+                elif command["command"].op.type == OpType.QControlBox:
                     if qubit == command['command'].qubits[0]:
                         vertex = command["two q gate count"] + \
                             self.circuit.n_qubits
