@@ -8,16 +8,19 @@ import numpy as np
 from typing import cast
 from warnings import warn
 
-# The following code is duplicatedFROM distributed_circuit.py
+# The following code is duplicated from distributed_circuit.py
 ##########################################################################################
 def_circ = Circuit(2)
 def_circ.add_barrier([0, 1])
 
-start_proc = CustomGateDef.define('StartingProcess', def_circ, [])
-end_proc = CustomGateDef.define('EndingProcess', def_circ, [])
+sp = 'StartingProcess'
+ep = 'EndingProcess'
+
+start_proc = CustomGateDef.define(sp, def_circ, [])
+end_proc = CustomGateDef.define(ep, def_circ, [])
 
 def get_circuit_qubit_to_server_qubit_map(dist_circ, placement):
-    # A dictionary mapping servers to the qubit vertices it contains
+    # Given a placement, return a map that maps circuit qubits -> server qubits
     server_to_qubit_vertex_list = {
         server: [
             vertex for vertex in dist_circ.get_qubit_vertices()
@@ -99,45 +102,47 @@ def get_circuit_qubit_to_server_qubit_map(dist_circ, placement):
 ##########################################################################################
 
 def build_qubit_op_list(circuit):
-    # Builds a list of operators that act on each qubit in the circuit
-    # These operators are described in the form of a dictionary with two keys
+    # Given a circuit, contruct a dictionary from qubits -> [all ops that act on the qubit] where the op is stored as an OpDict.
     op_list = {}
     for qubit in circuit.qubits:
-        op_list[qubit] = [] #dict of dicts, one for each command
+        op_list[qubit] = [] # The list of OpDicts acting on the qubit.
 
-    for command in circuit.get_commands():
+    for i, command in enumerate(circuit.get_commands()):
         for qubit in command.qubits:
-            op_list[qubit].append(command_to_op_dict(command))
-
+            op_dict = command_to_op_dict(command)
+            op_list[qubit].append(op_dict)
     return op_list
 
 def is_diagonal(op):
-    # Assumes the op is in the allowed gateset
-    # Originally checked the unitary representation but this often does not return zeros when it should cause of floating point errors or some such
-    
-    if op.type == OpType.QControlBox:
-        warn('Assuming that this OpType.QControlBox is not diagonal even if it is...')
+    #Boolean function that determines if a given command has an associated matrix representation (in the computational basis) that is diagonal.
+    #This function uses the fastest answer presented here https://stackoverflow.com/questions/43884189/check-if-a-large-matrix-is-diagonal-matrix-in-python
+    # TODO: Test for symbolic Rx gates
 
     diagonal_ops = [OpType.Rz, OpType.CZ]
-    if op.type in diagonal_ops:
+    if op.type in diagonal_ops: # In this way we can handle operations with symbolic parameters.
         return True
-    elif op.type == OpType.Rx and op.params[0] % 2 == 0:
-        return True
+    try: # Assume if there's an error that it is not a diagonal gate (error is probably because symbolic).
+        array = op.get_unitary().round(12) # To stay consistent with TKET team.
+        i, j = array.shape
+        test = array.reshape(-1)[:-1].reshape(i-1, j+1)
+    except:
+        return False
+    return ~np.any(test[:, 1:])
 
-    return False
 
 def is_antidiagonal(op):
     # See is_diagonal() for discussion
-    if op.type == OpType.QControlBox:
-        warn('Assuming that this OpType.QControlBox is not antidiagonal even if it is...')
+    try:
+        array = np.flip(op.get_unitary(), 0).round(12)
+        i, j = array.shape
+        test = array.reshape(-1)[:-1].reshape(i-1, j+1)
+    except:
+        return False
+    return ~np.any(test[:, 1:])
 
-    if op.type == OpType.Rx and op.params[0] % 2 == 1:
-        return True
-    return False
 
-def remove_diagonals(circuit):
-    #remove the diagonal/antidiagonal gates from the circuit
-    #these should then be inserted back into the placed circuit later on
+def remove_packables(circuit):
+    # Contruct a new circuit from the input circuit, with all the packable 1 qubit gates removed
     new_circ = Circuit(len(circuit.qubits))
     new_circ_commands = []
 
@@ -154,11 +159,13 @@ def remove_diagonals(circuit):
     return new_circ
 
 def command_to_op_dict(command):
-    # Converts a command to an OpDict
+    # Converts a circuit.Command to an OpDict.
+
     op_dict = OpDict(command.op, command.args)
     return op_dict
 
 def add_op_dict_to_circuit(circuit, op_dict):
+    # Given an OpDict and a circuit, add the OpDict to that circuit.
     if op_dict.op.get_name() == 'StartingProcess':
         circuit.add_custom_gate(start_proc, [], op_dict.args)
     elif op_dict.op.get_name() == 'EndingProcess':
@@ -167,11 +174,11 @@ def add_op_dict_to_circuit(circuit, op_dict):
         circuit.add_gate(op_dict.op, op_dict.args)
 
 def copy_op(op):
+    # Returns a copy of a circuit.Op.
+    # This doesn't seem like a terribly efficient way to create copies of SPs and EPs though
     if op.type != OpType.CustomGate:
         return Op.create(op.type, op.params)
-    else:
-        sp = 'StartingProcess'
-        ep = 'EndingProcess'
+    else: # Can the following be improved upon?
         circ = Circuit(2)
         if op.get_name() == sp:
             circ.add_custom_gate(start_proc, [], circ.qubits)
@@ -180,10 +187,12 @@ def copy_op(op):
     return circ.get_commands()[0].op
 
 def copy_qubit(qubit):
+    # Copies a Qubit.
     copy = Qubit(name = qubit.reg_name, index = qubit.index)
     return copy
 
 def copy_qubit_ops_dict(qubit_ops_dict):
+    # Given a dictionary mapping qubit -> [all OpDicts acting on that qubit] return a copy of the dictionary.
     copy_ops_dict = {}
     for qubit, op_dict_list in qubit_ops_dict.items():
         copy_ops_dict[qubit] = []
@@ -192,36 +201,39 @@ def copy_qubit_ops_dict(qubit_ops_dict):
     return copy_ops_dict
 
 def build_l_qubit_to_s_qubit_map(dc_ops):
-    map = {}
+    # Given a dictionary mapping qubit -> [all OpDicts acting on that qubit], return a dictionary mapping link qubit -> connected server qubit.
+    l_qubit_to_s_qubit_map = {}
     for l_qubit in [qubit for qubit in dc_ops.keys() if is_l_qubit(qubit)]:
         for op_dict in dc_ops[l_qubit]:
             if op_dict.op.get_name() == 'StartingProcess':
-                map[l_qubit] = op_dict.args[0] #the s_qubit is always the 0th entry in the args
-    return map
+                l_qubit_to_s_qubit_map[l_qubit] = op_dict.args[0] #the s_qubit is always the 0th entry in the args
+    return l_qubit_to_s_qubit_map
 
 def is_l_qubit(qubit):
+    # Bool evaluation of whether a given qubit is a link qubit or not.
     return len(qubit.reg_name.split(' ')) > 2
 
-def reinsert_diag_ops(og_ops, dc_ops, c_qubit_to_s_qubit_map, debug = False):
+def reinsert_cleaned_ops(og_ops, dc_ops, c_qubit_to_s_qubit_map, debug = False):
     # Reinsert the removed (anti)diagonal gates, with correctional X gates where needed
     # o(ri)g(inal circuit)_ops - all the ops on the original circuit
     # d(istributed)c(ircuit)_ops - all the ops on the distributed circuit
     # c(ircuit)_qubit_to_s(erver)_qubit_map - a map from the circuit qubits to the server qubit they are distributed onto
 
-    # We will simply insert the removed ops into a copy of dc_ops dict    
+    log = [] # (Somewhat) helps with debugging when errors come up.
+
+    # Insert the removed ops into a copy of dc_ops dict    
     new_dc_ops = copy_qubit_ops_dict(dc_ops)
     
     sp = 'StartingProcess'
     ep = 'EndingProcess'
 
-    l_qubit_to_s_qubit = build_l_qubit_to_s_qubit_map(dc_ops) # a dict tracking which s_qubit each l_qubit is linked to
+    l_qubit_to_s_qubit = build_l_qubit_to_s_qubit_map(dc_ops) # a dictionary mapping each l_qubit -> s_qubit
 
     for c_qubit in og_ops.keys():
         s_qubit = c_qubit_to_s_qubit_map[c_qubit]
         qt = QubitTracker(c_qubit, s_qubit)
-        # print(f'{c_qubit} placed on {s_qubit}')
 
-        # We will iterate over the placed ops on the c_qubit and it's associated s_qubit.
+        # We will iterate over the placed ops on the c_qubit and its associated s_qubit.
         # Possible cases are:
         # 
         # 1) The ops match:
@@ -247,50 +259,96 @@ def reinsert_diag_ops(og_ops, dc_ops, c_qubit_to_s_qubit_map, debug = False):
         #   -> Close the l_qubit related to this EP
         #   -> (Verify all the commands have been executed?)
         #   -> Increment s_qubit_i
+        # 7) The placed_op_dict has been teleported to a server separate to both arg qubits
+        #   -> Follow onto all relevant l_qubits for s_qubit.
+        #   -> Check the current op_dict on each l_qubit and see if both the 
+        #   -> Increment l_qubit_i
  
         for og_op_dict in og_ops[c_qubit]:
-            # Place the op_dict
             placed_op_dict = og_op_dict.copy()
-            placed_op_dict.place(c_qubit_to_s_qubit_map)
+            placed_op_dict.place(c_qubit_to_s_qubit_map) # Place the op_dict
             if len(placed_op_dict.args) > 1:
                 other_arg_qubit = [qubit for qubit in placed_op_dict.args if qubit != s_qubit][0]
                 other_arg_reg_num = get_qubit_reg_num(other_arg_qubit)
-            # print()
-            # print(f'MATCHING THE FOLLOWING OP: {placed_op_dict}, s_qubit is {s_qubit}')
+            log.append(f'MATCHING THE FOLLOWING OP: {placed_op_dict}, c_qubit is {c_qubit} s_qubit is {s_qubit}\n')
         
             ops_equal = False
-            while not ops_equal:
+            while not ops_equal: # Keep looping through until the matching operation is found.
                 relevant_active_l_qubits = [l_qubit for l_qubit in qt.get_active_l_qubits() if l_qubit_to_s_qubit[l_qubit] == s_qubit]
+
+                dc_op_dict = None
                 if qt.get_s_qubit_i() < len(new_dc_ops[s_qubit]):
                     dc_op_dict = new_dc_ops[s_qubit][qt.get_s_qubit_i()]
-                else:
-                    dc_op_dict = None
+                    log.append(f'dc_op_dict is {dc_op_dict}\n')
 
-                if dc_op_dict != None and placed_op_dict.is_equal(dc_op_dict):
-                    ops_equal = case1(qt)
+                try:
+                    if ( # Case 2
+                        placed_op_dict.is_packable()
+                        and len(placed_op_dict.args) == 1
+                        ):
+                        ops_equal = case2(qt, new_dc_ops, placed_op_dict, relevant_active_l_qubits)
 
-                elif placed_op_dict.is_packable() and len(placed_op_dict.args) == 1:
-                    ops_equal = case2(qt, new_dc_ops, placed_op_dict, relevant_active_l_qubits)
+                    elif ( # Case 1
+                        dc_op_dict != None
+                        and placed_op_dict.is_equal(dc_op_dict)
+                        ):
+                        ops_equal = case1(qt)
 
-                elif dc_op_dict != None and dc_op_dict.op.get_name() == sp:
-                    ops_equal = case5(qt, dc_op_dict)
+                    elif ( # Case 5
+                        dc_op_dict != None
+                        and dc_op_dict.op.get_name() == sp
+                        ):
+                        ops_equal = case5(qt, dc_op_dict)
 
-                elif dc_op_dict != None and dc_op_dict.op.get_name() == ep:
-                    ops_equal = case6(qt, new_dc_ops, dc_op_dict)
+                    elif ( # Case 6
+                        dc_op_dict != None
+                        and dc_op_dict.op.get_name() == ep
+                        ):
+                        ops_equal = case6(qt, new_dc_ops, dc_op_dict)
 
-                elif not placed_op_dict.is_local() and any(get_qubit_reg_num(l_qubit) == other_arg_reg_num for l_qubit in relevant_active_l_qubits):
-                    ops_equal = case3(qt, new_dc_ops, placed_op_dict, relevant_active_l_qubits, other_arg_qubit, other_arg_reg_num)
+                    elif ( # Case 3
+                        not placed_op_dict.is_local()
+                        and any(get_qubit_reg_num(l_qubit) == other_arg_reg_num for l_qubit in relevant_active_l_qubits)
+                        ):
+                        try:
+                            ops_equal = case3(qt, new_dc_ops, placed_op_dict, relevant_active_l_qubits, other_arg_qubit, other_arg_reg_num)
+                        except:
+                            raise ValueError(
+                                f'''
+                                {[l_qubit for l_qubit in relevant_active_l_qubits if get_qubit_reg_num(l_qubit) == other_arg_reg_num]} is the l_qubit in question.
+                                ''')
 
-                elif not placed_op_dict.is_local():
-                    ops_equal = case4(qt, new_dc_ops, placed_op_dict, dc_op_dict, other_arg_qubit, l_qubit_to_s_qubit)
+                    elif ( # Case 4
+                        dc_op_dict != None # Must have an op_dict on this s_qubit
+                        and not placed_op_dict.is_local() # The placed_op_dict must be across two servers
+                        and len(dc_op_dict.args) > 1 # prevents failure of the next test if dc_op_dict happens to be 1 qubit gate
+                        and set([l_qubit_to_s_qubit[dc_op_dict.arg_l_qubits()[0]], s_qubit]) == set(placed_op_dict.args) # The arg qubits of the dc_op_dict must be the s_qubit and an l_qubit which links to the other_arg_qubit
+                        ):
+                        ops_equal = case4(qt, new_dc_ops, placed_op_dict, dc_op_dict, other_arg_qubit, l_qubit_to_s_qubit)
 
-                else:
-                    raise ValueError(f'''
-                    None of the 6 cases have been triggered.
-                    c_qubit: {c_qubit} is placed on s_qubit: {s_qubit}.
-                    placed_op_dict: {placed_op_dict}, dc_op_dict: {dc_op_dict}.
-                    s_qubit_i: {qt.get_s_qubit_i()}.
-                    ''')
+                    elif ( # Case 7
+                        not placed_op_dict.is_local()
+                        ): #This condition does not verify we have case 7 fully, but if we have captured all the possible cases then we should be ok. Coming up with a full condition which verifies we have case 7 would be nicer though.
+                        ops_equal = case7(qt, new_dc_ops, relevant_active_l_qubits, placed_op_dict, l_qubit_to_s_qubit)
+
+                    else:
+                        raise ValueError(f'''
+                        None of the 7 cases have been triggered.
+                        c_qubit: {c_qubit} is placed on s_qubit: {s_qubit}.
+                        placed_op_dict: {placed_op_dict}, dc_op_dict: {dc_op_dict}.
+                        s_qubit_i: {qt.get_s_qubit_i()}.
+                        ''')
+                except:
+                    log_string = ''.join([line for line in log[-10:]])
+                    raise ValueError(
+                        f'''An error has occurred.
+                        s_qubit is {s_qubit}.
+                        Current s_qubit_i is {qt.get_s_qubit_i()}, sp_count is {qt.sp_count}, ep_count is {qt.ep_count}.
+                        The op we are trying to match is {placed_op_dict}.
+                        Our dc_op_dict (if there is one) is {dc_op_dict}.
+                        The last 10 lines in the log are:
+                        {log_string}
+                        ''')
 
     return new_dc_ops
 
@@ -303,10 +361,9 @@ def case2(qt, ops_list, placed_op_dict, relevant_active_l_qubits):
     qt.increment_s_qubit_i()
     if is_antidiagonal(placed_op_dict.op):
         for l_qubit in relevant_active_l_qubits:
-            if ops_list[l_qubit][qt.get_l_qubit_i(l_qubit)].op.get_name() != 'EndingProcess': #no need for insertion if about to end l_qubit
-                X_op = Op.create(OpType.X)
-                X_op_dict = OpDict(X_op, [l_qubit])
-                ops_list[l_qubit].insert(qt.get_l_qubit_i(l_qubit), X_op_dict)
+            X_op = Op.create(OpType.X)
+            X_op_dict = OpDict(X_op, [l_qubit])
+            ops_list[l_qubit].insert(qt.get_l_qubit_i(l_qubit), X_op_dict)
     return True
 
 def case3(qt, ops_list, placed_op_dict, relevant_active_l_qubits, other_arg_qubit, other_arg_reg_num):
@@ -315,13 +372,12 @@ def case3(qt, ops_list, placed_op_dict, relevant_active_l_qubits, other_arg_qubi
     placed_op_dict_copy = placed_op_dict.copy()
     placed_op_dict_copy.args = [other_arg_qubit, l_qubit]
     qt.increment_l_qubit_i(l_qubit)
+
+    if ops_list[l_qubit][qt.get_l_qubit_i(l_qubit)].op.get_name() == 'EndingProcess': #if we are now pointing at an ending process 
+        qt.end_l_qubit(l_qubit)
     return placed_op_dict_copy.is_equal(l_qubit_op_dict)
 
 def case4(qt, ops_list, placed_op_dict, dc_op_dict, other_arg_qubit, l_qubit_to_s_qubit):
-    # print(f'''
-    # {[qubit for qubit in dc_op_dict.args if qubit != qt.get_s_qubit()]},
-    # {[l_qubit_to_s_qubit[qubit] for qubit in dc_op_dict.args if qubit != qt.get_s_qubit()]}
-    # ''')
     l_qubit = [l_qubit for l_qubit in dc_op_dict.args if (l_qubit != qt.get_s_qubit()) and (l_qubit_to_s_qubit[l_qubit] == other_arg_qubit)][0]
     placed_op_dict_copy = placed_op_dict.copy()
     placed_op_dict_copy.args = [qt.get_s_qubit(), l_qubit]
@@ -332,24 +388,41 @@ def case5(qt, dc_op_dict):
     l_qubit = [qubit for qubit in dc_op_dict.args if qubit != qt.get_s_qubit()][0]
     qt.start_l_qubit(l_qubit)
     qt.increment_s_qubit_i()
+    qt.increment_sp_count()
     return False
 
 def case6(qt, ops_list, dc_op_dict):
-    l_qubit = [qubit for qubit in dc_op_dict.args if qubit != qt.get_s_qubit()][0]
-    if ops_list[l_qubit][qt.get_l_qubit_i(l_qubit)] == dc_op_dict:
-        qt.end_l_qubit(l_qubit)
     qt.increment_s_qubit_i()
+    qt.increment_ep_count()
     return False
 
+def case7(qt, ops_list, relevant_active_l_qubits, placed_op_dict, l_qubit_to_s_qubit):
+    for l_qubit in relevant_active_l_qubits:
+        current_l_qubit_op_dict = ops_list[l_qubit][qt.get_l_qubit_i(l_qubit)].copy()
+        current_l_qubit_op_dict.set_args([
+            l_qubit_to_s_qubit[current_l_qubit_op_dict.args[0]],
+            l_qubit_to_s_qubit[current_l_qubit_op_dict.args[1]]
+        ])
+
+        if current_l_qubit_op_dict.is_equal(placed_op_dict):
+            qt.increment_l_qubit_i(l_qubit)
+
+            if ops_list[l_qubit][qt.get_l_qubit_i(l_qubit)].op.get_name() == 'EndingProcess':
+                qt.end_l_qubit(l_qubit)
+            return True
+    
+    raise ValueError(f'''
+        Assumed that there has been an evicted gate, but it seems that this has not been obtained.
+    ''')
+
 def op_list_to_ordered_ops(op_list):
-    #convert a dict of qubit: [all the op_lists whose op that act on qubit] to an ordered list of op_dicts where each op occurs once
-    #code here is broken
+    #convert a dictionary of qubit -> [all the OpDicts which act on the qubit] to an ordered list of op_dicts where each op occurs once
     ordered_ops = []
     ref_op_list = copy_qubit_ops_dict(op_list)
     for qubit, op_dict_list in ref_op_list.items():
         while len(op_dict_list) > 0:
             op_dict = op_dict_list[0]
-            if len(op_dict.args) == 1: #then it's a local gate so we can add it now
+            if len(op_dict.args) == 1: #then it's a one qubit gate so we can add it now
                 ordered_ops.append(op_dict)
                 del op_dict_list[0]
             else: #need to add all the ops prior to this global one to the ordered ops list
@@ -360,11 +433,10 @@ def op_list_to_ordered_ops(op_list):
 def append_prior_local_ops(this_op_dict, this_qubit, op_list, ordered_ops):
     #add local ops to ordered ops prior to the specified op_dict of the global op
     #calling this function again if we find another global op whilst traversing backwards
-    #need to fix for local cz
     copy_op_dict = this_op_dict.copy()
     copy_op_dict.set_args([copy_qubit(qubit_arg) for qubit_arg in this_op_dict.args if qubit_arg != this_qubit])
-    
     connected_qubit = copy_op_dict.args[0]
+
     while not op_list[connected_qubit][0].is_equal(this_op_dict):
         rel_op_dict = op_list[connected_qubit][0]
         if len(rel_op_dict.args) == 1:
@@ -372,12 +444,15 @@ def append_prior_local_ops(this_op_dict, this_qubit, op_list, ordered_ops):
             del op_list[connected_qubit][0]
         else:
             append_prior_local_ops(rel_op_dict, connected_qubit, op_list, ordered_ops)
+
     ordered_ops.append(this_op_dict) #now we can append the global op
     del op_list[this_qubit][0] #and now the op can be deleted from both qubits
     del op_list[connected_qubit][0]
+
     return
 
 def ordered_list_to_circuit(op_list):
+    # Given an ordered list of OpDicts, build a circuit.
     circ = Circuit()
     ordered_ops = op_list_to_ordered_ops(op_list)
     q_regs = {}
@@ -395,26 +470,8 @@ def ordered_list_to_circuit(op_list):
         add_op_dict_to_circuit(circ, op_dict)
     return circ
 
-def distribute_circuit_with_packing(circuit, network, distributor):
-    clean_circuit = remove_diagonals(circuit) #'clean' by removing (anti)diagonals
-    dist_circ = DistributedCircuit(clean_circuit)
-    placement = distributor.distribute(dist_circ, network)
-    try:
-        assert dist_circ.is_placement(placement)
-    except:
-        AssertionError('The given placement is not valid.')
-    circ_with_dist_links = dist_circ.to_pytket_circuit(placement)   
-    render_circuit_jupyter(circ_with_dist_links)
-    ogcirc_ops = build_qubit_op_list(circuit) #ops of the original circuit
-    dc_ops = build_qubit_op_list(circ_with_dist_links) #ops of the distributed 'clean' circuit
-    c_qubit_to_s_qubit_map = get_circuit_qubit_to_server_qubit_map(dist_circ, placement) # the map from circuit qubits to server qubits
-
-    reinserted_dc_ops = reinsert_diag_ops(ogcirc_ops, dc_ops, c_qubit_to_s_qubit_map)
-    reinserted_circ_with_dist = ordered_list_to_circuit(reinserted_dc_ops)
-
-    return reinserted_circ_with_dist
-
 def get_qubit_reg_num(qubit):
+    # Return the register number of the given qubit.
     reg_no = qubit.reg_name.split(' ')[1]
     return int(reg_no)
 
@@ -424,6 +481,8 @@ class QubitTracker():
         self.s_qubit = s_qubit
         self.s_qubit_i = 0
         self.l_qubits = {}
+        self.sp_count = 0
+        self.ep_count = 0
             
     def get_s_qubit_i(self):
         return self.s_qubit_i
@@ -464,6 +523,12 @@ class QubitTracker():
         l_qubits = [l_qubit for l_qubit in self.l_qubits.keys()] # might be ok to just return self.l_qubit.keys() but I'm not sure regarding copies
         return l_qubits
 
+    def increment_sp_count(self):
+        self.sp_count += 1
+    
+    def increment_ep_count(self):
+        self.ep_count += 1
+
 class OpDict():
     def __init__(self, op, args):
         self.op = op #the operation in question
@@ -484,7 +549,7 @@ class OpDict():
             return False
         elif self.op.type == OpType.CustomGate and op_dict.op.type == OpType.CustomGate:
             return self.op.get_name() == op_dict.op.get_name()
-        return self.op.type == op_dict.op.type
+        return self.op.type == op_dict.op.type and self.op.params == op_dict.op.params
 
     def place(self, c_qubit_to_s_qubit_map):
         assert not self.is_placed(), 'This OpDict is already placed!'
@@ -518,3 +583,10 @@ class OpDict():
     def __repr__(self):
         string = f'Op: {self.op.get_name()} Args: {self.args}'
         return string
+
+    def arg_l_qubits(self):
+        l_qubits = []
+        for qubit in self.args:
+            if len(qubit.reg_name.split(' ')) > 2:
+                l_qubits.append(qubit)
+        return l_qubits
