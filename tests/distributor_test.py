@@ -68,12 +68,10 @@ def test_graph_partitioning():
 
     distributor = GraphPartitioning()
 
-    placement = distributor.distribute(dist_circ, network)
-    cost = placement.cost(dist_circ, network)
-    optimal = 3
-    print(cost)
+    placement = distributor.distribute(dist_circ, network, seed=1)
 
-    assert cost == optimal
+    assert placement == Placement({0: 2, 1: 0, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1})
+    assert placement.cost(dist_circ, network) == 3
 
 
 def test_kahypar_install():

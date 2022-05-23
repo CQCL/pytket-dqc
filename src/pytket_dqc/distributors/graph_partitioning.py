@@ -42,10 +42,14 @@ class GraphPartitioning(Distributor):
         :type network: ServerNetwork
         :return: Placement of ``dist_circ`` onto ``network``.
         :rtype: Placement
+
+        :key seed: Seed for randomness. Default is None
         """
 
         if not dist_circ.is_valid():
             raise Exception("This hypergraph is not valid.")
+
+        seed = kwargs.get("seed", None)
 
         hyperedge_indices, hyperedges = dist_circ.kahypar_hyperedges()
 
@@ -82,6 +86,8 @@ class GraphPartitioning(Distributor):
         context.setEpsilon(self.epsilon)
         context.setCustomTargetBlockWeights(server_sizes)
         context.suppressOutput(True)
+        if seed is not None:
+            context.setSeed(seed)
 
         kahypar.partition(hypergraph, context)
 
