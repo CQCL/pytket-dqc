@@ -19,16 +19,13 @@ if TYPE_CHECKING:
     from pytket.circuit import QubitRegister  # type: ignore
     from pytket_dqc.placement import Placement
 
-allowed_gateset = {OpType.Rx, OpType.CZ,
-                   OpType.Rz, OpType.Measure, OpType.QControlBox}
-gateset_pred = GateSetPredicate(allowed_gateset)
-
 def_circ = Circuit(2)
 def_circ.add_barrier([0, 1])
 
 start_proc = CustomGateDef.define("StartingProcess", def_circ, [])
 end_proc = CustomGateDef.define("EndingProcess", def_circ, [])
 telep_proc = CustomGateDef.define("Teleportation", def_circ, [])
+
 
 class DistributedCircuit(Hypergraph):
     """Class representing circuit to be distributed on a network.
