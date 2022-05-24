@@ -1,18 +1,14 @@
 from __future__ import annotations
 
 from .hypergraph import Hypergraph
-from pytket import OpType, Circuit
-from pytket.circuit import CustomGateDef  # type: ignore
+from pytket import OpType, Circuit, Qubit
+from pytket.circuit import CustomGateDef, Command, Unitary2qBox  # type: ignore
 from scipy.stats import unitary_group  # type: ignore
 import numpy as np
-from pytket.passes import DecomposeBoxes  # type: ignore
-from pytket.circuit import Unitary2qBox  # type: ignore
+from pytket.passes import DecomposeBoxes, auto_rebase_pass  # type: ignore
 import networkx as nx  # type: ignore
 import random
-from pytket.passes import auto_rebase_pass
 from pytket_dqc.utils.gateset import dqc_gateset_predicate
-from pytket.circuit import Command  # type: ignore
-from pytket import Qubit  # type: ignore
 
 from typing import TYPE_CHECKING, cast, Union
 if TYPE_CHECKING:
