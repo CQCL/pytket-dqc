@@ -541,8 +541,6 @@ class DistributedCircuit(Hypergraph):
         # For each command in the new command list, add it to the circuit.
         for command in new_command_list:
 
-            # TODO: We can use case statements in python 3.10 I think.
-            # We should upgrade at some point.
             if command['type'] in ['distributed gate', '1q local gate']:
                 circ.add_gate(command['op'], command['args'])
             elif command['type'] == 'start':
