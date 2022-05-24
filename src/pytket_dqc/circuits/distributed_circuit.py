@@ -490,7 +490,7 @@ class DistributedCircuit(Hypergraph):
                     first += 1
 
             # For every server used by gates in the hyperedge, add a starting
-            # process or teletortation before all of the gates are acted.
+            # process or teleportation before all of the gates are acted.
             for server in unique_server_list:
                 args = [qubit_vertex_to_server_qubit[qubit_vertex],
                         server_to_link_register[server][edge_index]]
@@ -522,7 +522,7 @@ class DistributedCircuit(Hypergraph):
                     last -= 1
 
             # For every server used by gates in the hyperedge, add an ending
-            # process or teletortation after all of the gates are acted.
+            # process or teleportation after all of the gates are acted.
             for server in unique_server_list:
                 args = [
                     server_to_link_register[server][edge_index],
