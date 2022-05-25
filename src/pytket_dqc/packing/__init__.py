@@ -1,1 +1,1 @@
-from .packing import BipartiteCircuit, circ_to_CZ
+from .packing import to_bipartite, pack_circuit
