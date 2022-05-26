@@ -75,23 +75,20 @@ def to_bipartite(circuit):
 
     return graph, indexed_commands
 
-def pack_circuit(graph, indexed_commands):
+def pack_circuit(bipartite_circuit):
     circuit = Circuit()
-    top_nodes = {n for n, d in graph.nodes(data=True) if d["bipartite"] == 0}
-    matching = maximum_matching(graph, top_nodes)
-    mvc = to_vertex_cover(graph, matching, top_nodes)
     le_count = 0
 
-    for indexed_command in indexed_commands:
+    for indexed_command in bipartite_circuit.indexed_commands:
         for qubit in indexed_command.command.qubits:
             if qubit not in circuit.qubits:
                 circuit.add_qubit(qubit)
         
-        add_indexed_command_to_circuit(circuit, indexed_command, mvc, le_count)
+        add_indexed_command_to_circuit(circuit, indexed_command, bipartite_circuit)
                 
     return circuit
 
-def add_indexed_command_to_circuit(circuit, indexed_command, mvc, le_count):
+def add_indexed_command_to_circuit(circuit, indexed_command, bipartite_circuit):
     # Add an indexed command (IC) to a circuit, with packing if needed as given by the supplied mvc
     # Cases are as follows
     # 1) The IC is 1q or not packable are no packings on the qubit. -> Just add it to circuit
@@ -118,17 +115,17 @@ def add_indexed_command_to_circuit(circuit, indexed_command, mvc, le_count):
 
     else: #its a global CZ
         for vertex in indexed_command.vertices: # Add starting processes if needed
-            if vertex.i in mvc and not vertex.is_packing:
+            if vertex.i in bipartite_circuit.mvc and not vertex.is_packing:
                 le_reg_num = vertex.get_connected_server_reg_num()
-                le_reg_name = f'Server {le_reg_num} Link Edge {le_count}'
-                le_count += 1
+                le_reg_name = f'Server {le_reg_num} Link Edge {bipartite_circuit.link_edge_count}'
+                bipartite_circuit.link_edge_count += 1
                 le_q_reg = QubitRegister(le_reg_name, 1)
                 circuit.add_q_register(le_q_reg)
                 link_qubit = LinkQubit(le_q_reg[0], vertex)
                 link_qubit.start_packing()
                 circuit.add_custom_gate(start_proc, [], [link_qubit.origin_extended_qubit.qubit, link_qubit.qubit])
 
-        packed_vertex = [vertex for vertex in indexed_command.vertices if vertex.i in mvc][0] #one of the two should be in the mvc...
+        packed_vertex = [vertex for vertex in indexed_command.vertices if vertex.i in bipartite_circuit.mvc][0] #one of the two should be in the mvc...
         l_qubit = packed_vertex.link_qubit
         qubit = [qubit for qubit in indexed_command.command.qubits if qubit != l_qubit.origin_extended_qubit.qubit][0]
         circuit.add_gate(indexed_command.command.op, [qubit, l_qubit.qubit])
@@ -136,7 +133,7 @@ def add_indexed_command_to_circuit(circuit, indexed_command, mvc, le_count):
             vertex.added_indexed_commands.append(indexed_command)
     
     for vertex in indexed_command.vertices:
-        if vertex.i in mvc and vertex.indexed_commands == vertex.added_indexed_commands: # If all of the commands on the vertex are packed we add an ending process
+        if vertex.i in bipartite_circuit.mvc and vertex.indexed_commands == vertex.added_indexed_commands: # If all of the commands on the vertex are packed we add an ending process
             l_qubit = vertex.link_qubit
             l_qubit.stop_packing()
             circuit.add_custom_gate(end_proc, [], [l_qubit.qubit, l_qubit.origin_extended_qubit.qubit])
@@ -332,3 +329,22 @@ class IndexedCommand():
 
     def is_packable(self):
         return is_diagonal(self.command.op) or is_antidiagonal(self.command.op)
+
+class BipartiteCircuit():
+    def __init__(self, circuit):
+        self.circuit = circuit
+        self.graph, self.indexed_commands = to_bipartite(circuit)
+        self.link_edge_count = 0
+        self.top_nodes = {n for n, d in self.graph.nodes(data=True) if d["bipartite"] == 0}
+        self.matching = maximum_matching(self.graph, self.top_nodes)
+        self.mvc = to_vertex_cover(self.graph, self.matching, self.top_nodes)
+        self.packed_circuit = pack_circuit(self)
+
+    def get_graph(self):
+        return self.graph
+
+    def get_packed_circuit(self):
+        return self.packed_circuit
+
+    def get_ebit_cost(self):
+        return len(self.mvc)
