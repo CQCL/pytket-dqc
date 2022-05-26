@@ -12,11 +12,15 @@ class Hypergraph:
     """A representation of a hypergraph. Hypergraphs are represented by
     vertices and hyperedges, where hyperedges consist of a collection of
     two or more vertices.
+    Since neighbourhood search will be often used, it is best to compute
+    them only once and store it.
 
     :param hyperedge_list: List of hyperedges and weights
     :type hyperedge_list: list[dict[str, Union[int, list[int]]]]
     :param vertex_list: List of vertices.
     :type vertex_list: list[int]
+    :param vertex_neighbours: Maps each vertex to its neighbourhood
+    :type vertex_neighbours: dict[int,set[int]]
     """
 
     def __init__(self):
@@ -24,6 +28,7 @@ class Hypergraph:
         """
         self.hyperedge_list: list[dict[str, Union[int, list[int]]]] = []
         self.vertex_list: list[int] = []
+        self.vertex_neighbours: dict[int, set[int]] = dict()
 
     def is_placement(self, placement: Placement) -> bool:
         """Checks if a given placement is a valid placement of this hypergraph.
@@ -77,7 +82,7 @@ class Hypergraph:
         """
         scenes = {}
         for i, edge in enumerate(self.hyperedge_list):
-            scenes[str(i)] = set(edge['hyperedge'])
+            scenes[str(i)] = set(edge["hyperedge"])
         H = hnx.Hypergraph(scenes)
         hnx.drawing.draw(H)
 
@@ -90,6 +95,9 @@ class Hypergraph:
         if vertex not in self.vertex_list:
             self.vertex_list.append(vertex)
 
+        if vertex not in self.vertex_neighbours.keys():
+            self.vertex_neighbours[vertex] = set()
+
     def add_vertices(self, vertices: list[int]):
         """Add list ov vertices to hypergraph.
 
@@ -100,7 +108,7 @@ class Hypergraph:
             self.add_vertex(vertex)
 
     def add_hyperedge(self, hyperedge: list[int], weight: int = 1):
-        """Add hyperedge to hypergraph
+        """Add hyperedge to hypergraph. Update vertex_neighbours.
 
         :param hyperedge: List of vertices in hyperedge
         :type hyperedge: list[int]
@@ -116,15 +124,23 @@ class Hypergraph:
             raise Exception("Hyperedges must contain at least 2 vertices.")
 
         for vertex in hyperedge:
-            if vertex not in self.vertex_list:
+            if (
+                vertex not in self.vertex_list
+                or vertex not in self.vertex_neighbours.keys()
+            ):
                 raise Exception(
                     (
                         "An element of the hyperedge {} is not a vertex in {}."
                         "Please add it using add_vertex first"
                     ).format(hyperedge, self.vertex_list)
                 )
+            # Add in all vertices of the hyperedge to the neighbourhood. Since
+            # this is a set there will be no duplicates. This carelessly adds
+            # in the vertex itself to its own neighbourhood, so we remove it.
+            self.vertex_neighbours[vertex].update(hyperedge)
+            self.vertex_neighbours[vertex].remove(vertex)
 
-        self.hyperedge_list.append({'hyperedge': hyperedge, 'weight': weight})
+        self.hyperedge_list.append({"hyperedge": hyperedge, "weight": weight})
 
     def kahypar_hyperedges(self) -> Tuple[list[int], list[int]]:
         """Return hypergraph in format used by kahypar package. In particular
@@ -140,7 +156,7 @@ class Hypergraph:
         hyperedges = [
             vertex
             for hyperedge in self.hyperedge_list
-            for vertex in cast(list[int], hyperedge['hyperedge'])
+            for vertex in cast(list[int], hyperedge["hyperedge"])
         ]
 
         # Create list of intervals of hyperedges list which correspond to
@@ -148,7 +164,32 @@ class Hypergraph:
         hyperedge_indices = [0]
         for hyperedge in self.hyperedge_list:
             hyperedge_indices.append(
-                len(cast(list[int], hyperedge['hyperedge'])) +
-                hyperedge_indices[-1])
+                len(cast(list[int], hyperedge["hyperedge"]))
+                + hyperedge_indices[-1]
+            )
 
         return hyperedge_indices, hyperedges
+
+    def get_boundary(self, placement: Placement) -> list[int]:
+        """Given a placement of vertices to blocks, find the subset of vertices
+        in their boundaries. A boundary vertex is a vertex in some block B1
+        that has a neighbour in another block B2.
+
+        :param placement: An assignemnt of vertices to blocks
+        :type placement: Placement
+
+        :return: The list of boundary vertices
+        :rtype: set[int]
+        """
+
+        boundary = list()
+
+        for vertex in self.vertex_list:
+            my_block = placement.placement[vertex]
+
+            for neighbour in self.vertex_neighbours[vertex]:
+                if my_block != placement.placement[neighbour]:
+                    boundary.append(vertex)
+                    break
+
+        return boundary

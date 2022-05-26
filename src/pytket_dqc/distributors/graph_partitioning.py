@@ -7,9 +7,10 @@ import importlib_resources
 
 
 from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
     from pytket_dqc import DistributedCircuit
-    from pytket_dqc.networks import ServerNetwork
+    from pytket_dqc.networks import NISQNetwork
 
 
 class GraphPartitioning(Distributor):
@@ -28,15 +29,10 @@ class GraphPartitioning(Distributor):
         :param epsilon: Load imbalance tolerance, defaults to 0.03
         :type epsilon: float, optional
         """
-        self.epsilon = epsilon
+        self.epsilon = epsilon  # I think we can remove this
 
-    # TODO: dist_circ does not need to be a DistributedCircuit and could be a
-    # Hypergraph. Is there a way of specifying this in the typing?
     def distribute(
-        self,
-        dist_circ: DistributedCircuit,
-        network: ServerNetwork,
-        **kwargs
+        self, dist_circ: DistributedCircuit, network: NISQNetwork, **kwargs
     ) -> Placement:
         """Distribute ``dist_circ`` onto ``network`` using graph partitioning
         tools available in `kahypar <https://kahypar.org/>`_ package. This
@@ -45,7 +41,36 @@ class GraphPartitioning(Distributor):
         :param dist_circ: Circuit to distribute.
         :type dist_circ: DistributedCircuit
         :param network: Network onto which ``dist_circ`` should be placed.
-        :type network: ServerNetwork
+        :type network: NISQNetwork
+
+        :key ini_path: Path to kahypar ini file.
+
+        :return: Placement of ``dist_circ`` onto ``network``.
+        :rtype: Placement
+        """
+
+        # First step is to call KaHyPar using the connectivity metric (i.e. no
+        # knowledge about network topology other than server sizes)
+        initial_placement = self.initial_distribute(
+            dist_circ, network
+        )  # TODO: Add the seed
+
+        return initial_placement
+
+    # TODO: dist_circ does not need to be a DistributedCircuit and could be a
+    # Hypergraph. Is there a way of specifying this in the typing?
+    def initial_distribute(
+        self, dist_circ: DistributedCircuit, network: NISQNetwork, **kwargs
+    ) -> Placement:
+        """Distribute ``dist_circ`` onto ``network`` using graph partitioning
+        tools available in `kahypar <https://kahypar.org/>`_ package. The
+        placement returned is not taking into account network topology.
+        However, it does take into account server sizes.
+
+        :param dist_circ: Circuit to distribute.
+        :type dist_circ: DistributedCircuit
+        :param network: Network onto which ``dist_circ`` should be placed.
+        :type network: NISQNetwork
 
         :key ini_path: Path to kahypar ini file.
 
@@ -67,7 +92,7 @@ class GraphPartitioning(Distributor):
             num_hyperedges,
             hyperedge_indices,
             hyperedges,
-            num_servers
+            num_servers,
         )
 
         context = kahypar.Context()
@@ -83,8 +108,9 @@ class GraphPartitioning(Distributor):
 
         kahypar.partition(hypergraph, context)
 
-        partition_list = [hypergraph.blockID(i)
-                          for i in range(hypergraph.numNodes())]
+        partition_list = [
+            hypergraph.blockID(i) for i in range(hypergraph.numNodes())
+        ]
 
         placement_dict = {i: server for i, server in enumerate(partition_list)}
 
