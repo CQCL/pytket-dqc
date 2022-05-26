@@ -126,7 +126,7 @@ class DistributedCircuit(Hypergraph):
         created is not in the valid gate set.
         """
 
-        if not gateset_pred.verify(self.circuit):
+        if not dqc_gateset_predicate.verify(self.circuit):
             raise Exception("The inputted circuit is not in a valid gateset.")
 
         two_q_gate_count = 0
@@ -139,7 +139,7 @@ class DistributedCircuit(Hypergraph):
                     {"command": command, "two q gate count": two_q_gate_count}
                 )
                 two_q_gate_count += 1
-            elif command.op.type == OpType.QControlBox:
+            elif command.op.type in [OpType.QControlBox, OpType.CX]:
                 if len(command.qubits) != 2:
                     raise Exception(
                         "QControlBox must have one target and one control")
@@ -147,6 +147,12 @@ class DistributedCircuit(Hypergraph):
                     {"command": command, "two q gate count": two_q_gate_count}
                 )
                 two_q_gate_count += 1
+            elif command.op.n_qubits >= 2:
+                # This elif should never be reached if the gate set predicate
+                # has been verified. This is a fail safe.
+                raise Exception(
+                    "A greater than two qubit command cannot be distributed \
+                    if it is not in the valid gate set.")
             else:
                 self.commands.append({"command": command})
 
