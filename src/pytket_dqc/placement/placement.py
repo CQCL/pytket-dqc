@@ -6,6 +6,7 @@ if TYPE_CHECKING:
     from pytket_dqc.circuits import DistributedCircuit
 
 import networkx as nx  # type: ignore
+from networkx.algorithms.approximation.steinertree import steiner_tree 
 
 
 class Placement:
@@ -84,40 +85,31 @@ class Placement:
 
         cost = 0
         if self.is_placement(circuit, network):
-
-            G = network.get_server_nx()
-
             for hyperedge in circuit.hyperedge_list:
-                # Generate a list of where each vertex of the hyperedge
-                # is placed
-                vertex_list = cast(list[int], hyperedge['hyperedge'])
-                hyperedge_placement = [
-                    self.placement[vertex] for vertex in vertex_list
-                ]
-
-                # Find the server where the qubit vertex is placed
-                qubit_vertex_list = [
-                    vertex
-                    for vertex in vertex_list
-                    if circuit.vertex_circuit_map[vertex]['type'] == 'qubit'
-                ]
-                assert len(qubit_vertex_list) == 1
-                qubit_vertex = qubit_vertex_list[0]
-                qubit_vertex_server = self.placement[qubit_vertex]
-
-                # The cost is equal to the distance between each of the
-                # vertices and the qubit vertex.
-                # TODO: This approach very naively assumes that the control is
-                # teleported back when a new server pair is interacted.
-                # There may be a better approach.
-                unique_servers_used = list(set(hyperedge_placement))
-                for server in unique_servers_used:
-                    shortest_path_length = nx.shortest_path_length(
-                        G, qubit_vertex_server, server
-                    )
-                    cost += shortest_path_length * hyperedge['weight']
-
+                # Cost of distributing gates in a hyperedge corresponds
+                # to the number of edges in steiner tree connecting all
+                # servers used by vertices in hyperedge.
+                dist_graph = self._get_distribution_graph(hyperedge['hyperedge'], network)
+                cost += len(dist_graph.edges())
         else:
             raise Exception("This is not a valid placement.")
 
         return cost
+
+    def _get_distribution_graph(self, hyperedge:list[int], network: NISQNetwork) -> nx.Graph:
+        """Returns graph representing the edges along which distribution
+        operations should act. This is the steiner tree covering the servers
+        used by the vertices in the hyper edge.
+
+        :param hyperedge: Hyperedge for which distribution graph
+        should be found.
+        :type hyperedge: list[int]
+        :param network: Network onto which hyper edge should be distributed.
+        :type network: NISQNetwork
+        :return: Graph of distribution operations.
+        :rtype: nx.Graph
+        """
+
+        servers_used = [value for key, value in self.placement.items() if key in hyperedge]
+        server_graph = network.get_server_nx()
+        return steiner_tree(server_graph, servers_used)
