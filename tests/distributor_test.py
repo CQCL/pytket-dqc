@@ -9,7 +9,7 @@ from pytket_dqc.distributors import (
 from pytket_dqc.distributors.annealing import acceptance_criterion
 from pytket_dqc import DistributedCircuit
 from pytket import Circuit
-from pytket_dqc.networks import NISQNetwork, ServerNetwork
+from pytket_dqc.networks import NISQNetwork
 from pytket_dqc.distributors.ordered import order_reducing_size
 from pytket_dqc.placement import Placement
 import kahypar as kahypar  # type:ignore
@@ -59,21 +59,20 @@ def test_acceptance_criterion():
     assert acceptance_criterion(1, 0, 10) < 1
 
 
-def test_grpah_partitioning():
+def test_graph_partitioning():
 
-    network = ServerNetwork([[0, 1]])
+    network = NISQNetwork([[0, 1], [0, 2]], {0: [0], 1: [1, 2], 2: [3, 4]})
 
-    circ = Circuit(3).CZ(0, 1).CZ(0, 2)
+    circ = Circuit(4).CZ(0, 3).Rz(0.5, 3).CZ(
+        1, 3).Rz(0.5, 3).CZ(2, 3).Rz(0.5, 3)
     dist_circ = DistributedCircuit(circ)
-    dist_circ.draw()
 
     distributor = GraphPartitioning()
 
-    placement = distributor.distribute(dist_circ, network)
-    placement_1 = Placement({0: 0, 1: 1, 2: 0, 3: 1, 4: 0})
-    placement_2 = Placement({0: 1, 1: 0, 2: 1, 3: 0, 4: 1})
+    placement = distributor.distribute(dist_circ, network, seed=1)
 
-    assert (placement == placement_1) or (placement == placement_2)
+    assert placement == Placement({0: 2, 1: 0, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1}) \
+        or placement == Placement({0: 2, 1: 1, 2: 2, 3: 1, 4: 1, 5: 1, 6: 1})
 
 
 def test_kahypar_install():
