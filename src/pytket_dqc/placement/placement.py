@@ -25,6 +25,9 @@ class Placement:
             return self.placement == other.placement
         return False
 
+    def __str__(self):
+        return str(self.placement)
+
     def is_placement(
         self,
         circuit: DistributedCircuit,
