@@ -71,7 +71,7 @@ def test_graph_partitioning():
     placement = distributor.distribute(dist_circ, network, seed=1)
 
     assert placement == Placement({0: 2, 1: 0, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1}) \
-        or placement == Placement({0: 1, 1: 2, 2: 2, 3: 1, 4: 1, 5: 1, 6: 1})
+        or placement == Placement({0: 2, 1: 1, 2: 2, 3: 1, 4: 1, 5: 1, 6: 1})
 
 
 def test_kahypar_install():
