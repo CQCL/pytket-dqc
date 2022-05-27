@@ -1,25 +1,26 @@
 from __future__ import annotations
 
 from .hypergraph import Hypergraph
-from pytket.predicates import GateSetPredicate  # type: ignore
-from pytket import OpType, Circuit
+from pytket import OpType, Circuit, Qubit
+from pytket.circuit import CustomGateDef, Command, Unitary2qBox  # type: ignore
 from scipy.stats import unitary_group  # type: ignore
 import numpy as np
-from pytket.passes import DecomposeBoxes  # type: ignore
-from pytket.circuit import Unitary2qBox  # type: ignore
+from pytket.passes import DecomposeBoxes, auto_rebase_pass  # type: ignore
 import networkx as nx  # type: ignore
 import random
-from pytket.passes import auto_rebase_pass
+from pytket_dqc.utils.gateset import dqc_gateset_predicate
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast, Union
 if TYPE_CHECKING:
-    from pytket.circuit import Command  # type: ignore
-    from pytket import Qubit  # type: ignore
+    from pytket.circuit import QubitRegister  # type: ignore
     from pytket_dqc.placement import Placement
 
-allowed_gateset = {OpType.Rx, OpType.CZ,
-                   OpType.Rz, OpType.Measure, OpType.QControlBox}
-gateset_pred = GateSetPredicate(allowed_gateset)
+def_circ = Circuit(2)
+def_circ.add_barrier([0, 1])
+
+start_proc = CustomGateDef.define("StartingProcess", def_circ, [])
+end_proc = CustomGateDef.define("EndingProcess", def_circ, [])
+telep_proc = CustomGateDef.define("Teleportation", def_circ, [])
 
 
 class DistributedCircuit(Hypergraph):
@@ -60,6 +61,8 @@ class DistributedCircuit(Hypergraph):
 
         self.circuit = circuit
         self.vertex_circuit_map: dict[int, dict] = {}
+        self.commands: list[dict[str,
+                                 Union[Command, str, int, list[Qubit]]]] = []
         self.from_circuit()
 
     def add_qubit_vertex(self, vertex: int, qubit: Qubit):
@@ -74,6 +77,18 @@ class DistributedCircuit(Hypergraph):
         """
         self.add_vertex(vertex)
         self.vertex_circuit_map[vertex] = {'type': 'qubit', 'node': qubit}
+
+    def get_qubit_vertices(self) -> list[int]:
+        """Return list of vertices which correspond to qubits
+
+        :return: list of vertices which correspond to qubits
+        :rtype: List[int]
+        """
+        return [
+            vertex
+            for vertex in self.vertex_list
+            if self.vertex_circuit_map[vertex]['type'] == 'qubit'
+        ]
 
     def add_gate_vertex(self, vertex: int, command: Command):
         """Add a vertex to the underlying hypergraph which corresponds to a
@@ -107,30 +122,35 @@ class DistributedCircuit(Hypergraph):
         a single control and a single target.
         """
 
-        if not gateset_pred.verify(self.circuit):
+        if not dqc_gateset_predicate.verify(self.circuit):
             raise Exception("The inputted circuit is not in a valid gateset.")
 
-        command_list_count = []
         two_q_gate_count = 0
         # For each command in the circuit, add the command to a list.
         # If the command is a CZ gate or QControlBox, store n, where the
         # command is the nth 2 qubit gate in the circuit.
         for command in self.circuit.get_commands():
             if command.op.type == OpType.CZ:
-                command_list_count.append(
+                self.commands.append(
                     {"command": command, "two q gate count": two_q_gate_count}
                 )
                 two_q_gate_count += 1
-            elif command.op.type == OpType.QControlBox:
+            elif command.op.type in [OpType.QControlBox, OpType.CX]:
                 if len(command.qubits) != 2:
                     raise Exception(
                         "QControlBox must have one target and one control")
-                command_list_count.append(
+                self.commands.append(
                     {"command": command, "two q gate count": two_q_gate_count}
                 )
                 two_q_gate_count += 1
+            elif command.op.n_qubits >= 2:
+                # This elif should never be reached if the gate set predicate
+                # has been verified. This is a fail safe.
+                raise Exception(
+                    "A greater than two qubit command cannot be distributed \
+                    if it is not in the valid gate set.")
             else:
-                command_list_count.append({"command": command})
+                self.commands.append({"command": command})
 
         # Construct the hypergraph corresponding to this circuit.
         # For each qubit, add commands acting on the qubit in an uninterrupted
@@ -146,12 +166,14 @@ class DistributedCircuit(Hypergraph):
             hyperedge = [qubit_index]
             # Gather all of the commands acting on qubit.
             qubit_commands = [
-                command
-                for command in command_list_count
+                {"command_index": command_index, "command": command}
+                for command_index, command in enumerate(self.commands)
                 if qubit in command["command"].qubits
             ]
 
-            for command in qubit_commands:
+            for command_dict in qubit_commands:
+                command = command_dict['command']
+                command_index = command_dict['command_index']
                 # If the command is a CZ gate add it to the current working
                 # hyperedge.
                 if command["command"].op.type == OpType.CZ:
@@ -159,8 +181,10 @@ class DistributedCircuit(Hypergraph):
                         self.circuit.n_qubits
                     self.add_gate_vertex(vertex, command['command'])
                     hyperedge.append(vertex)
-                # If the command is a QControlBox, add it to the current
-                # working hyperedge, is the working qubit is the control.
+                    self.commands[command_index]['vertex'] = vertex
+                    self.commands[command_index]['type'] = 'distributed gate'
+                # If the command is a QControlBox or CX, add it to the current
+                # working hyperedge, if the working qubit is the control.
                 # Otherwise start a fresh weight 2 hyper edge, add the two
                 # vertex hyperedge consisting of the gate and the qubit, and
                 # start a fresh hyper edge again.
@@ -168,7 +192,11 @@ class DistributedCircuit(Hypergraph):
                 # lazy. Indeed, in the case where a teleportation is required,
                 # a new hyper edge need not be started, as other gates which
                 # follow may also benefit from the teleportation.
-                elif command["command"].op.type == OpType.QControlBox:
+                elif command["command"].op.type in [
+                    OpType.QControlBox,
+                    OpType.CX
+                ]:
+                    # Check if working qubit is the control
                     if qubit == command['command'].qubits[0]:
                         vertex = command["two q gate count"] + \
                             self.circuit.n_qubits
@@ -186,14 +214,356 @@ class DistributedCircuit(Hypergraph):
                         self.add_hyperedge(hyperedge, weight=2)
                         # Start a fresh hyperedge
                         hyperedge = [qubit_index]
-                # Otherwise add the hyperedge to the hypergraph and start
+                    self.commands[command_index]['vertex'] = vertex
+                    self.commands[command_index]['type'] = 'distributed gate'
+                # Otherwise (which is to say if a single qubit gate is
+                # encountered) add the hyperedge to the hypergraph and start
                 # a new working hyperedge.
-                elif len(hyperedge) > 1:
-                    self.add_hyperedge(hyperedge)
-                    hyperedge = [qubit_index]
+                else:
+                    if len(hyperedge) > 1:
+                        self.add_hyperedge(hyperedge)
+                        hyperedge = [qubit_index]
+                    self.commands[command_index]['type'] = '1q local gate'
 
+            # If there is an hyperedge that has not been added once all
+            # commands have bee iterated through, add it now.
             if len(hyperedge) > 1:
                 self.add_hyperedge(hyperedge)
+
+    def _get_server_to_qubit_vertex(
+            self, placement: Placement
+            ) -> dict[int, list[int]]:
+        """Return dictionary mapping servers to a list of the qubit
+        vertices which it contains.
+
+        :param placement: Placement of hypergraph vertices onto servers.
+        :type placement: Placement
+        :raises Exception: Raised if the placement is not valid.
+        :return: Dictionary mapping servers to a list of the qubit
+        vertices which it contains.
+        :rtype: dict[int, list[int]]
+        """
+
+        # Initial check that placement is valid
+        if not self.is_placement(placement):
+            raise Exception("This is not a valid placement for this circuit.")
+
+        # A dictionary mapping servers to the qubit vertices it contains
+        return {
+            server: [
+                vertex
+                for vertex in self.get_qubit_vertices()
+                if placement.placement[vertex] == server
+            ]
+            for server in set(placement.placement.values())
+        }
+
+    def to_relabeled_registers(self, placement: Placement) -> Circuit:
+        """Relabel qubits to match their placement.
+
+        :param placement: Placement of hypergraph vertices onto servers.
+        :type placement: Placement
+        :raises Exception: Raised if the placement is not valid.
+        :return: Circuit with qubits relabeled to match servers.
+        :rtype: Circuit
+        """
+
+        if not self.is_placement(placement):
+            raise Exception("This is not a valid placement for this circuit.")
+
+        server_to_vertex_dict = self._get_server_to_qubit_vertex(placement)
+
+        circ = Circuit()
+        # Map from servers to the qubit registers it contains.
+        server_to_register = {}
+        # Add registers to new circuit.
+        for server, vertex_list in server_to_vertex_dict.items():
+            server_to_register[server] = circ.add_q_register(
+                f'Server {server}', len(vertex_list))
+
+        # Build map from circuit qubits to server registers
+        qubit_qubit_map = {}
+        for server, register in server_to_register.items():
+            for i, qubit_vertex in enumerate(server_to_vertex_dict[server]):
+                qubit_qubit_map[self.vertex_circuit_map[qubit_vertex]
+                                ['node']] = register[i]
+
+        # Rebuild circuit using mapping from circuit qubits to server
+        # registers.
+        for gate in self.circuit.get_commands():
+            circ.add_gate(gate.op, [qubit_qubit_map[orig_qubit]
+                          for orig_qubit in gate.args])
+
+        return circ
+
+    def to_pytket_circuit(self, placement: Placement) -> Circuit:
+        """Convert circuit to one including required distributed gates.
+
+        :param placement: Placement of hypergraph vertices onto servers.
+        :type placement: Placement
+        :raises Exception: Raised if the placement is not valid.
+        :return: Circuit including distributed gates.
+        :rtype: Circuit
+        """
+
+        # Initial check that placement is valid
+        if not self.is_placement(placement):
+            raise Exception("This is not a valid placement for this circuit.")
+
+        server_to_qubit_vertex_list = self._get_server_to_qubit_vertex(
+            placement)
+
+        # New circuit including distribution gates
+        circ = Circuit()
+
+        # A dictionary mapping servers to the qubit registers they contain.
+        server_to_register = {}
+
+        # A dictionary mapping (server, hyperedge) pairs to link qubits.
+        # The first index is the server the link qubit is contained in.
+        # The second index is the hyperedge the link qubit is consumed by.
+        server_to_link_register: dict[int, QubitRegister] = {}
+
+        # Here a register is defined for each server. It contains a number of
+        # qubits equal to the number of qubit vertices which are placed in the
+        # server, +1 qubit for each hyperedge which requires a qubit be
+        # moved to this server. Note that this means there is an additional
+        # link qubit per e-bit. By the completion of this loop the circuit
+        # has all the qubits necessary to complete the computaitons.
+        for server, qubit_vertex_list in server_to_qubit_vertex_list.items():
+
+            # Add a register for all of the qubits assigned to this server.
+            server_to_register[server] = circ.add_q_register(
+                f'Server {server}', len(qubit_vertex_list))
+
+            server_to_link_register[server] = {}
+            # For each hyperedge, add the necessary link qubits
+            for index, hyperedge in enumerate(self.hyperedge_list):
+
+                # List of gate vertices in this hyperedge
+                gate_vertex_list = [
+                    vertex
+                    for vertex in cast(list[int], hyperedge['hyperedge'])
+                    if self.vertex_circuit_map[vertex]['type'] == 'gate'
+                ]
+
+                # Find the one unique vertex in the hyperedge which
+                # corresponds to a qubit.
+                hyperedge_qubit_vertex_list = [
+                    vertex
+                    for vertex in cast(list[int], hyperedge['hyperedge'])
+                    if vertex not in gate_vertex_list
+                ]
+                assert len(hyperedge_qubit_vertex_list) == 1
+                hyperedge_qubit_vertex = hyperedge_qubit_vertex_list[0]
+
+                # Add a link qubits if the qubit of the hyperedge is not
+                # placed in this server, but there is a gate vertex in this
+                # hyperedge which is placed in this server.
+                if not (placement.placement[hyperedge_qubit_vertex] == server):
+
+                    unique_server_used = set([
+                        placement.placement[gate_vertex]
+                        for gate_vertex in gate_vertex_list
+                    ])
+                    if server in unique_server_used:
+                        register = circ.add_q_register(
+                            f'Server {server} Link Edge {index}', 1)
+                        server_to_link_register[server][index] = register[0]
+
+        # Dictionary mapping qubit vertices in hypergraph to server qubit
+        # registers
+        qubit_vertex_to_server_qubit = {}
+        for server, register in server_to_register.items():
+            for i, vertex in enumerate(server_to_qubit_vertex_list[server]):
+                qubit_vertex_to_server_qubit[vertex] = register[i]
+
+        # Dictionary mapping qubits in original circuit to
+        # qubits in new registers
+        circuit_qubit_to_server_qubit = {
+            self.vertex_circuit_map[qubit_vertex]['node']: qubit
+            for qubit_vertex, qubit in qubit_vertex_to_server_qubit.items()
+        }
+
+        # Dictionary mapping circuit qubits to hypergraph vertices
+        circuit_qubit_to_vertex = {
+            info['node']: vertex
+            for vertex, info in self.vertex_circuit_map.items()
+            if info['type'] == 'qubit'
+        }
+
+        new_command_list = self.commands.copy()
+        for command_index, command in enumerate(new_command_list):
+
+            # Get original circuit qubits used by command
+            orig_circuit_qubit = cast(Command, command['command']).qubits
+
+            # Get servers to which qubits belongs
+            orig_server = [placement.placement[circuit_qubit_to_vertex[qubit]]
+                           for qubit in orig_circuit_qubit]
+
+            # The server in which the gate is acted
+            if command['type'] == 'distributed gate':
+                gate_server = placement.placement[cast(int, command['vertex'])]
+            elif command['type'] == '1q local gate':
+                qubit_vertex = circuit_qubit_to_vertex[orig_circuit_qubit[0]]
+                gate_server = placement.placement[qubit_vertex]
+            else:
+                raise Exception("Command type not recognised")
+
+            new_qubit = []
+            for server, qubit in zip(orig_server, orig_circuit_qubit):
+                # If the original circuit qubit has been placed on
+                # the same server that the gate has been assigned to, then
+                # use the relabeled server qubit as the control
+                if server == gate_server:
+                    new_qubit.append(circuit_qubit_to_server_qubit[qubit])
+                # If not, move the control to the link qubits of the server
+                # to which the gate has been assigned
+                else:
+                    qubit_vertex = circuit_qubit_to_vertex[qubit]
+                    # Find the hyperedge to which the qubit and gate vertex
+                    # belong. This should be unique. Use this to locate
+                    # the correct link qubit.
+                    if command['type'] == 'distributed gate':
+                        gate_vertex = command['vertex']
+                        for i, hyperedge in enumerate(self.hyperedge_list):
+                            if (
+                                (
+                                    gate_vertex
+                                    in cast(list[int], hyperedge['hyperedge'])
+                                )
+                                and
+                                (
+                                    qubit_vertex
+                                    in cast(list[int], hyperedge['hyperedge'])
+                                )
+                            ):
+                                new_qubit.append(
+                                    server_to_link_register[gate_server][i])
+                    elif command['type'] == '1q local gate':
+                        new_qubit.append(circuit_qubit_to_server_qubit[qubit])
+                    else:
+                        raise Exception("This command type is not recognised")
+
+            assert len(orig_server) == len(new_qubit)
+
+            # Update the dictionary from gate vertices to commands
+            new_command_list[command_index]['args'] = new_qubit
+            new_command_list[command_index]['op'] = cast(
+                Command, command['command']).op
+
+        # For each hyperedge add the necessary distributed operations.
+        # for hyperedge_single in self.commands_with_hyperedges:
+        for edge_index, edge in enumerate(self.hyperedge_list):
+
+            # List of the subset of vertices which correspond to gates.
+            gate_vertex_list = [
+                vertex
+                for vertex in cast(list[int], edge['hyperedge'])
+                if self.vertex_circuit_map[vertex]['type'] == 'gate'
+            ]
+
+            # Find the qubit vertex in the hyperedge.
+            qubit_vertex_set = set(
+                cast(list[int], edge['hyperedge'])) - set(gate_vertex_list)
+            assert len(qubit_vertex_set) == 1
+            qubit_vertex_list = list(qubit_vertex_set)
+            qubit_vertex = qubit_vertex_list[0]
+
+            qubit_server = placement.placement[qubit_vertex]
+
+            # List of servers used by gates in hyperedge
+            unique_server_list = list(
+                set(
+                    [
+                        placement.placement[vertex]
+                        for vertex in gate_vertex_list
+                    ]
+                )
+            )
+            if qubit_server in unique_server_list:
+                unique_server_list.remove(qubit_server)
+
+            first_found = False
+            first = 0
+
+            # Look through the list of commands to find the first gate in
+            # the hyperedge
+            while not first_found:
+                if new_command_list[first]['type'] == 'distributed gate':
+
+                    if new_command_list[first]['vertex'] in gate_vertex_list:
+                        first_found = True
+                    else:
+                        first += 1
+                else:
+                    first += 1
+
+            # For every server used by gates in the hyperedge, add a starting
+            # process or teleportation before all of the gates are acted.
+            for server in unique_server_list:
+                args = [qubit_vertex_to_server_qubit[qubit_vertex],
+                        server_to_link_register[server][edge_index]]
+                # TODO: I don't know if this is best practice for typing.
+                # Command and int are included here almost unnecessarily.
+                new_cmd: dict[str, Union[str, list[Qubit], Command, int]] = {
+                    'args': args}
+                if edge['weight'] == 1:
+                    new_cmd['type'] = 'start'
+                elif edge['weight'] == 2:
+                    new_cmd['type'] = 'teleport'
+                else:
+                    raise Exception(
+                        "The operation for this weight is not known")
+                new_command_list.insert(first, new_cmd)
+
+            last_found = False
+            last = len(new_command_list) - 1
+
+            # Look through the list of commands to find the last gate in
+            # the hyperedge
+            while not last_found:
+                if new_command_list[last]['type'] == 'distributed gate':
+                    if new_command_list[last]['vertex'] in gate_vertex_list:
+                        last_found = True
+                    else:
+                        last -= 1
+                else:
+                    last -= 1
+
+            # For every server used by gates in the hyperedge, add an ending
+            # process or teleportation after all of the gates are acted.
+            for server in unique_server_list:
+                args = [
+                    server_to_link_register[server][edge_index],
+                    qubit_vertex_to_server_qubit[qubit_vertex]
+                ]
+                new_cmd = {'args': args}
+                if edge['weight'] == 1:
+                    new_cmd['type'] = 'end'
+                elif edge['weight'] == 2:
+                    new_cmd['type'] = 'teleport'
+                else:
+                    raise Exception(
+                        "The operation for this weight is not known")
+                new_command_list.insert(last+1, new_cmd)
+
+        # For each command in the new command list, add it to the circuit.
+        for command in new_command_list:
+
+            if command['type'] in ['distributed gate', '1q local gate']:
+                circ.add_gate(command['op'], command['args'])
+            elif command['type'] == 'start':
+                circ.add_custom_gate(start_proc, [], command['args'])
+            elif command['type'] == 'end':
+                circ.add_custom_gate(end_proc, [], command['args'])
+            elif command['type'] == 'teleport':
+                circ.add_custom_gate(telep_proc, [], command['args'])
+            else:
+                raise Exception('This role has not been defined')
+
+        return circ
 
 
 class RandomDistributedCircuit(DistributedCircuit):

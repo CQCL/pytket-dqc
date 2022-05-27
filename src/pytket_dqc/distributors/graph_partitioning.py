@@ -3,6 +3,8 @@ from __future__ import annotations
 import kahypar as kahypar  # type:ignore
 from pytket_dqc.distributors import Distributor
 from pytket_dqc.placement import Placement
+import importlib_resources
+
 
 from typing import TYPE_CHECKING
 
@@ -40,6 +42,9 @@ class GraphPartitioning(Distributor):
         :type dist_circ: DistributedCircuit
         :param network: Network onto which ``dist_circ`` should be placed.
         :type network: ServerNetwork
+
+        :key ini_path: Path to kahypar ini file.
+
         :return: Placement of ``dist_circ`` onto ``network``.
         :rtype: Placement
 
@@ -81,7 +86,12 @@ class GraphPartitioning(Distributor):
         )
 
         context = kahypar.Context()
-        context.loadINIconfiguration("km1_kKaHyPar_sea20.ini")
+
+        package_path = importlib_resources.files("pytket_dqc")
+        default_ini = f"{package_path}/distributors/km1_kKaHyPar_sea20.ini"
+        ini_path = kwargs.get("ini_path", default_ini)
+        context.loadINIconfiguration(ini_path)
+
         context.setK(num_servers)
         context.setEpsilon(self.epsilon)
         context.setCustomTargetBlockWeights(server_sizes)
