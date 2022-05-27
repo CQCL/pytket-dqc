@@ -8,6 +8,8 @@ the repository including submodules' by 'git clone git clone --depth=1 --recursi
 
 In the Requirements section of [kahypar](https://github.com/kahypar/kahypar), if you are not sure you have Boost.build installed or if you want to install it, please check https://www.boost.org/doc/libs/1_78_0/tools/build/doc/html/index.html#bbv2.installation.
 
+We are using an experimental feature from KaHyPar that let us select a different maximum weight for each block of the partition (i.e. a different qubit capacity for each server). The python interface for this feature was added in [this commit](https://github.com/kahypar/kahypar/commit/ff8fdf06c4e50af2faecddb9c5b6f7553e232df2) on July 2020. It looks like KaHyPar >1.2.1 is the least requirement for this feature. If KaHyPar is built from their repository (following the instructions given below), this feature is automatically available.
+
 With these packages installed,
 running `pip install .` will install pytket-dqc. Auto generated html 
 documentation can be found as an artifact of the latest push action. 
