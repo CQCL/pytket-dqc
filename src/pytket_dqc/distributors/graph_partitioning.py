@@ -17,10 +17,8 @@ if TYPE_CHECKING:
 class GraphPartitioning(Distributor):
     """Distribution technique, making use of existing tools for hypergraph
     partitioning available through the `kahypar <https://kahypar.org/>`_
-    package. This distributor is not guaranteed to return a valid placement
-    as it will perform load balancing, which is to say an even placement of
-    vertices onto servers. This distributor will ignore weighted hypergraphs
-    and assume all hyperedges have weight 1. This distributor will ignore the
+    package. This distributor will ignore weighted hypergraphs and assume
+    all hyperedges have weight 1. This distributor will ignore the
     connectivity of the NISQNetwork.
     """
 
@@ -121,16 +119,33 @@ class GraphPartitioning(Distributor):
 
         :return: Placement of ``dist_circ`` onto ``network``.
         :rtype: Placement
+
+        :key seed: Seed for randomness. Default is None
         """
 
         if not dist_circ.is_valid():
             raise Exception("This hypergraph is not valid.")
 
+        seed = kwargs.get("seed", None)
+
         hyperedge_indices, hyperedges = dist_circ.kahypar_hyperedges()
 
         num_hyperedges = len(hyperedge_indices) - 1
         num_vertices = len(list(set(hyperedges)))
-        num_servers = len(network.get_server_list())
+        server_list = network.get_server_list()
+        num_servers = len(server_list)
+        server_sizes = [len(network.server_qubits[s]) for s in server_list]
+        # For now, all hyperedges are assumed to have the same weight
+        hyperedge_weights = [1 for i in range(0, num_hyperedges)]
+        # Qubit vertices are given weight 1, gate vertices are given weight 0
+        num_qubits = len(dist_circ.circuit.qubits)
+        vertex_weights = [1 for i in range(0, num_qubits)] + [
+            0 for i in range(num_qubits, num_vertices)
+        ]
+        # TODO: the weight assignment to vertices assumes that the index of the
+        # qubit vertices range from 0 to `num_qubits`, and the rest of them
+        # correspond to gates. This is currently guaranteed by construction
+        # i.e. method `from_circuit()`; we might want to make this more robust.
 
         hypergraph = kahypar.Hypergraph(
             num_vertices,
@@ -138,6 +153,8 @@ class GraphPartitioning(Distributor):
             hyperedge_indices,
             hyperedges,
             num_servers,
+            hyperedge_weights,
+            vertex_weights,
         )
 
         context = kahypar.Context()
@@ -149,7 +166,10 @@ class GraphPartitioning(Distributor):
 
         context.setK(num_servers)
         context.setEpsilon(self.epsilon)
+        context.setCustomTargetBlockWeights(server_sizes)
         context.suppressOutput(True)
+        if seed is not None:
+            context.setSeed(seed)
 
         kahypar.partition(hypergraph, context)
 
