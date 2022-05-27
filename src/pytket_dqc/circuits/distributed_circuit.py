@@ -117,9 +117,7 @@ class DistributedCircuit(Hypergraph):
         """Method to create a hypergraph from a circuit.
 
         :raises Exception: Raised if the circuit whose hypergraph is to be
-        created is not in the Rx, Rz, CZ, QControlBox gate set.
-        :raises Exception: Raised if any of the QControlBox gates do not have
-        a single control and a single target.
+        created is not in the valid gate set.
         """
 
         if not dqc_gateset_predicate.verify(self.circuit):
@@ -127,35 +125,21 @@ class DistributedCircuit(Hypergraph):
 
         two_q_gate_count = 0
         # For each command in the circuit, add the command to a list.
-        # If the command is a CZ gate or QControlBox, store n, where the
+        # If the command is a CZ, CRz or CX, store n, where the
         # command is the nth 2 qubit gate in the circuit.
         for command in self.circuit.get_commands():
-            if command.op.type == OpType.CZ:
+            if command.op.type in [OpType.CZ, OpType.CRz, OpType.CX]:
                 self.commands.append(
                     {"command": command, "two q gate count": two_q_gate_count}
                 )
                 two_q_gate_count += 1
-            elif command.op.type in [OpType.QControlBox, OpType.CX]:
-                if len(command.qubits) != 2:
-                    raise Exception(
-                        "QControlBox must have one target and one control")
-                self.commands.append(
-                    {"command": command, "two q gate count": two_q_gate_count}
-                )
-                two_q_gate_count += 1
-            elif command.op.n_qubits >= 2:
-                # This elif should never be reached if the gate set predicate
-                # has been verified. This is a fail safe.
-                raise Exception(
-                    "A greater than two qubit command cannot be distributed \
-                    if it is not in the valid gate set.")
             else:
                 self.commands.append({"command": command})
 
         # Construct the hypergraph corresponding to this circuit.
         # For each qubit, add commands acting on the qubit in an uninterrupted
         # sequence (i.e. not separated by single qubit gates) to the
-        # same hyperedge, along with the qubit. If the gate is a QControlBox,
+        # same hyperedge, along with the qubit. If the gate is a CX,
         # add the gate vertex when the control is intercepted, and add a new
         # weight 2 hyper edge if the control is intercepted. The weight 2
         # hyperedge corresponds to performing a possible teleportation.
@@ -176,24 +160,23 @@ class DistributedCircuit(Hypergraph):
                 command_index = command_dict['command_index']
                 # If the command is a CZ gate add it to the current working
                 # hyperedge.
-                if command["command"].op.type == OpType.CZ:
+                if command["command"].op.type in [OpType.CZ, OpType.CRz]:
                     vertex = command["two q gate count"] + \
                         self.circuit.n_qubits
                     self.add_gate_vertex(vertex, command['command'])
                     hyperedge.append(vertex)
                     self.commands[command_index]['vertex'] = vertex
                     self.commands[command_index]['type'] = 'distributed gate'
-                # If the command is a QControlBox or CX, add it to the current
+                # If the command is a CX, add it to the current
                 # working hyperedge, if the working qubit is the control.
                 # Otherwise start a fresh weight 2 hyper edge, add the two
                 # vertex hyperedge consisting of the gate and the qubit, and
                 # start a fresh hyper edge again.
-                # TODO: Note that this method of adding a QControlBox is very
+                # TODO: Note that this method of adding a CX is very
                 # lazy. Indeed, in the case where a teleportation is required,
                 # a new hyper edge need not be started, as other gates which
                 # follow may also benefit from the teleportation.
                 elif command["command"].op.type in [
-                    OpType.QControlBox,
                     OpType.CX
                 ]:
                     # Check if working qubit is the control

@@ -4,12 +4,13 @@ from pytket_dqc.circuits.distributed_circuit import (
     start_proc,
     end_proc,
     telep_proc,
-    )
+)
 from pytket import Circuit
 from pytket_dqc.placement import Placement
 from pytket_dqc.distributors import Brute
 from pytket_dqc.networks import NISQNetwork
 from pytket.circuit import QControlBox, Op, OpType  # type: ignore
+import pytest
 
 
 # TODO: Test new circuit classes
@@ -94,6 +95,54 @@ def test_hypergrpah_kahypar_hyperedges():
     assert hyperedges == [3, 6, 2, 3, 1, 4, 5, 6]
 
 
+def test_CRz_circuit():
+    circ = Circuit(2)
+    circ.CRz(0.3, 1, 0)
+
+    dist_circ = DistributedCircuit(circ)
+
+    assert dist_circ.vertex_list == [0, 2, 1]
+    assert dist_circ.hyperedge_list == [
+        {'hyperedge': [0, 2], 'weight': 1}, {'hyperedge': [1, 2], 'weight': 1}]
+
+    circ = Circuit(2)
+    circ.CZ(0, 1)
+    circ.CRz(0.3, 1, 0)
+    circ.Rz(0.3, 1)
+    circ.CZ(1, 0)
+
+    dist_circ = DistributedCircuit(circ)
+
+    assert dist_circ.hyperedge_list == [
+        {'hyperedge': [0, 2, 3, 4], 'weight': 1},
+        {'hyperedge': [1, 2, 3], 'weight': 1},
+        {'hyperedge': [1, 4], 'weight': 1}
+    ]
+    assert dist_circ.vertex_list == [0, 2, 3, 4, 1]
+
+    circ = Circuit(3)
+    circ.CRz(0.3, 1, 0)
+    circ.CRz(0.3, 0, 1)
+    circ.Rz(0.3, 0)
+    circ.CRz(0.3, 1, 2)
+    circ.Rx(0.3, 0)
+    circ.CRz(0.3, 1, 0)
+    circ.CRz(0.3, 0, 1)
+
+    dist_circ = DistributedCircuit(circ)
+
+    print(dist_circ.hyperedge_list)
+
+    assert dist_circ.hyperedge_list == [
+        {'hyperedge': [0, 3, 4], 'weight': 1},
+        {'hyperedge': [0, 6, 7], 'weight': 1},
+        {'hyperedge': [1, 3, 4, 5, 6, 7], 'weight': 1},
+        {'hyperedge': [2, 5], 'weight': 1}
+    ]
+    assert set(dist_circ.vertex_list) == set([0, 1, 2, 3, 4, 5, 6, 7])
+
+
+@pytest.mark.skip(reason="QControlBox are not supported for now")
 def test_q_control_box_circuits():
 
     op = Op.create(OpType.V)
@@ -149,12 +198,61 @@ def test_q_control_box_circuits():
     assert dist_circ.vertex_list == [0, 2, 3, 4, 5, 6, 1]
 
 
+def test_to_pytket_circ_CRz():
+
+    circ = Circuit(2).CRz(0.3, 0, 1).Rx(0.3, 0).CZ(0, 1).CRz(0.3, 1, 0)
+    dist_circ = DistributedCircuit(circ)
+
+    placement = Placement({0: 1, 1: 2, 2: 0, 3: 0, 4: 0})
+
+    assert dist_circ.is_placement(placement)
+
+    circ_with_dist = dist_circ.to_pytket_circuit(placement)
+
+    test_circ = Circuit()
+
+    server_1 = test_circ.add_q_register('Server 1', 1)
+    server_2 = test_circ.add_q_register('Server 2', 1)
+
+    server_0_link_0 = test_circ.add_q_register('Server 0 Link Edge 0', 1)
+    server_0_link_1 = test_circ.add_q_register('Server 0 Link Edge 1', 1)
+    server_0_link_2 = test_circ.add_q_register('Server 0 Link Edge 2', 1)
+
+    test_circ.add_custom_gate(
+        start_proc, [], [server_1[0], server_0_link_0[0]])
+    test_circ.add_custom_gate(
+        start_proc, [], [server_2[0], server_0_link_2[0]])
+    test_circ.CRz(0.3, server_0_link_0[0], server_0_link_2[0])
+    test_circ.add_custom_gate(end_proc, [], [server_0_link_0[0], server_1[0]])
+    test_circ.Rx(0.3, server_1[0])
+    test_circ.add_custom_gate(
+        start_proc, [], [server_1[0], server_0_link_1[0]])
+    test_circ.CZ(server_0_link_1[0], server_0_link_2[0])
+    test_circ.CRz(0.3, server_0_link_2[0], server_0_link_1[0])
+    test_circ.add_custom_gate(end_proc, [], [server_0_link_1[0], server_1[0]])
+    test_circ.add_custom_gate(end_proc, [], [server_0_link_2[0], server_2[0]])
+
+    test_circ_command_names = [command.op.get_name()
+                               for command in test_circ.get_commands()]
+    circ_with_dist_command_names = [
+        command.op.get_name() for command in circ_with_dist.get_commands()]
+
+    assert test_circ_command_names == circ_with_dist_command_names
+
+    test_circ_command_qubits = [
+        command.qubits for command in test_circ.get_commands()]
+    circ_with_dist_command_qubits = [
+        command.qubits for command in circ_with_dist.get_commands()]
+
+    assert test_circ_command_qubits == circ_with_dist_command_qubits
+
+
 def test_to_pytket_circuit_detached_gate():
     # This test tests the case where the gate is acted on a server to which
     # the no qubit has been assigned.
 
-    def_circ = Circuit(2)
-    def_circ.add_barrier([0, 1])
+    # def_circ = Circuit(2)
+    # def_circ.add_barrier([0, 1])
 
     circ = Circuit(2).CZ(0, 1).Rx(0.3, 0).CZ(0, 1)
     dist_circ = DistributedCircuit(circ)
@@ -257,10 +355,7 @@ def test_to_pytket_circuit_gates_on_different_servers():
 
 def test_to_pytket_circuit_with_teleportation():
 
-    op = Op.create(OpType.V)
-    cv = QControlBox(op, 1)
-
-    circ = Circuit(2).CZ(0, 1).Rx(0.3, 1).add_qcontrolbox(cv, [1, 0])
+    circ = Circuit(2).CZ(0, 1).Rx(0.3, 1).CX(1, 0)
     dist_circ = DistributedCircuit(circ)
 
     placement = Placement({0: 1, 1: 2, 2: 0, 3: 2})
@@ -287,7 +382,7 @@ def test_to_pytket_circuit_with_teleportation():
     test_circ.Rx(0.3, server_2[0])
     test_circ.add_custom_gate(
         telep_proc, [], [server_1[0], server_2_link_1[0]])
-    test_circ.add_qcontrolbox(cv, [server_2[0], server_2_link_1[0]])
+    test_circ.CX(server_2[0], server_2_link_1[0])
     test_circ.add_custom_gate(
         telep_proc, [], [server_2_link_1[0], server_1[0]])
 
