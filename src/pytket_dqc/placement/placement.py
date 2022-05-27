@@ -90,7 +90,7 @@ class Placement:
             for hyperedge in circuit.hyperedge_list:
                 # Generate a list of where each vertex of the hyperedge
                 # is placed
-                vertex_list = cast(list[int], hyperedge['hyperedge'])
+                vertex_list = cast(list[int], hyperedge['vertices'])
                 hyperedge_placement = [
                     self.placement[vertex] for vertex in vertex_list
                 ]

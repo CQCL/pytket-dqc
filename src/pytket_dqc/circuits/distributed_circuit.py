@@ -333,7 +333,7 @@ class DistributedCircuit(Hypergraph):
                 # List of gate vertices in this hyperedge
                 gate_vertex_list = [
                     vertex
-                    for vertex in cast(list[int], hyperedge['hyperedge'])
+                    for vertex in cast(list[int], hyperedge['vertices'])
                     if self.vertex_circuit_map[vertex]['type'] == 'gate'
                 ]
 
@@ -341,7 +341,7 @@ class DistributedCircuit(Hypergraph):
                 # corresponds to a qubit.
                 hyperedge_qubit_vertex_list = [
                     vertex
-                    for vertex in cast(list[int], hyperedge['hyperedge'])
+                    for vertex in cast(list[int], hyperedge['vertices'])
                     if vertex not in gate_vertex_list
                 ]
                 assert len(hyperedge_qubit_vertex_list) == 1
@@ -421,12 +421,12 @@ class DistributedCircuit(Hypergraph):
                             if (
                                 (
                                     gate_vertex
-                                    in cast(list[int], hyperedge['hyperedge'])
+                                    in cast(list[int], hyperedge['vertices'])
                                 )
                                 and
                                 (
                                     qubit_vertex
-                                    in cast(list[int], hyperedge['hyperedge'])
+                                    in cast(list[int], hyperedge['vertices'])
                                 )
                             ):
                                 new_qubit.append(
@@ -450,13 +450,13 @@ class DistributedCircuit(Hypergraph):
             # List of the subset of vertices which correspond to gates.
             gate_vertex_list = [
                 vertex
-                for vertex in cast(list[int], edge['hyperedge'])
+                for vertex in cast(list[int], edge['vertices'])
                 if self.vertex_circuit_map[vertex]['type'] == 'gate'
             ]
 
             # Find the qubit vertex in the hyperedge.
             qubit_vertex_set = set(
-                cast(list[int], edge['hyperedge'])) - set(gate_vertex_list)
+                cast(list[int], edge['vertices'])) - set(gate_vertex_list)
             assert len(qubit_vertex_set) == 1
             qubit_vertex_list = list(qubit_vertex_set)
             qubit_vertex = qubit_vertex_list[0]

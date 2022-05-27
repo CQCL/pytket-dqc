@@ -7,28 +7,38 @@ from typing import TYPE_CHECKING, Tuple, Union, cast
 if TYPE_CHECKING:
     from pytket_dqc.placement import Placement
 
+# Type aliases
+Vertex = int
+# Hyperedges are given by a dictionary with has two keys:
+#    hyperedge["vertices"] is its list of vertices
+#    hyperedge["weight"] is its weight
+Hyperedge = dict[str, Union[int, list[int]]]
+
 
 class Hypergraph:
     """A representation of a hypergraph. Hypergraphs are represented by
     vertices and hyperedges, where hyperedges consist of a collection of
     two or more vertices.
-    Since neighbourhood search will be often used, it is best to compute
-    them only once and store it.
+    Since neighbourhoods and incident hyperedge list will be often used
+    it is best to store them in the data structure.
 
-    :param hyperedge_list: List of hyperedges and weights
-    :type hyperedge_list: list[dict[str, Union[int, list[int]]]]
-    :param vertex_list: List of vertices.
-    :type vertex_list: list[int]
+    :param vertex_list: List of vertices
+    :type vertex_list: list[Vertex]
+    :param hyperedge_list: List of hyperedges
+    :type hyperedge_list: list[Hyperedge]
+    :param hyperedge_dict: Maps each vertex to its incident hyperedges
+    :type hyperedge_dict: dict[Vertex, list[Hyperedge]]
     :param vertex_neighbours: Maps each vertex to its neighbourhood
-    :type vertex_neighbours: dict[int,set[int]]
+    :type vertex_neighbours: dict[Vertex, set[Vertex]]
     """
 
     def __init__(self):
         """Initialisation function. The hypergraph initialises as empty.
         """
-        self.hyperedge_list: list[dict[str, Union[int, list[int]]]] = []
-        self.vertex_list: list[int] = []
-        self.vertex_neighbours: dict[int, set[int]] = dict()
+        self.vertex_list: list[Vertex] = []
+        self.hyperedge_list: list[Hyperedge] = []
+        self.hyperedge_dict: dict[Vertex, list[Hyperedge]] = dict()
+        self.vertex_neighbours: dict[Vertex, set[Vertex]] = dict()
 
     def is_placement(self, placement: Placement) -> bool:
         """Checks if a given placement is a valid placement of this hypergraph.
@@ -82,36 +92,35 @@ class Hypergraph:
         """
         scenes = {}
         for i, edge in enumerate(self.hyperedge_list):
-            scenes[str(i)] = set(edge["hyperedge"])
+            scenes[str(i)] = set(edge["vertices"])
         H = hnx.Hypergraph(scenes)
         hnx.drawing.draw(H)
 
-    def add_vertex(self, vertex: int):
+    def add_vertex(self, vertex: Vertex):
         """Add vertex to hypergraph.
 
         :param vertex: Index of vertex.
-        :type vertex: int
+        :type vertex: Vertex
         """
         if vertex not in self.vertex_list:
             self.vertex_list.append(vertex)
-
-        if vertex not in self.vertex_neighbours.keys():
+            self.hyperedge_dict[vertex] = []
             self.vertex_neighbours[vertex] = set()
 
-    def add_vertices(self, vertices: list[int]):
+    def add_vertices(self, vertices: list[Vertex]):
         """Add list ov vertices to hypergraph.
 
         :param vertices: List of vertex indices
-        :type vertices: list[int]
+        :type vertices: list[Vertex]
         """
         for vertex in vertices:
             self.add_vertex(vertex)
 
-    def add_hyperedge(self, hyperedge: list[int], weight: int = 1):
+    def add_hyperedge(self, hyperedge: list[Vertex], weight: int = 1):
         """Add hyperedge to hypergraph. Update vertex_neighbours.
 
         :param hyperedge: List of vertices in hyperedge
-        :type hyperedge: list[int]
+        :type hyperedge: list[Vertex]
         :param weight: Hyperedge weight
         :type weight: int
         :raises Exception: Raised if hyperedge does not contain at least
@@ -134,13 +143,18 @@ class Hypergraph:
                         "Please add it using add_vertex first"
                     ).format(hyperedge, self.vertex_list)
                 )
+
+            self.hyperedge_dict[vertex].append(
+                {"vertices": hyperedge, "weight": weight}
+            )
+
             # Add in all vertices of the hyperedge to the neighbourhood. Since
             # this is a set there will be no duplicates. This carelessly adds
             # in the vertex itself to its own neighbourhood, so we remove it.
             self.vertex_neighbours[vertex].update(hyperedge)
             self.vertex_neighbours[vertex].remove(vertex)
 
-        self.hyperedge_list.append({"hyperedge": hyperedge, "weight": weight})
+        self.hyperedge_list.append({"vertices": hyperedge, "weight": weight})
 
     def kahypar_hyperedges(self) -> Tuple[list[int], list[int]]:
         """Return hypergraph in format used by kahypar package. In particular
@@ -156,7 +170,7 @@ class Hypergraph:
         hyperedges = [
             vertex
             for hyperedge in self.hyperedge_list
-            for vertex in cast(list[int], hyperedge["hyperedge"])
+            for vertex in cast(list[Vertex], hyperedge["vertices"])
         ]
 
         # Create list of intervals of hyperedges list which correspond to
@@ -164,13 +178,13 @@ class Hypergraph:
         hyperedge_indices = [0]
         for hyperedge in self.hyperedge_list:
             hyperedge_indices.append(
-                len(cast(list[int], hyperedge["hyperedge"]))
+                len(cast(list[Vertex], hyperedge["vertices"]))
                 + hyperedge_indices[-1]
             )
 
         return hyperedge_indices, hyperedges
 
-    def get_boundary(self, placement: Placement) -> list[int]:
+    def get_boundary(self, placement: Placement) -> list[Vertex]:
         """Given a placement of vertices to blocks, find the subset of vertices
         in their boundaries. A boundary vertex is a vertex in some block B1
         that has a neighbour in another block B2.
@@ -179,7 +193,7 @@ class Hypergraph:
         :type placement: Placement
 
         :return: The list of boundary vertices
-        :rtype: set[int]
+        :rtype: list[Vertex]
         """
 
         boundary = list()
