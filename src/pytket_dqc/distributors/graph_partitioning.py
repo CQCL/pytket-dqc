@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import random
 import kahypar as kahypar  # type:ignore
 from pytket_dqc.distributors import Distributor
 from pytket_dqc.placement import Placement
@@ -47,15 +48,54 @@ class GraphPartitioning(Distributor):
 
         :return: Placement of ``dist_circ`` onto ``network``.
         :rtype: Placement
+
+        :key num_rounds: Max number of refinement rounds. Default is 1000.
+        :key stop_parameter: Real number in [0,1]. If proportion of moves
+        in a round is smaller than this number, do no more rounds. Default
+        is 0.05.
         """
 
         # First step is to call KaHyPar using the connectivity metric (i.e. no
         # knowledge about network topology other than server sizes)
-        initial_placement = self.initial_distribute(
+        placement = self.initial_distribute(
             dist_circ, network
         )  # TODO: Add the seed
 
-        return initial_placement
+        num_rounds = kwargs.get("num_rounds", 1000)
+        stop_parameter = kwargs.get("stop_parameter",0.05)
+
+        gain_manager = GainManager(dist_circ, placement)
+
+        round_id = 0
+        proportion_moved = 1
+        while round_id < num_rounds and proportion_moved > stop_parameter:
+            boundary = dist_circ.get_boundary(placement)
+
+            moves = 0
+            for vertex in boundary:
+                neighbours = dist_circ.vertex_neighbours[vertex]
+                neighbour_blocks = set([placement.placement[v] for v in neighbours])
+
+                best_block = placement.placement[vertex]
+                best_gain = 0
+                for block in neighbour_blocks:
+                    # TODO: Check, is this a valid move?
+
+                    gain = gain(dist_circ, vertex, block)
+
+                    if gain > best_gain or \
+                       gain == best_gain and random.choice([True,False]):
+                            best_gain = gain
+                            best_block = block
+
+                if best_block != placement.placement[vertex]:
+                    placement.placement[vertex] = best_block
+                    moves += 1
+
+            round_id += 1
+            proportion_moved = moves / len(boundary)
+
+        return placement
 
     # TODO: dist_circ does not need to be a DistributedCircuit and could be a
     # Hypergraph. Is there a way of specifying this in the typing?
@@ -115,3 +155,40 @@ class GraphPartitioning(Distributor):
         placement_dict = {i: server for i, server in enumerate(partition_list)}
 
         return Placement(placement_dict)
+
+
+class GainManager:
+    """
+    TODO
+    """
+
+    def __init__(self, hypergraph: Hypergraph, placement: Placement):
+        """
+        TODO
+        """
+        self.hypergraph: Hypergraph = hypergraph
+        self.placement: Placement = placement
+        self.cache: dict[dict[int,int], int] = dict()
+
+    def update_placement(self, placement: Placement):
+        """
+        NOTE: since placements are changed on-site, the placement pointer does not change and we don't need to call this ever.
+        """
+        self.placement = placement
+
+    def clear_cache(self):
+        """
+        TODO
+        """
+        self.cache = dict()
+
+    def gain(self, vertex: int, new_block: int) -> int:
+        """
+        TODO
+        """
+
+
+
+    # I should probably keep a cache of already computed costs for each hyperedge.
+    # If I do so, I should probably create a class to manage this and put gain in it.
+
