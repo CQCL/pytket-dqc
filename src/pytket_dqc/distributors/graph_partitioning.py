@@ -62,38 +62,43 @@ class GraphPartitioning(Distributor):
         )  # TODO: Add the seed
 
         num_rounds = kwargs.get("num_rounds", 1000)
-        stop_parameter = kwargs.get("stop_parameter",0.05)
+        stop_parameter = kwargs.get("stop_parameter", 0.05)
 
         gain_manager = GainManager(dist_circ, placement)
 
         round_id = 0
-        proportion_moved = 1
+        proportion_moved : float = 1
         while round_id < num_rounds and proportion_moved > stop_parameter:
             boundary = dist_circ.get_boundary(placement)
 
             moves = 0
             for vertex in boundary:
                 neighbours = dist_circ.vertex_neighbours[vertex]
-                neighbour_blocks = set([placement.placement[v] for v in neighbours])
+                neighbour_blocks = set(
+                    [placement.placement[v] for v in neighbours]
+                )
 
                 best_block = placement.placement[vertex]
                 best_gain = 0
                 for block in neighbour_blocks:
                     # TODO: Check, is this a valid move?
 
-                    gain = gain(dist_circ, vertex, block)
+                    gain = gain_manager.gain(vertex, block)
 
-                    if gain > best_gain or \
-                       gain == best_gain and random.choice([True,False]):
-                            best_gain = gain
-                            best_block = block
+                    if (
+                        gain > best_gain
+                        or gain == best_gain
+                        and random.choice([True, False])
+                    ):
+                        best_gain = gain
+                        best_block = block
 
                 if best_block != placement.placement[vertex]:
                     placement.placement[vertex] = best_block
                     moves += 1
 
             round_id += 1
-            proportion_moved = moves / len(boundary)
+            proportion_moved = 0 if len(boundary) == 0 else moves / len(boundary)
 
         return placement
 
@@ -162,13 +167,13 @@ class GainManager:
     TODO
     """
 
-    def __init__(self, hypergraph: Hypergraph, placement: Placement):
+    def __init__(self, dist_circ: DistributedCircuit, placement: Placement):
         """
         TODO
         """
-        self.hypergraph: Hypergraph = hypergraph
+        self.dist_circ: DistributedCircuit = dist_circ
         self.placement: Placement = placement
-        self.cache: dict[dict[int,int], int] = dict()
+        self.cache: dict[dict[int, int], int] = dict()
 
     def update_placement(self, placement: Placement):
         """
@@ -186,9 +191,7 @@ class GainManager:
         """
         TODO
         """
-
-
+        return 0
 
     # I should probably keep a cache of already computed costs for each hyperedge.
     # If I do so, I should probably create a class to manage this and put gain in it.
-
