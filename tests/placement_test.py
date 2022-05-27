@@ -46,7 +46,9 @@ def test_placement_cost():
     dist_two_CZ_circ = DistributedCircuit(two_CZ_circ)
 
     three_line_network = NISQNetwork(
-    [[0, 1], [1, 2], [1,3], [2,4]], {0: [0], 1: [1], 2: [2], 3:[3], 4:[4]})
+        [[0, 1], [1, 2], [1, 3], [2, 4]],
+        {0: [0], 1: [1], 2: [2], 3: [3], 4: [4]}
+        )
 
     placement_one = Placement({0: 0, 1: 1, 2: 2, 3: 1, 4: 2})
     assert placement_one.cost(

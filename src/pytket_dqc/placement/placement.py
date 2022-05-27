@@ -1,12 +1,14 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, cast, List
 if TYPE_CHECKING:
     from pytket_dqc.networks import NISQNetwork
     from pytket_dqc.circuits import DistributedCircuit
 
 import networkx as nx  # type: ignore
-from networkx.algorithms.approximation.steinertree import steiner_tree 
+from networkx.algorithms.approximation.steinertree import (  # type: ignore
+    steiner_tree
+)
 
 
 class Placement:
@@ -89,14 +91,19 @@ class Placement:
                 # Cost of distributing gates in a hyperedge corresponds
                 # to the number of edges in steiner tree connecting all
                 # servers used by vertices in hyperedge.
-                dist_graph = self._get_distribution_graph(hyperedge['hyperedge'], network)
+                dist_graph = self._get_distribution_graph(
+                    cast(List[int], hyperedge['hyperedge']), network)
                 cost += len(dist_graph.edges())
         else:
             raise Exception("This is not a valid placement.")
 
         return cost
 
-    def _get_distribution_graph(self, hyperedge:list[int], network: NISQNetwork) -> nx.Graph:
+    def _get_distribution_graph(
+        self,
+        hyperedge: list[int],
+        network: NISQNetwork
+    ) -> nx.Graph:
         """Returns graph representing the edges along which distribution
         operations should act. This is the steiner tree covering the servers
         used by the vertices in the hyper edge.
@@ -110,6 +117,7 @@ class Placement:
         :rtype: nx.Graph
         """
 
-        servers_used = [value for key, value in self.placement.items() if key in hyperedge]
+        servers_used = [value for key,
+                        value in self.placement.items() if key in hyperedge]
         server_graph = network.get_server_nx()
         return steiner_tree(server_graph, servers_used)
