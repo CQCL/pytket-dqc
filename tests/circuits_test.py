@@ -156,6 +156,11 @@ def test_to_pytket_circuit_detached_gate():
     # This test tests the case where the gate is acted on a server to which
     # the no qubit has been assigned.
 
+    network = NISQNetwork(
+        [[0, 1], [1, 2]],
+        {0: [0], 1: [1], 2: [2]}
+    )
+
     def_circ = Circuit(2)
     def_circ.add_barrier([0, 1])
 
@@ -166,7 +171,7 @@ def test_to_pytket_circuit_detached_gate():
 
     assert dist_circ.is_placement(placement)
 
-    circ_with_dist = dist_circ.to_pytket_circuit(placement)
+    circ_with_dist = dist_circ.to_pytket_circuit(placement, network)
 
     test_circ = Circuit()
 
@@ -212,6 +217,11 @@ def test_to_pytket_circuit_detached_gate():
 
 def test_to_pytket_circuit_gates_on_different_servers():
 
+    network = NISQNetwork(
+        [[0, 1], [1, 2]],
+        {0: [0], 1: [1], 2: [2]}
+    )
+
     circ = Circuit(2).CZ(0, 1).Rx(0.3, 1).CZ(0, 1)
     dist_circ = DistributedCircuit(circ)
 
@@ -219,7 +229,7 @@ def test_to_pytket_circuit_gates_on_different_servers():
 
     assert dist_circ.is_placement(placement)
 
-    circ_with_dist = dist_circ.to_pytket_circuit(placement)
+    circ_with_dist = dist_circ.to_pytket_circuit(placement, network)
 
     test_circ = Circuit()
 
@@ -260,6 +270,11 @@ def test_to_pytket_circuit_gates_on_different_servers():
 
 def test_to_pytket_circuit_with_teleportation():
 
+    network = NISQNetwork(
+        [[0, 1], [1, 2]],
+        {0: [0], 1: [1], 2: [2]}
+    )
+
     op = Op.create(OpType.V)
     cv = QControlBox(op, 1)
 
@@ -269,7 +284,7 @@ def test_to_pytket_circuit_with_teleportation():
     placement = Placement({0: 1, 1: 2, 2: 0, 3: 2})
     assert dist_circ.is_placement(placement)
 
-    circ_with_dist = dist_circ.to_pytket_circuit(placement)
+    circ_with_dist = dist_circ.to_pytket_circuit(placement, network)
 
     test_circ = Circuit()
 

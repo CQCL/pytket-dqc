@@ -13,7 +13,7 @@ from pytket_dqc.utils.gateset import dqc_gateset_predicate
 from typing import TYPE_CHECKING, cast, Union
 if TYPE_CHECKING:
     from pytket.circuit import QubitRegister  # type: ignore
-    from pytket_dqc.placement import Placement
+    from pytket_dqc import Placement, NISQNetwork
 
 def_circ = Circuit(2)
 def_circ.add_barrier([0, 1])
@@ -296,18 +296,24 @@ class DistributedCircuit(Hypergraph):
 
         return circ
 
-    def to_pytket_circuit(self, placement: Placement) -> Circuit:
+    def to_pytket_circuit(
+        self,
+        placement: Placement,
+        network: NISQNetwork,
+    ) -> Circuit:
         """Convert circuit to one including required distributed gates.
 
         :param placement: Placement of hypergraph vertices onto servers.
         :type placement: Placement
+        :param network: Network on which the distributed circuit is to be run.
+        :type network: NISQNetwork
         :raises Exception: Raised if the placement is not valid.
         :return: Circuit including distributed gates.
         :rtype: Circuit
         """
 
         # Initial check that placement is valid
-        if not self.is_placement(placement):
+        if not placement.is_placement(self, network):
             raise Exception("This is not a valid placement for this circuit.")
 
         server_to_qubit_vertex_list = self._get_server_to_qubit_vertex(
