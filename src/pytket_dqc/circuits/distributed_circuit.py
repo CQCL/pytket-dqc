@@ -429,13 +429,8 @@ class DistributedCircuit(Hypergraph):
                         gate_vertex = command['vertex']
                         for i, hyperedge in enumerate(self.hyperedge_list):
                             if (
-                                (
-                                    gate_vertex in hyperedge.vertices
-                                )
-                                and
-                                (
-                                    qubit_vertex in hyperedge.vertices
-                                )
+                                gate_vertex in hyperedge.vertices
+                                and qubit_vertex in hyperedge.vertices
                             ):
                                 new_qubit.append(
                                     server_to_link_register[gate_server][i])
