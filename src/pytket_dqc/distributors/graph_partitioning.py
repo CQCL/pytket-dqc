@@ -7,7 +7,7 @@ from pytket_dqc.placement import Placement
 import importlib_resources
 
 
-from typing import TYPE_CHECKING, Tuple
+from typing import TYPE_CHECKING, Tuple, Final
 
 if TYPE_CHECKING:
     from pytket_dqc import DistributedCircuit, Hypergraph
@@ -33,9 +33,9 @@ class GraphPartitioning(Distributor):
     def distribute(
         self, dist_circ: DistributedCircuit, network: NISQNetwork, **kwargs
     ) -> Placement:
-        """Distribute ``dist_circ`` onto ``network`` using graph partitioning
-        tools available in `kahypar <https://kahypar.org/>`_ package. This
-        may not return a valid placement.
+        """Distribute ``dist_circ`` onto ``network``. The initial placement
+        is found by KaHyPar using the connectivity metric, then it is
+        refined to reduce the cost taking into account the network topology.
 
         :param dist_circ: Circuit to distribute.
         :type dist_circ: DistributedCircuit
@@ -43,27 +43,43 @@ class GraphPartitioning(Distributor):
         :type network: NISQNetwork
 
         :key ini_path: Path to kahypar ini file.
-
-        :return: Placement of ``dist_circ`` onto ``network``.
-        :rtype: Placement
-
+        :key seed: Seed for randomness. Default is None
         :key num_rounds: Max number of refinement rounds. Default is 1000.
         :key stop_parameter: Real number in [0,1]. If proportion of moves
         in a round is smaller than this number, do no more rounds. Default
         is 0.05.
+
+        :return: Placement of ``dist_circ`` onto ``network``.
+        :rtype: Placement
         """
+
+        seed = kwargs.get("seed", None)
+        num_rounds = kwargs.get("num_rounds", 1000)
+        stop_parameter = kwargs.get("stop_parameter", 0.05)
 
         # First step is to call KaHyPar using the connectivity metric (i.e. no
         # knowledge about network topology other than server sizes)
         placement = self.initial_distribute(
-            dist_circ, network
-        )  # TODO: Add the seed
+            dist_circ, network, seed=seed
+        )
 
-        num_rounds = kwargs.get("num_rounds", 1000)
-        stop_parameter = kwargs.get("stop_parameter", 0.05)
-
+        # We will use a ``GainManager`` to manage the calculation of gains
+        # (and management of pre-computed values) in a transparent way
         gain_manager = GainManager(dist_circ, placement)
 
+        # The refinement algorithm proceeds in rounds. In each round, all of
+        # the vertices in the boundary are visited in random order and we
+        # we calculate the gain achieved by moving the vertex to each of its
+        # neighbouring blocks. If all possibe moves of a given vertex have
+        # negative gains, the vertex is not moved; otherwise the best move
+        # is applied, with ties broken randomly.
+        #
+        # The algorithm continues until the proportion of vertices moved in
+        # a round (i.e. #moved / #boundary) is smaller than ``stop_parameter``
+        # or the maximum ``num_rounds`` is reached.
+        #
+        # This refinement algorithm is known as "label propagation" and it
+        # was discussed in https://arxiv.org/abs/1402.3281.
         round_id = 0
         proportion_moved: float = 1
         while round_id < num_rounds and proportion_moved > stop_parameter:
@@ -118,11 +134,10 @@ class GraphPartitioning(Distributor):
         :type network: NISQNetwork
 
         :key ini_path: Path to kahypar ini file.
+        :key seed: Seed for randomness. Default is None
 
         :return: Placement of ``dist_circ`` onto ``network``.
         :rtype: Placement
-
-        :key seed: Seed for randomness. Default is None
         """
 
         if not dist_circ.is_valid():
@@ -145,9 +160,9 @@ class GraphPartitioning(Distributor):
             0 for i in range(num_qubits, num_vertices)
         ]
         # TODO: the weight assignment to vertices assumes that the index of the
-        # qubit vertices range from 0 to `num_qubits`, and the rest of them
+        # qubit vertices range from 0 to ``num_qubits``, and the rest of them
         # correspond to gates. This is currently guaranteed by construction
-        # i.e. method `from_circuit()`; we might want to make this more robust.
+        # i.e. method ``from_circuit()``; we might want to make this more robust.
 
         hypergraph = kahypar.Hypergraph(
             num_vertices,
@@ -185,57 +200,63 @@ class GraphPartitioning(Distributor):
 
 
 class GainManager:
+    """Instances of this class are used to manage pre-computed values of the
+    gain of a move, since it is likely that the same value will be used
+    multiple times and computing it requires solving a minimum spanning tree
+    problem which takes non-negligible computation time.
+
+    :param hypergraph: The hypergraph describing the circuit connectivity
+    :type hypergraph: Hypergraph
+    :param placement: A reference to the current placement
+    :type placement: Placement
+    :param cache: A dictionary of sets of blocks to their communication cost
+    :type cache: dict[frozenset[int], int]
     """
-    TODO
-    """
+    # TODO: I probably will need to keep the NISQNetwork around as well
 
     def __init__(self, hypergraph: Hypergraph, placement: Placement):
+        """Initialise the GainManager; both the references to ``hypergraph``
+        and ``placement`` should be the same during the lifetime of this
+        object; thus, they are declared as ``Final``. Notice that this
+        does not prevent the data within ``placement`` to be updated, the
+        only thing that is ``Final`` is the reference to the object.
         """
-        TODO
-        """
-        self.hypergraph: Hypergraph = hypergraph
-        self.placement: Placement = placement
-        self.cache: dict[frozenset[Tuple[int, int]], int] = dict()
-
-    def update_placement(self, placement: Placement):
-        """
-        NOTE: since placements are changed on-site, the placement pointer does not change and we don't need to call this ever.
-        """
-        self.placement = placement
-
-    def clear_cache(self):
-        """
-        TODO
-        """
-        self.cache = dict()
+        self.hypergraph: Final[Hypergraph] = hypergraph
+        self.placement: Final[Placement] = placement
+        self.cache: dict[frozenset[int], int] = dict()
 
     def gain(self, vertex: int, new_block: int) -> int:
-        """
-        TODO
+        """Compute the gain of moving ``vertex`` to ``new_block``. Instead
+        of calculating the cost of the whole hypergraph using the new
+        placement, we simply compare the previous cost of all hyperedges
+        incident to ``vertex`` and substract their new cost. Moreover, if
+        these values are available in the cache they are used; otherwise,
+        the cache is updated.
         """
         current_block = self.placement.placement[vertex]
 
         gain = 0
         loss = 0
         for hyperedge in self.hypergraph.hyperedge_dict[vertex]:
-            # Edge placement pairs without the vertex being moved
-            edge_placement = [
-                (v, self.placement.placement[v])
+            # Set of connected blocks omitting that of the vertex being moved
+            connected_blocks = [
+                self.placement.placement[v]
                 for v in hyperedge.vertices
                 if v != vertex
             ]
 
             current_block_pins = len(
-                [b for b in edge_placement if b == current_block]
+                [b for b in connected_blocks if b == current_block]
             )
-            new_block_pins = len([b for b in edge_placement if b == new_block])
+            new_block_pins = len(
+                [b for b in connected_blocks if b == new_block]
+            )
 
             # The cost of hyperedge will only be decreased by the move if
-            # `vertex` is was the last member of `hyperedge` in `current_block`
+            # ``vertex`` is was the last member of ``hyperedge`` in
+            # ``current_block``
             if current_block_pins == 0:
-                cache_key = frozenset(
-                    edge_placement + [(vertex, current_block)]
-                )
+                cache_key = frozenset(connected_blocks + [current_block])
                 if cache_key not in self.cache.keys():
                     self.cache[
                         cache_key
@@ -243,10 +264,10 @@ class GainManager:
                 gain += self.cache[cache_key]
 
             # The cost of hyperedge will only be increased by the move if
-            # no vertices from `hyperedge` were in `new_block` prior to
-            # the move
+            # no vertices from ``hyperedge`` were in ``new_block`` prior
+            # to the move
             if new_block_pins == 0:
-                cache_key = frozenset(edge_placement + [(vertex, new_block)])
+                cache_key = frozenset(connected_blocks + [new_block])
                 if cache_key not in self.cache.keys():
                     self.cache[
                         cache_key
