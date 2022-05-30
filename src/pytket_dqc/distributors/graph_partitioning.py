@@ -7,10 +7,10 @@ from pytket_dqc.placement import Placement
 import importlib_resources
 
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Tuple
 
 if TYPE_CHECKING:
-    from pytket_dqc import DistributedCircuit
+    from pytket_dqc import DistributedCircuit, Hypergraph
     from pytket_dqc.networks import NISQNetwork
 
 
@@ -187,13 +187,13 @@ class GainManager:
     TODO
     """
 
-    def __init__(self, dist_circ: DistributedCircuit, placement: Placement):
+    def __init__(self, hypergraph: Hypergraph, placement: Placement):
         """
         TODO
         """
-        self.dist_circ: DistributedCircuit = dist_circ
+        self.hypergraph: Hypergraph = hypergraph
         self.placement: Placement = placement
-        self.cache: dict[dict[int, int], int] = dict()
+        self.cache: dict[frozenset[Tuple[int, int]], int] = dict()
 
     def update_placement(self, placement: Placement):
         """
@@ -211,7 +211,32 @@ class GainManager:
         """
         TODO
         """
-        return 0
+        current_block = self.placement.placement[vertex]
 
-    # I should probably keep a cache of already computed costs for each hyperedge.
-    # If I do so, I should probably create a class to manage this and put gain in it.
+        gain = 0
+        loss = 0
+        for hyperedge in self.hypergraph.hyperedge_dict[vertex]:
+            # Edge placement pairs without the vertex being moved
+            edge_placement = [(v,self.placement.placement[v]) for v in hyperedge["vertices"] if v != vertex]
+
+            current_block_pins = len([b for b in edge_placement if b == current_block])
+            new_block_pins = len([b for b in edge_placement if b == new_block])
+
+            # The cost of hyperedge will only be decreased by the move if
+            # `vertex` is was the last member of `hyperedge` in `current_block`
+            if current_block_pins == 0:
+                cache_key = frozenset(edge_placement + [(vertex,current_block)])
+                if cache_key not in self.cache.keys():
+                    self.cache[cache_key] = 0 # hyperedge_cost(hyperedge, placement)
+                gain += self.cache[cache_key]
+
+            # The cost of hyperedge will only be increased by the move if
+            # no vertices from `hyperedge` were in `new_block` prior to
+            # the move
+            if new_block_pins == 0:
+                cache_key = frozenset(edge_placement + [(vertex,new_block)])
+                if cache_key not in self.cache.keys():
+                    self.cache[cache_key] = 0 # hyperedge_cost(hyperedge, new_placement)
+                loss += self.cache[cache_key]
+
+        return gain - loss
