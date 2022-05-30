@@ -134,6 +134,13 @@ class Placement:
         servers_used = [value for key,
                         value in self.placement.items() if key in hyperedge]
         server_graph = network.get_server_nx()
+
+        # The Steiner tree problem is NP-complete. Indeed the networkx
+        # steiner_tree is solving a problem which gives an upper bound on
+        # the size of the Steiner tree. Importantly it produces a deterministic
+        # output, which we rely on. In particular we assume the call to this
+        # function made when calculating costs gives the same output as the
+        # call that is made when the circuit is built and outputted.
         steiner_server_graph = steiner_tree(server_graph, servers_used)
         qubit_server = self.placement[qubit_node]
         return direct_from_origin(steiner_server_graph, qubit_server)
