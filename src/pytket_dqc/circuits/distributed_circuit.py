@@ -8,7 +8,7 @@ import numpy as np
 from pytket.passes import DecomposeBoxes, auto_rebase_pass  # type: ignore
 import networkx as nx  # type: ignore
 import random
-from pytket_dqc.utils import dqc_gateset_predicate, cost_from_circuit
+from pytket_dqc.utils import dqc_gateset_predicate, _cost_from_circuit
 
 from typing import TYPE_CHECKING, cast, Union, List
 if TYPE_CHECKING:
@@ -598,7 +598,7 @@ class DistributedCircuit(Hypergraph):
             else:
                 raise Exception('This role has not been defined')
 
-        assert cost_from_circuit(circ) == placement.cost(self, network)
+        assert _cost_from_circuit(circ) == placement.cost(self, network)
 
         return circ
 
