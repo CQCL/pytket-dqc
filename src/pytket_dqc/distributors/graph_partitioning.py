@@ -65,7 +65,7 @@ class GraphPartitioning(Distributor):
         gain_manager = GainManager(dist_circ, placement)
 
         round_id = 0
-        proportion_moved : float = 1
+        proportion_moved: float = 1
         while round_id < num_rounds and proportion_moved > stop_parameter:
             boundary = dist_circ.get_boundary(placement)
 
@@ -96,7 +96,9 @@ class GraphPartitioning(Distributor):
                     moves += 1
 
             round_id += 1
-            proportion_moved = 0 if len(boundary) == 0 else moves / len(boundary)
+            proportion_moved = (
+                0 if len(boundary) == 0 else moves / len(boundary)
+            )
 
         return placement
 
@@ -217,26 +219,38 @@ class GainManager:
         loss = 0
         for hyperedge in self.hypergraph.hyperedge_dict[vertex]:
             # Edge placement pairs without the vertex being moved
-            edge_placement = [(v,self.placement.placement[v]) for v in hyperedge["vertices"] if v != vertex]
+            edge_placement = [
+                (v, self.placement.placement[v])
+                for v in hyperedge.vertices
+                if v != vertex
+            ]
 
-            current_block_pins = len([b for b in edge_placement if b == current_block])
+            current_block_pins = len(
+                [b for b in edge_placement if b == current_block]
+            )
             new_block_pins = len([b for b in edge_placement if b == new_block])
 
             # The cost of hyperedge will only be decreased by the move if
             # `vertex` is was the last member of `hyperedge` in `current_block`
             if current_block_pins == 0:
-                cache_key = frozenset(edge_placement + [(vertex,current_block)])
+                cache_key = frozenset(
+                    edge_placement + [(vertex, current_block)]
+                )
                 if cache_key not in self.cache.keys():
-                    self.cache[cache_key] = 0 # hyperedge_cost(hyperedge, placement)
+                    self.cache[
+                        cache_key
+                    ] = 0  # hyperedge_cost(hyperedge, placement)
                 gain += self.cache[cache_key]
 
             # The cost of hyperedge will only be increased by the move if
             # no vertices from `hyperedge` were in `new_block` prior to
             # the move
             if new_block_pins == 0:
-                cache_key = frozenset(edge_placement + [(vertex,new_block)])
+                cache_key = frozenset(edge_placement + [(vertex, new_block)])
                 if cache_key not in self.cache.keys():
-                    self.cache[cache_key] = 0 # hyperedge_cost(hyperedge, new_placement)
+                    self.cache[
+                        cache_key
+                    ] = 0  # hyperedge_cost(hyperedge, new_placement)
                 loss += self.cache[cache_key]
 
         return gain - loss

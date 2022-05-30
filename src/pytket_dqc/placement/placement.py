@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from pytket_dqc.networks import NISQNetwork
     from pytket_dqc.circuits import DistributedCircuit
@@ -90,7 +90,7 @@ class Placement:
             for hyperedge in circuit.hyperedge_list:
                 # Generate a list of where each vertex of the hyperedge
                 # is placed
-                vertex_list = cast(list[int], hyperedge['vertices'])
+                vertex_list = hyperedge.vertices
                 hyperedge_placement = [
                     self.placement[vertex] for vertex in vertex_list
                 ]
@@ -115,7 +115,7 @@ class Placement:
                     shortest_path_length = nx.shortest_path_length(
                         G, qubit_vertex_server, server
                     )
-                    cost += shortest_path_length * hyperedge['weight']
+                    cost += shortest_path_length * hyperedge.weight
 
         else:
             raise Exception("This is not a valid placement.")

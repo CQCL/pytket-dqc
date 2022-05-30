@@ -2,17 +2,18 @@ from __future__ import annotations
 
 import hypernetx as hnx  # type: ignore
 
-from typing import TYPE_CHECKING, Tuple, Union, cast
+from typing import TYPE_CHECKING, Tuple, NamedTuple
 
 if TYPE_CHECKING:
     from pytket_dqc.placement import Placement
 
-# Type aliases
+# Custom types
 Vertex = int
-# Hyperedges are given by a dictionary with has two keys:
-#    hyperedge["vertices"] is its list of vertices
-#    hyperedge["weight"] is its weight
-Hyperedge = dict[str, Union[int, list[int]]]
+
+
+class Hyperedge(NamedTuple):
+    vertices: list[Vertex]
+    weight: int
 
 
 class Hypergraph:
@@ -92,7 +93,7 @@ class Hypergraph:
         """
         scenes = {}
         for i, edge in enumerate(self.hyperedge_list):
-            scenes[str(i)] = set(edge["vertices"])
+            scenes[str(i)] = set(edge.vertices)
         H = hnx.Hypergraph(scenes)
         hnx.drawing.draw(H)
 
@@ -144,9 +145,7 @@ class Hypergraph:
                     ).format(hyperedge, self.vertex_list)
                 )
 
-            self.hyperedge_dict[vertex].append(
-                {"vertices": hyperedge, "weight": weight}
-            )
+            self.hyperedge_dict[vertex].append(Hyperedge(hyperedge, weight))
 
             # Add in all vertices of the hyperedge to the neighbourhood. Since
             # this is a set there will be no duplicates. This carelessly adds
@@ -154,7 +153,7 @@ class Hypergraph:
             self.vertex_neighbours[vertex].update(hyperedge)
             self.vertex_neighbours[vertex].remove(vertex)
 
-        self.hyperedge_list.append({"vertices": hyperedge, "weight": weight})
+        self.hyperedge_list.append(Hyperedge(hyperedge, weight))
 
     def kahypar_hyperedges(self) -> Tuple[list[int], list[int]]:
         """Return hypergraph in format used by kahypar package. In particular
@@ -170,7 +169,7 @@ class Hypergraph:
         hyperedges = [
             vertex
             for hyperedge in self.hyperedge_list
-            for vertex in cast(list[Vertex], hyperedge["vertices"])
+            for vertex in hyperedge.vertices
         ]
 
         # Create list of intervals of hyperedges list which correspond to
@@ -178,7 +177,7 @@ class Hypergraph:
         hyperedge_indices = [0]
         for hyperedge in self.hyperedge_list:
             hyperedge_indices.append(
-                len(cast(list[Vertex], hyperedge["vertices"]))
+                len(hyperedge.vertices)
                 + hyperedge_indices[-1]
             )
 
