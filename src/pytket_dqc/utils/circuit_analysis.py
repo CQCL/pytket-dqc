@@ -11,7 +11,6 @@ def _cost_from_circuit(circ: Circuit) -> int:
     telep_count = 0
 
     for command in circ.get_commands():
-        print(command.op.get_name())
 
         if command.op.get_name() == 'StartingProcess':
             starting_count += 1

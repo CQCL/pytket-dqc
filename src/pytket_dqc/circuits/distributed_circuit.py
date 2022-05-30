@@ -319,6 +319,10 @@ class DistributedCircuit(Hypergraph):
         server_to_qubit_vertex_list = self._get_server_to_qubit_vertex(
             placement)
 
+        for server in network.get_server_list():
+            if server not in server_to_qubit_vertex_list.keys():
+                server_to_qubit_vertex_list[server] = []
+
         # New circuit including distribution gates
         circ = Circuit()
 
@@ -342,6 +346,8 @@ class DistributedCircuit(Hypergraph):
         #   2 - It would be cleaner to iterate through the hyperedges, rather
         #       then the servers, when adding link qubits.
         for server, qubit_vertex_list in server_to_qubit_vertex_list.items():
+
+            print("server", server, "qubit_vertex_list", qubit_vertex_list)
 
             # Add a register for all of the qubits assigned to this server.
             server_to_register[server] = circ.add_q_register(

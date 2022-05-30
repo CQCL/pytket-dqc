@@ -217,6 +217,8 @@ def test_to_pytket_circuit_detached_gate():
 
     assert test_circ_command_qubits == circ_with_dist_command_qubits
 
+    assert test_circ.q_registers == circ_with_dist.q_registers
+
 
 def test_to_pytket_circuit_gates_on_different_servers():
 
@@ -274,6 +276,65 @@ def test_to_pytket_circuit_gates_on_different_servers():
         command.qubits for command in circ_with_dist.get_commands()]
 
     assert test_circ_command_qubits == circ_with_dist_command_qubits
+
+    assert test_circ.q_registers == circ_with_dist.q_registers
+
+
+def test_to_pytket_circuit_with_branching_distribution_tree():
+
+    network = NISQNetwork(
+        [[2, 1], [1, 0], [1, 3], [0, 4]],
+        {0: [0], 1: [1], 2: [2], 3: [3], 4: [4]}
+    )
+
+    two_CZ_circ = Circuit(3).CZ(0, 1).CZ(0, 2)
+    dist_two_CZ_circ = DistributedCircuit(two_CZ_circ)
+
+    placement_two = Placement({0: 0, 1: 2, 2: 3, 3: 2, 4: 3})
+    circ_with_dist = dist_two_CZ_circ.to_pytket_circuit(placement_two, network)
+
+    test_circ = Circuit()
+
+    server_0 = test_circ.add_q_register('Server 0', 1)
+    server_2 = test_circ.add_q_register('Server 2', 1)
+    server_3 = test_circ.add_q_register('Server 3', 1)
+
+    server_1_link_0 = test_circ.add_q_register('Server 1 Link Edge 0', 1)
+    server_2_link_0 = test_circ.add_q_register('Server 2 Link Edge 0', 1)
+    server_3_link_0 = test_circ.add_q_register('Server 3 Link Edge 0', 1)
+
+    test_circ.add_custom_gate(
+        start_proc, [], [server_0[0], server_1_link_0[0]])
+    test_circ.add_custom_gate(
+        start_proc, [], [server_1_link_0[0], server_3_link_0[0]])
+    test_circ.add_custom_gate(
+        start_proc, [], [server_1_link_0[0], server_2_link_0[0]])
+
+    test_circ.CZ(server_2_link_0[0], server_2[0])
+    test_circ.CZ(server_3_link_0[0], server_3[0])
+
+    test_circ.add_custom_gate(
+        end_proc, [], [server_2_link_0[0], server_1_link_0[0]])
+    test_circ.add_custom_gate(
+        end_proc, [], [server_3_link_0[0], server_1_link_0[0]])
+    test_circ.add_custom_gate(
+        end_proc, [], [server_1_link_0[0], server_0[0]])
+
+    test_circ_command_names = [command.op.get_name()
+                               for command in test_circ.get_commands()]
+    circ_with_dist_command_names = [
+        command.op.get_name() for command in circ_with_dist.get_commands()]
+
+    assert test_circ_command_names == circ_with_dist_command_names
+
+    test_circ_command_qubits = [
+        command.qubits for command in test_circ.get_commands()]
+    circ_with_dist_command_qubits = [
+        command.qubits for command in circ_with_dist.get_commands()]
+
+    assert test_circ_command_qubits == circ_with_dist_command_qubits
+
+    assert test_circ.q_registers == circ_with_dist.q_registers
 
 
 def test_to_pytket_circuit_with_teleportation():
@@ -335,6 +396,8 @@ def test_to_pytket_circuit_with_teleportation():
         command.qubits for command in circ_with_dist.get_commands()]
 
     assert test_circ_command_qubits == circ_with_dist_command_qubits
+
+    assert test_circ.q_registers == circ_with_dist.q_registers
 
 
 def test_to_relabeled_registers():
