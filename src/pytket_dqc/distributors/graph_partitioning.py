@@ -7,10 +7,10 @@ from pytket_dqc.placement import Placement
 import importlib_resources
 
 
-from typing import TYPE_CHECKING, Tuple, Final
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from pytket_dqc import DistributedCircuit, Hypergraph
+    from pytket_dqc import DistributedCircuit
     from pytket_dqc.networks import NISQNetwork
 
 
@@ -59,13 +59,11 @@ class GraphPartitioning(Distributor):
 
         # First step is to call KaHyPar using the connectivity metric (i.e. no
         # knowledge about network topology other than server sizes)
-        placement = self.initial_distribute(
-            dist_circ, network, seed=seed
-        )
+        placement = self.initial_distribute(dist_circ, network, seed=seed)
 
         # We will use a ``GainManager`` to manage the calculation of gains
         # (and management of pre-computed values) in a transparent way
-        gain_manager = GainManager(dist_circ, placement)
+        gain_manager = GainManager(dist_circ, network, placement)
 
         # The refinement algorithm proceeds in rounds. In each round, all of
         # the vertices in the boundary are visited in random order and we
@@ -89,13 +87,21 @@ class GraphPartitioning(Distributor):
             for vertex in boundary:
                 neighbours = dist_circ.vertex_neighbours[vertex]
                 neighbour_blocks = set(
-                    [placement.placement[v] for v in neighbours]
+                    [gain_manager.current_block(v) for v in neighbours]
                 )
 
-                best_block = placement.placement[vertex]
+                best_block = gain_manager.current_block(vertex)
                 best_gain = 0
                 for block in neighbour_blocks:
-                    # TODO: Check, is this a valid move?
+                    # TODO: The current approach cannot move vertices to empty
+                    # servers. This is probably a good thing since we are
+                    # meant to assume that ``initial_distribute`` only left
+                    # the least helpful servers empty, but edge cases may
+                    # exist that make us reconsider.
+
+                    # If the move is not valid, skip it
+                    if not gain_manager.is_move_valid(vertex, block):
+                        continue
 
                     gain = gain_manager.gain(vertex, block)
 
@@ -107,8 +113,8 @@ class GraphPartitioning(Distributor):
                         best_gain = gain
                         best_block = block
 
-                if best_block != placement.placement[vertex]:
-                    placement.placement[vertex] = best_block
+                if best_block != gain_manager.current_block(vertex):
+                    gain_manager.move(vertex, best_block)
                     moves += 1
 
             round_id += 1
@@ -116,7 +122,7 @@ class GraphPartitioning(Distributor):
                 0 if len(boundary) == 0 else moves / len(boundary)
             )
 
-        return placement
+        return gain_manager.placement
 
     # TODO: dist_circ does not need to be a DistributedCircuit and could be a
     # Hypergraph. Is there a way of specifying this in the typing?
@@ -161,8 +167,8 @@ class GraphPartitioning(Distributor):
         ]
         # TODO: the weight assignment to vertices assumes that the index of the
         # qubit vertices range from 0 to ``num_qubits``, and the rest of them
-        # correspond to gates. This is currently guaranteed by construction
-        # i.e. method ``from_circuit()``; we might want to make this more robust.
+        # correspond to gates. This is currently guaranteed by definition of
+        # ``from_circuit()``, but we might want to make this more robust.
 
         hypergraph = kahypar.Hypergraph(
             num_vertices,
@@ -205,25 +211,48 @@ class GainManager:
     multiple times and computing it requires solving a minimum spanning tree
     problem which takes non-negligible computation time.
 
-    :param hypergraph: The hypergraph describing the circuit connectivity
-    :type hypergraph: Hypergraph
-    :param placement: A reference to the current placement
+    :param dist_circ: The circuit to be distributed, carries hypergraph info
+    :type dist_circ: DistributedCircuit
+    :param network: The network topology that the circuit must be mapped to
+    :type network: NISQNetwork
+    :param placement: The current placement
     :type placement: Placement
+    :param occupancy: Maps servers to its current number of qubit vertices
+    :type occupancy: dict[int, int]
     :param cache: A dictionary of sets of blocks to their communication cost
     :type cache: dict[frozenset[int], int]
     """
-    # TODO: I probably will need to keep the NISQNetwork around as well
 
-    def __init__(self, hypergraph: Hypergraph, placement: Placement):
-        """Initialise the GainManager; both the references to ``hypergraph``
-        and ``placement`` should be the same during the lifetime of this
-        object; thus, they are declared as ``Final``. Notice that this
-        does not prevent the data within ``placement`` to be updated, the
-        only thing that is ``Final`` is the reference to the object.
-        """
-        self.hypergraph: Final[Hypergraph] = hypergraph
-        self.placement: Final[Placement] = placement
+    # TODO: Might be worth it to give a max size of the cache to avoid
+    # storing too much...
+
+    def __init__(
+        self,
+        dist_circ: DistributedCircuit,
+        network: NISQNetwork,
+        placement: Placement,
+    ):
+        self.dist_circ: DistributedCircuit = dist_circ
+        self.network: NISQNetwork = network
+        self.placement: Placement = placement
         self.cache: dict[frozenset[int], int] = dict()
+        self.occupancy: dict[int, int] = dict()
+
+        for vertex, server in placement.placement.items():
+            if dist_circ.is_qubit_vertex(vertex):
+                if server not in self.occupancy.keys():
+                    self.occupancy[server] = 0
+                self.occupancy[server] += 1
+
+    def is_move_valid(self, vertex: int, server: int) -> bool:
+        """ The move is only invalid when ``vertex`` is a qubit vertex and
+        ``server`` is at its maximum occupancy.
+        """
+        return not (
+            self.dist_circ.is_qubit_vertex(vertex)
+            and self.occupancy[server]
+            >= len(self.network.server_qubits[server])
+        )
 
     def gain(self, vertex: int, new_block: int) -> int:
         """Compute the gain of moving ``vertex`` to ``new_block``. Instead
@@ -232,12 +261,20 @@ class GainManager:
         incident to ``vertex`` and substract their new cost. Moreover, if
         these values are available in the cache they are used; otherwise,
         the cache is updated.
+
+        The formula to calculate the gain comes from the gain function
+        used in KaHyPar for the connectivity metric, as in the dissertation
+        (https://publikationen.bibliothek.kit.edu/1000105953), where weights
+        are calculated using spanning trees over ``network``. This follows
+        suggestions from Tobias Heuer.
         """
         current_block = self.placement.placement[vertex]
+        if current_block == new_block:
+            return 0
 
         gain = 0
         loss = 0
-        for hyperedge in self.hypergraph.hyperedge_dict[vertex]:
+        for hyperedge in self.dist_circ.hyperedge_dict[vertex]:
             # Set of connected blocks omitting that of the vertex being moved
             connected_blocks = [
                 self.placement.placement[v]
@@ -275,3 +312,16 @@ class GainManager:
                 loss += self.cache[cache_key]
 
         return gain - loss
+
+    def move(self, vertex: int, block: int):
+        """Moves ``vertex`` to ``block``, updating ``placement`` and
+        ``occupancy`` accordingly.
+        """
+        self.occupancy[block] += 1
+        self.occupancy[self.placement.placement[vertex]] -= 1
+        self.placement.placement[vertex] = block
+
+    def current_block(self, vertex: int):
+        """Just an alias to make code clearer.
+        """
+        return self.placement.placement[vertex]
