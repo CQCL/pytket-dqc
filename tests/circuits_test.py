@@ -7,7 +7,7 @@ from pytket_dqc.circuits.distributed_circuit import (
     start_proc,
     end_proc,
     telep_proc,
-    )
+)
 from pytket import Circuit
 from pytket_dqc.placement import Placement
 from pytket_dqc.distributors import Brute
@@ -161,9 +161,6 @@ def test_to_pytket_circuit_detached_gate():
         {0: [0], 1: [1], 2: [2]}
     )
 
-    def_circ = Circuit(2)
-    def_circ.add_barrier([0, 1])
-
     circ = Circuit(2).CZ(0, 1).Rx(0.3, 0).CZ(0, 1)
     dist_circ = DistributedCircuit(circ)
 
@@ -182,10 +179,14 @@ def test_to_pytket_circuit_detached_gate():
     server_0_link_1 = test_circ.add_q_register('Server 0 Link Edge 1', 1)
     server_0_link_2 = test_circ.add_q_register('Server 0 Link Edge 2', 1)
 
+    server_1_link_2 = test_circ.add_q_register('Server 1 Link Edge 2', 1)
+
     test_circ.add_custom_gate(
         start_proc, [], [server_1[0], server_0_link_0[0]])
     test_circ.add_custom_gate(
-        start_proc, [], [server_2[0], server_0_link_2[0]])
+        start_proc, [], [server_2[0], server_1_link_2[0]])
+    test_circ.add_custom_gate(
+        start_proc, [], [server_1_link_2[0], server_0_link_2[0]])
     test_circ.CZ(server_0_link_0[0], server_0_link_2[0])
     test_circ.add_custom_gate(end_proc, [], [server_0_link_0[0], server_1[0]])
     test_circ.Rx(0.3, server_1[0])
@@ -193,7 +194,9 @@ def test_to_pytket_circuit_detached_gate():
         start_proc, [], [server_1[0], server_0_link_1[0]])
     test_circ.CZ(server_0_link_1[0], server_0_link_2[0])
     test_circ.add_custom_gate(end_proc, [], [server_0_link_1[0], server_1[0]])
-    test_circ.add_custom_gate(end_proc, [], [server_0_link_2[0], server_2[0]])
+    test_circ.add_custom_gate(
+        end_proc, [], [server_0_link_2[0], server_1_link_2[0]])
+    test_circ.add_custom_gate(end_proc, [], [server_1_link_2[0], server_2[0]])
 
     # TODO: Ideally we would compare the circuits directly here, rather than
     # checking the command names. This is prevented by a feature of TKET
@@ -238,14 +241,19 @@ def test_to_pytket_circuit_gates_on_different_servers():
 
     server_0_link_0 = test_circ.add_q_register('Server 0 Link Edge 0', 1)
     server_0_link_1 = test_circ.add_q_register('Server 0 Link Edge 1', 1)
+    server_1_link_1 = test_circ.add_q_register('Server 1 Link Edge 1', 1)
     server_1_link_2 = test_circ.add_q_register('Server 1 Link Edge 2', 1)
 
     test_circ.add_custom_gate(
         start_proc, [], [server_1[0], server_0_link_0[0]])
     test_circ.add_custom_gate(
-        start_proc, [], [server_2[0], server_0_link_1[0]])
+        start_proc, [], [server_2[0], server_1_link_1[0]])
+    test_circ.add_custom_gate(
+        start_proc, [], [server_1_link_1[0], server_0_link_1[0]])
     test_circ.CZ(server_0_link_0[0], server_0_link_1[0])
-    test_circ.add_custom_gate(end_proc, [], [server_0_link_1[0], server_2[0]])
+    test_circ.add_custom_gate(
+        end_proc, [], [server_0_link_1[0], server_1_link_1[0]])
+    test_circ.add_custom_gate(end_proc, [], [server_1_link_1[0], server_2[0]])
     test_circ.Rx(0.3, server_2[0])
     test_circ.add_custom_gate(
         start_proc, [], [server_2[0], server_1_link_2[0]])
@@ -271,8 +279,8 @@ def test_to_pytket_circuit_gates_on_different_servers():
 def test_to_pytket_circuit_with_teleportation():
 
     network = NISQNetwork(
-        [[0, 1], [1, 2]],
-        {0: [0], 1: [1], 2: [2]}
+        [[0, 1], [1, 2], [1, 3]],
+        {0: [0], 1: [1], 2: [2], 3: [3]}
     )
 
     op = Op.create(OpType.V)
@@ -293,15 +301,20 @@ def test_to_pytket_circuit_with_teleportation():
 
     server_0_link_0 = test_circ.add_q_register('Server 0 Link Edge 0', 1)
     server_0_link_2 = test_circ.add_q_register('Server 0 Link Edge 2', 1)
+    server_1_link_2 = test_circ.add_q_register('Server 1 Link Edge 2', 1)
     server_2_link_1 = test_circ.add_q_register('Server 2 Link Edge 1', 1)
 
     test_circ.add_custom_gate(
         start_proc, [], [server_1[0], server_0_link_0[0]])
     test_circ.add_custom_gate(
-        start_proc, [], [server_2[0], server_0_link_2[0]])
+        start_proc, [], [server_2[0], server_1_link_2[0]])
+    test_circ.add_custom_gate(
+        start_proc, [], [server_1_link_2[0], server_0_link_2[0]])
     test_circ.CZ(server_0_link_0[0], server_0_link_2[0])
     test_circ.add_custom_gate(end_proc, [], [server_0_link_0[0], server_1[0]])
-    test_circ.add_custom_gate(end_proc, [], [server_0_link_2[0], server_2[0]])
+    test_circ.add_custom_gate(
+        end_proc, [], [server_0_link_2[0], server_1_link_2[0]])
+    test_circ.add_custom_gate(end_proc, [], [server_1_link_2[0], server_2[0]])
     test_circ.Rx(0.3, server_2[0])
     test_circ.add_custom_gate(
         telep_proc, [], [server_1[0], server_2_link_1[0]])
