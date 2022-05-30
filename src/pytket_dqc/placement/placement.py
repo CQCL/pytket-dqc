@@ -93,7 +93,8 @@ class Placement:
                 # servers used by vertices in hyperedge.
                 dist_graph = self._get_distribution_graph(
                     cast(List[int], hyperedge['hyperedge']), network)
-                cost += len(dist_graph.edges())
+                cost += len(dist_graph.edges()) * \
+                    cast(int, hyperedge['weight'])
         else:
             raise Exception("This is not a valid placement.")
 
