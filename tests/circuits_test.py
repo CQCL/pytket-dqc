@@ -1,5 +1,8 @@
-from pytket_dqc import DistributedCircuit, Hypergraph
-from pytket_dqc.circuits import RegularGraphDistributedCircuit
+from pytket_dqc.circuits import (
+    RegularGraphDistributedCircuit,
+    DistributedCircuit,
+    Hypergraph
+)
 from pytket_dqc.circuits.distributed_circuit import (
     start_proc,
     end_proc,

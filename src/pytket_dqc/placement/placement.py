@@ -5,10 +5,10 @@ if TYPE_CHECKING:
     from pytket_dqc.networks import NISQNetwork
     from pytket_dqc.circuits import DistributedCircuit
 
-import networkx as nx  # type: ignore
 from networkx.algorithms.approximation.steinertree import (  # type: ignore
     steiner_tree
 )
+from pytket_dqc.utils import direct_from_origin
 
 
 class Placement:
@@ -91,9 +91,18 @@ class Placement:
                 # Cost of distributing gates in a hyperedge corresponds
                 # to the number of edges in steiner tree connecting all
                 # servers used by vertices in hyperedge.
+                qubit_list = [
+                    vertex
+                    for vertex in cast(List[int], hyperedge['hyperedge'])
+                    if circuit.vertex_circuit_map[vertex]['type'] == 'qubit'
+                ]
+                assert len(qubit_list) == 1
                 dist_graph = self._get_distribution_graph(
-                    cast(List[int], hyperedge['hyperedge']), network)
-                cost += len(dist_graph.edges()) * \
+                    cast(List[int], hyperedge['hyperedge']),
+                    qubit_list[0],
+                    network
+                )
+                cost += len(dist_graph) * \
                     cast(int, hyperedge['weight'])
         else:
             raise Exception("This is not a valid placement.")
@@ -103,8 +112,9 @@ class Placement:
     def _get_distribution_graph(
         self,
         hyperedge: list[int],
-        network: NISQNetwork
-    ) -> nx.Graph:
+        qubit_node: int,
+        network: NISQNetwork,
+    ) -> List[List[int]]:
         """Returns graph representing the edges along which distribution
         operations should act. This is the steiner tree covering the servers
         used by the vertices in the hyper edge.
@@ -112,13 +122,18 @@ class Placement:
         :param hyperedge: Hyperedge for which distribution graph
         should be found.
         :type hyperedge: list[int]
+        :param qubit_node: Node in hyperedge which corresponds to a qubit.
+        :type qubit_node: int
         :param network: Network onto which hyper edge should be distributed.
         :type network: NISQNetwork
-        :return: Graph of distribution operations.
-        :rtype: nx.Graph
+        :return: List of edges along which distribution gates should act,
+        with the direction and order in this they should act.
+        :rtype: List[List[int]]
         """
 
         servers_used = [value for key,
                         value in self.placement.items() if key in hyperedge]
         server_graph = network.get_server_nx()
-        return steiner_tree(server_graph, servers_used)
+        steiner_server_graph = steiner_tree(server_graph, servers_used)
+        qubit_server = self.placement[qubit_node]
+        return direct_from_origin(steiner_server_graph, qubit_server)
