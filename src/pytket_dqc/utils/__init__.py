@@ -5,3 +5,5 @@ from .gateset import (  # noqa:F401
 )
 
 from .graph_tools import direct_from_origin  # noqa:F401
+
+from .circuit_analysis import cost_from_circuit  # noqa:F401
