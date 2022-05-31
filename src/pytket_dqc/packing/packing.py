@@ -16,7 +16,16 @@ end_proc = CustomGateDef.define("EndingProcess", def_circ, [])
 telep_proc = CustomGateDef.define("Teleportation", def_circ, [])
 
 def to_bipartite(circuit):
-    # Assumes gateset of CZ, Rz, Rx
+    """Given a circuit, create a bipartite graph representing that circuit.
+
+    Currently assumes the gateset only has CZ as two qubit gates. The circuit must also have been placed onto servers.
+
+    :param circuit: The circuit for which a bipartite representation is to be found.
+    :type circuit: pytket.Circuit
+    :return graph: The graph representation of the circuit.
+    :rtype: networkx.Graph
+    """
+    # Assumes gateset has only CZ as two qubit gates. 
     indexed_commands = to_indexed_commands(circuit.get_commands()) # Give each command an index to reference it by.
     next_vertex_index = 0
     graph = Graph()
@@ -76,6 +85,13 @@ def to_bipartite(circuit):
     return graph, indexed_commands
 
 def pack_circuit(bipartite_circuit):
+    """Create a circuit from a BipartiteCircuit which has all the StartingProcesses and EndingProcesses included in the circuit.
+
+    :param bipartite_circuit: The BipartiteCircuit from which this circuit is to be constructed.
+    :type bipartite_circuit: BipartiteCircuit
+    :return: The constructed circuit.
+    :rtype: pytket.Circuit
+    """
     circuit = Circuit()
     le_count = 0
 
@@ -89,6 +105,15 @@ def pack_circuit(bipartite_circuit):
     return circuit
 
 def add_indexed_command_to_circuit(circuit, indexed_command, bipartite_circuit):
+    """Add an indexed command to a given circuit. If needs be, also adds starting and ending processes to the circuit.
+
+    :param circuit: The circuit to which the indexed command is to be appended.
+    :type circuit: pytket.Circuit
+    :param indexed_command: The indexed command to append.
+    :type indexed_command: IndexedCommand
+    :param bipartite_circuit: The bipartite circuit associated with the indexed commands. 
+    :type bipartite_circuit: BipartiteCircuit
+    """
     # Add an indexed command (IC) to a circuit, with packing if needed as given by the supplied mvc
     # Cases are as follows
     # 1) The IC is 1q or not packable are no packings on the qubit. -> Just add it to circuit
@@ -226,7 +251,7 @@ class CommandVertex():
             indices.append(indexed_command.i)
         return indices
 
-    def set_bipartite_i(self, i): # The bipartite partion on which this vertex resides
+    def set_bipartite_i(self, i): # The bipartite partition on which this vertex resides
         self.bipartite_i = i
         self.is_on_graph = True
 
