@@ -1,8 +1,8 @@
 import networkx as nx  # type: ignore
-from typing import List
+from typing import List, Tuple
 
 
-def direct_from_origin(G: nx.Graph, origin: int) -> List[List[int]]:
+def direct_from_origin(G: nx.Graph, origin: int) -> List[Tuple[int, int]]:
     """Generates list of edges in the tree G. These edges are ordered and
     directed so as to expand from an origin node.
 
@@ -14,7 +14,7 @@ def direct_from_origin(G: nx.Graph, origin: int) -> List[List[int]]:
     :raises Exception: Raised if the graph G is not a tree.
     :raises Exception: Raised if the graph G is not connected.
     :return: List of edges.
-    :rtype: List[List[int]]
+    :rtype: List[Tuple[int]]
     """
 
     if len(G.nodes()) == 0:
@@ -32,9 +32,9 @@ def direct_from_origin(G: nx.Graph, origin: int) -> List[List[int]]:
     # is connected.
     G_reduced = G.copy()
     G_reduced.remove_node(origin)
-        
+
     # add origin node and neighbour to top of edge list.
-    edge_list = [[origin, n] for n in sorted(G.neighbors(origin))]
+    edge_list = [(origin, n) for n in sorted(G.neighbors(origin))]
 
     # Iterate though each neighbour of the origin node and repeat the
     # same process on the connected component of the reduced graph to which

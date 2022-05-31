@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, cast, List
+from typing import TYPE_CHECKING, cast, List, Tuple
 if TYPE_CHECKING:
     from pytket_dqc.networks import NISQNetwork
     from pytket_dqc.circuits import DistributedCircuit
@@ -114,7 +114,7 @@ class Placement:
         hyperedge: list[int],
         qubit_node: int,
         network: NISQNetwork,
-    ) -> List[List[int]]:
+    ) -> List[Tuple[int, int]]:
         """Returns tree representing the edges along which distribution
         operations should act. This is the steiner tree covering the servers
         used by the vertices in the hyper edge.

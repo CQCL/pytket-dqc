@@ -47,8 +47,8 @@ def test_direct_from_origin():
     edges = [(0, 1), (1, 2), (1, 3), (0, 4), (2, 5), (2, 7), (1, 6)]
     G.add_edges_from(edges)
 
-    from_one_ideal = [[1, 0], [1, 2], [1, 3], [1, 6], [0, 4], [2, 5], [2, 7]]
-    from_two_ideal = [[2, 1], [2, 5], [2, 7], [1, 0], [1, 3], [1, 6], [0, 4]]
+    from_one_ideal = [(1, 0), (1, 2), (1, 3), (1, 6), (0, 4), (2, 5), (2, 7)]
+    from_two_ideal = [(2, 1), (2, 5), (2, 7), (1, 0), (1, 3), (1, 6), (0, 4)]
 
     assert direct_from_origin(G, 1) == from_one_ideal
     assert direct_from_origin(G, 2) == from_two_ideal
