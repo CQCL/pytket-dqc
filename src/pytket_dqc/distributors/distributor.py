@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import networkx as nx  # type: ignore
+from networkx.algorithms.approximation.steinertree import (  # type: ignore
+    steiner_tree,
+)
 from abc import ABC, abstractmethod
 
 from typing import TYPE_CHECKING
@@ -36,6 +40,8 @@ class GainManager:
     :type dist_circ: DistributedCircuit
     :param network: The network topology that the circuit must be mapped to
     :type network: NISQNetwork
+    :param server_graph: The nx.Graph of ``network``
+    :type server_graph: nx.Graph
     :param placement: The current placement
     :type placement: Placement
     :param occupancy: Maps servers to its current number of qubit vertices
@@ -55,6 +61,7 @@ class GainManager:
     ):
         self.dist_circ: DistributedCircuit = dist_circ
         self.network: NISQNetwork = network
+        self.server_graph: nx.Graph = network.get_server_nx()
         self.placement: Placement = placement
         self.cache: dict[frozenset[int], int] = dict()
         self.occupancy: dict[int, int] = dict()
@@ -116,25 +123,37 @@ class GainManager:
             # ``vertex`` is the last member of ``hyperedge`` in
             # ``current_server``
             if current_server_pins == 1:
-                cache_key = frozenset(connected_servers + [current_server])
-                if cache_key not in self.cache.keys():
-                    self.cache[
-                        cache_key
-                    ] = 0  # hyperedge_cost(hyperedge, placement)
-                gain += self.cache[cache_key]
+                gain += self.steiner_cost(
+                    frozenset(connected_servers + [current_server])
+                )
 
             # The cost of hyperedge will only be increased by the move if
             # no vertices from ``hyperedge`` were in ``new_server`` prior
             # to the move
             if new_server_pins == 0:
-                cache_key = frozenset(connected_servers + [new_server])
-                if cache_key not in self.cache.keys():
-                    self.cache[
-                        cache_key
-                    ] = 0  # hyperedge_cost(hyperedge, new_placement)
-                loss += self.cache[cache_key]
+                loss += self.steiner_cost(
+                    frozenset(connected_servers + [new_server])
+                )
 
         return gain - loss
+
+    def steiner_cost(self, servers: frozenset[int]) -> int:
+        """Finds a Steiner tree connecting all ``servers`` and returns number
+        of edges. Makes use of the cache if the cost has already been computed
+        and otherwise updates it.
+
+        :param servers: The servers to be connected by the Steiner tree.
+            The set is required to be a frozenset so that it is hashable.
+        :type servers: frozenset[int]
+
+        :return: The cost of connecting ``servers``
+        :rtype: int
+        """
+        if servers not in self.cache.keys():
+            tree = steiner_tree(self.server_graph, servers)
+            self.cache[servers] = len(tree.edges)
+
+        return self.cache[servers]
 
     def move(self, vertex: int, server: int):
         """Moves ``vertex`` to ``server``, updating ``placement`` and
