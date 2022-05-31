@@ -154,6 +154,6 @@ class Annealing(Distributor):
                 current_placement = swap_placement
                 current_cost = swap_cost
 
-            assert current_placement.is_placement(dist_circ, network)
+            assert current_placement.is_valid(dist_circ, network)
 
         return current_placement

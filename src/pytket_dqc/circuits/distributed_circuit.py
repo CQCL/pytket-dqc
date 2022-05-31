@@ -313,7 +313,7 @@ class DistributedCircuit(Hypergraph):
         """
 
         # Initial check that placement is valid
-        if not placement.is_placement(self, network):
+        if not placement.is_valid(self, network):
             raise Exception("This is not a valid placement for this circuit.")
 
         server_to_qubit_vertex_list = self._get_server_to_qubit_vertex(

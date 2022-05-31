@@ -28,7 +28,7 @@ class Placement:
             return self.placement == other.placement
         return False
 
-    def is_placement(
+    def is_valid(
         self,
         circuit: DistributedCircuit,
         network: NISQNetwork
@@ -86,7 +86,7 @@ class Placement:
         """
 
         cost = 0
-        if self.is_placement(circuit, network):
+        if self.is_valid(circuit, network):
             for hyperedge in circuit.hyperedge_list:
                 # Cost of distributing gates in a hyperedge corresponds
                 # to the number of edges in steiner tree connecting all
