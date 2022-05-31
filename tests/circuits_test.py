@@ -251,9 +251,6 @@ def test_to_pytket_circuit_detached_gate():
     # This test tests the case where the gate is acted on a server to which
     # the no qubit has been assigned.
 
-    # def_circ = Circuit(2)
-    # def_circ.add_barrier([0, 1])
-
     circ = Circuit(2).CZ(0, 1).Rx(0.3, 0).CZ(0, 1)
     dist_circ = DistributedCircuit(circ)
 
