@@ -74,14 +74,20 @@ class GraphPartitioning(Distributor):
     ) -> Placement:
         """The refinement algorithm proceeds in rounds. In each round, all of
         the vertices in the boundary are visited in random order and we
-        we calculate the gain achieved by moving the vertex to each of its
-        neighbouring blocks. If all possibe moves of a given vertex have
-        negative gains, the vertex is not moved; otherwise the best move
-        is applied, with ties broken randomly. The algorithm continues until
-        the proportion of vertices moved in a round (i.e. #moved / #boundary)
-        is smaller than ``stop_parameter`` or the maximum ``num_rounds`` is 
-        reached.
-        
+        we calculate the gain achieved by moving the vertex to other blocks.
+        The best move is applied, with ties broken randomly. If all possible
+        moves have negative gains, the vertex is not moved; as such, the
+        refinement algorithm cannot escape local optima. The justification
+        is that we assume ``initial_distribute`` already left us close to
+        a decent solution and we simply wish to refine it. This assumption
+        is empirically justified when refinement is used in tandem with
+        a coarsening approach.
+
+        The algorithm continues until the proportion of vertices
+        moved in a round (i.e. #moved / #boundary) is smaller than
+        ``stop_parameter`` or the maximum ``num_rounds`` is reached.
+        The resulting placement is guaranteed to be valid.
+
         This refinement algorithm is known as "label propagation" and it
         is discussed in https://arxiv.org/abs/1402.3281.
 
@@ -95,8 +101,11 @@ class GraphPartitioning(Distributor):
         :key seed: Seed for randomness. Default is None
         :key num_rounds: Max number of refinement rounds. Default is 1000.
         :key stop_parameter: Real number in [0,1]. If proportion of moves
-        in a round is smaller than this number, do no more rounds. Default
-        is 0.05.
+            in a round is smaller than this number, do no more rounds. Default
+            is 0.05.
+
+        :raises Exception: Raised if there are more circuit qubits than
+            physical qubits in the network
 
         :return: Placement of ``dist_circ`` onto ``network``.
         :rtype: Placement
@@ -119,19 +128,16 @@ class GraphPartitioning(Distributor):
 
             moves = 0
             for vertex in boundary:
-                neighbours = dist_circ.vertex_neighbours[vertex]
-                neighbour_blocks = set(
-                    [gain_manager.current_block(v) for v in neighbours]
-                )
+                current_block = gain_manager.current_block(vertex)
+                potential_blocks = set(gain_manager.current_block(v) for v in dist_circ.vertex_neighbours[vertex])
+                potential_blocks.add(gain_manager.current_block(vertex))
 
-                best_block = gain_manager.current_block(vertex)
+                best_block = None
                 best_gain = 0
-                for block in neighbour_blocks:
-                    # TODO: The current approach cannot move vertices to empty
-                    # servers. This is probably a good thing since we are
-                    # meant to assume that ``initial_distribute`` only left
-                    # the least helpful servers empty, but edge cases may
-                    # exist that make us reconsider.
+                for block in potential_blocks:
+                    # Servers that are not in ``potential_blocks`` will always
+                    # have the worst gain since they contain no neighbours
+                    # of ``vertex``. As such, we  simply ignore them.
 
                     # If the move is not valid, skip it
                     if not gain_manager.is_move_valid(vertex, block):
@@ -140,14 +146,25 @@ class GraphPartitioning(Distributor):
                     gain = gain_manager.gain(vertex, block)
 
                     if (
-                        gain > best_gain
+                        best_block is None
+                        or gain > best_gain
                         or gain == best_gain
                         and random.choice([True, False])
                     ):
                         best_gain = gain
                         best_block = block
 
-                if best_block != gain_manager.current_block(vertex):
+                # If no move within ``potential_blocks`` is valid we move
+                #``vertex`` to a random server where it fits.
+                # This is a last resort option and it is likely to never
+                # occur.
+                if best_block is None:
+                    valid_blocks = [server for server in network.get_server_list() if gain_manager.is_move_valid(vertex, server)]
+                    if not valid_blocks:
+                        raise Exception("Could not complete qubit allocation refinement. There are more qubits in the circuit than in the network!")
+                    best_block = random.choice(valid_blocks)
+
+                if best_block != current_block:
                     gain_manager.move(vertex, best_block)
                     moves += 1
 
@@ -156,10 +173,9 @@ class GraphPartitioning(Distributor):
                 0 if len(boundary) == 0 else moves / len(boundary)
             )
 
+        #assert gain_manager.placement.is_valid()
         return gain_manager.placement
 
-    # TODO: dist_circ does not need to be a DistributedCircuit and could be a
-    # Hypergraph. Is there a way of specifying this in the typing?
     def initial_distribute(
         self, dist_circ: DistributedCircuit, network: NISQNetwork, **kwargs
     ) -> Placement:

@@ -80,6 +80,8 @@ class GainManager:
         are calculated using spanning trees over ``network``. This follows
         suggestions from Tobias Heuer.
         """
+
+        # If the move is not changing blocks, the gain is zero
         current_block = self.placement.placement[vertex]
         if current_block == new_block:
             return 0
@@ -135,13 +137,19 @@ class GainManager:
 
     def is_move_valid(self, vertex: int, server: int) -> bool:
         """ The move is only invalid when ``vertex`` is a qubit vertex and
-        ``server`` is at its maximum occupancy.
+        ``server`` is at its maximum occupancy. Notice that ``server`` may
+        be where ``vertex`` was already placed.
         """
-        return not (
-            self.dist_circ.is_qubit_vertex(vertex)
-            and self.occupancy[server]
-            >= len(self.network.server_qubits[server])
-        )
+        if self.dist_circ.is_qubit_vertex(vertex):
+            capacity = len(self.network.server_qubits[server])
+
+            if server == self.current_block(vertex):
+                return self.occupancy[server] <= capacity
+            else:
+                return self.occupancy[server] < capacity
+        
+        # Gate vertices can be moved freely
+        else: return True
 
     def current_block(self, vertex: int):
         """Just an alias to make code clearer.
