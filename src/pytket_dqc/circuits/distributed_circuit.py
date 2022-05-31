@@ -520,7 +520,9 @@ class DistributedCircuit(Hypergraph):
 
             # For every server used by hyperedge distribution tree, add a
             # starting process or teleportation before all of the gates
-            # are acted.
+            # are acted. Iteration is in reverse so that the last insertion
+            # ends up in first position. In this way, later commands in the
+            # list are pushed after the first command.
             for distribution_edge in reversed(dist_tree):
                 if qubit_server in distribution_edge:
                     args = [
@@ -564,6 +566,8 @@ class DistributedCircuit(Hypergraph):
 
             # For every server used by hyperedge distribution tree, add an
             # ending process or teleportation after all of the gates are acted.
+            # Iteration is forwards through edge list in this case. In this
+            # way the first starting process is undone last.
             for distribution_edge in dist_tree:
                 if qubit_server in distribution_edge:
                     args = [
