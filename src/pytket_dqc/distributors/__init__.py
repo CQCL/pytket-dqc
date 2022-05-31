@@ -1,4 +1,5 @@
-from .distributor import Distributor, GainManager  # noqa:F401
+from .distributor import Distributor  # noqa:F401
+from .gain_manager import GainManager  # noqa:F401
 from .annealing import Annealing  # noqa:F401
 from .brute import Brute  # noqa:F401
 from .routing import Routing  # noqa:F401
