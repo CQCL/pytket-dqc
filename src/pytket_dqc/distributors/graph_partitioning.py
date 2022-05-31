@@ -53,31 +53,65 @@ class GraphPartitioning(Distributor):
         :rtype: Placement
         """
 
+        package_path = importlib_resources.files("pytket_dqc")
+        default_ini = f"{package_path}/distributors/km1_kKaHyPar_sea20.ini"
+        ini_path = kwargs.get("ini_path", default_ini)
         seed = kwargs.get("seed", None)
         num_rounds = kwargs.get("num_rounds", 1000)
         stop_parameter = kwargs.get("stop_parameter", 0.05)
 
         # First step is to call KaHyPar using the connectivity metric (i.e. no
         # knowledge about network topology other than server sizes)
-        placement = self.initial_distribute(dist_circ, network, seed=seed)
+        placement = self.initial_distribute(dist_circ, network, ini_path=ini_path, seed=seed)
+        # Then, we refine the placement using label propagation. This will
+        # also ensure that the servers do not exceed their qubit capacity
+        placement = self.refine(placement, dist_circ, network, num_rounds=num_rounds, stop_parameter=stop_parameter)
+
+        return placement
+
+    def refine(
+        self, placement: Placement, dist_circ: DistributedCircuit, network: NISQNetwork, **kwargs
+    ) -> Placement:
+        """The refinement algorithm proceeds in rounds. In each round, all of
+        the vertices in the boundary are visited in random order and we
+        we calculate the gain achieved by moving the vertex to each of its
+        neighbouring blocks. If all possibe moves of a given vertex have
+        negative gains, the vertex is not moved; otherwise the best move
+        is applied, with ties broken randomly. The algorithm continues until
+        the proportion of vertices moved in a round (i.e. #moved / #boundary)
+        is smaller than ``stop_parameter`` or the maximum ``num_rounds`` is 
+        reached.
+        
+        This refinement algorithm is known as "label propagation" and it
+        is discussed in https://arxiv.org/abs/1402.3281.
+
+        :param placement: Initial placement.
+        :type placement: Placement
+        :param dist_circ: Circuit to distribute.
+        :type dist_circ: DistributedCircuit
+        :param network: Network onto which ``dist_circ`` should be placed.
+        :type network: NISQNetwork
+
+        :key seed: Seed for randomness. Default is None
+        :key num_rounds: Max number of refinement rounds. Default is 1000.
+        :key stop_parameter: Real number in [0,1]. If proportion of moves
+        in a round is smaller than this number, do no more rounds. Default
+        is 0.05.
+
+        :return: Placement of ``dist_circ`` onto ``network``.
+        :rtype: Placement
+        """
+
+        num_rounds = kwargs.get("num_rounds", 1000)
+        stop_parameter = kwargs.get("stop_parameter", 0.05)
+        seed = kwargs.get("seed", None)
+        if seed is not None:
+            random.seed(seed)
 
         # We will use a ``GainManager`` to manage the calculation of gains
         # (and management of pre-computed values) in a transparent way
         gain_manager = GainManager(dist_circ, network, placement)
 
-        # The refinement algorithm proceeds in rounds. In each round, all of
-        # the vertices in the boundary are visited in random order and we
-        # we calculate the gain achieved by moving the vertex to each of its
-        # neighbouring blocks. If all possibe moves of a given vertex have
-        # negative gains, the vertex is not moved; otherwise the best move
-        # is applied, with ties broken randomly.
-        #
-        # The algorithm continues until the proportion of vertices moved in
-        # a round (i.e. #moved / #boundary) is smaller than ``stop_parameter``
-        # or the maximum ``num_rounds`` is reached.
-        #
-        # This refinement algorithm is known as "label propagation" and it
-        # was discussed in https://arxiv.org/abs/1402.3281.
         round_id = 0
         proportion_moved: float = 1
         while round_id < num_rounds and proportion_moved > stop_parameter:
@@ -182,9 +216,7 @@ class GraphPartitioning(Distributor):
 
         context = kahypar.Context()
 
-        package_path = importlib_resources.files("pytket_dqc")
-        default_ini = f"{package_path}/distributors/km1_kKaHyPar_sea20.ini"
-        ini_path = kwargs.get("ini_path", default_ini)
+        ini_path = kwargs.get("ini_path")
         context.loadINIconfiguration(ini_path)
 
         context.setK(num_servers)
