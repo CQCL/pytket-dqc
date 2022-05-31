@@ -8,3 +8,5 @@ Placement
     .. automethod:: Placement.is_placement
 
     .. automethod:: Placement.cost
+
+    .. automethod:: Placement.get_distribution_tree

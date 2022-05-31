@@ -80,6 +80,6 @@ class Random(Distributor):
             placement_dict[vertex] = random_server
 
         placement = Placement(placement_dict)
-        assert placement.is_placement(dist_circ, network)
+        assert placement.is_valid(dist_circ, network)
 
         return placement

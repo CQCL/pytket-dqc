@@ -8,12 +8,12 @@ import numpy as np
 from pytket.passes import DecomposeBoxes, auto_rebase_pass  # type: ignore
 import networkx as nx  # type: ignore
 import random
-from pytket_dqc.utils.gateset import dqc_gateset_predicate
+from pytket_dqc.utils import dqc_gateset_predicate, _cost_from_circuit
 
-from typing import TYPE_CHECKING, cast, Union
+from typing import TYPE_CHECKING, cast, Union, List
 if TYPE_CHECKING:
     from pytket.circuit import QubitRegister  # type: ignore
-    from pytket_dqc.placement import Placement
+    from pytket_dqc import Placement, NISQNetwork
 
 def_circ = Circuit(2)
 def_circ.add_barrier([0, 1])
@@ -221,7 +221,7 @@ class DistributedCircuit(Hypergraph):
 
     def _get_server_to_qubit_vertex(
             self, placement: Placement
-            ) -> dict[int, list[int]]:
+    ) -> dict[int, list[int]]:
         """Return dictionary mapping servers to a list of the qubit
         vertices which it contains.
 
@@ -285,22 +285,32 @@ class DistributedCircuit(Hypergraph):
 
         return circ
 
-    def to_pytket_circuit(self, placement: Placement) -> Circuit:
+    def to_pytket_circuit(
+        self,
+        placement: Placement,
+        network: NISQNetwork,
+    ) -> Circuit:
         """Convert circuit to one including required distributed gates.
 
         :param placement: Placement of hypergraph vertices onto servers.
         :type placement: Placement
+        :param network: Network on which the distributed circuit is to be run.
+        :type network: NISQNetwork
         :raises Exception: Raised if the placement is not valid.
         :return: Circuit including distributed gates.
         :rtype: Circuit
         """
 
         # Initial check that placement is valid
-        if not self.is_placement(placement):
+        if not placement.is_valid(self, network):
             raise Exception("This is not a valid placement for this circuit.")
 
         server_to_qubit_vertex_list = self._get_server_to_qubit_vertex(
             placement)
+
+        for server in network.get_server_list():
+            if server not in server_to_qubit_vertex_list.keys():
+                server_to_qubit_vertex_list[server] = []
 
         # New circuit including distribution gates
         circ = Circuit()
@@ -319,6 +329,11 @@ class DistributedCircuit(Hypergraph):
         # moved to this server. Note that this means there is an additional
         # link qubit per e-bit. By the completion of this loop the circuit
         # has all the qubits necessary to complete the computaitons.
+        # TODO: There are several ways to tidy this portion of code:
+        #   1 - Link qubit registers, rather than a separate register for
+        #       each link qubit.
+        #   2 - It would be cleaner to iterate through the hyperedges, rather
+        #       then the servers, when adding link qubits.
         for server, qubit_vertex_list in server_to_qubit_vertex_list.items():
 
             # Add a register for all of the qubits assigned to this server.
@@ -347,14 +362,21 @@ class DistributedCircuit(Hypergraph):
                 hyperedge_qubit_vertex = hyperedge_qubit_vertex_list[0]
 
                 # Add a link qubits if the qubit of the hyperedge is not
-                # placed in this server, but there is a gate vertex in this
-                # hyperedge which is placed in this server.
+                # placed in this server, but this server does feature in the
+                # distribution tree for this hyperedge.
                 if not (placement.placement[hyperedge_qubit_vertex] == server):
 
-                    unique_server_used = set([
-                        placement.placement[gate_vertex]
-                        for gate_vertex in gate_vertex_list
-                    ])
+                    dist_tree = placement.get_distribution_tree(
+                        cast(List[int], hyperedge['hyperedge']),
+                        hyperedge_qubit_vertex,
+                        network
+                    )
+                    unique_server_used = set(
+                        server
+                        for edge in dist_tree
+                        for server in edge
+                    )
+
                     if server in unique_server_used:
                         register = circ.add_q_register(
                             f'Server {server} Link Edge {index}', 1)
@@ -382,8 +404,12 @@ class DistributedCircuit(Hypergraph):
         }
 
         new_command_list = self.commands.copy()
+        # For each command, identify the qubits in the distributed circuit
+        # which should be used. This will be the qubits which correspond
+        # to that on which it originally acted if the gate and qubit are
+        # in the same server. Otherwise it will be the appropriate
+        # link qubit.
         for command_index, command in enumerate(new_command_list):
-
             # Get original circuit qubits used by command
             orig_circuit_qubit = cast(Command, command['command']).qubits
 
@@ -443,7 +469,6 @@ class DistributedCircuit(Hypergraph):
                 Command, command['command']).op
 
         # For each hyperedge add the necessary distributed operations.
-        # for hyperedge_single in self.commands_with_hyperedges:
         for edge_index, edge in enumerate(self.hyperedge_list):
 
             # List of the subset of vertices which correspond to gates.
@@ -462,18 +487,6 @@ class DistributedCircuit(Hypergraph):
 
             qubit_server = placement.placement[qubit_vertex]
 
-            # List of servers used by gates in hyperedge
-            unique_server_list = list(
-                set(
-                    [
-                        placement.placement[vertex]
-                        for vertex in gate_vertex_list
-                    ]
-                )
-            )
-            if qubit_server in unique_server_list:
-                unique_server_list.remove(qubit_server)
-
             first_found = False
             first = 0
 
@@ -489,11 +502,30 @@ class DistributedCircuit(Hypergraph):
                 else:
                     first += 1
 
-            # For every server used by gates in the hyperedge, add a starting
-            # process or teleportation before all of the gates are acted.
-            for server in unique_server_list:
-                args = [qubit_vertex_to_server_qubit[qubit_vertex],
-                        server_to_link_register[server][edge_index]]
+            dist_tree = placement.get_distribution_tree(
+                cast(List[int], edge['hyperedge']),
+                qubit_vertex, network
+            )
+
+            # For every server used by hyperedge distribution tree, add a
+            # starting process or teleportation before all of the gates
+            # are acted. Iteration is in reverse so that the last insertion
+            # ends up in first position. In this way, later commands in the
+            # list are pushed after the first command.
+            for distribution_edge in reversed(dist_tree):
+                if qubit_server in distribution_edge:
+                    args = [
+                        qubit_vertex_to_server_qubit[qubit_vertex],
+                        server_to_link_register[distribution_edge[1]
+                                                ][edge_index]
+                    ]
+                else:
+                    args = [
+                        server_to_link_register[distribution_edge[0]
+                                                ][edge_index],
+                        server_to_link_register[distribution_edge[1]
+                                                ][edge_index]
+                    ]
                 # TODO: I don't know if this is best practice for typing.
                 # Command and int are included here almost unnecessarily.
                 new_cmd: dict[str, Union[str, list[Qubit], Command, int]] = {
@@ -521,13 +553,24 @@ class DistributedCircuit(Hypergraph):
                 else:
                     last -= 1
 
-            # For every server used by gates in the hyperedge, add an ending
-            # process or teleportation after all of the gates are acted.
-            for server in unique_server_list:
-                args = [
-                    server_to_link_register[server][edge_index],
-                    qubit_vertex_to_server_qubit[qubit_vertex]
-                ]
+            # For every server used by hyperedge distribution tree, add an
+            # ending process or teleportation after all of the gates are acted.
+            # Iteration is forwards through edge list in this case. In this
+            # way the first starting process is undone last.
+            for distribution_edge in dist_tree:
+                if qubit_server in distribution_edge:
+                    args = [
+                        server_to_link_register[distribution_edge[1]
+                                                ][edge_index],
+                        qubit_vertex_to_server_qubit[qubit_vertex],
+                    ]
+                else:
+                    args = [
+                        server_to_link_register[distribution_edge[1]
+                                                ][edge_index],
+                        server_to_link_register[distribution_edge[0]
+                                                ][edge_index]
+                    ]
                 new_cmd = {'args': args}
                 if edge['weight'] == 1:
                     new_cmd['type'] = 'end'
@@ -551,6 +594,8 @@ class DistributedCircuit(Hypergraph):
                 circ.add_custom_gate(telep_proc, [], command['args'])
             else:
                 raise Exception('This role has not been defined')
+
+        assert _cost_from_circuit(circ) == placement.cost(self, network)
 
         return circ
 

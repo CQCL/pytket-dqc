@@ -123,6 +123,6 @@ class Ordered(Distributor):
 
         placement = Placement(vertex_server_map)
 
-        assert placement.is_placement(dist_circ, network)
+        assert placement.is_valid(dist_circ, network)
 
         return placement
