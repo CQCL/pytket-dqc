@@ -45,6 +45,12 @@ class DistributedCircuit(Hypergraph):
 
         self.reset(circuit)
 
+    def __str__(self):
+        out_string = super().__str__()
+        out_string += f"\nVertex Circuit Map: {self.vertex_circuit_map}"
+        out_string += "\nCircuit: " + self.circuit.__str__()
+        return out_string
+
     def place(self, placement: Placement):
 
         if not self.is_placement(placement):
