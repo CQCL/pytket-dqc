@@ -201,6 +201,11 @@ def test_q_control_box_circuits():
 
 def test_to_pytket_circ_CRz():
 
+    network = NISQNetwork(
+        [[0, 1], [1, 2], [0, 2]],
+        {0: [0], 1: [1], 2: [2]}
+    )
+
     circ = Circuit(2).CRz(0.3, 0, 1).Rx(0.3, 0).CZ(0, 1).CRz(0.3, 1, 0)
     dist_circ = DistributedCircuit(circ)
 
@@ -208,7 +213,7 @@ def test_to_pytket_circ_CRz():
 
     assert dist_circ.is_placement(placement)
 
-    circ_with_dist = dist_circ.to_pytket_circuit(placement)
+    circ_with_dist = dist_circ.to_pytket_circuit(placement, network)
 
     test_circ = Circuit()
 
