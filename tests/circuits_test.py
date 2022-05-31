@@ -131,8 +131,6 @@ def test_CRz_circuit():
 
     dist_circ = DistributedCircuit(circ)
 
-    print(dist_circ.hyperedge_list)
-
     assert dist_circ.hyperedge_list == [
         {'hyperedge': [0, 3, 4], 'weight': 1},
         {'hyperedge': [0, 6, 7], 'weight': 1},
