@@ -86,7 +86,7 @@ class GraphPartitioning(Distributor):
     ) -> Placement:
         """The refinement algorithm proceeds in rounds. In each round, all of
         the vertices in the boundary are visited in random order and we
-        we calculate the gain achieved by moving the vertex to other blocks.
+        we calculate the gain achieved by moving the vertex to other servers.
         The best move is applied, with ties broken randomly. If all possible
         moves have negative gains, the vertex is not moved; as such, the
         refinement algorithm cannot escape local optima. The justification
@@ -140,54 +140,54 @@ class GraphPartitioning(Distributor):
 
             moves = 0
             for vertex in boundary:
-                current_block = gain_manager.current_block(vertex)
-                potential_blocks = set(
-                    gain_manager.current_block(v)
+                current_server = gain_manager.current_server(vertex)
+                potential_servers = set(
+                    gain_manager.current_server(v)
                     for v in dist_circ.vertex_neighbours[vertex]
                 )
-                potential_blocks.add(gain_manager.current_block(vertex))
+                potential_servers.add(gain_manager.current_server(vertex))
 
-                best_block = None
+                best_server = None
                 best_gain = 0
-                for block in potential_blocks:
-                    # Servers that are not in ``potential_blocks`` will always
+                for server in potential_servers:
+                    # Servers that are not in ``potential_servers`` will always
                     # have the worst gain since they contain no neighbours
                     # of ``vertex``. As such, we  simply ignore them.
 
                     # If the move is not valid, skip it
-                    if not gain_manager.is_move_valid(vertex, block):
+                    if not gain_manager.is_move_valid(vertex, server):
                         continue
 
-                    gain = gain_manager.gain(vertex, block)
+                    gain = gain_manager.gain(vertex, server)
 
                     if (
-                        best_block is None
+                        best_server is None
                         or gain > best_gain
                         or gain == best_gain
                         and random.choice([True, False])
                     ):
                         best_gain = gain
-                        best_block = block
+                        best_server = server
 
-                # If no move within ``potential_blocks`` is valid we move
+                # If no move within ``potential_servers`` is valid we move
                 # ``vertex`` to a random server where it fits.
                 # This is a last resort option and it is likely to never
                 # occur.
-                if best_block is None:
-                    valid_blocks = [
+                if best_server is None:
+                    valid_servers = [
                         server
                         for server in network.get_server_list()
                         if gain_manager.is_move_valid(vertex, server)
                     ]
-                    if not valid_blocks:
+                    if not valid_servers:
                         raise Exception(
                             "Could not complete qubit allocation refinement. "
                             "More qubits in the circuit than in the network!"
                         )
-                    best_block = random.choice(valid_blocks)
+                    best_server = random.choice(valid_servers)
 
-                if best_block != current_block:
-                    gain_manager.move(vertex, best_block)
+                if best_server != current_server:
+                    gain_manager.move(vertex, best_server)
                     moves += 1
 
             round_id += 1
