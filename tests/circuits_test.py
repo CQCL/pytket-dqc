@@ -306,17 +306,17 @@ def test_to_pytket_circuit_with_branching_distribution_tree():
     test_circ.add_custom_gate(
         start_proc, [], [server_0[0], server_1_link_0[0]])
     test_circ.add_custom_gate(
-        start_proc, [], [server_1_link_0[0], server_3_link_0[0]])
-    test_circ.add_custom_gate(
         start_proc, [], [server_1_link_0[0], server_2_link_0[0]])
+    test_circ.add_custom_gate(
+        start_proc, [], [server_1_link_0[0], server_3_link_0[0]])
 
     test_circ.CZ(server_2_link_0[0], server_2[0])
     test_circ.CZ(server_3_link_0[0], server_3[0])
 
     test_circ.add_custom_gate(
-        end_proc, [], [server_2_link_0[0], server_1_link_0[0]])
-    test_circ.add_custom_gate(
         end_proc, [], [server_3_link_0[0], server_1_link_0[0]])
+    test_circ.add_custom_gate(
+        end_proc, [], [server_2_link_0[0], server_1_link_0[0]])
     test_circ.add_custom_gate(
         end_proc, [], [server_1_link_0[0], server_0[0]])
 

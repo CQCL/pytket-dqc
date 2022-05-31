@@ -28,12 +28,13 @@ def direct_from_origin(G: nx.Graph, origin: int) -> List[List[int]]:
     if not nx.is_connected(G):
         raise Exception("The graph is not connected.")
 
-    edge_list = []
-
     # Remove origin node to create selection of subgraphs, each of which
     # is connected.
     G_reduced = G.copy()
     G_reduced.remove_node(origin)
+        
+    # add origin node and neighbour to top of edge list.
+    edge_list = [[origin, n] for n in sorted(G.neighbors(origin))]
 
     # Iterate though each neighbour of the origin node and repeat the
     # same process on the connected component of the reduced graph to which
@@ -50,8 +51,5 @@ def direct_from_origin(G: nx.Graph, origin: int) -> List[List[int]]:
         # Continue exploring the graph if a leaf node is not reached.
         if not len(c) == 1:
             edge_list += direct_from_origin(G_reduced.subgraph(c), n)
-
-        # add origin node and neighbour to top of edge list.
-        edge_list.insert(0, [origin, n])
 
     return edge_list
