@@ -41,6 +41,11 @@ class Hypergraph:
         self.hyperedge_dict: dict[Vertex, list[Hyperedge]] = dict()
         self.vertex_neighbours: dict[Vertex, set[Vertex]] = dict()
 
+    def __str__(self):
+        out_string = f"Hyperedges: {self.hyperedge_list}"
+        out_string += f"\nVertices: {self.vertex_list}"
+        return out_string
+
     def is_placement(self, placement: Placement) -> bool:
         """Checks if a given placement is a valid placement of this hypergraph.
         Checks for example that all vertices are placed, and that every vertex

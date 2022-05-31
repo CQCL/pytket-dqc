@@ -62,15 +62,27 @@ class GraphPartitioning(Distributor):
 
         # First step is to call KaHyPar using the connectivity metric (i.e. no
         # knowledge about network topology other than server sizes)
-        placement = self.initial_distribute(dist_circ, network, ini_path=ini_path, seed=seed)
+        placement = self.initial_distribute(
+            dist_circ, network, ini_path=ini_path, seed=seed
+        )
         # Then, we refine the placement using label propagation. This will
         # also ensure that the servers do not exceed their qubit capacity
-        placement = self.refine(placement, dist_circ, network, num_rounds=num_rounds, stop_parameter=stop_parameter)
+        placement = self.refine(
+            placement,
+            dist_circ,
+            network,
+            num_rounds=num_rounds,
+            stop_parameter=stop_parameter,
+        )
 
         return placement
 
     def refine(
-        self, placement: Placement, dist_circ: DistributedCircuit, network: NISQNetwork, **kwargs
+        self,
+        placement: Placement,
+        dist_circ: DistributedCircuit,
+        network: NISQNetwork,
+        **kwargs,
     ) -> Placement:
         """The refinement algorithm proceeds in rounds. In each round, all of
         the vertices in the boundary are visited in random order and we
@@ -129,7 +141,10 @@ class GraphPartitioning(Distributor):
             moves = 0
             for vertex in boundary:
                 current_block = gain_manager.current_block(vertex)
-                potential_blocks = set(gain_manager.current_block(v) for v in dist_circ.vertex_neighbours[vertex])
+                potential_blocks = set(
+                    gain_manager.current_block(v)
+                    for v in dist_circ.vertex_neighbours[vertex]
+                )
                 potential_blocks.add(gain_manager.current_block(vertex))
 
                 best_block = None
@@ -155,13 +170,20 @@ class GraphPartitioning(Distributor):
                         best_block = block
 
                 # If no move within ``potential_blocks`` is valid we move
-                #``vertex`` to a random server where it fits.
+                # ``vertex`` to a random server where it fits.
                 # This is a last resort option and it is likely to never
                 # occur.
                 if best_block is None:
-                    valid_blocks = [server for server in network.get_server_list() if gain_manager.is_move_valid(vertex, server)]
+                    valid_blocks = [
+                        server
+                        for server in network.get_server_list()
+                        if gain_manager.is_move_valid(vertex, server)
+                    ]
                     if not valid_blocks:
-                        raise Exception("Could not complete qubit allocation refinement. There are more qubits in the circuit than in the network!")
+                        raise Exception(
+                            "Could not complete qubit allocation refinement. "
+                            "More qubits in the circuit than in the network!"
+                        )
                     best_block = random.choice(valid_blocks)
 
                 if best_block != current_block:
@@ -173,7 +195,7 @@ class GraphPartitioning(Distributor):
                 0 if len(boundary) == 0 else moves / len(boundary)
             )
 
-        #assert gain_manager.placement.is_valid()
+        assert gain_manager.placement.is_valid(dist_circ, network)
         return gain_manager.placement
 
     def initial_distribute(

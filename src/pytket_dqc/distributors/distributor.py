@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from pytket_dqc.placement import Placement
-    from pytket_dqc import DistributedCircuit
     from pytket_dqc.networks import NISQNetwork
+    from pytket_dqc.circuits import DistributedCircuit
 
 
 class Distributor(ABC):
@@ -20,8 +20,8 @@ class Distributor(ABC):
     @abstractmethod
     def distribute(
         self,
-        dist_circ: Any,
-        network: Any,
+        dist_circ: DistributedCircuit,
+        network: NISQNetwork,
         **kwargs
     ) -> Placement:
         pass
@@ -147,9 +147,10 @@ class GainManager:
                 return self.occupancy[server] <= capacity
             else:
                 return self.occupancy[server] < capacity
-        
+
         # Gate vertices can be moved freely
-        else: return True
+        else:
+            return True
 
     def current_block(self, vertex: int):
         """Just an alias to make code clearer.

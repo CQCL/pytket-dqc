@@ -29,15 +29,15 @@ def test_placement_valid():
     placement_eight = Placement({0: 1, 1: 0, 2: 1})
     placement_nine = Placement({0: 2, 1: 2, 2: 2})
 
-    assert not placement_one.is_placement(dist_med_circ, large_network)
-    assert placement_two.is_placement(dist_med_circ, large_network)
-    assert placement_three.is_placement(dist_med_circ, large_network)
-    assert placement_four.is_placement(dist_med_circ, large_network)
-    assert not placement_five.is_placement(dist_med_circ, large_network)
-    assert not placement_six.is_placement(dist_med_circ, large_network)
-    assert not placement_seven.is_placement(dist_small_circ, small_network)
-    assert placement_eight.is_placement(dist_small_circ, small_network)
-    assert not placement_nine.is_placement(dist_small_circ, small_network)
+    assert not placement_one.is_valid(dist_med_circ, large_network)
+    assert placement_two.is_valid(dist_med_circ, large_network)
+    assert placement_three.is_valid(dist_med_circ, large_network)
+    assert placement_four.is_valid(dist_med_circ, large_network)
+    assert not placement_five.is_valid(dist_med_circ, large_network)
+    assert not placement_six.is_valid(dist_med_circ, large_network)
+    assert not placement_seven.is_valid(dist_small_circ, small_network)
+    assert placement_eight.is_valid(dist_small_circ, small_network)
+    assert not placement_nine.is_valid(dist_small_circ, small_network)
 
 
 def test_placement_cost():
@@ -46,13 +46,15 @@ def test_placement_cost():
     dist_two_CZ_circ = DistributedCircuit(two_CZ_circ)
 
     three_line_network = NISQNetwork(
-        [[0, 1], [1, 2]], {0: [0], 1: [1], 2: [2]})
+        [[0, 1], [1, 2], [1, 3], [2, 4]],
+        {0: [0], 1: [1], 2: [2], 3: [3], 4: [4]}
+        )
 
     placement_one = Placement({0: 0, 1: 1, 2: 2, 3: 1, 4: 2})
     assert placement_one.cost(
         dist_two_CZ_circ,
         three_line_network
-    ) == 3
+    ) == 2
     placement_two = Placement({0: 0, 1: 1, 2: 2, 3: 1, 4: 0})
     assert placement_two.cost(
         dist_two_CZ_circ, three_line_network) == 3

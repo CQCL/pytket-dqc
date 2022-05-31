@@ -15,6 +15,7 @@ from pytket_dqc.placement import Placement
 import kahypar as kahypar  # type:ignore
 from pytket.circuit import QControlBox, Op, OpType  # type:ignore
 import importlib_resources
+import pytest
 
 
 # TODO: Test that the placement returned by routing does not
@@ -229,6 +230,7 @@ def test_routing_distribute():
     assert cost == 1
 
 
+@pytest.mark.skip(reason="QControlBox are not supported for now")
 def test_q_control_box_circuits():
 
     network = NISQNetwork([[0, 1]], {0: [0], 1: [1]})
@@ -254,3 +256,26 @@ def test_q_control_box_circuits():
 
     assert placement == ideal_placement
     assert placement.cost(dist_circ, network) == 3
+
+
+def test_CRz_circuits():
+
+    network = NISQNetwork([[0, 1]], {0: [0], 1: [1]})
+
+    circ = Circuit(2)
+    circ.CRz(0.3, 1, 0)
+    circ.CRz(0.1, 0, 1)
+    circ.Rz(0.3, 0)
+    circ.CRz(0.4, 0, 1)
+    circ.Rx(0.3, 0)
+    circ.CRz(0.5, 1, 0)
+    circ.CRz(0.2, 0, 1)
+
+    dist_circ = DistributedCircuit(circ)
+
+    distributor = Brute()
+
+    placement = distributor.distribute(dist_circ, network)
+
+    assert placement == Placement({0: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 1: 1})
+    assert placement.cost(dist_circ, network) == 1

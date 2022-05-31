@@ -1,11 +1,15 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List, Tuple
+
 if TYPE_CHECKING:
     from pytket_dqc.networks import NISQNetwork
     from pytket_dqc.circuits import DistributedCircuit
 
-import networkx as nx  # type: ignore
+from networkx.algorithms.approximation.steinertree import (  # type: ignore
+    steiner_tree
+)
+from pytket_dqc.utils import direct_from_origin
 
 
 class Placement:
@@ -25,7 +29,10 @@ class Placement:
             return self.placement == other.placement
         return False
 
-    def is_placement(
+    def __str__(self):
+        return str(self.placement)
+
+    def is_valid(
         self,
         circuit: DistributedCircuit,
         network: NISQNetwork
@@ -83,41 +90,60 @@ class Placement:
         """
 
         cost = 0
-        if self.is_placement(circuit, network):
-
-            G = network.get_server_nx()
-
+        if self.is_valid(circuit, network):
             for hyperedge in circuit.hyperedge_list:
-                # Generate a list of where each vertex of the hyperedge
-                # is placed
-                vertex_list = hyperedge.vertices
-                hyperedge_placement = [
-                    self.placement[vertex] for vertex in vertex_list
-                ]
-
-                # Find the server where the qubit vertex is placed
-                qubit_vertex_list = [
+                # Cost of distributing gates in a hyperedge corresponds
+                # to the number of edges in steiner tree connecting all
+                # servers used by vertices in hyperedge.
+                qubit_list = [
                     vertex
-                    for vertex in vertex_list
-                    if circuit.vertex_circuit_map[vertex]['type'] == 'qubit'
+                    for vertex in hyperedge.vertices
+                    if circuit.is_qubit_vertex(vertex)
                 ]
-                assert len(qubit_vertex_list) == 1
-                qubit_vertex = qubit_vertex_list[0]
-                qubit_vertex_server = self.placement[qubit_vertex]
-
-                # The cost is equal to the distance between each of the
-                # vertices and the qubit vertex.
-                # TODO: This approach very naively assumes that the control is
-                # teleported back when a new server pair is interacted.
-                # There may be a better approach.
-                unique_servers_used = list(set(hyperedge_placement))
-                for server in unique_servers_used:
-                    shortest_path_length = nx.shortest_path_length(
-                        G, qubit_vertex_server, server
-                    )
-                    cost += shortest_path_length * hyperedge.weight
-
+                assert len(qubit_list) == 1
+                dist_graph = self.get_distribution_tree(
+                    hyperedge.vertices,
+                    qubit_list[0],
+                    network
+                )
+                cost += len(dist_graph) * hyperedge.weight
         else:
             raise Exception("This is not a valid placement.")
 
         return cost
+
+    def get_distribution_tree(
+        self,
+        hyperedge: list[int],
+        qubit_node: int,
+        network: NISQNetwork,
+    ) -> List[Tuple[int, int]]:
+        """Returns tree representing the edges along which distribution
+        operations should act. This is the steiner tree covering the servers
+        used by the vertices in the hyper edge.
+
+        :param hyperedge: Hyperedge for which distribution graph
+            should be found.
+        :type hyperedge: list[int]
+        :param qubit_node: Node in hyperedge which corresponds to a qubit.
+        :type qubit_node: int
+        :param network: Network onto which hyper edge should be distributed.
+        :type network: NISQNetwork
+        :return: List of edges along which distribution gates should act,
+            with the direction and order in this they should act.
+        :rtype: List[List[int]]
+        """
+
+        servers_used = [value for key,
+                        value in self.placement.items() if key in hyperedge]
+        server_graph = network.get_server_nx()
+
+        # The Steiner tree problem is NP-complete. Indeed the networkx
+        # steiner_tree is solving a problem which gives an upper bound on
+        # the size of the Steiner tree. Importantly it produces a deterministic
+        # output, which we rely on. In particular we assume the call to this
+        # function made when calculating costs gives the same output as the
+        # call that is made when the circuit is built and outputted.
+        steiner_server_graph = steiner_tree(server_graph, servers_used)
+        qubit_server = self.placement[qubit_node]
+        return direct_from_origin(steiner_server_graph, qubit_server)
