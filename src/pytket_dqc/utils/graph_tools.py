@@ -3,7 +3,7 @@ from typing import List
 
 
 def direct_from_origin(G: nx.Graph, origin: int) -> List[List[int]]:
-    """Generates list of edges in the graph G. These edges are ordered and
+    """Generates list of edges in the tree G. These edges are ordered and
     directed so as to expand from an origin node.
 
     :param G: The original undirected graph. Note that nodes of this graph

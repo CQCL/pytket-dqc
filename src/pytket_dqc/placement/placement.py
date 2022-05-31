@@ -97,7 +97,7 @@ class Placement:
                     if circuit.vertex_circuit_map[vertex]['type'] == 'qubit'
                 ]
                 assert len(qubit_list) == 1
-                dist_graph = self._get_distribution_graph(
+                dist_graph = self.get_distribution_tree(
                     cast(List[int], hyperedge['hyperedge']),
                     qubit_list[0],
                     network
@@ -109,25 +109,25 @@ class Placement:
 
         return cost
 
-    def _get_distribution_graph(
+    def get_distribution_tree(
         self,
         hyperedge: list[int],
         qubit_node: int,
         network: NISQNetwork,
     ) -> List[List[int]]:
-        """Returns graph representing the edges along which distribution
+        """Returns tree representing the edges along which distribution
         operations should act. This is the steiner tree covering the servers
         used by the vertices in the hyper edge.
 
         :param hyperedge: Hyperedge for which distribution graph
-        should be found.
+            should be found.
         :type hyperedge: list[int]
         :param qubit_node: Node in hyperedge which corresponds to a qubit.
         :type qubit_node: int
         :param network: Network onto which hyper edge should be distributed.
         :type network: NISQNetwork
         :return: List of edges along which distribution gates should act,
-        with the direction and order in this they should act.
+            with the direction and order in this they should act.
         :rtype: List[List[int]]
         """
 

@@ -347,8 +347,6 @@ class DistributedCircuit(Hypergraph):
         #       then the servers, when adding link qubits.
         for server, qubit_vertex_list in server_to_qubit_vertex_list.items():
 
-            print("server", server, "qubit_vertex_list", qubit_vertex_list)
-
             # Add a register for all of the qubits assigned to this server.
             server_to_register[server] = circ.add_q_register(
                 f'Server {server}', len(qubit_vertex_list))
@@ -379,7 +377,7 @@ class DistributedCircuit(Hypergraph):
                 # distribution tree for this hyperedge.
                 if not (placement.placement[hyperedge_qubit_vertex] == server):
 
-                    dist_tree = placement._get_distribution_graph(
+                    dist_tree = placement.get_distribution_tree(
                         cast(List[int], hyperedge['hyperedge']),
                         hyperedge_qubit_vertex,
                         network
@@ -515,7 +513,7 @@ class DistributedCircuit(Hypergraph):
                 else:
                     first += 1
 
-            dist_tree = placement._get_distribution_graph(
+            dist_tree = placement.get_distribution_tree(
                 cast(List[int], edge['hyperedge']),
                 qubit_vertex, network
             )
