@@ -34,7 +34,7 @@ jobs:
         id: cache-kahypar
         uses: actions/cache@v3
         with:
-          path: ~/.kahypar.cpython-39-x86_64-linux-gnu.so
+          path: ~/kahypar.cpython-39-x86_64-linux-gnu.so
           key: kahypar_cache
 
       - if: ${{ steps.cache-kahypar.outputs.cache-hit != 'true' }}
@@ -45,10 +45,11 @@ jobs:
           make
           cd python
           make
-          cp kahypar.cpython-39-x86_64-linux-gnu.so ~/.
+          pwd
+          cp kahypar.cpython-39-x86_64-linux-gnu.so ~/
 
       - name: Install kahypar
-        run: cp ~/.kahypar.cpython-39-x86_64-linux-gnu.so /opt/hostedtoolcache/Python/3.9.12/x64/lib/python3.9/site-packages
+        run: cp ~/kahypar.cpython-39-x86_64-linux-gnu.so /opt/hostedtoolcache/Python/3.9.12/x64/lib/python3.9/site-packages
 
       - name: Checkout pytket-dqc
         uses: actions/checkout@v2
