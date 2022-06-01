@@ -70,12 +70,9 @@ class GainManager:
         incident to ``vertex`` and substract their new cost. Moreover, if
         these values are available in the cache they are used; otherwise,
         the cache is updated.
-
-        The formula to calculate the gain comes from the gain function
-        used in KaHyPar for the connectivity metric, as in the dissertation
-        (https://publikationen.bibliothek.kit.edu/1000105953), where weights
-        are calculated using spanning trees over ``network``. This follows
-        suggestions from Tobias Heuer.
+        The costs of each hyperedge are calculated using Steiner trees over
+         ``network``.
+        Positive gains mean improvement.
 
         :param vertex: The vertex that would be moved
         :type vertex: int
@@ -93,7 +90,6 @@ class GainManager:
             return 0
 
         gain = 0
-        loss = 0
         for hyperedge in self.hypergraph.hyperedge_dict[vertex]:
             # List of servers connected by ``hyperedge - {vertex}``
             connected_servers = [
@@ -102,40 +98,15 @@ class GainManager:
                 if v != vertex
             ]
 
-            # Number of vertices from ``hyperedge`` in ``current_server``
-            current_server_pins = len(
-                [
-                    v
-                    for v in hyperedge.vertices
-                    if self.placement.placement[v] == current_server
-                ]
+            current_cost = self.steiner_cost(
+                frozenset(connected_servers + [current_server])
             )
-            # Number of vertices from ``hyperedge`` in ``new_server``
-            new_server_pins = len(
-                [
-                    v
-                    for v in hyperedge.vertices
-                    if self.placement.placement[v] == new_server
-                ]
+            new_cost = self.steiner_cost(
+                frozenset(connected_servers + [new_server])
             )
+            gain += current_cost - new_cost
 
-            # The cost of hyperedge will only be decreased by the move if
-            # ``vertex`` is the last member of ``hyperedge`` in
-            # ``current_server``
-            if current_server_pins == 1:
-                gain += self.steiner_cost(
-                    frozenset(connected_servers + [current_server])
-                )
-
-            # The cost of hyperedge will only be increased by the move if
-            # no vertices from ``hyperedge`` were in ``new_server`` prior
-            # to the move
-            if new_server_pins == 0:
-                loss += self.steiner_cost(
-                    frozenset(connected_servers + [new_server])
-                )
-
-        return gain - loss
+        return gain
 
     def steiner_cost(self, servers: frozenset[int]) -> int:
         """Finds a Steiner tree connecting all ``servers`` and returns number
