@@ -30,14 +30,25 @@ jobs:
           submodules: recursive
           fetch-depth: 1
 
-      - name: Install kahypar
+      - name: Cache kahypar Build
+        id: cache-kahypar
+        uses: actions/cache@v3
+        with:
+          path: kahypar_cache.so
+          key: kahypar_cache
+
+      - if: ${{ steps.cache-kahypar.outputs.cache-hit == 'false' }}
+        name: Build kahypar
         run: |
           mkdir build && cd build
           cmake .. -DCMAKE_BUILD_TYPE=RELEASE -DKAHYPAR_PYTHON_INTERFACE=1 -DBUILD_TESTING=OFF
           make
           cd python
           make
-          cp kahypar.cpython-39-x86_64-linux-gnu.so /opt/hostedtoolcache/Python/3.9.12/x64/lib/python3.9/site-packages
+          cp kahypar.cpython-39-x86_64-linux-gnu.so ../../kahypar_cache.so
+
+      - name: Install kahypar
+        run: cp kahypar_cache.so /opt/hostedtoolcache/Python/3.9.12/x64/lib/python3.9/site-packages
 
       - name: Checkout pytket-dqc
         uses: actions/checkout@v2
