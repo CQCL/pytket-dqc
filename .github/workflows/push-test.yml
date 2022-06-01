@@ -37,7 +37,7 @@ jobs:
           path: kahypar_cache.so
           key: kahypar_cache
 
-      - if: ${{ steps.cache-kahypar.outputs.cache-hit == 'false' }}
+      - if: ${{ steps.cache-kahypar.outputs.cache-hit != 'true' }}
         name: Build kahypar
         run: |
           mkdir build && cd build
