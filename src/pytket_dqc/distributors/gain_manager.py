@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from pytket_dqc.networks import NISQNetwork
     from pytket_dqc.circuits import DistributedCircuit
 
+
 class GainManager:
     """Instances of this class are used to manage pre-computed values of the
     gain of a move, since it is likely that the same value will be used

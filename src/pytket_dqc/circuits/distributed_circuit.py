@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from .hypergraph import Hypergraph
+from .hypergraph import Hypergraph, Hyperedge
 from pytket import OpType, Circuit, Qubit
 from pytket.circuit import CustomGateDef, Command, Unitary2qBox  # type: ignore
 from scipy.stats import unitary_group  # type: ignore
@@ -118,6 +118,29 @@ class DistributedCircuit(Hypergraph):
         :rtype: bool
         """
         return self.vertex_circuit_map[vertex]['type'] == 'qubit'
+
+    def get_qubit_vertex(self, hyperedge: Hyperedge) -> int:
+        """Returns the qubit vertex in ``hyperedge``.
+        """
+        qubit_list = [
+            vertex
+            for vertex in hyperedge.vertices
+            if self.is_qubit_vertex(vertex)
+        ]
+
+        assert len(qubit_list) == 1
+        return qubit_list[0]
+
+    def get_gate_vertices(self, hyperedge: Hyperedge) -> list[int]:
+        """Returns the list of gate vertices in ``hyperedge``.
+        """
+        gate_vertex_list = [
+            vertex
+            for vertex in hyperedge.vertices
+            if self.vertex_circuit_map[vertex]['type'] == 'gate'
+        ]
+
+        return gate_vertex_list
 
     def from_circuit(self):
         """Method to create a hypergraph from a circuit.
@@ -345,21 +368,11 @@ class DistributedCircuit(Hypergraph):
             for index, hyperedge in enumerate(self.hyperedge_list):
 
                 # List of gate vertices in this hyperedge
-                gate_vertex_list = [
-                    vertex
-                    for vertex in hyperedge.vertices
-                    if self.vertex_circuit_map[vertex]['type'] == 'gate'
-                ]
+                gate_vertex_list = self.get_gate_vertices(hyperedge)
 
                 # Find the one unique vertex in the hyperedge which
                 # corresponds to a qubit.
-                hyperedge_qubit_vertex_list = [
-                    vertex
-                    for vertex in hyperedge.vertices
-                    if vertex not in gate_vertex_list
-                ]
-                assert len(hyperedge_qubit_vertex_list) == 1
-                hyperedge_qubit_vertex = hyperedge_qubit_vertex_list[0]
+                hyperedge_qubit_vertex = self.get_qubit_vertex(hyperedge)
 
                 # Add a link qubits if the qubit of the hyperedge is not
                 # placed in this server, but this server does feature in the
@@ -465,17 +478,10 @@ class DistributedCircuit(Hypergraph):
         for edge_index, edge in enumerate(self.hyperedge_list):
 
             # List of the subset of vertices which correspond to gates.
-            gate_vertex_list = [
-                vertex
-                for vertex in edge.vertices
-                if self.vertex_circuit_map[vertex]['type'] == 'gate'
-            ]
+            gate_vertex_list = self.get_gate_vertices(edge)
 
             # Find the qubit vertex in the hyperedge.
-            qubit_vertex_set = set(edge.vertices) - set(gate_vertex_list)
-            assert len(qubit_vertex_set) == 1
-            qubit_vertex_list = list(qubit_vertex_set)
-            qubit_vertex = qubit_vertex_list[0]
+            qubit_vertex = self.get_qubit_vertex(edge)
 
             qubit_server = placement.placement[qubit_vertex]
 

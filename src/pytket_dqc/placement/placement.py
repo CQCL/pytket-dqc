@@ -95,15 +95,10 @@ class Placement:
                 # Cost of distributing gates in a hyperedge corresponds
                 # to the number of edges in steiner tree connecting all
                 # servers used by vertices in hyperedge.
-                qubit_list = [
-                    vertex
-                    for vertex in hyperedge.vertices
-                    if circuit.is_qubit_vertex(vertex)
-                ]
-                assert len(qubit_list) == 1
+
                 dist_graph = self.get_distribution_tree(
                     hyperedge.vertices,
-                    qubit_list[0],
+                    circuit.get_qubit_vertex(hyperedge),
                     network
                 )
                 cost += len(dist_graph) * hyperedge.weight
