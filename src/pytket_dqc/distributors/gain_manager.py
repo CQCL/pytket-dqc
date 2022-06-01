@@ -38,9 +38,6 @@ class GainManager:
     :type max_key_size: int
     """
 
-    # TODO: Might be worth it to give a max size of the cache to avoid
-    # storing too much...
-
     def __init__(
         self,
         dist_circ: DistributedCircuit,
@@ -75,6 +72,15 @@ class GainManager:
         (https://publikationen.bibliothek.kit.edu/1000105953), where weights
         are calculated using spanning trees over ``network``. This follows
         suggestions from Tobias Heuer.
+
+        :param vertex: The vertex that would be moved
+        :type vertex: int
+        :param new_server: The server ``vertex`` would be moved to
+        :type: int
+
+        :return: The improvement (may be negative) of the cost of the
+            placement after applying the move.
+        :rtype: int
         """
 
         # If the move is not changing servers, the gain is zero
@@ -175,6 +181,6 @@ class GainManager:
             return True
 
     def current_server(self, vertex: int):
-        """Just an alias to make code clearer.
+        """Return server ``vertex`` is placed at.
         """
         return self.placement.placement[vertex]
