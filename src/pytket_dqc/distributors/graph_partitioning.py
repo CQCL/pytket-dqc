@@ -129,9 +129,15 @@ class GraphPartitioning(Distributor):
         if seed is not None:
             random.seed(seed)
 
+        qubit_vertices = frozenset(
+            [v for v in dist_circ.vertex_list if dist_circ.is_qubit_vertex(v)]
+        )
+
         # We will use a ``GainManager`` to manage the calculation of gains
         # (and management of pre-computed values) in a transparent way
-        gain_manager = GainManager(dist_circ, network, placement)
+        gain_manager = GainManager(
+            dist_circ, qubit_vertices, network, placement
+        )
 
         round_id = 0
         proportion_moved: float = 1

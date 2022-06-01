@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from pytket_dqc.placement import Placement
     from pytket_dqc.networks import NISQNetwork
-    from pytket_dqc.circuits import DistributedCircuit
+    from pytket_dqc.circuits import Hypergraph
 
 
 class GainManager:
@@ -19,8 +19,10 @@ class GainManager:
     multiple times and computing it requires solving a minimum spanning tree
     problem which takes non-negligible computation time.
 
-    :param dist_circ: The circuit to be distributed, carries hypergraph info
-    :type dist_circ: DistributedCircuit
+    :param hypergraph: The hypergraph to be partitioned
+    :type hypergraph: Hypergraph
+    :param qubit_vertices: The subset of vertices that correspond to qubits
+    :type qubit_vertices: frozenset[int]
     :param network: The network topology that the circuit must be mapped to
     :type network: NISQNetwork
     :param server_graph: The nx.Graph of ``network``
@@ -40,12 +42,14 @@ class GainManager:
 
     def __init__(
         self,
-        dist_circ: DistributedCircuit,
+        hypergraph: Hypergraph,
+        qubit_vertices: frozenset[int],
         network: NISQNetwork,
         placement: Placement,
         max_key_size: int = 5,
     ):
-        self.dist_circ: DistributedCircuit = dist_circ
+        self.hypergraph: Hypergraph = hypergraph
+        self.qubit_vertices: frozenset[int] = qubit_vertices
         self.network: NISQNetwork = network
         self.server_graph: nx.Graph = network.get_server_nx()
         self.placement: Placement = placement
@@ -54,7 +58,7 @@ class GainManager:
         self.max_key_size: int = max_key_size
 
         for vertex, server in placement.placement.items():
-            if dist_circ.is_qubit_vertex(vertex):
+            if vertex in qubit_vertices:
                 if server not in self.occupancy.keys():
                     self.occupancy[server] = 0
                 self.occupancy[server] += 1
@@ -90,7 +94,7 @@ class GainManager:
 
         gain = 0
         loss = 0
-        for hyperedge in self.dist_circ.hyperedge_dict[vertex]:
+        for hyperedge in self.hypergraph.hyperedge_dict[vertex]:
             # List of servers connected by ``hyperedge - {vertex}``
             connected_servers = [
                 self.placement.placement[v]
@@ -168,7 +172,7 @@ class GainManager:
         ``server`` is at its maximum occupancy. Notice that ``server`` may
         be where ``vertex`` was already placed.
         """
-        if self.dist_circ.is_qubit_vertex(vertex):
+        if vertex in self.qubit_vertices:
             capacity = len(self.network.server_qubits[server])
 
             if server == self.current_server(vertex):
