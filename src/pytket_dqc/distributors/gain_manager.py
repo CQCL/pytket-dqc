@@ -30,6 +30,11 @@ class GainManager:
     :type occupancy: dict[int, int]
     :param cache: A dictionary of sets of servers to their communication cost
     :type cache: dict[frozenset[int], int]
+    :param max_key_size: The maximum size of the set of servers whose cost is
+        stored in cache. If there are N servers and m = ``max_key_size`` then
+        the cache will store up to N^m values. If set to 0, cache is ignored.
+        Default value is 5.
+    :type max_key_size: int
     """
 
     # TODO: Might be worth it to give a max size of the cache to avoid
@@ -40,13 +45,15 @@ class GainManager:
         dist_circ: DistributedCircuit,
         network: NISQNetwork,
         placement: Placement,
+        max_key_size: int = 5,
     ):
         self.dist_circ: DistributedCircuit = dist_circ
         self.network: NISQNetwork = network
         self.server_graph: nx.Graph = network.get_server_nx()
         self.placement: Placement = placement
-        self.cache: dict[frozenset[int], int] = dict()
         self.occupancy: dict[int, int] = dict()
+        self.cache: dict[frozenset[int], int] = dict()
+        self.max_key_size: int = max_key_size
 
         for vertex, server in placement.placement.items():
             if dist_circ.is_qubit_vertex(vertex):
@@ -131,11 +138,15 @@ class GainManager:
         :return: The cost of connecting ``servers``
         :rtype: int
         """
-        if servers not in self.cache.keys():
-            tree = steiner_tree(self.server_graph, servers)
-            self.cache[servers] = len(tree.edges)
+        if len(servers) <= self.max_key_size:
+            if servers not in self.cache.keys():
+                tree = steiner_tree(self.server_graph, servers)
+                self.cache[servers] = len(tree.edges)
+            cost = self.cache[servers]
+        else:
+            cost = steiner_tree(self.server_graph, servers)
 
-        return self.cache[servers]
+        return cost
 
     def move(self, vertex: int, server: int):
         """Moves ``vertex`` to ``server``, updating ``placement`` and
