@@ -1,8 +1,6 @@
 from pytket import Circuit
 import numpy as np
-from scipy.linalg import schur
-from pytket.circuit import Unitary1qBox, Unitary2qBox, Op, OpType, Command, QubitRegister, Qubit, CustomGateDef
-from pytket.transform import Transform
+from pytket.circuit import Op, OpType, Command, QubitRegister, Qubit, CustomGateDef
 from pytket_dqc.packing_on_output import is_diagonal, is_antidiagonal, get_qubit_reg_num
 from warnings import warn
 from networkx import from_dict_of_lists, Graph
