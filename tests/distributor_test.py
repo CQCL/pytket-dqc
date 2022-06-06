@@ -59,8 +59,8 @@ def test_annealing_distribute():
 
 def test_acceptance_criterion():
 
-    assert acceptance_criterion(0, 1, 10) >= 1
-    assert acceptance_criterion(1, 0, 10) < 1
+    assert acceptance_criterion(1, 10) >= 1
+    assert acceptance_criterion(-1, 10) < 1
 
 
 def test_graph_initial_partitioning():
