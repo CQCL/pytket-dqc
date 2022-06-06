@@ -156,6 +156,6 @@ class GainManager:
             return True
 
     def current_server(self, vertex: int):
-        """Return server ``vertex`` is placed at.
+        """Return the server that ``vertex`` is placed at.
         """
         return self.placement.placement[vertex]
