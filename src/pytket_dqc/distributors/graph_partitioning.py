@@ -118,6 +118,8 @@ class GraphPartitioning(Distributor):
 
         :raises Exception: Raised if there are more circuit qubits than
             physical qubits in the network
+        :raises Exception: If the resulting placement is not valid
+            (this should never be raised)
 
         :return: Placement of ``dist_circ`` onto ``network``.
         :rtype: Placement
@@ -142,10 +144,15 @@ class GraphPartitioning(Distributor):
         round_id = 0
         proportion_moved: float = 1
         while round_id < num_rounds and proportion_moved > stop_parameter:
-            boundary = dist_circ.get_boundary(placement)
+            # In the first round, all vertices may be moved
+            if round_id == 0:
+                active_vertices = dist_circ.vertex_list
+            # In other rounds, only the boundary vertices may be moved
+            else:
+                active_vertices = dist_circ.get_boundary(placement)
 
             moves = 0
-            for vertex in boundary:
+            for vertex in active_vertices:
                 current_server = gain_manager.current_server(vertex)
                 potential_servers = set(
                     gain_manager.current_server(v)
@@ -177,8 +184,7 @@ class GraphPartitioning(Distributor):
 
                 # If no move within ``potential_servers`` is valid we move
                 # ``vertex`` to a random server where it fits.
-                # This is a last resort option and it is likely to never
-                # occur.
+                # This is a last resort option and it is unlikely to occur.
                 if best_server is None:
                     valid_servers = [
                         server
@@ -198,10 +204,13 @@ class GraphPartitioning(Distributor):
 
             round_id += 1
             proportion_moved = (
-                0 if len(boundary) == 0 else moves / len(boundary)
+                moves / len(active_vertices) if active_vertices else 0
             )
 
-        assert gain_manager.placement.is_valid(dist_circ, network)
+        if not gain_manager.placement.is_valid(dist_circ, network):
+            raise Exception(
+                "Refiner failed to obtain a valid placement."
+            )
         return gain_manager.placement
 
     def initial_distribute(

@@ -57,10 +57,10 @@ class GainManager:
         self.cache: dict[frozenset[int], int] = dict()
         self.max_key_size: int = max_key_size
 
+        for server in network.server_qubits.keys():
+            self.occupancy[server] = 0
         for vertex, server in placement.placement.items():
             if vertex in qubit_vertices:
-                if server not in self.occupancy.keys():
-                    self.occupancy[server] = 0
                 self.occupancy[server] += 1
 
     def gain(self, vertex: int, new_server: int) -> int:
@@ -134,8 +134,10 @@ class GainManager:
         """Moves ``vertex`` to ``server``, updating ``placement`` and
         ``occupancy`` accordingly.
         """
-        self.occupancy[server] += 1
-        self.occupancy[self.placement.placement[vertex]] -= 1
+        if vertex in self.qubit_vertices:
+            self.occupancy[server] += 1
+            self.occupancy[self.placement.placement[vertex]] -= 1
+
         self.placement.placement[vertex] = server
 
     def is_move_valid(self, vertex: int, server: int) -> bool:

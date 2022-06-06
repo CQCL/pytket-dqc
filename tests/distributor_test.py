@@ -4,7 +4,7 @@ from pytket_dqc.distributors import (
     Ordered,
     Routing,
     GraphPartitioning,
-    Brute
+    Brute,
 )
 from pytket_dqc.distributors.annealing import acceptance_criterion
 from pytket_dqc import DistributedCircuit
@@ -21,12 +21,14 @@ import pytest
 # TODO: Test that the placement returned by routing does not
 # have any cost two edges
 
+
 def test_annealing_distribute():
 
     network = NISQNetwork([[0, 1], [0, 2]], {0: [0], 1: [1, 2], 2: [3, 4]})
 
-    circ = Circuit(4).CZ(0, 3).Rz(0.5, 3).CZ(
-        1, 3).Rz(0.5, 3).CZ(2, 3).Rz(0.5, 3)
+    circ = (
+        Circuit(4).CZ(0, 3).Rz(0.5, 3).CZ(1, 3).Rz(0.5, 3).CZ(2, 3).Rz(0.5, 3)
+    )
     dist_circ = DistributedCircuit(circ)
 
     distributor = Annealing()
@@ -36,7 +38,7 @@ def test_annealing_distribute():
         network,
         seed=2,
         iterations=1,
-        initial_place_method=Ordered()
+        initial_place_method=Ordered(),
     )
 
     assert placement == Placement({0: 1, 1: 1, 2: 2, 3: 0, 4: 1, 5: 1, 6: 1})
@@ -47,7 +49,7 @@ def test_annealing_distribute():
         network,
         seed=1,
         iterations=1,
-        initial_place_method=Ordered()
+        initial_place_method=Ordered(),
     )
 
     assert placement == Placement({0: 1, 1: 1, 2: 2, 3: 2, 4: 0, 5: 1, 6: 1})
@@ -60,20 +62,60 @@ def test_acceptance_criterion():
     assert acceptance_criterion(1, 0, 10) < 1
 
 
-def test_graph_partitioning():
+def test_graph_initial_partitioning():
 
     network = NISQNetwork([[0, 1], [0, 2]], {0: [0], 1: [1, 2], 2: [3, 4]})
 
-    circ = Circuit(4).CZ(0, 3).Rz(0.5, 3).CZ(
-        1, 3).Rz(0.5, 3).CZ(2, 3).Rz(0.5, 3)
+    circ = (
+        Circuit(4).CZ(0, 3).Rz(0.5, 3).CZ(1, 3).Rz(0.5, 3).CZ(2, 3).Rz(0.5, 3)
+    )
     dist_circ = DistributedCircuit(circ)
 
     distributor = GraphPartitioning()
 
-    placement = distributor.distribute(dist_circ, network, seed=1)
+    # num_rounds = 0 so that there are no refinement rounds
+    initial_placement = distributor.distribute(
+        dist_circ, network, seed=1, num_rounds=0
+    )
 
-    assert placement == Placement({0: 2, 1: 0, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1}) \
-        or placement == Placement({0: 2, 1: 1, 2: 2, 3: 1, 4: 1, 5: 1, 6: 1})
+    assert initial_placement == Placement(
+        {0: 2, 1: 0, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1}
+    ) or initial_placement == Placement(
+        {0: 2, 1: 1, 2: 2, 3: 1, 4: 1, 5: 1, 6: 1}
+    )
+
+
+def test_graph_partitioning_refinement():
+
+    network = NISQNetwork([[0, 1], [0, 2]], {0: [0], 1: [1, 2], 2: [3, 4, 5]})
+
+    circ = (
+        Circuit(4)
+        .CZ(0, 3)
+        .Rx(0.3, 0)
+        .CZ(1, 3)
+        .Rx(0.3, 1)
+        .CZ(2, 3)
+        .Rx(0.3, 2)
+        .CZ(0, 3)
+        .CZ(1, 3)
+        .CZ(2, 3)
+    )
+    dist_circ = DistributedCircuit(circ)
+
+    distributor = GraphPartitioning()
+    bad_placement = Placement({v: 2 for v in dist_circ.vertex_list})
+    assert not bad_placement.is_valid(dist_circ, network)
+
+    refined_placement = distributor.refine(
+        bad_placement, dist_circ, network, seed=1
+    )
+    good_placement = Placement(
+        {0: 0, 1: 2, 2: 2, 3: 2, 4: 0, 5: 2, 6: 2, 7: 0, 8: 2, 9: 2}
+    )
+
+    assert refined_placement.is_valid(dist_circ, network)
+    assert refined_placement == good_placement
 
 
 def test_kahypar_install():
@@ -87,7 +129,8 @@ def test_kahypar_install():
     k = 2
 
     hypergraph = kahypar.Hypergraph(
-        num_nodes, num_nets, hyperedge_indices, hyperedges, k)
+        num_nodes, num_nets, hyperedge_indices, hyperedges, k
+    )
 
     context = kahypar.Context()
 
@@ -102,13 +145,16 @@ def test_kahypar_install():
     kahypar.partition(hypergraph, context)
     placement = [hypergraph.blockID(i) for i in range(hypergraph.numNodes())]
 
-    assert (placement == [0, 0, 1, 1] or placement == [1, 1, 0, 0])
+    assert placement == [0, 0, 1, 1] or placement == [1, 1, 0, 0]
 
 
 def test_order_reducing_size():
     my_dict = {0: [0, 1], 2: [5, 6, 7, 8], 1: [2, 3, 4]}
     assert order_reducing_size(my_dict) == {
-        2: [5, 6, 7, 8], 1: [2, 3, 4], 0: [0, 1]}
+        2: [5, 6, 7, 8],
+        1: [2, 3, 4],
+        0: [0, 1],
+    }
 
 
 def test_random_distributor():
@@ -119,8 +165,7 @@ def test_random_distributor():
     network = NISQNetwork([[0, 1], [0, 2]], {0: [0, 1], 1: [2, 3], 2: [4]})
 
     distributor = Random()
-    placement = distributor.distribute(
-        dist_circ, network, seed=0)
+    placement = distributor.distribute(dist_circ, network, seed=0)
 
     assert placement == Placement({0: 1, 3: 1, 1: 0, 4: 1, 2: 2})
     assert placement.cost(dist_circ, network) == 3
@@ -137,17 +182,18 @@ def test_ordered_distributor():
     small_network = NISQNetwork([[0, 1]], {0: [0, 1], 1: [2, 3, 4]})
 
     large_network = NISQNetwork(
-        [[0, 1], [0, 2]], {0: [0, 1, 2], 1: [3, 4, 5], 2: [6, 7, 8, 9]})
+        [[0, 1], [0, 2]], {0: [0, 1, 2], 1: [3, 4, 5], 2: [6, 7, 8, 9]}
+    )
 
     distributor = Ordered()
 
     placement_one = Placement({0: 2, 1: 2, 2: 2})
     distributor_placement_one = distributor.distribute(
-        dist_small_circ, large_network)
+        dist_small_circ, large_network
+    )
     placement_two = Placement({0: 1, 1: 1, 2: 1, 3: 0, 4: 1, 5: 1, 6: 1})
     distributor_placement_two = distributor.distribute(
-        dist_med_circ,
-        small_network
+        dist_med_circ, small_network
     )
 
     assert distributor_placement_one == placement_one
@@ -158,8 +204,9 @@ def test_brute_distribute_small_hyperedge():
 
     network = NISQNetwork([[0, 1], [0, 2]], {0: [0], 1: [1, 2], 2: [3, 4]})
 
-    circ = Circuit(4).CZ(0, 3).Rz(0.5, 3).CZ(
-        1, 3).Rz(0.5, 3).CZ(2, 3).Rz(0.5, 3)
+    circ = (
+        Circuit(4).CZ(0, 3).Rz(0.5, 3).CZ(1, 3).Rz(0.5, 3).CZ(2, 3).Rz(0.5, 3)
+    )
     dist_circ = DistributedCircuit(circ)
 
     distributor = Brute()
@@ -187,7 +234,8 @@ def test_brute_distribute():
 
     placement_med = distributor.distribute(dist_med_circ, med_network)
     assert placement_med == Placement(
-        {0: 0, 4: 0, 1: 1, 5: 0, 2: 2, 6: 2, 3: 2})
+        {0: 0, 4: 0, 1: 1, 5: 0, 2: 2, 6: 2, 3: 2}
+    )
     assert placement_med.cost(dist_med_circ, med_network) == 2
 
 
@@ -211,20 +259,24 @@ def test_routing_distribute():
     routing_placement = distributor.distribute(dist_med_circ, med_network)
     cost = routing_placement.cost(dist_med_circ, med_network)
     ideal_placement = Placement(
-        {0: 0, 8: 1, 9: 0, 10: 0, 1: 0, 2: 1, 6: 1, 7: 1, 3: 1, 5: 1, 4: 1})
+        {0: 0, 8: 1, 9: 0, 10: 0, 1: 0, 2: 1, 6: 1, 7: 1, 3: 1, 5: 1, 4: 1}
+    )
 
     assert routing_placement == ideal_placement
     assert cost == 2
 
-    med_circ_flipped = Circuit(5).CZ(0, 1).CZ(
-        1, 2).CZ(0, 2).CZ(2, 3).CZ(3, 4).CZ(2, 3)
+    med_circ_flipped = (
+        Circuit(5).CZ(0, 1).CZ(1, 2).CZ(0, 2).CZ(2, 3).CZ(3, 4).CZ(2, 3)
+    )
     dist_med_circ_flipped = DistributedCircuit(med_circ_flipped)
 
     routing_placement = distributor.distribute(
-        dist_med_circ_flipped, med_network)
+        dist_med_circ_flipped, med_network
+    )
     cost = routing_placement.cost(dist_med_circ_flipped, med_network)
     ideal_placement = Placement(
-        {0: 0, 8: 1, 9: 0, 10: 1, 1: 0, 2: 1, 6: 1, 7: 1, 3: 1, 5: 1, 4: 1})
+        {0: 0, 8: 1, 9: 0, 10: 1, 1: 0, 2: 1, 6: 1, 7: 1, 3: 1, 5: 1, 4: 1}
+    )
 
     assert routing_placement == ideal_placement
     assert cost == 1
