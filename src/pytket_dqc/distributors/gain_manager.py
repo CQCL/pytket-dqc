@@ -161,3 +161,8 @@ class GainManager:
         """Return the server that ``vertex`` is placed at.
         """
         return self.placement.placement[vertex]
+
+    def set_max_key_size(self, max_key_size: int):
+        """Set the ``max_key_size`` parameter.
+        """
+        self.max_key_size = max_key_size

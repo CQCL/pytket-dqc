@@ -46,8 +46,10 @@ class GraphPartitioning(Distributor):
         :key seed: Seed for randomness. Default is None
         :key num_rounds: Max number of refinement rounds. Default is 1000.
         :key stop_parameter: Real number in [0,1]. If proportion of moves
-        in a round is smaller than this number, do no more rounds. Default
-        is 0.05.
+            in a round is smaller than this number, do no more rounds. Default
+            is 0.05.
+        :key cache_limit: The maximum size of the set of servers whose cost is
+            stored in cache; see GainManager. Default value is 5.
 
         :return: Placement of ``dist_circ`` onto ``network``.
         :rtype: Placement
@@ -59,6 +61,7 @@ class GraphPartitioning(Distributor):
         seed = kwargs.get("seed", None)
         num_rounds = kwargs.get("num_rounds", 1000)
         stop_parameter = kwargs.get("stop_parameter", 0.05)
+        cache_limit = kwargs.get("cache_limit", None)
 
         # First step is to call KaHyPar using the connectivity metric (i.e. no
         # knowledge about network topology other than server sizes)
@@ -73,6 +76,7 @@ class GraphPartitioning(Distributor):
             network,
             num_rounds=num_rounds,
             stop_parameter=stop_parameter,
+            cache_limit=cache_limit,
         )
 
         return placement
@@ -115,6 +119,8 @@ class GraphPartitioning(Distributor):
         :key stop_parameter: Real number in [0,1]. If proportion of moves
             in a round is smaller than this number, do no more rounds. Default
             is 0.05.
+        :key cache_limit: The maximum size of the set of servers whose cost is
+            stored in cache; see GainManager. Default value is 5.
 
         :raises Exception: Raised if there are more circuit qubits than
             physical qubits in the network
@@ -130,6 +136,7 @@ class GraphPartitioning(Distributor):
         seed = kwargs.get("seed", None)
         if seed is not None:
             random.seed(seed)
+        cache_limit = kwargs.get("cache_limit", None)
 
         qubit_vertices = frozenset(
             [v for v in dist_circ.vertex_list if dist_circ.is_qubit_vertex(v)]
@@ -140,6 +147,8 @@ class GraphPartitioning(Distributor):
         gain_manager = GainManager(
             dist_circ, qubit_vertices, network, placement
         )
+        if cache_limit is not None:
+            gain_manager.set_max_key_size(cache_limit)
 
         round_id = 0
         proportion_moved: float = 1
