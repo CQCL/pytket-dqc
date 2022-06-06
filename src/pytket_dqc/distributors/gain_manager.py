@@ -126,7 +126,8 @@ class GainManager:
                 self.cache[servers] = len(tree.edges)
             cost = self.cache[servers]
         else:
-            cost = steiner_tree(self.server_graph, servers)
+            tree = steiner_tree(self.server_graph, servers)
+            cost = len(tree.edges)
 
         return cost
 
