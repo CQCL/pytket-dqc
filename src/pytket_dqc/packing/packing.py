@@ -363,7 +363,7 @@ class ExtendedCommand:
 class BipartiteCircuit:
     def __init__(self, circuit):
         self.circuit = circuit
-        self.graph, self.extended_commands = self.to_bipartite(circuit)
+        self.graph, self.extended_commands = self.to_bipartite()
         self.link_edge_count = 0
         self.top_nodes = {
             n for n, d in self.graph.nodes(data=True) if d["bipartite"] == 0
@@ -381,27 +381,25 @@ class BipartiteCircuit:
     def get_ebit_cost(self):
         return len(self.mvc)
 
-    def to_bipartite(circuit):
+    def to_bipartite(self):
         """Given a circuit, create a bipartite graph representing that circuit.
 
         Currently assumes the gateset only has CZ as two qubit gates. The circuit must also have been placed onto servers.
 
         TODO raise exception if this is not the case?
 
-        :param circuit: The circuit for which a bipartite representation is to be found.
-        :type circuit: pytket.Circuit
         :return graph: The graph representation of the circuit.
         :rtype: networkx.Graph
         """
         extended_commands = to_extended_commands(
-            circuit.get_commands()
+            self.circuit.get_commands()
         )  # Give each command an index to reference it by.
         next_vertex_index = 0
         graph = Graph()
 
         # Convert qubits to ExtendedQubits (qubits with some extra functionality). extended_qubits maps each qubit -> its ExtendedQubit
         extended_qubits = {}
-        for qubit in circuit.qubits:
+        for qubit in self.circuit.qubits:
             extended_qubits[qubit] = ExtendedQubit(qubit, [])
             new_vertex = CommandVertex(next_vertex_index, extended_qubits[qubit])
             next_vertex_index += 1
