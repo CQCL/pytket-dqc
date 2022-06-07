@@ -9,6 +9,7 @@ from pytket_dqc.networks import NISQNetwork
 from pytket_dqc.distributors import Brute
 from pytket_dqc.placement import Placement
 import networkx as nx  # type: ignore
+from sympy import Symbol  # type: ignore
 
 
 def test_rebase():
@@ -59,3 +60,12 @@ def test_direct_from_origin():
 
     assert direct_from_origin(G_reordered, 1) == from_one_ideal
     assert direct_from_origin(G_reordered, 2) == from_two_ideal
+
+
+def test_symbolic_circuit():
+
+    a = Symbol("alpha")
+    circ = Circuit(1)
+    circ.Rx(a, 0)
+
+    assert not dqc_gateset_predicate.verify(circ)
