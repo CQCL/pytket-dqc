@@ -1,6 +1,6 @@
 from pytket_dqc.circuits import DistributedCircuit
 from pytket import Circuit, OpType
-from pytket.circuit import Op, Qubit, CustomGateDef
+from pytket.circuit import Op, Qubit, CustomGateDef # type: ignore
 from pytket.circuit.display import render_circuit_jupyter
 from pytket_dqc.placement import Placement
 import json

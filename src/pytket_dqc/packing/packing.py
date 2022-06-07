@@ -1,10 +1,10 @@
 from pytket import Circuit
 import numpy as np
-from pytket.circuit import Op, OpType, Command, QubitRegister, Qubit, CustomGateDef
+from pytket.circuit import Op, OpType, Command, QubitRegister, Qubit, CustomGateDef # type: ignore
 from pytket_dqc.packing_on_output import is_diagonal, is_antidiagonal, get_qubit_reg_num
 from warnings import warn
-from networkx import from_dict_of_lists, Graph
-from networkx.algorithms.bipartite import maximum_matching, to_vertex_cover
+from networkx import from_dict_of_lists, Graph # type: ignore
+from networkx.algorithms.bipartite import maximum_matching, to_vertex_cover # type: ignore
 
 def_circ = Circuit(2)
 def_circ.add_barrier([0, 1])
