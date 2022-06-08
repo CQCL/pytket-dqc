@@ -207,6 +207,14 @@ def build_l_qubit_to_s_qubit_map(dc_ops):
         for op_dict in dc_ops[l_qubit]:
             if op_dict.op.get_name() == 'StartingProcess':
                 l_qubit_to_s_qubit_map[l_qubit] = op_dict.args[0] #the s_qubit is always the 0th entry in the args
+
+    # Sometimes we might have to link server0 -> server2 via server1, in which case the 's_qubit' is still an l_qubit
+    # however we want to find the true s_qubit so follow the links until we've done this
+    false_s_qubits = []
+    for l_qubit, s_qubit in l_qubit_to_s_qubit_map.items():
+        while s_qubit in l_qubit_to_s_qubit_map.keys():
+            s_qubit = l_qubit_to_s_qubit_map[s_qubit]
+        l_qubit_to_s_qubit_map[l_qubit] = s_qubit
     return l_qubit_to_s_qubit_map
 
 def is_l_qubit(qubit):
@@ -346,6 +354,7 @@ def reinsert_cleaned_ops(og_ops, dc_ops, c_qubit_to_s_qubit_map, debug = False):
                         Current s_qubit_i is {qt.get_s_qubit_i()}, sp_count is {qt.sp_count}, ep_count is {qt.ep_count}.
                         The op we are trying to match is {placed_op_dict}.
                         Our dc_op_dict (if there is one) is {dc_op_dict}.
+                        l_qubit is {dc_op_dict.arg_l_qubits()[0]} which is linked to {l_qubit_to_s_qubit[dc_op_dict.arg_l_qubits()[0]]}.
                         The last 10 lines in the log are:
                         {log_string}
                         ''')
