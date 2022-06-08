@@ -1,20 +1,11 @@
 from pytket import Circuit
 import numpy as np
-from pytket.circuit import Op, OpType, Command, QubitRegister, Qubit, CustomGateDef # type: ignore
+from pytket.circuit import Op, OpType, Command, QubitRegister, Qubit # type: ignore
 from pytket_dqc.packing_on_output import is_diagonal, is_antidiagonal, get_qubit_reg_num
+from pytket_dqc.utils.gateset import start_proc, end_proc
 from warnings import warn
 from networkx import from_dict_of_lists, Graph # type: ignore
 from networkx.algorithms.bipartite import maximum_matching, to_vertex_cover # type: ignore
-
-def_circ = Circuit(2)
-def_circ.add_barrier([0, 1])
-
-start_proc = CustomGateDef.define("StartingProcess", def_circ, [])
-end_proc = CustomGateDef.define("EndingProcess", def_circ, [])
-telep_proc = CustomGateDef.define("Teleportation", def_circ, [])
-
-
-
 
 def pack_circuit(bipartite_circuit):
     """Create a circuit from a BipartiteCircuit which has all the StartingProcesses and EndingProcesses included in the circuit.
