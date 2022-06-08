@@ -84,6 +84,11 @@ class Hypergraph:
         :rtype: bool
         """
 
+        # The following assert is guaranteed by construction
+        assert sorted(self.vertex_list) == sorted(
+            list(self.vertex_neighbours.keys())
+        )
+
         vertex_list_sorted = self.vertex_list.copy()
         vertex_list_sorted.sort()
         unique_vertex_list_sorted = list(set(vertex_list_sorted))
@@ -122,27 +127,25 @@ class Hypergraph:
         for vertex in vertices:
             self.add_vertex(vertex)
 
-    def add_hyperedge(self, hyperedge: list[Vertex], weight: int = 1):
+    def add_hyperedge(self, vertices: list[Vertex], weight: int = 1):
         """Add hyperedge to hypergraph. Update vertex_neighbours.
 
-        :param hyperedge: List of vertices in hyperedge
-        :type hyperedge: list[Vertex]
+        :param vertices: List of vertices in hyperedge
+        :type vertices: list[Vertex]
         :param weight: Hyperedge weight
         :type weight: int
         :raises Exception: Raised if hyperedge does not contain at least
-            2 vetices
+            2 vertices
         :raises Exception: Raised if vertices in hyperedge are not in
             hypergraph.
         """
 
-        if len(hyperedge) < 2:
+        if len(vertices) < 2:
             raise Exception("Hyperedges must contain at least 2 vertices.")
 
-        for vertex in hyperedge:
-            if (
-                vertex not in self.vertex_list
-                or vertex not in self.vertex_neighbours.keys()
-            ):
+        hyperedge = Hyperedge(vertices, weight)
+        for vertex in vertices:
+            if vertex not in self.vertex_list:
                 raise Exception(
                     (
                         "An element of the hyperedge {} is not a vertex in {}."
@@ -150,15 +153,15 @@ class Hypergraph:
                     ).format(hyperedge, self.vertex_list)
                 )
 
-            self.hyperedge_dict[vertex].append(Hyperedge(hyperedge, weight))
+            self.hyperedge_dict[vertex].append(hyperedge)
 
             # Add in all vertices of the hyperedge to the neighbourhood. Since
             # this is a set there will be no duplicates. This carelessly adds
             # in the vertex itself to its own neighbourhood, so we remove it.
-            self.vertex_neighbours[vertex].update(hyperedge)
+            self.vertex_neighbours[vertex].update(vertices)
             self.vertex_neighbours[vertex].remove(vertex)
 
-        self.hyperedge_list.append(Hyperedge(hyperedge, weight))
+        self.hyperedge_list.append(hyperedge)
 
     def kahypar_hyperedges(self) -> Tuple[list[int], list[int]]:
         """Return hypergraph in format used by kahypar package. In particular
@@ -182,8 +185,7 @@ class Hypergraph:
         hyperedge_indices = [0]
         for hyperedge in self.hyperedge_list:
             hyperedge_indices.append(
-                len(hyperedge.vertices)
-                + hyperedge_indices[-1]
+                len(hyperedge.vertices) + hyperedge_indices[-1]
             )
 
         return hyperedge_indices, hyperedges

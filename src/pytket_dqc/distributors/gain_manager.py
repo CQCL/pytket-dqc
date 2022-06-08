@@ -104,7 +104,7 @@ class GainManager:
             new_cost = self.steiner_cost(
                 frozenset(connected_servers + [new_server])
             )
-            gain += current_cost - new_cost
+            gain += hyperedge.weight * (current_cost - new_cost)
 
         return gain
 

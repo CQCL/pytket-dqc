@@ -66,7 +66,7 @@ class GraphPartitioning(Distributor):
         # First step is to call KaHyPar using the connectivity metric (i.e. no
         # knowledge about network topology other than server sizes)
         placement = self.initial_distribute(
-            dist_circ, network, ini_path=ini_path, seed=seed
+            dist_circ, network, ini_path, seed=seed
         )
         # Then, we refine the placement using label propagation. This will
         # also ensure that the servers do not exceed their qubit capacity
@@ -122,11 +122,6 @@ class GraphPartitioning(Distributor):
         :key cache_limit: The maximum size of the set of servers whose cost is
             stored in cache; see GainManager. Default value is 5.
 
-        :raises Exception: Raised if there are more circuit qubits than
-            physical qubits in the network
-        :raises Exception: If the resulting placement is not valid
-            (this should never be raised)
-
         :return: Placement of ``dist_circ`` onto ``network``.
         :rtype: Placement
         """
@@ -167,6 +162,8 @@ class GraphPartitioning(Distributor):
                     gain_manager.current_server(v)
                     for v in dist_circ.vertex_neighbours[vertex]
                 )
+                # We explicitly add the current server to the set
+                # i.e. a potentially valid move is doing no move at all
                 potential_servers.add(gain_manager.current_server(vertex))
 
                 best_server = None
@@ -200,11 +197,7 @@ class GraphPartitioning(Distributor):
                         for server in network.get_server_list()
                         if gain_manager.is_move_valid(vertex, server)
                     ]
-                    if not valid_servers:
-                        raise Exception(
-                            "Could not complete qubit allocation refinement. "
-                            "More qubits in the circuit than in the network!"
-                        )
+                    assert valid_servers
                     best_server = random.choice(valid_servers)
 
                 if best_server != current_server:
@@ -216,14 +209,15 @@ class GraphPartitioning(Distributor):
                 moves / len(active_vertices) if active_vertices else 0
             )
 
-        if not gain_manager.placement.is_valid(dist_circ, network):
-            raise Exception(
-                "Refiner failed to obtain a valid placement."
-            )
+        assert gain_manager.placement.is_valid(dist_circ, network)
         return gain_manager.placement
 
     def initial_distribute(
-        self, dist_circ: DistributedCircuit, network: NISQNetwork, **kwargs
+        self,
+        dist_circ: DistributedCircuit,
+        network: NISQNetwork,
+        ini_path: str,
+        **kwargs,
     ) -> Placement:
         """Distribute ``dist_circ`` onto ``network`` using graph partitioning
         tools available in `kahypar <https://kahypar.org/>`_ package. The
@@ -234,8 +228,9 @@ class GraphPartitioning(Distributor):
         :type dist_circ: DistributedCircuit
         :param network: Network onto which ``dist_circ`` should be placed.
         :type network: NISQNetwork
+        :param ini_path: Path to kahypar ini file.
+        :type ini_path: str
 
-        :key ini_path: Path to kahypar ini file.
         :key seed: Seed for randomness. Default is None
 
         :return: Placement of ``dist_circ`` onto ``network``.
@@ -278,7 +273,6 @@ class GraphPartitioning(Distributor):
 
         context = kahypar.Context()
 
-        ini_path = kwargs.get("ini_path")
         context.loadINIconfiguration(ini_path)
 
         context.setK(num_servers)

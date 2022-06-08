@@ -140,6 +140,7 @@ class DistributedCircuit(Hypergraph):
             if self.vertex_circuit_map[vertex]['type'] == 'gate'
         ]
 
+        assert len(gate_vertex_list) == len(hyperedge.vertices) - 1
         return gate_vertex_list
 
     def from_circuit(self):
