@@ -453,15 +453,10 @@ class BipartiteCircuit:
                     extended_command.add_vertex(vertex)
                     vertex.add_extended_command(extended_command)
 
-                    if (
-                        len(extended_command.get_vertices()) == 2
-                    ):  # Once both the vertices for the CZ are added, we can add the edge to the graph
-                        other_vertex = [
-                            other_vertex
-                            for other_vertex in extended_command.get_vertices()
-                            if other_vertex != vertex
-                        ][0]
-                        add_edge_to_graph(vertex, other_vertex, graph)
+        added_edges = [] # A list that will contain all the edges that have been added to the graph as set(vertex1, vertex2)
+        for extended_command in extended_commands:
+            if not (extended_command.is_local() or set(extended_command.get_vertices()) in added_edges):
+                add_edge_to_graph(extended_command.get_vertices()[0], extended_command.get_vertices()[1], graph)
+                added_edges.append(set(extended_command.get_vertices()))
 
         return graph, extended_commands
-
