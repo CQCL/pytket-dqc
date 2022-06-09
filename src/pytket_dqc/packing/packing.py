@@ -2,7 +2,7 @@ from pytket import Circuit
 import numpy as np
 from pytket.circuit import Op, OpType, Command, QubitRegister, Qubit # type: ignore
 from pytket_dqc.utils.op_analysis import is_diagonal, is_antidiagonal, get_qubit_reg_num
-from pytket_dqc.utils.gateset import start_proc, end_proc
+from pytket_dqc.utils.gateset import start_proc, end_proc, dqc_gateset_predicate
 from warnings import warn
 from networkx import from_dict_of_lists, Graph # type: ignore
 from networkx.algorithms.bipartite import maximum_matching, to_vertex_cover # type: ignore
@@ -356,6 +356,8 @@ class ExtendedCommand:
 
 class BipartiteCircuit:
     def __init__(self, circuit):
+        if not dqc_gateset_predicate.verify(circuit):
+            raise Exception('The given circuit is not in the allowed gateset')
         self.circuit = circuit
         self.graph, self.extended_commands = self.to_bipartite()
         self.link_edge_count = 0
