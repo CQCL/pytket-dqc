@@ -158,6 +158,8 @@ class GraphPartitioning(Distributor):
             moves = 0
             for vertex in active_vertices:
                 current_server = gain_manager.current_server(vertex)
+                # We only consider moving ``vertex`` to a server that has
+                # a neighbour vertex allocated to it
                 potential_servers = set(
                     gain_manager.current_server(v)
                     for v in dist_circ.vertex_neighbours[vertex]
@@ -167,17 +169,54 @@ class GraphPartitioning(Distributor):
                 potential_servers.add(gain_manager.current_server(vertex))
 
                 best_server = None
-                best_gain = 0
+                best_gain = float('-inf')
+                best_best_swap = None
                 for server in potential_servers:
                     # Servers that are not in ``potential_servers`` will always
                     # have the worst gain since they contain no neighbours
                     # of ``vertex``. As such, we  simply ignore them.
 
-                    # If the move is not valid, skip it
-                    if not gain_manager.is_move_valid(vertex, server):
-                        continue
-
                     gain = gain_manager.gain(vertex, server)
+
+                    # TODO: Think about the edge-case where the current server is
+                    # full, but the best move according to the gain below is to
+                    # leave it in place.
+
+                    # If the move is not valid (i.e. the server is full) we
+                    # find the best vertex in ``server`` to swap this one with
+                    best_swap_vertex = None
+                    if not gain_manager.is_move_valid(vertex, server):
+                        # The only vertices we can swap with are qubit ones
+                        # so that the occupancy of the server is maintained
+                        valid_swaps = [vertex for vertex in gain_manager.placement.get_vertices_in(server) if dist_circ.is_qubit_vertex(vertex)]
+
+                        # To obtain the gain accurately, we move ``vertex`` to
+                        # ``server`` first and move it back at the end. This is
+                        # possible because ``move`` is an unsafe function, i.e.
+                        # it does not require that the move is valid.
+                        gain_manager.move(vertex, server)
+
+                        best_swap_gain = float('-inf')
+                        for swap_vertex in valid_swaps:
+                            swap_gain = gain_manager.gain(swap_vertex, current_server)
+
+                            if (
+                                best_swap_vertex is None
+                                or swap_gain > best_swap_gain
+                                or swap_gain == best_swap_gain
+                                and random.choice([True, False])
+                            ):
+                                best_swap_gain = swap_gain
+                                best_swap_vertex = swap_vertex
+                        # Restore ``vertex`` to its original server.
+                        gain_manager.move(vertex, current_server)
+
+                        # Since no server has capacity 0, we should always
+                        # find a vertex to swap with
+                        assert best_swap_vertex is not None
+                        # The gain of this swap is the sum of the gains of
+                        # both moves
+                        gain = gain + best_swap_gain
 
                     if (
                         best_server is None
@@ -187,21 +226,28 @@ class GraphPartitioning(Distributor):
                     ):
                         best_gain = gain
                         best_server = server
+                        # ``best_swap_vertex`` contains either None (if the
+                        # move was valid) or the best vertex to swap with for
+                        # this particular ``server``. But, since this variable
+                        # will be initialised once for each server we attempt
+                        # to move to, we need to store the best swap of the
+                        # best server somewhere: that is ``best_best_swap``
+                        best_best_swap = best_swap_vertex
 
-                # If no move within ``potential_servers`` is valid we move
-                # ``vertex`` to a random server where it fits.
-                # This is a last resort option and it is unlikely to occur.
-                if best_server is None:
-                    valid_servers = [
-                        server
-                        for server in network.get_server_list()
-                        if gain_manager.is_move_valid(vertex, server)
-                    ]
-                    assert valid_servers
-                    best_server = random.choice(valid_servers)
+                # Since ``potential_servers`` includes at least the
+                # ``current_server``, there is always at least one server
+                # to choose from
+                assert best_server is not None
 
                 if best_server != current_server:
                     gain_manager.move(vertex, best_server)
+                    if best_best_swap is not None:
+                        # This means that the move was not valid, so we need
+                        # to swap to make it valid
+                        gain_manager.move(best_best_swap, current_server)
+                    # Either if we swap or we don't, we count it as one move
+                    # since this is meant to count 'rounds with change' rather
+                    # than literal moves
                     moves += 1
 
             round_id += 1

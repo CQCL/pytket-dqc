@@ -133,7 +133,9 @@ class GainManager:
 
     def move(self, vertex: int, server: int):
         """Moves ``vertex`` to ``server``, updating ``placement`` and
-        ``occupancy`` accordingly.
+        ``occupancy`` accordingly. Note: this operation is (purposefully)
+        unsafe, i.e. it is not checked whether the move is valid or not.
+        If unsure, you should call ``is_move_valid``.
         """
         if vertex in self.qubit_vertices:
             self.occupancy[server] += 1

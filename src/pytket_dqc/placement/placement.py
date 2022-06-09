@@ -142,3 +142,8 @@ class Placement:
         steiner_server_graph = steiner_tree(server_graph, servers_used)
         qubit_server = self.placement[qubit_node]
         return direct_from_origin(steiner_server_graph, qubit_server)
+
+    def get_vertices_in(self, server: int) -> list(int):
+        """Return the list of vertices placed in ``server``.
+        """
+        return [v for v,s in self.placement.items() if s==server]
