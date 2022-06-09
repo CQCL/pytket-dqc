@@ -4,11 +4,7 @@ import numpy as np
 def is_diagonal(op):
     #Boolean function that determines if a given command has an associated matrix representation (in the computational basis) that is diagonal.
     #This function uses the fastest answer presented here https://stackoverflow.com/questions/43884189/check-if-a-large-matrix-is-diagonal-matrix-in-python
-    # TODO: Test for symbolic Rx gates
 
-    diagonal_ops = [OpType.Rz, OpType.CZ]
-    if op.type in diagonal_ops: # In this way we can handle operations with symbolic parameters.
-        return True
     try: # Assume if there's an error that it is not a diagonal gate (error is probably because symbolic).
         array = op.get_unitary().round(12) # To stay consistent with TKET team.
         i, j = array.shape
