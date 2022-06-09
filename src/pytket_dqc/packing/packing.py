@@ -16,7 +16,6 @@ def pack_circuit(bipartite_circuit):
     :rtype: pytket.Circuit
     """
     circuit = Circuit()
-    le_count = 0
 
     for extended_command in bipartite_circuit.extended_commands:
         for qubit in extended_command.command.qubits:
@@ -284,6 +283,10 @@ class ExtendedQubit:
         return connected_vertices
 
     def get_currently_connected_servers(self):
+        # A connected server is one from which this ExtendedQubit has a StartingProcess leading to a Link Edge qubit on that server
+        # A currently connected server is a connected server for which the StartingProcess has not been ended via an EndingProcess
+        # In essence this function finds every server that this qubit is connected to
+        # using the server number as keys to a list of vertices that are connected to the relevant Link Edge qubit.
         connected_servers_dict = (
             {}
         )  # Maps the connected_server_reg_num -> all vertices connected to this vertex on that register
@@ -392,7 +395,7 @@ class BipartiteCircuit:
         extended_qubits = {}
         for qubit in self.circuit.qubits:
             extended_qubits[qubit] = ExtendedQubit(qubit, [])
-            new_vertex = CommandVertex(next_vertex_index, extended_qubits[qubit])
+            CommandVertex(next_vertex_index, extended_qubits[qubit]) # ALTER BEHAVIOUR SO THIS IS METHOD OF EXTENDED_QUBIT
             next_vertex_index += 1
 
         # Populate the ExtendedCommands list for each ExtendedQubit
