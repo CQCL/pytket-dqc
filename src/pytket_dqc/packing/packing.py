@@ -77,7 +77,7 @@ def add_extended_command_to_circuit(circuit, extended_command, bipartite_circuit
         if extended_command.command.op.type == OpType.CX:
             raise Exception("Global CX gates are not allowed.")
         for vertex in extended_command.vertices:  # Add starting processes if needed
-            if vertex.i in bipartite_circuit.mvc and not vertex.is_packing:
+            if vertex.vertex_index in bipartite_circuit.mvc and not vertex.is_packing:
                 le_reg_num = vertex.get_connected_server_reg_num()
                 le_reg_name = (
                     f"Server {le_reg_num} Link Edge {bipartite_circuit.link_edge_count}"
@@ -96,7 +96,7 @@ def add_extended_command_to_circuit(circuit, extended_command, bipartite_circuit
         packed_vertex = [
             vertex
             for vertex in extended_command.vertices
-            if vertex.i in bipartite_circuit.mvc
+            if vertex.vertex_index in bipartite_circuit.mvc
         ][
             0
         ]  # If it's a global CZ, one of the two vertices it belongs to must be in the MVC, so select that vertex
@@ -112,7 +112,7 @@ def add_extended_command_to_circuit(circuit, extended_command, bipartite_circuit
 
     for vertex in extended_command.vertices:
         if (
-            vertex.i in bipartite_circuit.mvc
+            vertex.vertex_index in bipartite_circuit.mvc
             and vertex.extended_commands == vertex.added_extended_commands
         ):  # If all of the commands on the vertex are packed we add an ending process
             l_qubit = vertex.link_qubit
@@ -138,22 +138,22 @@ def add_edge_to_graph(vertex1, vertex2, graph):
     ):  # Neither vertices are on the graph, so can fix which half of the graph they are on.
         vertex1.set_bipartite_i(0)
         vertex2.set_bipartite_i(1)
-        graph.add_nodes_from([vertex1.get_i()], bipartite=vertex1.get_bipartite_i())
-        graph.add_nodes_from([vertex2.get_i()], bipartite=vertex2.get_bipartite_i())
+        graph.add_nodes_from([vertex1.get_index()], bipartite=vertex1.get_bipartite_i())
+        graph.add_nodes_from([vertex2.get_index()], bipartite=vertex2.get_bipartite_i())
 
     elif vertex1.is_on_graph:
         vertex2.set_bipartite_i(
             [i for i in range(2) if i != vertex1.get_bipartite_i()][0]
         )
-        graph.add_nodes_from([vertex2.get_i()], bipartite=vertex2.get_bipartite_i())
+        graph.add_nodes_from([vertex2.get_index()], bipartite=vertex2.get_bipartite_i())
 
     elif vertex2.is_on_graph:
         vertex1.set_bipartite_i(
             [i for i in range(2) if i != vertex2.get_bipartite_i()][0]
         )
-        graph.add_nodes_from([vertex1.get_i()], bipartite=vertex1.get_bipartite_i())
+        graph.add_nodes_from([vertex1.get_index()], bipartite=vertex1.get_bipartite_i())
 
-    graph.add_edges_from([(vertex1.get_i(), vertex2.get_i())])
+    graph.add_edges_from([(vertex1.get_index(), vertex2.get_index())])
 
 
 def to_extended_commands(commands):
@@ -189,7 +189,7 @@ class LinkQubit:
 
 class CommandVertex:
     def __init__(self, i, extended_qubit):
-        self.i = i
+        self.vertex_index = i
         self.extended_qubit = extended_qubit
         self.reg_num = get_qubit_reg_num(extended_qubit.qubit)
         self.extended_commands = []
@@ -210,8 +210,8 @@ class CommandVertex:
     def is_connected(self):
         return self.connected_server_reg_num is not None
 
-    def get_i(self):
-        return self.i
+    def get_index(self):
+        return self.vertex_index
 
     def get_reg_num(self):
         return self.reg_num
@@ -231,7 +231,7 @@ class CommandVertex:
     def get_extended_command_indices(self):
         indices = []
         for extended_command in self.extended_commands:
-            indices.append(extended_command.i)
+            indices.append(extended_command.command_index)
         return indices
 
     def set_bipartite_i(
@@ -307,7 +307,7 @@ class ExtendedQubit:
     def get_command_indices(self):
         command_indices = []
         for extended_command in self.get_extended_commands():
-            command_indices.append(extended_command.get_i())
+            command_indices.append(extended_command.get_index())
         return command_indices
 
     def set_last_used_vertex(self, vertex):
@@ -320,7 +320,7 @@ class ExtendedQubit:
 
 class ExtendedCommand:
     def __init__(self, i, command):
-        self.i = i
+        self.command_index = i
         self.command = command
         self.vertices = []
 
@@ -347,8 +347,8 @@ class ExtendedCommand:
         q0 = self.command.qubits[0]
         return get_qubit_reg_num(q0) == self.other_arg_server_num(q0)
 
-    def get_i(self):
-        return self.i
+    def get_index(self):
+        return self.command_index
 
     def is_1q_packable(self):
         return self.is_1q() and self.is_packable()
@@ -442,7 +442,7 @@ class BipartiteCircuit:
                         if extended_qubit.last_used_vertex.is_connected():
                             extended_qubit.create_vertex(next_vertex_index)
                             next_vertex_index += 1
-                            #extended_qubit.add_vertex(vertex)
+                            #extended_qubit.add_vertex(vertex):
                         else:
                             vertex = extended_qubit.last_used_vertex
                         other_server_reg_num = extended_command.other_arg_server_num(
