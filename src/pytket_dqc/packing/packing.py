@@ -200,7 +200,6 @@ class CommandVertex:
         self.is_on_graph = False
         self.is_packing = False
         self.link_qubit = None
-        extended_qubit.add_vertex(self)
 
     def close(self):
         self.is_open = False
@@ -269,6 +268,10 @@ class ExtendedQubit:
 
     def add_extended_command(self, extended_command):
         self.extended_commands.append(extended_command)
+
+    def create_vertex(self, vertex_index):
+        self.vertices.append(CommandVertex(vertex_index, self))
+        self.last_used_vertex = self.vertices[-1]
 
     def add_vertex(self, vertex):
         self.vertices.append(vertex)
@@ -380,10 +383,6 @@ class BipartiteCircuit:
     def to_bipartite(self):
         """Given a circuit, create a bipartite graph representing that circuit.
 
-        Currently assumes the gateset only has CZ as two qubit gates. The circuit must also have been placed onto servers.
-
-        TODO raise exception if this is not the case?
-
         :return graph: The graph representation of the circuit.
         :rtype: networkx.Graph
         """
@@ -396,8 +395,9 @@ class BipartiteCircuit:
         # Convert qubits to ExtendedQubits (qubits with some extra functionality). extended_qubits maps each qubit -> its ExtendedQubit
         extended_qubits = {}
         for qubit in self.circuit.qubits:
-            extended_qubits[qubit] = ExtendedQubit(qubit, [])
-            CommandVertex(next_vertex_index, extended_qubits[qubit]) # ALTER BEHAVIOUR SO THIS IS METHOD OF EXTENDED_QUBIT
+            new_extended_qubit = ExtendedQubit(qubit, [])
+            new_extended_qubit.create_vertex(next_vertex_index) 
+            extended_qubits[qubit] = new_extended_qubit
             next_vertex_index += 1
 
         # Populate the ExtendedCommands list for each ExtendedQubit
@@ -417,10 +417,9 @@ class BipartiteCircuit:
 
                 elif extended_command.is_1q():  # 1 qubit non-(anti)diagonal gate
                     extended_qubit.close_all_vertices()
-                    new_vertex = CommandVertex(next_vertex_index, extended_qubit)
-                    extended_command.add_vertex(new_vertex)
-                    new_vertex.add_extended_command(extended_command)
-                    extended_qubit.add_vertex(new_vertex)
+                    extended_qubit.create_vertex(next_vertex_index)
+                    extended_command.add_vertex(extended_qubit.last_used_vertex)
+                    extended_qubit.last_used_vertex.add_extended_command(extended_command)
                     next_vertex_index += 1
 
                 else:  # Non-local CZ gate
@@ -441,9 +440,9 @@ class BipartiteCircuit:
 
                     else:  # Must create a new connection from this qubit to the server.
                         if extended_qubit.last_used_vertex.is_connected():
-                            vertex = CommandVertex(next_vertex_index, extended_qubit)
+                            extended_qubit.create_vertex(next_vertex_index)
                             next_vertex_index += 1
-                            extended_qubit.add_vertex(vertex)
+                            #extended_qubit.add_vertex(vertex)
                         else:
                             vertex = extended_qubit.last_used_vertex
                         other_server_reg_num = extended_command.other_arg_server_num(
