@@ -57,13 +57,13 @@ class Placement:
 
         # Check that no more qubits are allotted to a server than can be
         # accommodated.
-        for server in list(set(self.placement.values())):
+        for server in network.server_qubits.keys():
             vertices = [vertex for vertex in self.placement.keys()
                         if self.placement[vertex] == server]
             qubits = [
                 vertex
                 for vertex in vertices
-                if circuit.vertex_circuit_map[vertex]['type'] == 'qubit'
+                if circuit.is_qubit_vertex(vertex)
             ]
             if len(qubits) > len(network.server_qubits[server]):
                 is_valid = False
@@ -143,7 +143,7 @@ class Placement:
         qubit_server = self.placement[qubit_node]
         return direct_from_origin(steiner_server_graph, qubit_server)
 
-    def get_vertices_in(self, server: int) -> list(int):
+    def get_vertices_in(self, server: int) -> list[int]:
         """Return the list of vertices placed in ``server``.
         """
-        return [v for v,s in self.placement.items() if s==server]
+        return [v for v, s in self.placement.items() if s == server]

@@ -68,12 +68,14 @@ class GraphPartitioning(Distributor):
         placement = self.initial_distribute(
             dist_circ, network, ini_path, seed=seed
         )
+
         # Then, we refine the placement using label propagation. This will
         # also ensure that the servers do not exceed their qubit capacity
         placement = self.refine(
             placement,
             dist_circ,
             network,
+            seed=seed,
             num_rounds=num_rounds,
             stop_parameter=stop_parameter,
             cache_limit=cache_limit,
@@ -145,15 +147,34 @@ class GraphPartitioning(Distributor):
         if cache_limit is not None:
             gain_manager.set_max_key_size(cache_limit)
 
+        # Since KaHyPar does not guarantee that the requirement on server
+        # capacity will be satisfied, we enforce this ourselves.
+        # However, it usually does satisfy the requirement and the following
+        # code often does nothing or it moves very few vertices.
+        for vertex in gain_manager.qubit_vertices:
+            # If moving in place is not valid then the current server is full
+            if not gain_manager.is_move_valid(
+                vertex, gain_manager.current_server(vertex)
+            ):
+                # Then, find the first server where the move would be valid
+                for server in gain_manager.occupancy.keys():
+                    if gain_manager.is_move_valid(vertex, server):
+                        # Move ``vertex`` to a server with free spaces and
+                        # return control to the outer loop
+                        gain_manager.move(vertex, server)
+                        break
+        # Notice that the moves have been arbitrary, i.e. we have not
+        # calculated gains. This is fine since the vertices we moved will
+        # likely be boundary vertices; the following rounds of the
+        # refinement algorithm will move them around to optimise gains.
+        # At the end of the previous subroutine, no server should be
+        # overpopulated.
+        assert gain_manager.placement.is_valid(dist_circ, network)
+
         round_id = 0
         proportion_moved: float = 1
         while round_id < num_rounds and proportion_moved > stop_parameter:
-            # In the first round, all vertices may be moved
-            if round_id == 0:
-                active_vertices = dist_circ.vertex_list
-            # In other rounds, only the boundary vertices may be moved
-            else:
-                active_vertices = dist_circ.get_boundary(placement)
+            active_vertices = dist_circ.get_boundary(placement)
 
             moves = 0
             for vertex in active_vertices:
@@ -169,7 +190,7 @@ class GraphPartitioning(Distributor):
                 potential_servers.add(gain_manager.current_server(vertex))
 
                 best_server = None
-                best_gain = float('-inf')
+                best_gain = float("-inf")
                 best_best_swap = None
                 for server in potential_servers:
                     # Servers that are not in ``potential_servers`` will always
@@ -178,17 +199,18 @@ class GraphPartitioning(Distributor):
 
                     gain = gain_manager.gain(vertex, server)
 
-                    # TODO: Think about the edge-case where the current server is
-                    # full, but the best move according to the gain below is to
-                    # leave it in place.
-
                     # If the move is not valid (i.e. the server is full) we
                     # find the best vertex in ``server`` to swap this one with
                     best_swap_vertex = None
                     if not gain_manager.is_move_valid(vertex, server):
                         # The only vertices we can swap with are qubit ones
                         # so that the occupancy of the server is maintained
-                        valid_swaps = [vertex for vertex in gain_manager.placement.get_vertices_in(server) if dist_circ.is_qubit_vertex(vertex)]
+                        vs = gain_manager.placement.get_vertices_in(server)
+                        valid_swaps = [
+                            vertex
+                            for vertex in vs
+                            if dist_circ.is_qubit_vertex(vertex)
+                        ]
 
                         # To obtain the gain accurately, we move ``vertex`` to
                         # ``server`` first and move it back at the end. This is
@@ -196,9 +218,11 @@ class GraphPartitioning(Distributor):
                         # it does not require that the move is valid.
                         gain_manager.move(vertex, server)
 
-                        best_swap_gain = float('-inf')
+                        best_swap_gain = float("-inf")
                         for swap_vertex in valid_swaps:
-                            swap_gain = gain_manager.gain(swap_vertex, current_server)
+                            swap_gain = gain_manager.gain(
+                                swap_vertex, current_server
+                            )
 
                             if (
                                 best_swap_vertex is None
@@ -216,7 +240,7 @@ class GraphPartitioning(Distributor):
                         assert best_swap_vertex is not None
                         # The gain of this swap is the sum of the gains of
                         # both moves
-                        gain = gain + best_swap_gain
+                        gain = gain + int(best_swap_gain)
 
                     if (
                         best_server is None

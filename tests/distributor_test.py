@@ -111,7 +111,7 @@ def test_graph_partitioning_refinement():
         bad_placement, dist_circ, network, seed=1
     )
     good_placement = Placement(
-        {0: 0, 1: 2, 2: 2, 3: 2, 4: 0, 5: 2, 6: 2, 7: 0, 8: 2, 9: 2}
+        {0: 2, 1: 2, 2: 2, 3: 0, 4: 2, 5: 2, 6: 2, 7: 2, 8: 2, 9: 2}
     )
 
     assert refined_placement.is_valid(dist_circ, network)
