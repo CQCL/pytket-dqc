@@ -22,14 +22,6 @@ class GraphPartitioning(Distributor):
     connectivity of the NISQNetwork.
     """
 
-    def __init__(self, epsilon: float = 0.03) -> None:
-        """Initialisation function.
-
-        :param epsilon: Load imbalance tolerance, defaults to 0.03
-        :type epsilon: float, optional
-        """
-        self.epsilon = epsilon  # I think we can remove this
-
     def distribute(
         self, dist_circ: DistributedCircuit, network: NISQNetwork, **kwargs
     ) -> Placement:
@@ -346,7 +338,6 @@ class GraphPartitioning(Distributor):
         context.loadINIconfiguration(ini_path)
 
         context.setK(num_servers)
-        context.setEpsilon(self.epsilon)
         context.setCustomTargetBlockWeights(server_sizes)
         context.suppressOutput(True)
         if seed is not None:
