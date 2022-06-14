@@ -150,6 +150,10 @@ class Hypergraph:
 
         # Create list of intervals of hyperedges list which correspond to
         # hyperedges.
+
+        if len(self.hyperedge_list) == 0:
+            return [], hyperedges
+
         hyperedge_indices = [0]
         for hyperedge in self.hyperedge_list:
             hyperedge_indices.append(
