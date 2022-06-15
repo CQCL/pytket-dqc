@@ -85,4 +85,6 @@ class Routing(Distributor):
             else:
                 raise Exception("Vertex type not recognised")
 
-        return Placement(placement_dict)
+        placement = Placement(placement_dict)
+        assert placement.is_valid(dist_circ, network)
+        return placement

@@ -88,4 +88,5 @@ class Brute(Distributor):
             if placement_cost == 0:
                 break
 
+        assert minimum_cost_placement.is_valid(dist_circ, network)
         return minimum_cost_placement

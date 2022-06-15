@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, cast, List, Tuple
+from typing import TYPE_CHECKING, List, Tuple
+
 if TYPE_CHECKING:
     from pytket_dqc.networks import NISQNetwork
     from pytket_dqc.circuits import DistributedCircuit
@@ -56,13 +57,13 @@ class Placement:
 
         # Check that no more qubits are allotted to a server than can be
         # accommodated.
-        for server in list(set(self.placement.values())):
+        for server in network.server_qubits.keys():
             vertices = [vertex for vertex in self.placement.keys()
                         if self.placement[vertex] == server]
             qubits = [
                 vertex
                 for vertex in vertices
-                if circuit.vertex_circuit_map[vertex]['type'] == 'qubit'
+                if circuit.is_qubit_vertex(vertex)
             ]
             if len(qubits) > len(network.server_qubits[server]):
                 is_valid = False
@@ -94,19 +95,13 @@ class Placement:
                 # Cost of distributing gates in a hyperedge corresponds
                 # to the number of edges in steiner tree connecting all
                 # servers used by vertices in hyperedge.
-                qubit_list = [
-                    vertex
-                    for vertex in cast(List[int], hyperedge['hyperedge'])
-                    if circuit.vertex_circuit_map[vertex]['type'] == 'qubit'
-                ]
-                assert len(qubit_list) == 1
+
                 dist_graph = self.get_distribution_tree(
-                    cast(List[int], hyperedge['hyperedge']),
-                    qubit_list[0],
+                    hyperedge.vertices,
+                    circuit.get_qubit_vertex(hyperedge),
                     network
                 )
-                cost += len(dist_graph) * \
-                    cast(int, hyperedge['weight'])
+                cost += len(dist_graph) * hyperedge.weight
         else:
             raise Exception("This is not a valid placement.")
 
@@ -147,3 +142,8 @@ class Placement:
         steiner_server_graph = steiner_tree(server_graph, servers_used)
         qubit_server = self.placement[qubit_node]
         return direct_from_origin(steiner_server_graph, qubit_server)
+
+    def get_vertices_in(self, server: int) -> list[int]:
+        """Return the list of vertices placed in ``server``.
+        """
+        return [v for v, s in self.placement.items() if s == server]
