@@ -73,6 +73,7 @@ class GraphPartitioning(Distributor):
             cache_limit=cache_limit,
         )
 
+        assert placement.is_valid(dist_circ, network)
         return placement
 
     def refine(
