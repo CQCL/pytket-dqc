@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import kahypar as kahypar  # type:ignore
 from pytket_dqc.distributors import Distributor
+from .ordered import Ordered
 from pytket_dqc.placement import Placement
 import importlib_resources
 
@@ -56,55 +57,65 @@ class GraphPartitioning(Distributor):
 
         seed = kwargs.get("seed", None)
 
-        hyperedge_indices, hyperedges = dist_circ.kahypar_hyperedges()
+        if not (len(dist_circ.hyperedge_list) == 0):
 
-        num_hyperedges = len(hyperedge_indices) - 1
-        num_vertices = len(list(set(hyperedges)))
-        server_list = network.get_server_list()
-        num_servers = len(server_list)
-        server_sizes = [len(network.server_qubits[s]) for s in server_list]
-        # For now, all hyperedges are assumed to have the same weight
-        hyperedge_weights = [1 for i in range(0, num_hyperedges)]
-        # Qubit vertices are given weight 1, gate vertices are given weight 0
-        num_qubits = len(dist_circ.circuit.qubits)
-        vertex_weights = [1 for i in range(0, num_qubits)] + [
-            0 for i in range(num_qubits, num_vertices)
-        ]
-        # TODO: the weight assignment to vertices assumes that the index of the
-        # qubit vertices range from 0 to `num_qubits`, and the rest of them
-        # correspond to gates. This is currently guaranteed by construction
-        # i.e. method `from_circuit()`; we might want to make this more robust.
+            hyperedge_indices, hyperedges = dist_circ.kahypar_hyperedges()
 
-        hypergraph = kahypar.Hypergraph(
-            num_vertices,
-            num_hyperedges,
-            hyperedge_indices,
-            hyperedges,
-            num_servers,
-            hyperedge_weights,
-            vertex_weights,
-        )
+            num_hyperedges = len(hyperedge_indices) - 1
+            num_vertices = len(list(set(hyperedges)))
+            server_list = network.get_server_list()
+            num_servers = len(server_list)
+            server_sizes = [len(network.server_qubits[s]) for s in server_list]
+            # For now, all hyperedges are assumed to have the same weight
+            hyperedge_weights = [1 for i in range(0, num_hyperedges)]
+            # Qubit vertices are given weight 1, gate vertices are given
+            # weight 0
+            num_qubits = len(dist_circ.circuit.qubits)
+            vertex_weights = [1 for i in range(0, num_qubits)] + [
+                0 for i in range(num_qubits, num_vertices)
+            ]
+            # TODO: the weight assignment to vertices assumes that the index
+            # of the qubit vertices range from 0 to `num_qubits`, and the
+            # rest of them correspond to gates. This is currently guaranteed
+            # by construction i.e. method `from_circuit()`; we might want
+            # to make this more robust.
 
-        context = kahypar.Context()
+            hypergraph = kahypar.Hypergraph(
+                num_vertices,
+                num_hyperedges,
+                hyperedge_indices,
+                hyperedges,
+                num_servers,
+                hyperedge_weights,
+                vertex_weights,
+            )
 
-        package_path = importlib_resources.files("pytket_dqc")
-        default_ini = f"{package_path}/distributors/km1_kKaHyPar_sea20.ini"
-        ini_path = kwargs.get("ini_path", default_ini)
-        context.loadINIconfiguration(ini_path)
+            context = kahypar.Context()
 
-        context.setK(num_servers)
-        context.setEpsilon(self.epsilon)
-        context.setCustomTargetBlockWeights(server_sizes)
-        context.suppressOutput(True)
-        if seed is not None:
-            context.setSeed(seed)
+            package_path = importlib_resources.files("pytket_dqc")
+            default_ini = f"{package_path}/distributors/km1_kKaHyPar_sea20.ini"
+            ini_path = kwargs.get("ini_path", default_ini)
+            context.loadINIconfiguration(ini_path)
 
-        kahypar.partition(hypergraph, context)
+            context.setK(num_servers)
+            context.setEpsilon(self.epsilon)
+            context.setCustomTargetBlockWeights(server_sizes)
+            context.suppressOutput(True)
+            if seed is not None:
+                context.setSeed(seed)
 
-        partition_list = [
-            hypergraph.blockID(i) for i in range(hypergraph.numNodes())
-        ]
+            kahypar.partition(hypergraph, context)
 
-        placement_dict = {i: server for i, server in enumerate(partition_list)}
+            partition_list = [
+                hypergraph.blockID(i) for i in range(hypergraph.numNodes())
+            ]
 
-        return Placement(placement_dict)
+            placement_dict = {i: server for i,
+                              server in enumerate(partition_list)}
+            placement = Placement(placement_dict)
+
+        else:
+
+            placement = Ordered().distribute(dist_circ, network)
+
+        return placement
