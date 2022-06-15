@@ -16,6 +16,7 @@ import kahypar as kahypar  # type:ignore
 from pytket.circuit import QControlBox, Op, OpType  # type:ignore
 import importlib_resources
 import pytest
+import json
 
 
 # TODO: Test that the placement returned by routing does not
@@ -116,6 +117,28 @@ def test_graph_partitioning_refinement():
 
     assert refined_placement.is_valid(dist_circ, network)
     assert refined_placement == good_placement
+
+
+def test_refinement_makes_valid():
+    """In the case of an initial partition using KaHyPar this test fails
+    since KaHyPar returns an invalid placement. Refinement fixes this.
+    """
+    server_coupling = [[0, 1], [1, 2]]
+    server_qubits = {
+        0: [0, 1],
+        1: [2],
+        2: [3, 4, 5],
+    }
+    network = NISQNetwork(server_coupling, server_qubits)
+
+    with open("tests/test_circuits/not_valid_circ.json", "r") as fp:
+        circuit = Circuit().from_dict(json.load(fp))
+
+    dist_circ = DistributedCircuit(circuit)
+    distributor = GraphPartitioning()
+
+    placement = distributor.distribute(dist_circ, network, seed=0)
+    assert placement.is_valid(dist_circ, network)
 
 
 def test_kahypar_install():
