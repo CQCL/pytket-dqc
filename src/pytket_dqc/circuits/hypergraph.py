@@ -93,7 +93,10 @@ class Hypergraph:
         vertex_list_sorted.sort()
         unique_vertex_list_sorted = list(set(vertex_list_sorted))
 
-        ideal_vertex_list = [i for i in range(max(self.vertex_list) + 1)]
+        if len(self.vertex_list) == 0:
+            ideal_vertex_list = []
+        else:
+            ideal_vertex_list = [i for i in range(max(self.vertex_list) + 1)]
 
         # The vertices in the hypergraph must be a continuous list of integers.
         return unique_vertex_list_sorted == ideal_vertex_list
@@ -182,6 +185,10 @@ class Hypergraph:
 
         # Create list of intervals of hyperedges list which correspond to
         # hyperedges.
+
+        if len(self.hyperedge_list) == 0:
+            return [], hyperedges
+
         hyperedge_indices = [0]
         for hyperedge in self.hyperedge_list:
             hyperedge_indices.append(
