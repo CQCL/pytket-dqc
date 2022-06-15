@@ -72,7 +72,10 @@ class Hypergraph:
         vertex_list_sorted.sort()
         unique_vertex_list_sorted = list(set(vertex_list_sorted))
 
-        ideal_vertex_list = [i for i in range(max(self.vertex_list) + 1)]
+        if len(self.vertex_list) == 0:
+            ideal_vertex_list = []
+        else:
+            ideal_vertex_list = [i for i in range(max(self.vertex_list) + 1)]
 
         # The vertices in the hypergraph must be a continuous list of integers.
         return unique_vertex_list_sorted == ideal_vertex_list
