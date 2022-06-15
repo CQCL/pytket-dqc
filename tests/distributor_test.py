@@ -76,6 +76,24 @@ def test_graph_partitioning():
         or placement == Placement({0: 2, 1: 1, 2: 2, 3: 1, 4: 1, 5: 1, 6: 1})
 
 
+def test_graph_partitioning_edge_cases():
+
+    network = NISQNetwork([[0, 1], [0, 2]], {0: [0], 1: [1, 2], 2: [3, 4]})
+    distributor = GraphPartitioning()
+
+    circ = Circuit(2)
+    dist_circ = DistributedCircuit(circ)
+
+    placement = distributor.distribute(dist_circ, network, seed=1)
+    assert placement == Placement({0: 1, 1: 1})
+
+    circ = Circuit(0)
+    dist_circ = DistributedCircuit(circ)
+
+    placement = distributor.distribute(dist_circ, network, seed=1)
+    assert placement == Placement(dict())
+
+
 def test_kahypar_install():
 
     num_nodes = 4
