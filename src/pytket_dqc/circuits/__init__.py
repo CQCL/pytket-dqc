@@ -4,4 +4,4 @@ from .distributed_circuit import (  # noqa:F401
     CyclicDistributedCircuit,
     RegularGraphDistributedCircuit
 )
-from .hypergraph import Hypergraph  # noqa:F401
+from .hypergraph import Hypergraph, Hyperedge  # noqa:F401

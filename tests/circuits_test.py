@@ -1,8 +1,10 @@
 from pytket_dqc.circuits import (
     RegularGraphDistributedCircuit,
     DistributedCircuit,
-    Hypergraph
+    Hypergraph,
+    Hyperedge
 )
+
 from pytket_dqc.circuits.distributed_circuit import (
     start_proc,
     end_proc,
@@ -63,7 +65,7 @@ def test_hypergraph():
     hypgra.add_hyperedge([2, 1])
     assert hypgra.vertex_list == [0, 1, 2]
     assert hypgra.hyperedge_list == [
-        {"hyperedge": [0, 1], "weight":1}, {"hyperedge": [2, 1], "weight":1}]
+        Hyperedge([0, 1], weight=1), Hyperedge([2, 1], weight=1)]
 
 
 def test_hypergraph_is_placement():
@@ -106,7 +108,7 @@ def test_CRz_circuit():
 
     assert dist_circ.vertex_list == [0, 2, 1]
     assert dist_circ.hyperedge_list == [
-        {'hyperedge': [0, 2], 'weight': 1}, {'hyperedge': [1, 2], 'weight': 1}]
+        Hyperedge([0, 2], weight=1), Hyperedge([1, 2], weight=1)]
 
     circ = Circuit(2)
     circ.CZ(0, 1)
@@ -117,9 +119,9 @@ def test_CRz_circuit():
     dist_circ = DistributedCircuit(circ)
 
     assert dist_circ.hyperedge_list == [
-        {'hyperedge': [0, 2, 3, 4], 'weight': 1},
-        {'hyperedge': [1, 2, 3], 'weight': 1},
-        {'hyperedge': [1, 4], 'weight': 1}
+        Hyperedge([0, 2, 3, 4], weight=1),
+        Hyperedge([1, 2, 3], weight=1),
+        Hyperedge([1, 4], weight=1)
     ]
     assert dist_circ.vertex_list == [0, 2, 3, 4, 1]
 
@@ -135,10 +137,10 @@ def test_CRz_circuit():
     dist_circ = DistributedCircuit(circ)
 
     assert dist_circ.hyperedge_list == [
-        {'hyperedge': [0, 3, 4], 'weight': 1},
-        {'hyperedge': [0, 6, 7], 'weight': 1},
-        {'hyperedge': [1, 3, 4, 5, 6, 7], 'weight': 1},
-        {'hyperedge': [2, 5], 'weight': 1}
+        Hyperedge([0, 3, 4], weight=1),
+        Hyperedge([0, 6, 7], weight=1),
+        Hyperedge([1, 3, 4, 5, 6, 7], weight=1),
+        Hyperedge([2, 5], weight=1)
     ]
     assert set(dist_circ.vertex_list) == set([0, 1, 2, 3, 4, 5, 6, 7])
 
@@ -156,7 +158,7 @@ def test_q_control_box_circuits():
 
     assert dist_circ.vertex_list == [0, 2, 1]
     assert dist_circ.hyperedge_list == [
-        {'hyperedge': [0, 2], 'weight': 2}, {'hyperedge': [1, 2], 'weight': 1}]
+        Hyperedge([0, 2], weight=2), Hyperedge([1, 2], weight=1)]
 
     circ = Circuit(2)
     circ.CZ(0, 1)
@@ -167,11 +169,11 @@ def test_q_control_box_circuits():
     dist_circ = DistributedCircuit(circ)
 
     assert dist_circ.hyperedge_list == [
-        {'hyperedge': [0, 2], 'weight': 1},
-        {'hyperedge': [0, 3], 'weight': 2},
-        {'hyperedge': [0, 4], 'weight': 1},
-        {'hyperedge': [1, 2, 3], 'weight': 1},
-        {'hyperedge': [1, 4], 'weight': 1}
+        Hyperedge([0, 2], weight=1),
+        Hyperedge([0, 3], weight=2),
+        Hyperedge([0, 4], weight=1),
+        Hyperedge([1, 2, 3], weight=1),
+        Hyperedge([1, 4], weight=1)
     ]
     assert dist_circ.vertex_list == [0, 2, 3, 4, 1]
 
@@ -187,14 +189,14 @@ def test_q_control_box_circuits():
     dist_circ = DistributedCircuit(circ)
 
     assert dist_circ.hyperedge_list == [
-        {'hyperedge': [0, 2, 3], 'weight': 1},
-        {'hyperedge': [0, 4], 'weight': 1},
-        {'hyperedge': [0, 5, 6], 'weight': 1},
-        {'hyperedge': [1, 2], 'weight': 2},
-        {'hyperedge': [1, 3], 'weight': 2},
-        {'hyperedge': [1, 4], 'weight': 2},
-        {'hyperedge': [1, 5], 'weight': 2},
-        {'hyperedge': [1, 6], 'weight': 2}
+        Hyperedge([0, 2, 3], weight=1),
+        Hyperedge([0, 4], weight=1),
+        Hyperedge([0, 5, 6], weight=1),
+        Hyperedge([1, 2], weight=2),
+        Hyperedge([1, 3], weight=2),
+        Hyperedge([1, 4], weight=2),
+        Hyperedge([1, 5], weight=2),
+        Hyperedge([1, 6], weight=2)
     ]
     assert dist_circ.vertex_list == [0, 2, 3, 4, 5, 6, 1]
 
