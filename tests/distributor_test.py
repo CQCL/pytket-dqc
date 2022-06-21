@@ -162,7 +162,7 @@ def test_graph_partitioning_unused_qubits():
     dist_circ = DistributedCircuit(circ)
 
     placement = distributor.distribute(dist_circ, network, seed=1)
-    assert placement.is_valid(dist_circ, network)
+    assert placement.placement == {0: 2, 1: 1, 2: 1, 3: 1}
 
 
 def test_kahypar_install():
