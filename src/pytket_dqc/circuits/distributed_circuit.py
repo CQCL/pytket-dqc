@@ -185,12 +185,18 @@ class DistributedCircuit(Hypergraph):
                 if qubit in command["command"].qubits
             ]
 
+            # This tracks if any two qubit gates have been found on the qubit
+            # wire. If not, a one element hyperedge containing just the
+            # qubit vertex is added.
+            two_qubit_gate_found = False
+
             for command_dict in qubit_commands:
                 command = command_dict['command']
                 command_index = command_dict['command_index']
                 # If the command is a CZ gate add it to the current working
                 # hyperedge.
                 if command["command"].op.type in [OpType.CZ, OpType.CRz]:
+                    two_qubit_gate_found = True
                     vertex = command["two q gate count"] + \
                         self.circuit.n_qubits
                     self.add_gate_vertex(vertex, command['command'])
@@ -209,6 +215,7 @@ class DistributedCircuit(Hypergraph):
                 elif command["command"].op.type in [
                     OpType.CX
                 ]:
+                    two_qubit_gate_found = True
                     # Check if working qubit is the control
                     if qubit == command['command'].qubits[0]:
                         vertex = command["two q gate count"] + \
@@ -240,7 +247,7 @@ class DistributedCircuit(Hypergraph):
 
             # If there is an hyperedge that has not been added once all
             # commands have bee iterated through, add it now.
-            if len(hyperedge) > 1:
+            if len(hyperedge) > 1 or not two_qubit_gate_found:
                 self.add_hyperedge(hyperedge)
 
     def _get_server_to_qubit_vertex(
