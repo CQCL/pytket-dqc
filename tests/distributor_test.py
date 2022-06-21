@@ -141,7 +141,7 @@ def test_refinement_makes_valid():
     assert placement.is_valid(dist_circ, network)
 
 
-def test_graph_partitioning_edge_cases():
+def test_graph_partitioning_unused_qubits():
 
     network = NISQNetwork([[0, 1], [0, 2]], {0: [0], 1: [1, 2], 2: [3, 4]})
     distributor = GraphPartitioning()
@@ -150,13 +150,19 @@ def test_graph_partitioning_edge_cases():
     dist_circ = DistributedCircuit(circ)
 
     placement = distributor.distribute(dist_circ, network, seed=1)
-    assert placement == Placement({0: 1, 1: 1})
+    assert placement == Placement({0: 1, 1: 0})
 
     circ = Circuit(0)
     dist_circ = DistributedCircuit(circ)
 
     placement = distributor.distribute(dist_circ, network, seed=1)
     assert placement == Placement(dict())
+
+    circ = Circuit(3).CZ(1, 2)
+    dist_circ = DistributedCircuit(circ)
+
+    placement = distributor.distribute(dist_circ, network, seed=1)
+    assert placement == Placement({0: 2, 1: 1, 2: 1, 3: 1})
 
 
 def test_kahypar_install():

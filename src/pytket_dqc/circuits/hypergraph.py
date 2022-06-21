@@ -143,8 +143,8 @@ class Hypergraph:
             hypergraph.
         """
 
-        if len(vertices) < 2:
-            raise Exception("Hyperedges must contain at least 2 vertices.")
+        if len(vertices) < 1:
+            raise Exception("Hyperedges must contain at least 1 vertex.")
 
         hyperedge = Hyperedge(vertices, weight)
         for vertex in vertices:
