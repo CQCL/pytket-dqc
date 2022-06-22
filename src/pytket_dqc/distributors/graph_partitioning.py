@@ -3,9 +3,9 @@ from __future__ import annotations
 import random
 import kahypar as kahypar  # type:ignore
 from pytket_dqc.distributors import Distributor, GainManager
-from .ordered import Ordered
 from pytket_dqc.placement import Placement
 import importlib_resources
+from pytket import Circuit
 
 
 from typing import TYPE_CHECKING
@@ -306,8 +306,11 @@ class GraphPartitioning(Distributor):
 
         seed = kwargs.get("seed", None)
 
-        if not (len(dist_circ.hyperedge_list) == 0):
-
+        # This should only arise if the circuit is completely empty.
+        if (len(dist_circ.hyperedge_list) == 0):
+            assert dist_circ.circuit == Circuit()
+            return Placement(dict())
+        else:
             hyperedge_indices, hyperedges = dist_circ.kahypar_hyperedges()
 
             num_hyperedges = len(hyperedge_indices) - 1
@@ -328,7 +331,6 @@ class GraphPartitioning(Distributor):
             # rest of them correspond to gates. This is currently guaranteed
             # by construction i.e. method `from_circuit()`; we might want
             # to make this more robust.
-
             hypergraph = kahypar.Hypergraph(
                 num_vertices,
                 num_hyperedges,
@@ -361,9 +363,5 @@ class GraphPartitioning(Distributor):
             placement_dict = {i: server for i,
                               server in enumerate(partition_list)}
             placement = Placement(placement_dict)
-
-        else:
-
-            placement = Ordered().distribute(dist_circ, network)
 
         return placement
