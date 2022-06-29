@@ -3,6 +3,7 @@ from pytket.predicates import (  # type: ignore
     NoSymbolsPredicate,
     UserDefinedPredicate
 )
+
 from pytket import OpType, Circuit
 from pytket.passes import (  # type: ignore
     auto_rebase_pass,
