@@ -35,6 +35,11 @@ class Brute(Distributor):
         :rtype: Placement
         """
 
+        if not network.can_implement(dist_circ):
+            raise Exception(
+                "This circuit cannot be implemented on this network."
+                )
+
         # List of all vertices to be placed
         vertex_list = dist_circ.vertex_list
         # List of all servers which could be used

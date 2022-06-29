@@ -48,6 +48,11 @@ class GraphPartitioning(Distributor):
         :rtype: Placement
         """
 
+        if not network.can_implement(dist_circ):
+            raise Exception(
+                "This circuit cannot be implemented on this network."
+                )
+
         package_path = importlib_resources.files("pytket_dqc")
         default_ini = f"{package_path}/distributors/km1_kKaHyPar_sea20.ini"
         ini_path = kwargs.get("ini_path", default_ini)
