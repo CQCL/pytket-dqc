@@ -2,10 +2,15 @@ import numpy as np
 
 
 def is_diagonal(op):
-    # Boolean function that determines if a given command has an associated matrix representation (in the computational basis) that is diagonal.
-    # This function uses the fastest answer presented here https://stackoverflow.com/questions/43884189/check-if-a-large-matrix-is-diagonal-matrix-in-python
+    # Boolean function that determines
+    # if a given command has an associated matrix representation
+    # (in the computational basis) that is diagonal.
+    # This function uses the fastest answer presented here
+    # https://stackoverflow.com/questions/43884189/check-if-a-large-matrix-is-diagonal-matrix-in-python
 
-    try:  # Assume if there's an error that it is not a diagonal gate (error is probably because symbolic).
+    # Assume if there's an error that it is not a diagonal gate
+    # (error is probably because symbolic).
+    try:
         array = op.get_unitary().round(
             12
         )  # To stay consistent with TKET team.

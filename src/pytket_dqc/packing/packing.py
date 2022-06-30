@@ -1,10 +1,17 @@
 from pytket import Circuit
-
 from pytket.circuit import (  # type: ignore
     OpType,
     QubitRegister,
 )
-from pytket_dqc.utils.op_analysis import is_diagonal, is_antidiagonal
+from networkx import Graph  # type: ignore
+from networkx.algorithms.bipartite import (  # type: ignore
+    maximum_matching,
+    to_vertex_cover,
+)
+from pytket_dqc.utils.op_analysis import (
+    is_diagonal,
+    is_antidiagonal,
+)
 from pytket_dqc.utils.gateset import (
     start_proc,
     end_proc,
@@ -12,15 +19,14 @@ from pytket_dqc.utils.gateset import (
 )
 from pytket_dqc.distributors import Random
 from pytket_dqc.circuits import DistributedCircuit
-from warnings import warn
-from networkx import Graph  # type: ignore
-from networkx.algorithms.bipartite import maximum_matching, to_vertex_cover  # type: ignore
 
 
 def pack_circuit(bipartite_circuit):
-    """Create a circuit from a BipartiteCircuit which has all the StartingProcesses and EndingProcesses included in the circuit.
+    """Create a circuit from a BipartiteCircuit
+    including StartingProcesses and EndingProcesses.
 
-    :param bipartite_circuit: The BipartiteCircuit from which this circuit is to be constructed.
+    :param bipartite_circuit: The BipartiteCircuit
+        from which this circuit is to be constructed.
     :type bipartite_circuit: BipartiteCircuit
     :return: The constructed circuit.
     :rtype: pytket.Circuit
@@ -33,7 +39,9 @@ def pack_circuit(bipartite_circuit):
                 circuit.add_qubit(qubit)
 
         add_extended_command_to_circuit(
-            circuit, extended_command, bipartite_circuit
+            circuit,
+            extended_command,
+            bipartite_circuit,
         )
 
     return circuit
@@ -44,40 +52,51 @@ def add_extended_command_to_circuit(
 ):
     """Add an extended command to a given circuit.
 
-    If needs be, also adds starting and ending processes to the circuit, as dictated by the supplied BipartiteCircuit.mvc.
+    If needs be, also adds starting and ending processes to the circuit,
+    as dictated by the supplied BipartiteCircuit.mvc.
     Note that it is assumed that the global gates are CPhase gates.
 
-    TODO Consider the case where we have global CX in the case of qubit swaps e.g. in routing.
-
-    :param circuit: The circuit to which the extended command is to be appended.
+    :param circuit: The circuit to which the
+        extended command is to be appended.
     :type circuit: pytket.Circuit
     :param extended_command: The extended command to append.
     :type extended_command: ExtendedCommand
-    :param bipartite_circuit: The bipartite circuit associated with the extended commands.
+    :param bipartite_circuit: The bipartite circuit
+        associated with the extended commands.
     :type bipartite_circuit: BipartiteCircuit
     """
-    # Add an extended command (EC) to a circuit, with packing if needed as given by the supplied mvc
+    # Add an extended command (EC) to a circuit,
+    # with packing if needed as given by the supplied mvc
     # Cases are as follows
-    # 1) The EC is 1q or not packable are no packings on the qubit. -> Just add it to circuit
-    # 2) The EC is not packable but there are packings on the qubit which need to be terminated. -> Terminate all packings, add the EC to circuit
-    # 4) The EC is packable as a 1q diagonal -> Just add it to circuit
-    # 5) The EC is packable as a 1q antidiagonal -> Add to circuit and add correctional X gate to all current packings
-    # 6) The EC is packable as a 2q CZ -> Add the CZ to the packing on the appropriate l_qubit.
+    # 1) The EC is 1q or not packable are no packings on the qubit.
+    #   -> Just add it to circuit
+    # 2) The EC is not packable but there are packings on the qubit
+    #   which need to be terminated.
+    #   -> Terminate all packings, add the EC to circuit
+    # 4) The EC is packable as a 1q diagonal
+    #   -> Just add it to circuit
+    # 5) The EC is packable as a 1q antidiagonal
+    #   -> Add to circuit and add correctional X gate to all current packings
+    # 6) The EC is packable as a 2q CZ
+    #   -> Add the CZ to the packing on the appropriate l_qubit.
 
     # Handle all the cases where the ExtendedCommand is local.
     if extended_command.is_local():
         vertex = extended_command.vertices[0]
         extended_qubit = vertex.extended_qubit
-        if (
-            not extended_command.is_packable()
-        ):  # If not packable, we need to close off all current packings on this qubit
+        # If not packable, we need to close off
+        # all current packings on this qubit.
+        if not extended_command.is_packable():
             while len(extended_qubit.current_l_qubits) > 0:
                 l_qubit = extended_qubit.current_l_qubits[0]
                 l_qubit.stop_packing()
                 circuit.add_custom_gate(
                     end_proc,
                     [],
-                    [l_qubit.qubit, l_qubit.origin_extended_qubit.qubit],
+                    [
+                        l_qubit.qubit,
+                        l_qubit.origin_extended_qubit.qubit,
+                    ],
                 )
 
         elif extended_qubit.is_packing() and is_antidiagonal(
@@ -87,7 +106,8 @@ def add_extended_command_to_circuit(
                 circuit.X(l_qubit.qubit)
 
         circuit.add_gate(
-            extended_command.command.op, extended_command.command.args
+            extended_command.command.op,
+            extended_command.command.args,
         )
         vertex.added_extended_commands.append(extended_command)
 
@@ -102,7 +122,10 @@ def add_extended_command_to_circuit(
                 and not vertex.is_packing
             ):
                 le_server_num = vertex.get_connected_server_num()
-                le_reg_name = f"Server {le_server_num} Link Edge {bipartite_circuit.link_edge_count}"
+                le_reg_name = (
+                    f"Server {le_server_num}"
+                    + " Link Edge {bipartite_circuit.link_edge_count}"
+                )
                 bipartite_circuit.link_edge_count += 1
                 le_q_reg = QubitRegister(le_reg_name, 1)
                 circuit.add_q_register(le_q_reg)
@@ -111,61 +134,76 @@ def add_extended_command_to_circuit(
                 circuit.add_custom_gate(
                     start_proc,
                     [],
-                    [link_qubit.origin_extended_qubit.qubit, link_qubit.qubit],
+                    [
+                        link_qubit.origin_extended_qubit.qubit,
+                        link_qubit.qubit,
+                    ],
                 )
 
+        # If it's a global CZ, one of the two vertices it belongs to
+        # must be in the MVC, so select that vertex.
         packed_vertex = [
             vertex
             for vertex in extended_command.vertices
             if vertex.vertex_index in bipartite_circuit.mvc
-        ][
-            0
-        ]  # If it's a global CZ, one of the two vertices it belongs to must be in the MVC, so select that vertex
+        ][0]
         l_qubit = packed_vertex.link_qubit
         qubit = [
             qubit
             for qubit in extended_command.command.qubits
             if qubit != l_qubit.origin_extended_qubit.qubit
         ][0]
-        circuit.add_gate(extended_command.command.op, [qubit, l_qubit.qubit])
+        circuit.add_gate(
+            extended_command.command.op,
+            [qubit, l_qubit.qubit],
+        )
         for vertex in extended_command.vertices:
             vertex.added_extended_commands.append(extended_command)
 
     for vertex in extended_command.vertices:
+        # If all of the commands on the vertex are packed add an ending process
         if (
             vertex.vertex_index in bipartite_circuit.mvc
             and vertex.extended_commands == vertex.added_extended_commands
-        ):  # If all of the commands on the vertex are packed we add an ending process
+        ):
             l_qubit = vertex.link_qubit
             l_qubit.stop_packing()
             circuit.add_custom_gate(
                 end_proc,
                 [],
-                [l_qubit.qubit, l_qubit.origin_extended_qubit.qubit],
+                [
+                    l_qubit.qubit,
+                    l_qubit.origin_extended_qubit.qubit,
+                ],
             )
 
 
 def add_edge_to_graph(vertex1, vertex2, graph):
-    """Given two CommandVertexs and a graph, add an edge to the graph that connects the two vertices.
-    If either of the vertices are not yet on the graph then also add them to the graph.
+    """Given two CommandVertexs and a graph,
+    add an edge to the graph that connects the two vertices.
+    If either of the vertices are not yet on the graph
+    then also add them to the graph.
 
     :param vertex1: The first vertex we wish to add an edge between.
     :type vertex1: CommandVertex
     :param vertex2: The second vertex we wish to add an edge between.
     :type vertex2: CommandVertex
-    :param graph: The graph to which the edge (and vertices) should be added to.
+    :param graph: The graph to which the edge
+        (and vertices) should be added to.
     :type graph: networkx.Graph
     """
-    if not (
-        vertex1.is_on_graph or vertex2.is_on_graph
-    ):  # Neither vertices are on the graph, so can fix which half of the graph they are on.
+    # Neither vertices are on the graph,
+    # so can fix which half of the graph they are on.
+    if not (vertex1.is_on_graph or vertex2.is_on_graph):
         vertex1.set_bipartite_i(0)
         vertex2.set_bipartite_i(1)
         graph.add_nodes_from(
-            [vertex1.get_index()], bipartite=vertex1.get_bipartite_i()
+            [vertex1.get_index()],
+            bipartite=vertex1.get_bipartite_i(),
         )
         graph.add_nodes_from(
-            [vertex2.get_index()], bipartite=vertex2.get_bipartite_i()
+            [vertex2.get_index()],
+            bipartite=vertex2.get_bipartite_i(),
         )
 
     elif vertex1.is_on_graph:
@@ -173,7 +211,8 @@ def add_edge_to_graph(vertex1, vertex2, graph):
             [i for i in range(2) if i != vertex1.get_bipartite_i()][0]
         )
         graph.add_nodes_from(
-            [vertex2.get_index()], bipartite=vertex2.get_bipartite_i()
+            [vertex2.get_index()],
+            bipartite=vertex2.get_bipartite_i(),
         )
 
     elif vertex2.is_on_graph:
@@ -181,16 +220,26 @@ def add_edge_to_graph(vertex1, vertex2, graph):
             [i for i in range(2) if i != vertex2.get_bipartite_i()][0]
         )
         graph.add_nodes_from(
-            [vertex1.get_index()], bipartite=vertex1.get_bipartite_i()
+            [vertex1.get_index()],
+            bipartite=vertex1.get_bipartite_i(),
         )
 
-    graph.add_edges_from([(vertex1.get_index(), vertex2.get_index())])
+    graph.add_edges_from(
+        [
+            (
+                vertex1.get_index(),
+                vertex2.get_index(),
+            )
+        ]
+    )
 
 
 def to_extended_commands(commands):
     """Given a list of commands, convert them to ExtendedCommands.
 
-    Typically this list of commands comes from pytket.circuit.Circuit.get_commands(). Their index is given by the order in the list they occur at.
+    Typically this list of commands comes from
+    pytket.circuit.Circuit.get_commands().
+    Their index is given by the order in the list they occur at.
 
     :param commands: A list of commands
     :type commands: List[pytket.circuit.Command]
@@ -318,13 +367,18 @@ class ExtendedQubit:
         return connected_vertices
 
     def get_currently_connected_servers(self):
-        # A connected server is one from which this ExtendedQubit has a StartingProcess leading to a Link Edge qubit on that server
-        # A currently connected server is a connected server for which the StartingProcess has not been ended via an EndingProcess
-        # In essence this function finds every server that this qubit is connected to
-        # using the server number as keys to a list of vertices that are connected to the relevant Link Edge qubit.
-        connected_servers_dict = (
-            {}
-        )  # Maps the connected_server_num -> all vertices connected to this vertex on that register
+        # A connected server is one from which this ExtendedQubit
+        # has a StartingProcess leading to a Link Edge qubit on that server
+        # A currently connected server is a connected server
+        # for which the StartingProcess has not been ended via an EndingProcess
+        # In essence this function finds every server
+        # that this qubit is connected to
+        # using the server number as keys to a list of vertices
+        # that are connected to the relevant Link Edge qubit.
+
+        # Maps the connected_server_num
+        # -> all vertices connected to this vertex on that register
+        connected_servers_dict = {}
         connected_vertices = self.get_currently_connected_vertices()
         for vertex in connected_vertices:
             if (
@@ -374,7 +428,8 @@ class ExtendedCommand:
     def other_arg_qubit(self, this_extended_qubit):
         if self.extended_qubits is None:
             raise Exception(
-                "This ExtendedCommand does not yet have ExtendedQubits assigned to it."
+                "This ExtendedCommand does not yet have"
+                + " ExtendedQubits assigned to it."
             )
         return [
             extended_qubit
@@ -403,7 +458,11 @@ class ExtendedCommand:
 
 class BipartiteCircuit:
     def __init__(
-        self, circuit, placement=None, distributor=None, network=None
+        self,
+        circuit,
+        placement=None,
+        distributor=None,
+        network=None,
     ):
         if not dqc_gateset_predicate.verify(circuit):
             raise Exception("The given circuit is not in the allowed gateset")
@@ -414,21 +473,29 @@ class BipartiteCircuit:
         else:
             if network is None:
                 raise Exception(
-                    "Missing optional argument network. (Since no placement has been specified, BipartiteCircuit requires a network to distribute the circuit over)."
+                    "Missing optional argument network. "
+                    + "(Since no placement has been specified, "
+                    + "BipartiteCircuit requires a network "
+                    + "to distribute the circuit over)."
                 )
             if distributor is None:
                 distributor = Random()
-            else:
-                distributor = distributor
             self.placement = distributor.distribute(self.dist_circ, network)
         self.circuit = self.dist_circ.to_relabeled_registers(self.placement)
-        self.graph, self.extended_commands = self.to_bipartite()
+        (
+            self.graph,
+            self.extended_commands,
+        ) = self.to_bipartite()
         self.link_edge_count = 0
         self.top_nodes = {
             n for n, d in self.graph.nodes(data=True) if d["bipartite"] == 0
         }
         self.matching = maximum_matching(self.graph, self.top_nodes)
-        self.mvc = to_vertex_cover(self.graph, self.matching, self.top_nodes)
+        self.mvc = to_vertex_cover(
+            self.graph,
+            self.matching,
+            self.top_nodes,
+        )
         self.packed_circuit = pack_circuit(self)
 
     def get_graph(self):
@@ -452,11 +519,14 @@ class BipartiteCircuit:
         next_vertex_index = 0
         graph = Graph()
 
-        # Convert qubits to ExtendedQubits (qubits with some extra functionality). extended_qubits maps each qubit -> its ExtendedQubit
+        # Convert qubits to ExtendedQubits.
+        # extended_qubits maps each qubit -> its ExtendedQubit
         extended_qubits = {}
         for i, qubit in enumerate(self.circuit.qubits):
             new_extended_qubit = ExtendedQubit(
-                qubit, self.placement.placement[i], []
+                qubit,
+                self.placement.placement[i],
+                [],
             )
             new_extended_qubit.create_vertex(next_vertex_index)
             extended_qubits[qubit] = new_extended_qubit
@@ -506,7 +576,9 @@ class BipartiteCircuit:
                         ).server_num
                         in currently_connected_servers.keys()
                     ):
-                        # We are currently connected from this qubit to the server of the other qubit for this CZ, so we can add this CZ to this packing set.
+                        # Currently connected from this qubit
+                        # to the server of the other qubit for this CZ,
+                        # so can add this CZ to this packing set.
                         vertex = list(
                             currently_connected_servers[
                                 extended_command.other_arg_qubit(
@@ -516,7 +588,9 @@ class BipartiteCircuit:
                         )[0]
                         extended_qubit.add_vertex(vertex)
 
-                    else:  # Must create a new connection from this qubit to the server.
+                    else:
+                        # Must create a new connection
+                        # from this qubit to the server.
                         if extended_qubit.last_used_vertex.is_connected():
                             extended_qubit.create_vertex(next_vertex_index)
                             next_vertex_index += 1
@@ -531,9 +605,9 @@ class BipartiteCircuit:
                     extended_command.add_vertex(vertex)
                     vertex.add_extended_command(extended_command)
 
-        added_edges = (
-            []
-        )  # A list that will contain all the edges that have been added to the graph as set(vertex1, vertex2)
+        # A list that will contain all the edges
+        # that have been added to the graph as set(vertex1, vertex2)
+        added_edges = []
         for extended_command in extended_commands:
             if not (
                 extended_command.is_local()
