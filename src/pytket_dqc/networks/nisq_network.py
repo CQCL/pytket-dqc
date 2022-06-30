@@ -4,6 +4,7 @@ import networkx as nx  # type:ignore
 from pytket.placement import NoiseAwarePlacement  # type:ignore
 from pytket.architecture import Architecture  # type:ignore
 from pytket.circuit import Node  # type:ignore
+from pytket_dqc import DistributedCircuit
 from typing import Tuple
 import random
 
@@ -55,6 +56,12 @@ class NISQNetwork(ServerNetwork):
 
         # Check that the resulting network is connected.
         assert nx.is_connected(self.get_nisq_nx())
+
+    def can_implement(self, dist_circ: DistributedCircuit) -> bool:
+
+        if len(self.get_qubit_list()) < dist_circ.circuit.n_qubits:
+            return False
+        return True
 
     def get_qubit_list(self) -> list[int]:
         """Return list of qubit indices.

@@ -42,6 +42,11 @@ class Routing(Distributor):
         :rtype: Placement
         """
 
+        if not network.can_implement(dist_circ):
+            raise Exception(
+                "This circuit cannot be implemented on this network."
+                )
+
         arch, node_qubit_map, pl = network.get_placer()
 
         routed_circ = dist_circ.circuit.copy()

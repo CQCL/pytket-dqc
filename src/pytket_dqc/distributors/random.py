@@ -37,6 +37,11 @@ class Random(Distributor):
         :rtype: Placement
         """
 
+        if not network.can_implement(dist_circ):
+            raise Exception(
+                "This circuit cannot be implemented on this network."
+                )
+
         seed = kwargs.get("seed", None)
         random.seed(seed)
 

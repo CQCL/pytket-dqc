@@ -4,6 +4,29 @@ from pytket.architecture import Architecture  # type:ignore
 from pytket.circuit import Node  # type:ignore
 import pytest
 from pytket_dqc.placement import Placement
+from pytket_dqc import DistributedCircuit
+from pytket import Circuit
+
+
+def test_can_implement():
+
+    from pytket_dqc import NISQNetwork
+
+    server_coupling = [[0, 1]]
+    server_qubits = {
+        0: [0, 1],
+        1: [2],
+    }
+    network = NISQNetwork(server_coupling, server_qubits)
+
+    large_circ = Circuit(4).CZ(0, 1).CZ(1, 2).CZ(2, 3)
+    large_dist_circ = DistributedCircuit(large_circ)
+
+    small_circ = Circuit(2).CZ(0, 1)
+    small_dist_circ = DistributedCircuit(small_circ)
+
+    assert not network.can_implement(large_dist_circ)
+    assert network.can_implement(small_dist_circ)
 
 
 def test_nisq_get_architecture():

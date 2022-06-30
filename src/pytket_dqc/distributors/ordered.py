@@ -78,6 +78,11 @@ class Ordered(Distributor):
         :rtype: Placement
         """
 
+        if not network.can_implement(dist_circ):
+            raise Exception(
+                "This circuit cannot be implemented on this network."
+                )
+
         # Initialise a map from hypergraph vertices to the server on which
         # they are placed.
         vertex_server_map: dict[int, int] = {}

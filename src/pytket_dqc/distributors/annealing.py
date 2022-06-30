@@ -77,6 +77,11 @@ class Annealing(Distributor):
             stored in cache; see GainManager. Default value is 5.
         """
 
+        if not network.can_implement(dist_circ):
+            raise Exception(
+                "This circuit cannot be implemented on this network."
+                )
+
         iterations = kwargs.get("iterations", 10000)
         initial_distributor = kwargs.get("initial_place_method", Random())
         seed = kwargs.get("seed", None)
