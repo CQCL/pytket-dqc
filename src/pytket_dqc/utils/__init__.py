@@ -4,13 +4,12 @@ from .gateset import (  # noqa:F401
     dqc_rebase,
     start_proc,
     end_proc,
-    telep_proc
+    telep_proc,
 )
 
-from .op_analysis import (
+from .op_analysis import (  # noqa:F401
     is_antidiagonal,
     is_diagonal,
-    get_qubit_reg_num
 )
 
 from .graph_tools import direct_from_origin  # noqa:F401

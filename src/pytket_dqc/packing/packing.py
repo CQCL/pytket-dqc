@@ -1,6 +1,9 @@
 from pytket import Circuit
-import numpy as np
-from pytket.circuit import Op, OpType, Command, QubitRegister, Qubit  # type: ignore
+
+from pytket.circuit import (  # type: ignore
+    OpType,
+    QubitRegister,
+)
 from pytket_dqc.utils.op_analysis import is_diagonal, is_antidiagonal
 from pytket_dqc.utils.gateset import start_proc, end_proc, dqc_gateset_predicate
 from pytket_dqc.distributors import Random

@@ -1,1 +1,1 @@
-from .packing import BipartiteCircuit
+from .packing import BipartiteCircuit  # noqa:F401
