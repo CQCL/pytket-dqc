@@ -1,26 +1,31 @@
 from pytket.predicates import (  # type: ignore
     GateSetPredicate,
     NoSymbolsPredicate,
-    UserDefinedPredicate
+    UserDefinedPredicate,
 )
 
 from pytket import OpType, Circuit
 from pytket.passes import (  # type: ignore
     auto_rebase_pass,
 )
-from pytket.circuit import CustomGateDef # type: ignore
+from pytket.circuit import CustomGateDef  # type: ignore
 
 #: Allowed gateset for distributors in pytket-dqc
-dqc_gateset = {OpType.Rx, OpType.CZ, OpType.Rz, OpType.CX,
-               OpType.Measure, OpType.CRz}
+dqc_gateset = {
+    OpType.Rx,
+    OpType.CZ,
+    OpType.Rz,
+    OpType.CX,
+    OpType.Measure,
+    OpType.CRz,
+}
 
 
 def check_function(circ):
 
-    return (
-        NoSymbolsPredicate().verify(circ) and
-        GateSetPredicate(dqc_gateset).verify(circ)
-    )
+    return NoSymbolsPredicate().verify(circ) and GateSetPredicate(
+        dqc_gateset
+    ).verify(circ)
 
 
 #: Predicate for checking gateset is valid
