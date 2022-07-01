@@ -6,6 +6,7 @@ from pytket.architecture import Architecture  # type:ignore
 from pytket.circuit import Node  # type:ignore
 from typing import Tuple
 import random
+from itertools import combinations
 
 
 class NISQNetwork(ServerNetwork):
@@ -207,6 +208,28 @@ def random_connected_graph(n_nodes: int, edge_prob: float) -> list[list[int]]:
     assert nx.is_connected(G)
 
     return [list(edge) for edge in edge_list]
+
+
+class AllToAll(NISQNetwork):
+    """NISQNetwork consisting of uniformly sized, all to all connected servers.
+    """
+
+    def __init__(self, n_server: int, n_qubits: int):
+        """Initialisation function
+
+        :param n_server: Number of servers.
+        :type n_server: int
+        :param n_qubits: Number of qubits per server
+        :type n_qubits: int
+        """
+
+        server_coupling = list(combinations([i for i in range(n_server)], 2))
+
+        qubits = [i for i in range(n_server*n_qubits)]
+        server_qubits_list = [qubits[i:i + n_qubits] for i in range(0, len(qubits), n_qubits)] 
+        server_qubits = {i:qubits_list for i, qubits_list in enumerate(server_qubits_list)}
+
+        super().__init__(server_coupling, server_qubits)
 
 
 class RandomNISQNetwork(NISQNetwork):
