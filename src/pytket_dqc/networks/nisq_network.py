@@ -6,7 +6,6 @@ from pytket.architecture import Architecture  # type:ignore
 from pytket.circuit import Node  # type:ignore
 from typing import Tuple
 import random
-from itertools import combinations
 
 
 class NISQNetwork(ServerNetwork):
@@ -223,11 +222,14 @@ class AllToAll(NISQNetwork):
         :type n_qubits: int
         """
 
-        server_coupling = list(combinations([i for i in range(n_server)], 2))
+        server_coupling = [list(combination) for combination in combinations(
+            [i for i in range(n_server)], 2)]
 
         qubits = [i for i in range(n_server*n_qubits)]
-        server_qubits_list = [qubits[i:i + n_qubits] for i in range(0, len(qubits), n_qubits)] 
-        server_qubits = {i:qubits_list for i, qubits_list in enumerate(server_qubits_list)}
+        server_qubits_list = [qubits[i:i + n_qubits]
+                              for i in range(0, len(qubits), n_qubits)]
+        server_qubits = {i: qubits_list for i,
+                         qubits_list in enumerate(server_qubits_list)}
 
         super().__init__(server_coupling, server_qubits)
 
