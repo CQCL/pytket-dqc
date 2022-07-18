@@ -12,6 +12,8 @@ if TYPE_CHECKING:
     from pytket_dqc.networks import NISQNetwork
     from pytket_dqc.circuits import Hypergraph
 
+Vertex = int
+Server = int
 
 class GainManager:
     """Instances of this class are used to manage pre-computed values of the
@@ -20,9 +22,7 @@ class GainManager:
     problem which takes non-negligible computation time.
 
     :param hypergraph: The hypergraph to be partitioned
-    :type hypergraph: Hypergraph
-    :param qubit_vertices: The subset of vertices that correspond to qubits
-    :type qubit_vertices: frozenset[int]
+    :type hypergraph: CoarseHyp
     :param network: The network topology that the circuit must be mapped to
     :type network: NISQNetwork
     :param server_graph: The nx.Graph of ``network``
@@ -30,9 +30,9 @@ class GainManager:
     :param placement: The current placement
     :type placement: Placement
     :param occupancy: Maps servers to its current number of qubit vertices
-    :type occupancy: dict[int, int]
+    :type occupancy: dict[Server, int]
     :param cache: A dictionary of sets of servers to their communication cost
-    :type cache: dict[frozenset[int], int]
+    :type cache: dict[frozenset[Server], int]
     :param max_key_size: The maximum size of the set of servers whose cost is
         stored in cache. If there are N servers and m = ``max_key_size`` then
         the cache will store up to N^m values. If set to 0, cache is ignored.
@@ -42,28 +42,30 @@ class GainManager:
 
     def __init__(
         self,
-        hypergraph: Hypergraph,
-        qubit_vertices: frozenset[int],
+        hypergraph: CoarseHyp,
         network: NISQNetwork,
-        placement: Placement,
         max_key_size: int = 5,
     ):
-        self.hypergraph: Hypergraph = hypergraph
-        self.qubit_vertices: frozenset[int] = qubit_vertices
+        self.hypergraph: CoarseHyp = hypergraph
         self.network: NISQNetwork = network
         self.server_graph: nx.Graph = network.get_server_nx()
-        self.placement: Placement = placement
-        self.occupancy: dict[int, int] = dict()
-        self.cache: dict[frozenset[int], int] = dict()
+        self.occupancy: dict[Server, int] = dict()
+        self.cache: dict[frozenset[Server], int] = dict()
         self.max_key_size: int = max_key_size
+
+    def set_initial_placement(self, placement: Placement):
+        """Set the initial placement and initialise the ``occupancy``
+        dictionary.
+        """
+        self.placement = placement
 
         for server in network.server_qubits.keys():
             self.occupancy[server] = 0
         for vertex, server in placement.placement.items():
-            if vertex in qubit_vertices:
+            if vertex in hypergraph.qubit_vertices:
                 self.occupancy[server] += 1
 
-    def gain(self, vertex: int, new_server: int) -> int:
+    def gain(self, vertex: Vertex, new_server: Server) -> int:
         """Compute the gain of moving ``vertex`` to ``new_server``. Instead
         of calculating the cost of the whole hypergraph using the new
         placement, we simply compare the previous cost of all hyperedges
@@ -75,9 +77,9 @@ class GainManager:
         Positive gains mean improvement.
 
         :param vertex: The vertex that would be moved
-        :type vertex: int
+        :type vertex: Vertex
         :param new_server: The server ``vertex`` would be moved to
-        :type: int
+        :type new_server: Server
 
         :return: The improvement (may be negative) of the cost of the
             placement after applying the move.
@@ -90,7 +92,8 @@ class GainManager:
             return 0
 
         gain = 0
-        for hyperedge in self.hypergraph.hyperedge_dict[vertex]:
+        for hedge_id in self.hypergraph.hyperedge_dict[vertex]:
+            hyperedge = self.hypergraph.hyperedge_hash[hedge_id]
             # List of servers connected by ``hyperedge - {vertex}``
             connected_servers = [
                 self.placement.placement[v]
@@ -108,7 +111,7 @@ class GainManager:
 
         return gain
 
-    def steiner_cost(self, servers: frozenset[int]) -> int:
+    def steiner_cost(self, servers: frozenset[Server]) -> int:
         """Finds a Steiner tree connecting all ``servers`` and returns number
         of edges. Makes use of the cache if the cost has already been computed
         and otherwise updates it.
@@ -131,24 +134,24 @@ class GainManager:
 
         return cost
 
-    def move(self, vertex: int, server: int):
+    def move(self, vertex: Vertex, server: Server):
         """Moves ``vertex`` to ``server``, updating ``placement`` and
         ``occupancy`` accordingly. Note: this operation is (purposefully)
         unsafe, i.e. it is not checked whether the move is valid or not.
         If unsure, you should call ``is_move_valid``.
         """
-        if vertex in self.qubit_vertices:
+        if vertex in self.hypergraph.qubit_vertices:
             self.occupancy[server] += 1
             self.occupancy[self.placement.placement[vertex]] -= 1
 
         self.placement.placement[vertex] = server
 
-    def is_move_valid(self, vertex: int, server: int) -> bool:
+    def is_move_valid(self, vertex: Vertex, server: Server) -> bool:
         """ The move is only invalid when ``vertex`` is a qubit vertex and
         ``server`` is at its maximum occupancy. Notice that ``server`` may
         be where ``vertex`` was already placed.
         """
-        if vertex in self.qubit_vertices:
+        if vertex in self.hypergraph.qubit_vertices:
             capacity = len(self.network.server_qubits[server])
 
             if server == self.current_server(vertex):
@@ -160,9 +163,10 @@ class GainManager:
         else:
             return True
 
-    def current_server(self, vertex: int):
+    def current_server(self, vertex: Vertex):
         """Return the server that ``vertex`` is placed at.
         """
+        assert vertex in self.placement.placement.keys()
         return self.placement.placement[vertex]
 
     def set_max_key_size(self, max_key_size: int):
