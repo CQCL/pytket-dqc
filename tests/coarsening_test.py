@@ -17,20 +17,16 @@ def test_dynhyp_constructor():
 
 def test_coarsen_uncoarsen():
 	coarse_hyp = CoarseHyp(orig_hyp, [3, 5, 7])
-	# Make a deep copy of the hypergraph structure for later comparison
-#	vertex_list_copy = deepcopy(coarse_hyp.vertex_list)
-#	hyperedge_dict_copy = deepcopy(coarse_hyp.hyperedge_dict)
-#	equal_to_copy = lambda: vertex_list_copy == coarse_hyp.vertex_list and hyperedge_dict_copy == coarse_hyp.hyperedge_dict
 	# Coarsen a pair, then uncoarsen and check hypergraph was restored
 	coarse_hyp.coarsen(3,1)
 	coarse_hyp.uncoarsen()
 	copy_hyp = coarse_hyp.to_static_hypergraph()
 	assert orig_hyp.vertex_list == copy_hyp.vertex_list and orig_hyp.hyperedge_list == copy_hyp.hyperedge_list
 	# More coarsening then uncoarsening
-	coarse_hyp.coarsen(2,4)
-	coarse_hyp.coarsen(2,5)
-	coarse_hyp.coarsen(6,9)
-	coarse_hyp.coarsen(2,6)
+	coarse_hyp.coarsen(5,4)
+	coarse_hyp.coarsen(3,8)
+	coarse_hyp.coarsen(7,9)
+	coarse_hyp.coarsen(3,1)
 	coarse_hyp.uncoarsen()
 	coarse_hyp.uncoarsen()
 	coarse_hyp.uncoarsen()
@@ -39,4 +35,24 @@ def test_coarsen_uncoarsen():
 	assert orig_hyp.vertex_list == copy_hyp.vertex_list and orig_hyp.hyperedge_list == copy_hyp.hyperedge_list
 
 def test_current_neighbours():
-	assert True
+	coarse_hyp = CoarseHyp(orig_hyp, [3, 5, 7])
+	# Check after one contraction
+	coarse_hyp.coarsen(3,1)
+	assert {3, 4, 5, 6, 9} == coarse_hyp.current_neighbours(2)
+	assert {2, 4, 7, 8, 9} == coarse_hyp.current_neighbours(3)
+	assert {2, 5, 7, 9} == coarse_hyp.current_neighbours(6)
+	assert {3, 4, 5, 7} == coarse_hyp.current_neighbours(8)
+	coarse_hyp.uncoarsen()
+	# Check after multiple contractions
+	coarse_hyp.coarsen(5,4)
+	coarse_hyp.coarsen(3,8)
+	assert {1, 5, 6, 9} == coarse_hyp.current_neighbours(2)
+	assert {1, 5, 7, 9} == coarse_hyp.current_neighbours(3)
+	assert {2, 5, 7, 9} == coarse_hyp.current_neighbours(6)
+	coarse_hyp.coarsen(7,9)
+	coarse_hyp.coarsen(3,1)
+	assert {3, 5, 6, 7} == coarse_hyp.current_neighbours(2)
+	assert {2, 5, 7} == coarse_hyp.current_neighbours(3)
+	assert {2, 3, 6, 7} == coarse_hyp.current_neighbours(5)
+	assert {2, 5, 7} == coarse_hyp.current_neighbours(6)
+	assert {2, 3, 5, 6} == coarse_hyp.current_neighbours(7)

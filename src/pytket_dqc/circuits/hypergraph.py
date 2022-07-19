@@ -351,7 +351,14 @@ class CoarseHyp():
         uncoarsened = self.original_neighbours[vertex]
         neighbourhood = set(uncoarsened)
         # Read ``memento`` from the first entry to the last (chronologically)
-        # so that we can reproduce the effect of coarsening in neighbourhood
+        # so that we can reproduce the effect of coarsening in neighbourhood.
+        # An initial pass detects whenever ``vertex`` is the representative
+        # of a coarsened pair and adds all vertices (hidden or not) in the
+        # neighbourhood of the hidden vertex
+        for cp in self.memento:
+            if cp.representative == vertex:
+                neighbourhood.update(self.original_neighbours[cp.hidden])
+        # A second pass replaces each hidden vertex with its representative
         for cp in self.memento:
             if cp.hidden in neighbourhood:
                 # Remove the hidden vertex from the neighbourhood
@@ -361,7 +368,6 @@ class CoarseHyp():
                 # representative vertex already was in the neighbourhood
                 # so adding it to the set leaves it unchanged.
                 neighbourhood.add(cp.representative)
-
         # When relinking it is possible that ``vertex`` itself was added to
         # its own neighbourhood. Thus, we remove it if present.
         if vertex in neighbourhood: neighbourhood.remove(vertex)
