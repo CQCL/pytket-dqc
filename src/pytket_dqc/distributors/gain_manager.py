@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pytket_dqc.circuits import CoarseHyp
+from pytket_dqc.placement import Placement
 import networkx as nx  # type: ignore
 from networkx.algorithms.approximation.steinertree import (  # type: ignore
     steiner_tree,
@@ -8,7 +10,6 @@ from networkx.algorithms.approximation.steinertree import (  # type: ignore
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from pytket_dqc.placement import Placement
     from pytket_dqc.networks import NISQNetwork
     from pytket_dqc.circuits import Hypergraph
 
@@ -42,13 +43,15 @@ class GainManager:
 
     def __init__(
         self,
-        hypergraph: CoarseHyp,
+        hypergraph: Hypergraph,
+        qubit_vertices: list[Vertex],
         network: NISQNetwork,
         max_key_size: int = 5,
     ):
-        self.hypergraph: CoarseHyp = hypergraph
+        self.hypergraph: CoarseHyp = CoarseHyp(hypergraph, qubit_vertices)
         self.network: NISQNetwork = network
         self.server_graph: nx.Graph = network.get_server_nx()
+        self.placement = Placement({})
         self.occupancy: dict[Server, int] = dict()
         self.cache: dict[frozenset[Server], int] = dict()
         self.max_key_size: int = max_key_size
@@ -59,10 +62,10 @@ class GainManager:
         """
         self.placement = placement
 
-        for server in network.server_qubits.keys():
+        for server in self.network.server_qubits.keys():
             self.occupancy[server] = 0
         for vertex, server in placement.placement.items():
-            if vertex in hypergraph.qubit_vertices:
+            if vertex in self.hypergraph.qubit_vertices:
                 self.occupancy[server] += 1
 
     def gain(self, vertex: Vertex, new_server: Server) -> int:

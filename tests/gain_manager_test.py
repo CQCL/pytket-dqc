@@ -4,7 +4,7 @@ from pytket_dqc.placement import Placement
 from pytket_dqc.distributors import GainManager
 
 simple_hypergraph = Hypergraph()
-simple_hypergraph.add_vertices(list(range(1, 10)))
+simple_hypergraph.add_vertices(list(range(0, 10)))
 simple_hypergraph.add_hyperedge([1, 3, 4])
 simple_hypergraph.add_hyperedge([1, 2, 4])
 simple_hypergraph.add_hyperedge([3, 4, 8])
@@ -30,8 +30,9 @@ def test_moves():
         {1: 1, 2: 1, 3: 2, 4: 3, 5: 3, 6: 4, 7: 5, 8: 5, 9: 5}
     )
     t_manager = GainManager(
-        simple_hypergraph, qubit_vertices, t_network, placement
+        simple_hypergraph, qubit_vertices, t_network
     )
+    t_manager.set_initial_placement(placement)
 
     assert t_manager.occupancy[3] == 2
     assert t_manager.is_move_valid(1, 3)
@@ -59,8 +60,9 @@ def test_gain_on_t_network():
         {1: 1, 2: 1, 3: 2, 4: 3, 5: 3, 6: 4, 7: 5, 8: 5, 9: 5}
     )
     t_manager = GainManager(
-        simple_hypergraph, qubit_vertices, t_network, placement
+        simple_hypergraph, qubit_vertices, t_network
     )
+    t_manager.set_initial_placement(placement)
 
     # Moving a vertex to where it already is has no gain
     assert t_manager.gain(1, 1) == 0
@@ -111,8 +113,9 @@ def test_gain_and_cache_on_house_network():
         {1: 1, 2: 1, 3: 2, 4: 3, 5: 3, 6: 4, 7: 5, 8: 5, 9: 5}
     )
     house_manager = GainManager(
-        simple_hypergraph, qubit_vertices, house_network, placement
+        simple_hypergraph, qubit_vertices, house_network
     )
+    house_manager.set_initial_placement(placement)
 
     house_manager.steiner_cost(frozenset([2, 5]))
     house_manager.steiner_cost(frozenset([3, 4, 5]))

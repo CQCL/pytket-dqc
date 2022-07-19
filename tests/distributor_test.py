@@ -5,6 +5,7 @@ from pytket_dqc.distributors import (
     Routing,
     GraphPartitioning,
     Brute,
+    GainManager,
 )
 from pytket_dqc.distributors.annealing import acceptance_criterion
 from pytket_dqc import DistributedCircuit
@@ -15,6 +16,7 @@ from pytket_dqc.placement import Placement
 import kahypar as kahypar  # type:ignore
 from pytket.circuit import QControlBox, Op, OpType  # type:ignore
 import importlib_resources
+import random
 import pytest
 import json
 
@@ -104,19 +106,21 @@ def test_graph_partitioning_refinement():
     )
     dist_circ = DistributedCircuit(circ)
 
-    distributor = GraphPartitioning()
     bad_placement = Placement({v: 2 for v in dist_circ.vertex_list})
     assert not bad_placement.is_valid(dist_circ, network)
 
-    refined_placement = distributor.refine(
-        bad_placement, dist_circ, network, seed=1
-    )
+    distributor = GraphPartitioning()
+    gain_manager = GainManager(dist_circ, dist_circ.vertex_list, network)
+    gain_manager.set_initial_placement(bad_placement)
+
+    random.seed(1)
+    distributor.initial_refinement(gain_manager, num_rounds=0)
     good_placement = Placement(
         {0: 2, 1: 2, 2: 2, 3: 0, 4: 2, 5: 2, 6: 2, 7: 2, 8: 2, 9: 2}
     )
 
-    assert refined_placement.is_valid(dist_circ, network)
-    assert refined_placement == good_placement
+    assert gain_manager.placement.is_valid(dist_circ, network)
+    assert gain_manager.placement == good_placement
 
 
 def test_refinement_makes_valid():

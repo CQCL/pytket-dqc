@@ -287,7 +287,7 @@ class CoarseHyp():
                 # new vertex (rep, to_hide). We need to fix this
                 hypedge.vertices.append(rep)
                 # We also need to add the hyperedge to entry of ``rep``
-                self.hyperedge_dict[rep].append(hedge_id)
+                self.hyperedge_dict[rep].add(hedge_id)
                 # And we keep track of relinked hyperedges for later reference
                 relinked.append(hedge_id)
 
@@ -402,11 +402,11 @@ class CoarseHyp():
         # need to relabel them
         relabelling = dict()
         i = 0
-        for vertex in self.vertex_list:
+        for vertex in sorted(self.vertex_list):
             # Assuming qubit vertices are at the beginning of the list, the
             # new vertex list will also satisfy this
             if vertex not in self.hidden_vertices:
-                relabelling[i] = vertex
+                relabelling[vertex] = i
                 hypergraph.add_vertex(i)
                 i += 1
         # Add each hyperedge after relabelling its vertices

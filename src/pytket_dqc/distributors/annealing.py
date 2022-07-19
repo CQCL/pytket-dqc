@@ -80,13 +80,13 @@ class Annealing(Distributor):
         iterations = kwargs.get("iterations", 10000)
         initial_distributor = kwargs.get("initial_place_method", Random())
         seed = kwargs.get("seed", None)
-        cache_limit = kwargs.get("cache_limit", None)
+        cache_limit = kwargs.get("cache_limit", 5)
 
         random.seed(seed)
 
-        qubit_vertices = frozenset(
-            [v for v in dist_circ.vertex_list if dist_circ.is_qubit_vertex(v)]
-        )
+        qubit_vertices = [
+            v for v in dist_circ.vertex_list if dist_circ.is_qubit_vertex(v)
+        ]
 
         # The annealing procedure requires an initial placement to work with.
         # An initial placement is arrived at here.
@@ -98,10 +98,9 @@ class Annealing(Distributor):
         # We will use a ``GainManager`` to manage the calculation of gains
         # (and management of pre-computed values) in a transparent way
         gain_manager = GainManager(
-            dist_circ, qubit_vertices, network, initial_placement
+            dist_circ, qubit_vertices, network, cache_limit
         )
-        if cache_limit is not None:
-            gain_manager.set_max_key_size(cache_limit)
+        gain_manager.set_initial_placement(initial_placement)
 
         # For each step of the annealing process, try a slight altering of the
         # placement to see if it improves. Change to new placement if there is

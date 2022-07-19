@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from pytket_dqc import DistributedCircuit
     from pytket_dqc.networks import NISQNetwork
+    from pytket_dqc.circuits import CoarseHyp
 
 
 class GraphPartitioning(Distributor):
@@ -21,21 +22,13 @@ class GraphPartitioning(Distributor):
     package. This distributor will ignore weighted hypergraphs and assume
     all hyperedges have weight 1. This distributor will ignore the
     connectivity of the NISQNetwork.
-
-    :param dist_circ: Circuit to distribute
-    :type dist_circ: DistributedCircuit
-    :param gain_manager: instance of GainManager storing the hypergraph,
-        network topology and cache of pre-computed values. It also stores
-        the current placement which is refined throughout the algorithm
-    :type gain_manager: GainManager
-    :param ini_path: Path to kahypar ini file
-    :type ini_path: str
-    :param seed: Seed for the random number generator
-    :type seed: int
     """
 
-    def __init__(self, dist_circ: DistributedCircuit, network: NISQNetwork, **kwargs):
-        """Extract the hypergraph from the circuit and collect all options.
+    def distribute(self, dist_circ: DistributedCircuit, network: NISQNetwork, **kwargs) -> Placement:
+        """Distribute ``hypergraph`` onto ``network``. First, there is a
+        coarsening stage after which the initial placement is computed
+        using KaHyPar with the connectivity metric, then it is
+        refined to reduce the cost taking into account the network topology.
 
         :param dist_circ: Circuit to distribute
         :type dist_circ: DistributedCircuit
@@ -44,81 +37,80 @@ class GraphPartitioning(Distributor):
 
         :key ini_path: Path to kahypar ini file
         :key seed: Seed for the random number generator
-        :key cache_limit: The maximum size of the set of servers whose cost is
-            stored in cache; see GainManager. Default value is 5.
-        """
-        package_path = importlib_resources.files("pytket_dqc")
-        default_ini = f"{package_path}/distributors/km1_kKaHyPar_sea20.ini"
-        self.ini_path = kwargs.get("ini_path", default_ini)
-        self.seed = kwargs.get("seed", None)
-        random.seed(self.seed)
-        cache_limit = kwargs.get("cache_limit", 5)
-
-        self.dist_circ = dist_circ
-        qubit_vertices = [
-            v for v in dist_circ.vertex_list if dist_circ.is_qubit_vertex(v)
-        ]
-        hypergraph = CoarseHyp(dist_circ.hypergraph, qubit_vertices)
-        self.gain_manager = GainManager(hypergraph, network, cache_limit)
-
-    def distribute(self, **kwargs) -> Placement:
-        """Distribute ``hypergraph`` onto ``network``. First, there is a
-        coarsening stage after which the initial placement is computed
-        using KaHyPar with the connectivity metric, then it is
-        refined to reduce the cost taking into account the network topology.
-
         :key num_rounds: Max number of refinement rounds. Default is 1000.
         :key stop_parameter: Real number in [0,1]. If proportion of moves
             in a round is smaller than this number, do no more rounds. Default
             is 0.05.
+        :key cache_limit: The maximum size of the set of servers whose cost is
+            stored in cache; see GainManager. Default value is 5.
 
         :return: Placement of ``hypergraph`` onto ``network``.
         :rtype: Placement
         """
+        package_path = importlib_resources.files("pytket_dqc")
+        default_ini = f"{package_path}/distributors/km1_kKaHyPar_sea20.ini"
+        ini_path = kwargs.get("ini_path", default_ini)
+        seed = kwargs.get("seed", None)
+        random.seed(seed)
         num_rounds = kwargs.get("num_rounds", 1000)
         stop_parameter = kwargs.get("stop_parameter", 0.05)
-        # Define a shorthand to access ``gain_manager``
-        gm = self.gain_manager
+        cache_limit = kwargs.get("cache_limit", 5)
 
-        # First step is to coarsen the hypergraph until all vertices are qubit
-        # vertices
-        for i in range(len(gm.hypergraph.vertex_list) - len(gm.hypergraph.qubit_vertices)):
-            self.coarsen_once()
-        # The set of non-hidden vertices should match the set of qubit vertices
-        assert set(gm.hypergraph.vertex_list) - gm.hypergraph.hidden_vertices == gm.hypergraph.qubit_vertices
+        if not dist_circ.is_valid():
+            raise Exception("This hypergraph is not valid.")
 
-        # Then, we call KaHyPar using the connectivity metric (i.e. no
-        # knowledge about network topology other than server sizes)
-        self.initial_distribute()
+        # This should only arise if the circuit is completely empty.
+        if (len(dist_circ.hyperedge_list) == 0):
+            assert dist_circ.circuit == Circuit()
+            return Placement(dict())
+        else:
+            # We will use a ``GainManager`` to manage the calculation of gains
+            # (and management of pre-computed values) in a transparent way
+            qubit_vertices = [
+                v for v in dist_circ.vertex_list if dist_circ.is_qubit_vertex(v)
+            ]
+            gm = GainManager(dist_circ, qubit_vertices, network, cache_limit)
 
-        # Then, we refine the placement using label propagation. This will
-        # also ensure that the servers do not exceed their qubit capacity.
-        # The new placement is updated in place in ``gain_manager``.
-        self.initial_refinement(
-            num_rounds=num_rounds,
-            stop_parameter=stop_parameter
-        )
+            # First step is to coarsen the hypergraph until all vertices are qubit
+            # vertices
+            for i in range(len(gm.hypergraph.vertex_list) - len(gm.hypergraph.qubit_vertices)):
+                self.coarsen_once(gm)
+            # The set of non-hidden vertices should match the set of qubit vertices
+            assert set(gm.hypergraph.vertex_list) - gm.hypergraph.hidden_vertices == gm.hypergraph.qubit_vertices
 
-        # Uncoarsen until no more CoarsenedPairs are left in the stack; after
-        # each uncoarsening step, the hidden vertex and its neighbours have
-        # their placement refined
-        while gm.hypergraph.memento:
-            self.uncoarsen_and_refine()
-        assert not gm.hypergraph.hidden_vertices
+            # Then, we call KaHyPar using the connectivity metric (i.e. no
+            # knowledge about network topology other than server sizes)
+            self.initial_distribute(gm, ini_path, seed=seed)
 
-        assert gm.placement.is_valid(self.dist_circ, gm.network)
-        return gm.placement
+            # Then, we refine the placement using label propagation. This will
+            # also ensure that the servers do not exceed their qubit capacity.
+            # The new placement is updated in place in ``gain_manager``.
+            self.initial_refinement(
+                gm,
+                num_rounds=num_rounds,
+                stop_parameter=stop_parameter
+            )
+            # After refining, no server should be overpopulated
+            assert gm.placement.is_valid(dist_circ, network)
 
-    def coarsen_once(self):
+            # Uncoarsen until no more CoarsenedPairs are left in the stack; after
+            # each uncoarsening step, the hidden vertex and its neighbours have
+            # their placement refined
+            while gm.hypergraph.memento:
+                self.uncoarsen_and_refine(gm)
+            assert not gm.hypergraph.hidden_vertices
+
+            assert gm.placement.is_valid(dist_circ, network)
+            return gm.placement
+
+    def coarsen_once(self, gm: GainManager):
         """Find the best coarsening pair and contract them. The heuristic
         used to choose the pair is the "heavy edge" heuristic from Sebastian's
         thesis on KaHyPar.
         """
-        gm = self.gain_manager
-
         best_rep = None
         best_to_hide = None
-        best_value = 0
+        best_value: float = 0
         for rep in gm.hypergraph.qubit_vertices:
             # We iterate over neighbours of ``rep`` which, by construction,
             #   are all gate vertices
@@ -135,25 +127,24 @@ class GraphPartitioning(Distributor):
                 #   hyperedges. This heuristic originally comes from KaHyPar,
                 #   in particular, Sebastian's thesis; where it is discussed
                 #   to be a good heuristic for coarsening general hypergraphs.
-                value = 0
+                value: float = 0
                 for hedge_id in gm.hypergraph.hyperedge_dict[to_hide]:
                     if hedge_id in gm.hypergraph.hyperedge_dict[rep]:
                         hyperedge = gm.hypergraph.hyperedge_hash[hedge_id]
-                        value += hyperedge.weight / len(hyperedge.vertices)
+                        value += float(hyperedge.weight) / len(hyperedge.vertices)
                 # Update if better
                 if value > best_value:
                     best_rep = rep
                     best_to_hide = to_hide
                     best_value = value
 
+        assert best_rep is not None and best_to_hide is not None
         gm.hypergraph.coarsen(best_rep, best_to_hide)
 
-    def uncoarsen_and_refine(self):
+    def uncoarsen_and_refine(self, gm: GainManager):
         """Uncoarsen the last pair and refine its placement and that of
         its neighbours.
         """
-        gm = self.gain_manager
-
         rep, hidden = gm.hypergraph.uncoarsen()
         # The vertices whose placement is to be refined are the ``hidden`` one
         # and its neighbours (the latter in random order)
@@ -162,9 +153,9 @@ class GraphPartitioning(Distributor):
         active_vertices = [hidden] + neighbours
         # Refine the placement of each of these vertices
         for vertex in active_vertices:
-            self.apply_best_move(vertex)
+            self.apply_best_move(gm, vertex)
 
-    def initial_refinement(self, **kwargs):
+    def initial_refinement(self, gm: GainManager, **kwargs):
         """The refinement algorithm proceeds in rounds. In each round, all of
         the vertices in the boundary are visited in random order and we
         we calculate the gain achieved by moving the vertex to other servers.
@@ -191,8 +182,6 @@ class GraphPartitioning(Distributor):
         """
         num_rounds = kwargs.get("num_rounds", 1000)
         stop_parameter = kwargs.get("stop_parameter", 0.05)
-        # Define a shorthand to access ``gain_manager``
-        gm = self.gain_manager
 
         # Since KaHyPar does not guarantee that the requirement on server
         # capacity will be satisfied, we enforce this ourselves.
@@ -214,19 +203,16 @@ class GraphPartitioning(Distributor):
         # calculated gains. This is fine since the vertices we moved will
         # likely be boundary vertices; the following rounds of the
         # refinement algorithm will move them around to optimise gains.
-        # At the end of the previous subroutine, no server should be
-        # overpopulated.
-        assert gm.placement.is_valid(self.dist_circ, gm.network)
 
         round_id = 0
         proportion_moved: float = 1
         while round_id < num_rounds and proportion_moved > stop_parameter:
-            active_vertices = gm.hypergraph.get_boundary(placement)
+            active_vertices = gm.hypergraph.get_boundary(gm.placement)
 
             moves = 0
             for vertex in active_vertices:
                 # Attempt to apply the best move
-                if self.apply_best_move(vertex):
+                if self.apply_best_move(gm, vertex):
                     # The placement in ``gain_manager`` has been updated
                     moves += 1
 
@@ -235,14 +221,9 @@ class GraphPartitioning(Distributor):
                 moves / len(active_vertices) if active_vertices else 0
             )
 
-        assert gm.placement.is_valid(self.dist_circ, gm.network)
-        return gm.placement
-
-    def apply_best_move(self, vertex: Vertex) -> Bool:
+    def apply_best_move(self, gm: GainManager, vertex: int) -> bool:
         """TODO
         """
-        gm = self.gain_manager
-
         current_server = gm.current_server(vertex)
         # We only consider moving ``vertex`` to a server that has
         # a neighbour vertex allocated to it
@@ -274,7 +255,7 @@ class GraphPartitioning(Distributor):
                 valid_swaps = [
                     vertex
                     for vertex in vs
-                    if vertex in self.hypergraph.qubit_vertices
+                    if vertex in gm.hypergraph.qubit_vertices
                 ]
 
                 # To obtain the gain accurately, we move ``vertex`` to
@@ -338,67 +319,61 @@ class GraphPartitioning(Distributor):
             return True
         else: return False
 
-    def initial_distribute(self):
+    def initial_distribute(self, gm: GainManager, ini_path: str, **kwargs):
         """Distribute ``hypergraph`` onto ``network`` using graph partitioning
         tools available in `kahypar <https://kahypar.org/>`_ package. The
         placement returned is not taking into account network topology.
         However, it does take into account server sizes.
         The chosen initial placement is set in ``gain_manager``.
+
+        :key seed: Seed for the random number generator
         """
-        gm = self.gain_manager
+        seed = kwargs.get("seed", None)
 
-        if not gm.hypergraph.is_valid():
-            raise Exception("This hypergraph is not valid.")
+        hyperedge_indices, hyperedges = gm.hypergraph.kahypar_hyperedges()
 
-        # This should only arise if the circuit is completely empty.
-        if (len(self.dist_circ.hyperedge_list) == 0):
-            assert self.dist_circ.circuit == Circuit()
-            gm.set_initial_placement(Placement(dict()))
-        else:
-            hyperedge_indices, hyperedges = hypergraph.kahypar_hyperedges()
+        num_hyperedges = len(hyperedge_indices) - 1
+        num_vertices = len(list(set(hyperedges)))
+        server_list = gm.network.get_server_list()
+        num_servers = len(server_list)
+        server_sizes = [len(gm.network.server_qubits[s]) for s in server_list]
+        # For now, all hyperedges are assumed to have the same weight
+        hyperedge_weights = [1 for i in range(0, num_hyperedges)]
+        # After coarsening, all non-hidden vertices are qubit vertices:
+        assert set(gm.hypergraph.vertex_list) - gm.hypergraph.hidden_vertices == gm.hypergraph.qubit_vertices
+        assert num_vertices == len(gm.hypergraph.qubit_vertices)
+        # All qubit vertices are given weight 1; there are no gate vertices
+        vertex_weights = [1 for i in range(0, num_vertices)]
 
-            num_hyperedges = len(hyperedge_indices) - 1
-            num_vertices = len(list(set(hyperedges)))
-            server_list = gm.network.get_server_list()
-            num_servers = len(server_list)
-            server_sizes = [len(gm.network.server_qubits[s]) for s in server_list]
-            # For now, all hyperedges are assumed to have the same weight
-            hyperedge_weights = [1 for i in range(0, num_hyperedges)]
-            # After coarsening, all non-hidden vertices are qubit vertices:
-            assert set(gm.hypergraph.vertex_list) - gm.hypergraph.hidden_vertices == gm.hypergraph.qubit_vertices
-            assert num_vertices == len(gm.hypergraph.qubit_vertices)
-            # All qubit vertices are given weight 1; there are no gate vertices
-            vertex_weights = [1 for i in range(0, num_vertices)]
+        hypergraph = kahypar.Hypergraph(
+            num_vertices,
+            num_hyperedges,
+            hyperedge_indices,
+            hyperedges,
+            num_servers,
+            hyperedge_weights,
+            vertex_weights,
+        )
 
-            hypergraph = kahypar.Hypergraph(
-                num_vertices,
-                num_hyperedges,
-                hyperedge_indices,
-                hyperedges,
-                num_servers,
-                hyperedge_weights,
-                vertex_weights,
-            )
+        context = kahypar.Context()
+        context.loadINIconfiguration(ini_path)
+        context.setK(num_servers)
+        context.setCustomTargetBlockWeights(server_sizes)
+        context.suppressOutput(True)
+        if seed is not None:
+            context.setSeed(seed)
 
-            context = kahypar.Context()
-            context.loadINIconfiguration(self.ini_path)
-            context.setK(num_servers)
-            context.setCustomTargetBlockWeights(server_sizes)
-            context.suppressOutput(True)
-            if self.seed is not None:
-                context.setSeed(self.seed)
+        kahypar.partition(hypergraph, context)
 
-            kahypar.partition(hypergraph, context)
+        partition_list = [
+            hypergraph.blockID(i) for i in range(hypergraph.numNodes())
+        ]
 
-            partition_list = [
-                hypergraph.blockID(i) for i in range(hypergraph.numNodes())
-            ]
-
-            placement_dict = {i: server for i,
-                              server in enumerate(partition_list)}
-            # The current placement is only for qubit vertices; place all gate
-            # vertices in the same server as the vertex they coarsened with
-            for coarsened_pair in gm.hypergraph.memento:
-                placement_dict[coarsened_pair.hidden] = placement_dict[coarsened_pair.representative]
-            # Set the initial placement
-            gm.set_initial_placement(Placement(placement_dict))
+        placement_dict = {i: server for i,
+                          server in enumerate(partition_list)}
+        # The current placement is only for qubit vertices; place all gate
+        # vertices in the same server as the vertex they coarsened with
+        for coarsened_pair in gm.hypergraph.memento:
+            placement_dict[coarsened_pair.hidden] = placement_dict[coarsened_pair.representative]
+        # Set the initial placement
+        gm.set_initial_placement(Placement(placement_dict))
