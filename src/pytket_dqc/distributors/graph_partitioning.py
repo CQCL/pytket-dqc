@@ -106,15 +106,18 @@ class GraphPartitioning(Distributor):
     def coarsen_once(self, gm: GainManager):
         """Find the best coarsening pair and contract them. The heuristic
         used to choose the pair is the "heavy edge" heuristic from Sebastian's
-        thesis on KaHyPar.
+        thesis on KaHyPar. We always contract a gate vertex (hide it) in a
+        qubit vertex (acting as representative). Hence, no qubit vertices are
+        ever hidden.
         """
         best_rep = None
         best_to_hide = None
         best_value: float = 0
+        # We iterate over every adjacent pair of qubit and gate vertex
         for rep in gm.hypergraph.qubit_vertices:
-            # We iterate over neighbours of ``rep`` which, by construction,
-            #   are all gate vertices
             for to_hide in gm.hypergraph.current_neighbours(rep):
+                # Skip those that are qubit vertices
+                if to_hide in gm.hypergraph.qubit_vertices: continue
                 # Compute heavy edge heuristic.
                 #   This heuristic promotes coarsening pairs of vertices that
                 #   are connected by many small hyperedges. The reasoning is

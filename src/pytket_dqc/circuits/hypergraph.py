@@ -387,6 +387,9 @@ class CoarseHyp():
         boundary = list()
 
         for vertex in self.vertex_list:
+            # Skip those that are hidden
+            if vertex in self.hidden_vertices: continue
+
             my_block = placement.placement[vertex]
 
             for neighbour in self.current_neighbours(vertex):

@@ -10,10 +10,12 @@ orig_hyp.add_hyperedge([3, 7, 9])
 orig_hyp.add_hyperedge([5, 6, 7])
 orig_hyp.add_hyperedge([2, 5, 6, 9])
 
+
 def test_dynhyp_constructor():
 	coarse_hyp = CoarseHyp(orig_hyp, [3, 5, 7])
 	copy_hyp = coarse_hyp.to_static_hypergraph()
 	assert orig_hyp.vertex_list == copy_hyp.vertex_list and orig_hyp.hyperedge_list == copy_hyp.hyperedge_list
+
 
 def test_coarsen_uncoarsen():
 	coarse_hyp = CoarseHyp(orig_hyp, [3, 5, 7])
@@ -33,6 +35,7 @@ def test_coarsen_uncoarsen():
 	coarse_hyp.uncoarsen()
 	copy_hyp = coarse_hyp.to_static_hypergraph()
 	assert orig_hyp.vertex_list == copy_hyp.vertex_list and orig_hyp.hyperedge_list == copy_hyp.hyperedge_list
+
 
 def test_current_neighbours():
 	coarse_hyp = CoarseHyp(orig_hyp, [3, 5, 7])
