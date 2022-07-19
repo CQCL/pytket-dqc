@@ -6,10 +6,7 @@ if TYPE_CHECKING:
     from pytket_dqc.networks import NISQNetwork
     from pytket_dqc.circuits import DistributedCircuit
 
-from networkx.algorithms.approximation.steinertree import (  # type: ignore
-    steiner_tree
-)
-from pytket_dqc.utils import direct_from_origin
+from pytket_dqc.utils import direct_from_origin, steiner_tree
 
 
 class Placement:

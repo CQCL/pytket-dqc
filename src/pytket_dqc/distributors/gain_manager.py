@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 import networkx as nx  # type: ignore
-from networkx.algorithms.approximation.steinertree import (  # type: ignore
-    steiner_tree,
-)
+from pytket_dqc.utils import steiner_tree
 
 from typing import TYPE_CHECKING
 
@@ -122,11 +120,11 @@ class GainManager:
         """
         if len(servers) <= self.max_key_size:
             if servers not in self.cache.keys():
-                tree = steiner_tree(self.server_graph, servers)
+                tree = steiner_tree(self.server_graph, list(servers))
                 self.cache[servers] = len(tree.edges)
             cost = self.cache[servers]
         else:
-            tree = steiner_tree(self.server_graph, servers)
+            tree = steiner_tree(self.server_graph, list(servers))
             cost = len(tree.edges)
 
         return cost

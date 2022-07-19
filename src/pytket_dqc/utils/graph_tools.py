@@ -1,4 +1,7 @@
 import networkx as nx  # type: ignore
+import networkx.algorithms.approximation.steinertree as st  # type: ignore
+from networkx.algorithms import descendants
+from itertools import combinations
 from typing import List, Tuple
 
 
@@ -53,3 +56,44 @@ def direct_from_origin(G: nx.Graph, origin: int) -> List[Tuple[int, int]]:
             edge_list += direct_from_origin(G_reduced.subgraph(c), n)
 
     return edge_list
+
+
+def steiner_tree(graph: nx.Graph, terminal_nodes: list[int]) -> nx.Graph:
+    """Compute the optimal Steiner tree by brute force search and compare with
+    the one obtained using the algorithm from NetworkX.
+    """
+    tree = st.steiner_tree(graph, terminal_nodes)
+    # If there are only two or fewer terminal nodes, NetworkX is guaranteed to
+    # return the optimal Steiner tree (i.e. the shortest path, a single vertex
+    # graph or an empty graph for 2, 1 or 0 terminal nodes, respectively)
+    if len(terminal_nodes) <= 2:
+        return tree
+
+    # Some pre-processing that will be useful later
+    source = terminal_nodes[0]
+    other_terminal_nodes = set(terminal_nodes[1:])
+
+    # Consider all subgraphs of cost lower than ``cost``. Do so iteratively by
+    # first considering all subgraphs of ``cost-1`` and, if one is found,
+    # repeat for ``cost-2``, etc.
+    cost = len(tree.edges)
+    valid = True
+    while valid and cost > 1:
+        valid = False
+        # Consider all subgraphs with ``cost-1`` edges
+        for edge_sublist in combinations(graph.edges, cost - 1):
+            subgraph = nx.Graph(edge_sublist)
+            # Check whether the subgraph is a valid Steiner tree
+            if source in subgraph.nodes:
+                # Obtain all vertices that are reachable from ``source``
+                reachable = descendants(subgraph, source)
+                # If all terminal nodes are reachable this is a Steiner tree
+                if other_terminal_nodes.issubset(reachable):
+                    valid = True
+                    tree = subgraph
+                    # Since we found a tree with ``cost-1`` edges we halt the
+                    # for loop and do another iteration of the while loop
+                    cost -= 1
+                    break
+
+    return tree
