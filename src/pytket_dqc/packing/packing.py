@@ -121,10 +121,10 @@ def add_extended_command_to_circuit(
                 vertex.vertex_index in bipartite_circuit.mvc
                 and not vertex.is_packing
             ):
-                le_server_num = vertex.get_connected_server_num()
+                le_register_index = vertex.get_connected_register_index()
                 le_reg_name = (
-                    f"Server {le_server_num}"
-                    + " Link Edge {bipartite_circuit.link_edge_count}"
+                    f"Server {le_register_index}"
+                    + f" Link Edge {bipartite_circuit.link_edge_count}"
                 )
                 bipartite_circuit.link_edge_count += 1
                 le_q_reg = QubitRegister(le_reg_name, 1)
@@ -266,16 +266,35 @@ class LinkQubit:
         self.vertex.is_packing = False
         self.origin_extended_qubit.stop_packing(self)
 
+class ExtendedQubitRegister:
+    def __init__(self, register, register_index):
+        self.register = register
+        self.name = register.name
+        self.size = register.size
+        self.register_index = register_index
+        self.max_parallel_packings = 0
+        self.current_packings = set()
+        self.all_packings = set()
+
+    def start_packing(self, from_qubit, to_register):
+        self.current_packings.add({from_qubit, to_register})
+        self.all_packings.add({from_qubit, to_register})
+        if len(self.current_packings) > self.max_parallel_packings:
+            self.max_parallel_packings = len(self.current_packings)
+
+    def stop_packing(self, from_qubit, to_register):
+        self.current_packings.remove({from_qubit, to_register})
+
 
 class CommandVertex:
     def __init__(self, i, extended_qubit):
         self.vertex_index = i
         self.extended_qubit = extended_qubit
-        self.server_num = extended_qubit.server_num
+        self.register = extended_qubit.register
         self.extended_commands = []
         self.added_extended_commands = []
         self.is_open = False
-        self.connected_server_num = None
+        self.connected_register = None
         self.connected_vertices = set()
         self.is_on_graph = False
         self.is_packing = False
@@ -284,28 +303,29 @@ class CommandVertex:
     def close(self):
         self.is_open = False
 
-    def get_connected_server_num(self):
-        return self.connected_server_num
+    def get_connected_register_index(self):
+        return self.connected_register.register_index
 
     def is_connected(self):
-        return self.connected_server_num is not None
+        return self.connected_register is not None
 
     def get_index(self):
         return self.vertex_index
 
-    def get_server_num(self):
-        return self.server_num
+    def get_register_index(self):
+        return self.register.register_index
 
     def add_extended_command(self, extended_command):
         self.extended_commands.append(extended_command)
 
-    def connect_to_server(self, connected_server_num):
-        self.connected_server_num = connected_server_num
+    def connect_to_register(self, connected_register):
+        assert isinstance(connected_register, ExtendedQubitRegister), 'There is a bug with the input register'
+        self.connected_register = connected_register
         self.is_open = True
 
     def connect_vertex(self, vertex):
         self.connected_vertices.add(vertex)
-        assert vertex.get_server_num() == self.connected_server_num
+        assert vertex.get_register_index() == self.get_connected_register_index()
         self.is_open = True
 
     def get_extended_command_indices(self):
@@ -325,9 +345,9 @@ class CommandVertex:
 
 
 class ExtendedQubit:
-    def __init__(self, qubit, server_num, extended_commands):
+    def __init__(self, qubit, register, extended_commands):
         self.qubit = qubit
-        self.server_num = server_num
+        self.register = register
         self.extended_commands = extended_commands
         self.vertices = []
         self.last_used_vertex = None
@@ -378,22 +398,22 @@ class ExtendedQubit:
 
         # Maps the connected_server_num
         # -> all vertices connected to this vertex on that register
-        connected_servers_dict = {}
+        connected_registers_dict = {}
         connected_vertices = self.get_currently_connected_vertices()
         for vertex in connected_vertices:
             if (
-                vertex.get_connected_server_num()
-                in connected_servers_dict.keys()
+                vertex.get_connected_register_index()
+                in connected_registers_dict.keys()
             ):
-                connected_servers_dict[vertex.get_connected_server_num()].add(
+                connected_registers_dict[vertex.get_connected_register_index()].add(
                     vertex
                 )
             else:
-                connected_servers_dict[vertex.get_connected_server_num()] = {
+                connected_registers_dict[vertex.get_connected_register_index] = {
                     vertex
                 }
 
-        return connected_servers_dict
+        return connected_registers_dict
 
     def get_command_indices(self):
         command_indices = []
@@ -441,7 +461,7 @@ class ExtendedCommand:
         if self.is_1q():
             return True
         q0 = self.extended_qubits[0]
-        return q0.server_num == self.other_arg_qubit(q0).server_num
+        return q0.register.register_index == self.other_arg_qubit(q0).register.register_index
 
     def get_index(self):
         return self.command_index
@@ -519,13 +539,21 @@ class BipartiteCircuit:
         next_vertex_index = 0
         graph = Graph()
 
+        # Convert QubitRegisters to ExtendedQubitRegisters
+        extended_qubit_registers = {}
+        for i, q_register in enumerate(self.circuit.q_registers):
+            extended_qubit_registers[i] = ExtendedQubitRegister(
+                q_register,
+                i
+            )
+
         # Convert qubits to ExtendedQubits.
         # extended_qubits maps each qubit -> its ExtendedQubit
         extended_qubits = {}
         for i, qubit in enumerate(self.circuit.qubits):
             new_extended_qubit = ExtendedQubit(
                 qubit,
-                self.placement.placement[i],
+                extended_qubit_registers[self.placement.placement[i]],
                 [],
             )
             new_extended_qubit.create_vertex(next_vertex_index)
@@ -573,7 +601,7 @@ class BipartiteCircuit:
                     if (
                         extended_command.other_arg_qubit(
                             extended_qubit
-                        ).server_num
+                        ).register.register_index
                         in currently_connected_servers.keys()
                     ):
                         # Currently connected from this qubit
@@ -594,13 +622,12 @@ class BipartiteCircuit:
                         if extended_qubit.last_used_vertex.is_connected():
                             extended_qubit.create_vertex(next_vertex_index)
                             next_vertex_index += 1
-                            # extended_qubit.add_vertex(vertex):
                         else:
                             vertex = extended_qubit.last_used_vertex
-                        other_server_num = extended_command.other_arg_qubit(
+                        other_register = extended_command.other_arg_qubit(
                             extended_qubit
-                        ).server_num
-                        vertex.connect_to_server(other_server_num)
+                        ).register
+                        vertex.connect_to_register(other_register)
 
                     extended_command.add_vertex(vertex)
                     vertex.add_extended_command(extended_command)
