@@ -19,7 +19,6 @@ from pytket_dqc.utils.gateset import (
     end_proc,
     dqc_gateset_predicate,
 )
-from pytket_dqc.distributors import Random
 from pytket_dqc.circuits import DistributedCircuit
 
 
@@ -29,9 +28,9 @@ class BipartiteCircuit:
     where evicted gates are not allowed.
     """
 
-    def __init__(self):
+    def __init__(self, circuit, placement):
         self.circuit = None
-        self.placement = None
+        self.placement = placement
         self.graph = Graph()
         self.matching = None
         self.mvc = None
@@ -41,32 +40,9 @@ class BipartiteCircuit:
         self.extended_qubits = {}
         self.next_vertex_index = 0
         self.top_vertices = None
+        self.from_placed_circuit(circuit)
 
-    def from_unplaced_circuit(self, circuit, network, distributor=Random()):
-        """Generates a packed circuit from
-        an unplaced circuit on a given network.
-
-        :param circuit: The unplaced circuit.
-        :type circuit: pytket.circuit.Circuit
-        :param network: The network to place the circuit onto.
-        :type network: pytket_dqc.networks.nisq_network.NISQNetwork
-        :param distributor: The distributor to use
-        for the distribution, defaults to Random()
-        :type distributor: pytket_dqc.distributors, optional
-        :raises Exception: If the circuit is not in the allowed gateset.
-        """
-        if not dqc_gateset_predicate.verify(circuit):
-            raise Exception("The given circuit is not in the allowed gateset.")
-        dist_circ = DistributedCircuit(circuit)
-        self.placement = distributor.distribute(dist_circ, network)
-        self.circuit = dist_circ.to_relabeled_registers(self.placement)
-        self.build_bipartite_graph()
-        self.build_top_vertices()
-        self.find_matching()
-        self.find_mvc()
-        self.pack_circuit()
-
-    def from_placed_circuit(self, circuit, placement):
+    def from_placed_circuit(self, circuit):
         """Generates a packed circuit from a placed circuit and its placement.
 
         :param circuit: The placed circuit.
@@ -78,7 +54,6 @@ class BipartiteCircuit:
         if not dqc_gateset_predicate.verify(circuit):
             raise Exception("The given circuit is not in the allowed gateset.")
         dist_circ = DistributedCircuit(circuit)
-        self.placement = placement
         self.circuit = dist_circ.to_relabeled_registers(self.placement)
         self.build_bipartite_graph()
         self.build_top_vertices()
@@ -321,14 +296,14 @@ class BipartiteCircuit:
             # Case 1. a)
             if not extended_command.is_packable():
                 while len(extended_qubit.in_use_link_qubits) > 0:
-                    link_qubit = extended_qubit.current_link_qubits[0]
-                    link_qubit.stop_packing()
+                    link_qubit = extended_qubit.in_use_link_qubits[0]
+                    link_qubit.end_packing()
                     circuit.add_custom_gate(
                         end_proc,
                         [],
                         [
                             link_qubit.qubit,
-                            link_qubit.origin_extended_qubit.qubit,
+                            link_qubit.get_origin_extended_qubit().qubit,
                         ],
                     )
 
