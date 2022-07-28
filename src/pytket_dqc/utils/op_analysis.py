@@ -20,9 +20,3 @@ def is_antidiagonal(op):
     i, j = array.shape
     test = array.reshape(-1)[:-1].reshape(i - 1, j + 1)
     return ~np.any(test[:, 1:])
-
-
-def get_qubit_reg_num(qubit):
-    # Return the register number of the given qubit.
-    reg_no = qubit.reg_name.split(" ")[1]
-    return int(reg_no)
