@@ -2,25 +2,24 @@ from __future__ import annotations
 
 from .hypergraph import Hypergraph, Hyperedge
 from pytket import OpType, Circuit, Qubit
-from pytket.circuit import CustomGateDef, Command, Unitary2qBox  # type: ignore
+from pytket.circuit import Command, Unitary2qBox  # type: ignore
 from scipy.stats import unitary_group  # type: ignore
 import numpy as np
 from pytket.passes import DecomposeBoxes, auto_rebase_pass  # type: ignore
 import networkx as nx  # type: ignore
 import random
-from pytket_dqc.utils import dqc_gateset_predicate, _cost_from_circuit
+from pytket_dqc.utils import (
+    dqc_gateset_predicate,
+    _cost_from_circuit,
+    start_proc,
+    end_proc,
+    telep_proc
+)
 
 from typing import TYPE_CHECKING, cast, Union
 if TYPE_CHECKING:
     from pytket.circuit import QubitRegister  # type: ignore
     from pytket_dqc import Placement, NISQNetwork
-
-def_circ = Circuit(2)
-def_circ.add_barrier([0, 1])
-
-start_proc = CustomGateDef.define("StartingProcess", def_circ, [])
-end_proc = CustomGateDef.define("EndingProcess", def_circ, [])
-telep_proc = CustomGateDef.define("Teleportation", def_circ, [])
 
 
 class DistributedCircuit(Hypergraph):
