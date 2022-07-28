@@ -36,9 +36,9 @@ class BipartiteCircuit:
         self.matching = None
         self.mvc = None
         self.packed_circuit = Circuit()
-        self.extended_commands = None
-        self.extended_registers = None
-        self.extended_qubits = None
+        self.extended_commands = []
+        self.extended_registers = []
+        self.extended_qubits = {}
         self.next_vertex_index = 0
         self.top_vertices = None
 
@@ -111,13 +111,11 @@ class BipartiteCircuit:
         # QubitRegisters -> ExtendedRegisters
         # Qubits -> ExtendedQubits
         # Populate ExtendedRegisters with ExtendedQubits
-        extended_registers = []
-        extended_qubits = {}
         qubit_index = 0
         total_size_added = 0
         for i, q_register in enumerate(self.circuit.q_registers):
             extended_register = ExtendedRegister(i, q_register)
-            extended_registers.append(extended_register)
+            self.extended_registers.append(extended_register)
             while qubit_index - total_size_added < q_register.size:
                 qubit = self.circuit.qubits[qubit_index]
                 extended_qubit = ExtendedQubit(
@@ -126,24 +124,19 @@ class BipartiteCircuit:
                 extended_qubit.create_vertex(self.next_vertex_index)
                 self.next_vertex_index += 1
                 extended_register.add_extended_qubit(extended_qubit)
-                extended_qubits[qubit] = extended_qubit
+                self.extended_qubits[qubit] = extended_qubit
                 qubit_index += 1
             total_size_added += q_register.size
 
         # Commands -> ExtendedCommands
         # Also populate ExtendedQubits with ExtendedCommands
-        extended_commands = []
         for i, command in enumerate(self.circuit.get_commands()):
             extended_command = ExtendedCommand(i, command)
             for qubit in command.qubits:
-                extended_qubit = extended_qubits[qubit]
+                extended_qubit = self.extended_qubits[qubit]
                 extended_qubit.add_extended_command(extended_command)
                 extended_command.extended_qubits.append(extended_qubit)
-            extended_commands.append(extended_command)
-
-        self.extended_commands = extended_commands
-        self.extended_registers = extended_registers
-        self.extended_qubits = extended_qubits
+            self.extended_commands.append(extended_command)
 
     def build_vertices(self):
         """Builds the vertices on each ExtendedQubit
