@@ -11,6 +11,7 @@ from pytket_dqc.utils.op_analysis import (
     is_antidiagonal,
 )
 
+
 class ExtendedRegister:
     """Extends the pytket.circuit.QubitRegister class."""
 
