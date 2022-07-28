@@ -11,6 +11,8 @@ import random
 from pytket_dqc.utils import (
     dqc_gateset_predicate,
     _cost_from_circuit,
+)
+from pytket_dqc.utils.gateset import (
     start_proc,
     end_proc,
     telep_proc

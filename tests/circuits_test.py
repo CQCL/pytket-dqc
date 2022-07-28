@@ -5,7 +5,7 @@ from pytket_dqc.circuits import (
     Hyperedge
 )
 
-from pytket_dqc.circuits.distributed_circuit import (
+from pytket_dqc.utils.gateset import (
     start_proc,
     end_proc,
     telep_proc,
