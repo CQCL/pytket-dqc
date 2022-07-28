@@ -38,7 +38,6 @@ class BipartiteCircuit:
         self.extended_commands = []
         self.extended_registers = []
         self.extended_qubits = {}
-        self.next_vertex_index = 0
         self.top_vertices = None
         self.from_placed_circuit(circuit)
 
@@ -86,21 +85,21 @@ class BipartiteCircuit:
         # QubitRegisters -> ExtendedRegisters
         # Qubits -> ExtendedQubits
         # Populate ExtendedRegisters with ExtendedQubits
-        qubit_index = 0
         total_size_added = 0
         for i, q_register in enumerate(self.circuit.q_registers):
             extended_register = ExtendedRegister(i, q_register)
             self.extended_registers.append(extended_register)
-            while qubit_index - total_size_added < q_register.size:
+            for qubit_index in range(
+                total_size_added,
+                total_size_added + q_register.size
+            ):
                 qubit = self.circuit.qubits[qubit_index]
                 extended_qubit = ExtendedQubit(
                     qubit_index, qubit, extended_register
                 )
-                extended_qubit.create_vertex(self.next_vertex_index)
-                self.next_vertex_index += 1
+                extended_qubit.create_vertex(qubit_index)
                 extended_register.add_extended_qubit(extended_qubit)
                 self.extended_qubits[qubit] = extended_qubit
-                qubit_index += 1
             total_size_added += q_register.size
 
         # Commands -> ExtendedCommands
@@ -117,6 +116,7 @@ class BipartiteCircuit:
         """Builds the vertices on each ExtendedQubit
         to be used on the bipartite graph.
         """
+        next_vertex_index = len(self.extended_qubits)
         for extended_qubit in self.extended_qubits.values():
             for extended_command in extended_qubit.extended_commands:
                 # Gate is packable and local
@@ -133,8 +133,8 @@ class BipartiteCircuit:
                 # ExtendedQubit and start a new one
                 elif extended_command.is_1q():
                     extended_qubit.close_all_vertices()
-                    extended_qubit.create_vertex(self.next_vertex_index)
-                    self.next_vertex_index += 1
+                    extended_qubit.create_vertex(next_vertex_index)
+                    next_vertex_index += 1
                     vertex = extended_qubit.last_used_vertex
 
                 # Gate is a non-local CZ gate
@@ -176,9 +176,9 @@ class BipartiteCircuit:
                         # the relevant register
                         if extended_qubit.last_used_vertex.is_linked:
                             extended_qubit.create_vertex(
-                                self.next_vertex_index
+                                next_vertex_index
                             )
-                            self.next_vertex_index += 1
+                            next_vertex_index += 1
                         vertex = extended_qubit.last_used_vertex
                         vertex.link_to_register(other_qubit.register)
 
