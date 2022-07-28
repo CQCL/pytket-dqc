@@ -1,1 +1,6 @@
-from .packing import BipartiteCircuit  # noqa:F401
+from .packing import (  # noqa:F401
+    ExtendedCommand,
+    ExtendedQubit,
+    ExtendedRegister,
+    LinkQubit
+)
