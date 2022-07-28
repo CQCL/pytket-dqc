@@ -90,8 +90,7 @@ class BipartiteCircuit:
             extended_register = ExtendedRegister(i, q_register)
             self.extended_registers.append(extended_register)
             for qubit_index in range(
-                total_size_added,
-                total_size_added + q_register.size
+                total_size_added, total_size_added + q_register.size
             ):
                 qubit = self.circuit.qubits[qubit_index]
                 extended_qubit = ExtendedQubit(
@@ -159,8 +158,9 @@ class BipartiteCircuit:
                             for vertex in extended_qubit.get_in_use_vertices()
                             if vertex.linked_register == other_qubit.register
                         ]
-                        assert len(vertex_candidates) == 1, \
-                            "There is more than one candidate Vertex."
+                        assert (
+                            len(vertex_candidates) == 1
+                        ), "There is more than one candidate Vertex."
                         # Pick out the vertex which is
                         # linked to the correct register
                         vertex = vertex_candidates[0]
@@ -175,9 +175,7 @@ class BipartiteCircuit:
                         # => Make a new vertex and link it to
                         # the relevant register
                         if extended_qubit.last_used_vertex.is_linked:
-                            extended_qubit.create_vertex(
-                                next_vertex_index
-                            )
+                            extended_qubit.create_vertex(next_vertex_index)
                             next_vertex_index += 1
                         vertex = extended_qubit.last_used_vertex
                         vertex.link_to_register(other_qubit.register)
@@ -378,12 +376,16 @@ class BipartiteCircuit:
             for vertex in extended_command.vertices:
                 vertex.added_extended_commands.append(extended_command)
 
-        # Now check if all the ExtendedCommands on a vertex have been added
-        # If so, then add an EndingProcess to the LinkQubits
+        # If all non-local CZs on this vertex
+        # have been added to the circuit
+        # then add an EndingProcess to the LinkQubits.
+        # This prevents redundant correction X gates
+        # from being added to the circuit.
         for vertex in extended_command.vertices:
             if (
-                vertex.vertex_index in self.mvc
-                and vertex.extended_commands == vertex.added_extended_commands
+                vertex.is_open
+                and vertex.vertex_index in self.mvc
+                and vertex.added_all_nonlocal_czs()
             ):
                 link_qubit = vertex.link_qubit
                 link_qubit.end_packing()
@@ -395,6 +397,7 @@ class BipartiteCircuit:
                         link_qubit.get_origin_extended_qubit().qubit,
                     ],
                 )
+                vertex.close()
 
     def get_ebit_cost(self):
         """Computes the ebit cost of this
@@ -574,16 +577,22 @@ class ExtendedCommand:
         ), "This ExtendedCommand does not have \
         two ExtendedQubits associated with it."
 
-        assert arg_extended_qubit in self.extended_qubits,\
-            "The given argument ExtendedQubit is not\
+        assert (
+            arg_extended_qubit in self.extended_qubits
+        ), "The given argument ExtendedQubit is not\
             an argument ExtendedQubit on this\
             ExtendedCommand."
 
-        assert len([
-            extended_qubit
-            for extended_qubit in self.extended_qubits
-            if extended_qubit != arg_extended_qubit
-        ]) == 1, "There are multiple other arguement\
+        assert (
+            len(
+                [
+                    extended_qubit
+                    for extended_qubit in self.extended_qubits
+                    if extended_qubit != arg_extended_qubit
+                ]
+            )
+            == 1
+        ), "There are multiple other arguement\
             ExtendedQubits."
 
         return [
@@ -743,3 +752,31 @@ class Vertex:
         """
         self.is_top_half = is_top_half
         self.is_on_graph = True
+
+    def added_all_nonlocal_czs(self):
+        """Check if all the non-local CZs on this
+        circuit have been added to the circuit.
+
+
+        :return: A bool describing if all the
+        non-local CZs have been added.
+        :rtype: bool
+        """
+        nonlocal_cz_count = 0
+        nonlocal_added_cz_count = 0
+
+        for extended_command in self.extended_commands:
+            if (
+                extended_command.get_op_type() == OpType.CZ
+                and not extended_command.is_local()
+            ):
+                nonlocal_cz_count += 1
+
+        for extended_command in self.added_extended_commands:
+            if (
+                extended_command.get_op_type() == OpType.CZ
+                and not extended_command.is_local()
+            ):
+                nonlocal_added_cz_count += 1
+
+        return nonlocal_cz_count == nonlocal_added_cz_count
