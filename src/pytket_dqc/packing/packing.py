@@ -186,14 +186,16 @@ class BipartiteCircuit:
                     # has been linked to another register
                     # => Set the vertex equal to that one
                     if other_qubit.register in currently_linked_registers:
-                        vertex = [
+                        vertex_candidates = [
                             vertex
                             for vertex in extended_qubit.get_in_use_vertices()
                             if vertex.linked_register == other_qubit.register
-                        ][
-                            0
-                        ]  # Pick out the vertex which
-                        # is linked to the correct register
+                        ]
+                        assert len(vertex_candidates) == 1, \
+                            "There is more than one candidate Vertex."
+                        # Pick out the vertex which is
+                        # linked to the correct register
+                        vertex = vertex_candidates[0]
 
                     # There is no vertex from this
                     # register linked to the other register
@@ -603,6 +605,18 @@ class ExtendedCommand:
             len(self.extended_qubits) == 2
         ), "This ExtendedCommand does not have \
         two ExtendedQubits associated with it."
+
+        assert arg_extended_qubit in self.extended_qubits,\
+            "The given argument ExtendedQubit is not\
+            an argument ExtendedQubit on this\
+            ExtendedCommand."
+
+        assert len([
+            extended_qubit
+            for extended_qubit in self.extended_qubits
+            if extended_qubit != arg_extended_qubit
+        ]) == 1, "There are multiple other arguement\
+            ExtendedQubits."
 
         return [
             extended_qubit
