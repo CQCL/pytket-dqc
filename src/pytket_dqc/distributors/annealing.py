@@ -16,10 +16,9 @@ if TYPE_CHECKING:
 # machinelearningmastery.com/simulated-annealing-from-scratch-in-python/
 # for details of this implementation.
 
+
 def acceptance_criterion(
-    gain: int,
-    iteration: int,
-    initial_temperature: float = 1
+    gain: int, iteration: int, initial_temperature: float = 1
 ):
     """Acceptance criterion, to be used during simulated annealing.
     If ``gain`` is positive (improvement) the output will be greater than 1.
@@ -39,9 +38,9 @@ def acceptance_criterion(
 
     temperature = initial_temperature / (iteration + 1)
     try:
-        acceptance = math.exp(gain/temperature)
+        acceptance = math.exp(gain / temperature)
     except OverflowError:
-        acceptance = float('inf')
+        acceptance = float("inf")
     return acceptance
 
 
@@ -54,10 +53,7 @@ class Annealing(Distributor):
         pass
 
     def distribute(
-        self,
-        dist_circ: DistributedCircuit,
-        network: NISQNetwork,
-        **kwargs
+        self, dist_circ: DistributedCircuit, network: NISQNetwork, **kwargs
     ) -> Placement:
         """Distribute quantum circuit using simulated annealing approach.
 
@@ -75,17 +71,21 @@ class Annealing(Distributor):
             placement. Default is Random.
         :key cache_limit: The maximum size of the set of servers whose cost is
             stored in cache; see GainManager. Default value is 5.
+        :key brute_force_steiner: If True, the Steiner tree subproblem is
+            solved optimally using a brute force approach, otherwise it is
+            solved using a poly-time 2-approximate algorithm. Default True.
         """
 
         if not network.can_implement(dist_circ):
             raise Exception(
                 "This circuit cannot be implemented on this network."
-                )
+            )
 
         iterations = kwargs.get("iterations", 10000)
         initial_distributor = kwargs.get("initial_place_method", Random())
         seed = kwargs.get("seed", None)
         cache_limit = kwargs.get("cache_limit", None)
+        brute_force_steiner = kwargs.get("brute_force_steiner", True)
 
         random.seed(seed)
 
@@ -127,17 +127,19 @@ class Annealing(Distributor):
 
             # If the vertex to move corresponds to a qubit
             swap_vertex = None
-            if dist_circ.vertex_circuit_map[vertex_to_move]['type'] == 'qubit':
+            if dist_circ.vertex_circuit_map[vertex_to_move]["type"] == "qubit":
 
                 # List all qubit vertices
                 destination_server_qubit_list = [
-                    v for v in dist_circ.vertex_list
-                    if (dist_circ.vertex_circuit_map[v]['type'] == 'qubit')
+                    v
+                    for v in dist_circ.vertex_list
+                    if (dist_circ.vertex_circuit_map[v]["type"] == "qubit")
                 ]
 
                 # Gather qubits in ``destination_server``
                 destination_server_qubit_list = [
-                    v for v in destination_server_qubit_list
+                    v
+                    for v in destination_server_qubit_list
                     if (gain_manager.current_server(v) == destination_server)
                 ]
 
@@ -151,12 +153,16 @@ class Annealing(Distributor):
                     swap_vertex = random.choice(destination_server_qubit_list)
 
             # Calculate gain
-            gain = gain_manager.gain(vertex_to_move, destination_server)
+            gain = gain_manager.gain(
+                vertex_to_move, destination_server, brute_force_steiner
+            )
             if swap_vertex is not None:
                 # In order to accurately calculate the gain of moving
                 # ``swap_vertex`` we need to move ``vertex_to_move``
                 gain_manager.move(vertex_to_move, destination_server)
-                gain += gain_manager.gain(swap_vertex, home_server)
+                gain += gain_manager.gain(
+                    swap_vertex, home_server, brute_force_steiner
+                )
                 # Restore ``vertex_to_move`` to its original placement
                 gain_manager.move(vertex_to_move, home_server)
 

@@ -30,9 +30,7 @@ class Placement:
         return str(self.placement)
 
     def is_valid(
-        self,
-        circuit: DistributedCircuit,
-        network: NISQNetwork
+        self, circuit: DistributedCircuit, network: NISQNetwork
     ) -> bool:
         """Check if placement is valid. In particular check that no more
         qubits are allotted to a server than can be accommodated.
@@ -55,8 +53,11 @@ class Placement:
         # Check that no more qubits are allotted to a server than can be
         # accommodated.
         for server in network.server_qubits.keys():
-            vertices = [vertex for vertex in self.placement.keys()
-                        if self.placement[vertex] == server]
+            vertices = [
+                vertex
+                for vertex in self.placement.keys()
+                if self.placement[vertex] == server
+            ]
             qubits = [
                 vertex
                 for vertex in vertices
@@ -70,7 +71,8 @@ class Placement:
     def cost(
         self,
         circuit: DistributedCircuit,
-        network: NISQNetwork
+        network: NISQNetwork,
+        brute_force_steiner: bool = True,
     ) -> int:
         """Cost of placement of ``circuit`` onto ``network``. The cost is
         measured as the number of e-bits which would be required.
@@ -79,6 +81,11 @@ class Placement:
         :type circuit: DistributedCircuit
         :param network: Network onto which ``circuit`` is placed by placement.
         :type network: NISQNetwork
+        :param brute_force_steiner: If True, the Steiner tree subproblem is
+            solved optimally using a brute force approach, otherwise it is
+            solved using a poly-time 2-approximate algorithm.
+        :type brute_force_steiner: bool
+
         :raises Exception: Raised if this is not a valid placement of
             ``circuit`` onto ``network``.
         :return: Cost, in e-bits required, of this placement of ``circuit``
@@ -96,7 +103,8 @@ class Placement:
                 dist_graph = self.get_distribution_tree(
                     hyperedge.vertices,
                     circuit.get_qubit_vertex(hyperedge),
-                    network
+                    network,
+                    brute_force_steiner,
                 )
                 cost += len(dist_graph) * hyperedge.weight
         else:
@@ -109,6 +117,7 @@ class Placement:
         hyperedge: list[int],
         qubit_node: int,
         network: NISQNetwork,
+        brute_force_steiner: bool,
     ) -> List[Tuple[int, int]]:
         """Returns tree representing the edges along which distribution
         operations should act. This is the steiner tree covering the servers
@@ -121,13 +130,19 @@ class Placement:
         :type qubit_node: int
         :param network: Network onto which hyper edge should be distributed.
         :type network: NISQNetwork
+        :param brute_force_steiner: If True, the Steiner tree subproblem is
+            solved optimally using a brute force approach, otherwise it is
+            solved using a poly-time 2-approximate algorithm.
+        :type brute_force_steiner: bool
+
         :return: List of edges along which distribution gates should act,
             with the direction and order in this they should act.
         :rtype: List[List[int]]
         """
 
-        servers_used = [value for key,
-                        value in self.placement.items() if key in hyperedge]
+        servers_used = [
+            value for key, value in self.placement.items() if key in hyperedge
+        ]
         server_graph = network.get_server_nx()
 
         # The Steiner tree problem is NP-complete. Indeed the networkx
@@ -136,7 +151,9 @@ class Placement:
         # output, which we rely on. In particular we assume the call to this
         # function made when calculating costs gives the same output as the
         # call that is made when the circuit is built and outputted.
-        steiner_server_graph = steiner_tree(server_graph, servers_used)
+        steiner_server_graph = steiner_tree(
+            server_graph, servers_used, brute_force_steiner
+        )
         qubit_server = self.placement[qubit_node]
         return direct_from_origin(steiner_server_graph, qubit_server)
 

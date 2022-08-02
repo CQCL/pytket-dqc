@@ -58,11 +58,19 @@ def direct_from_origin(G: nx.Graph, origin: int) -> List[Tuple[int, int]]:
     return edge_list
 
 
-def steiner_tree(graph: nx.Graph, terminal_nodes: list[int]) -> nx.Graph:
-    """Compute the optimal Steiner tree by brute force search and compare with
-    the one obtained using the algorithm from NetworkX.
+def steiner_tree(
+    graph: nx.Graph, terminal_nodes: list[int], brute_force: bool
+) -> nx.Graph:
+    """If ``brute_force`` is True, compute the optimal Steiner tree by brute
+    force search. Otherwise, use the algorithm from NetworkX.
     """
+
+    # Run the algorithm from NetworkX; if ``brute_force`` is enabled, its
+    # solution will be used as the baseline
     tree = st.steiner_tree(graph, terminal_nodes)
+    if not brute_force:
+        return tree
+
     # If there are only two or fewer terminal nodes, NetworkX is guaranteed to
     # return the optimal Steiner tree (i.e. the shortest path, a single vertex
     # graph or an empty graph for 2, 1 or 0 terminal nodes, respectively)
@@ -95,5 +103,4 @@ def steiner_tree(graph: nx.Graph, terminal_nodes: list[int]) -> nx.Graph:
                     # for loop and do another iteration of the while loop
                     cost -= 1
                     break
-
     return tree

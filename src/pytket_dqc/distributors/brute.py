@@ -5,6 +5,7 @@ import itertools
 from pytket_dqc.placement import Placement
 
 from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
     from pytket_dqc import DistributedCircuit
     from pytket_dqc.networks import NISQNetwork
@@ -14,14 +15,12 @@ class Brute(Distributor):
     """Brute force distributor which searches through all placements
     for the best one.
     """
+
     def __init__(self) -> None:
         pass
 
     def distribute(
-        self,
-        dist_circ: DistributedCircuit,
-        network: NISQNetwork,
-        **kwargs
+        self, dist_circ: DistributedCircuit, network: NISQNetwork, **kwargs
     ) -> Placement:
         """Distribute quantum circuit by looking at all possible placements
         and returning the one with the lowest cost.
@@ -38,7 +37,7 @@ class Brute(Distributor):
         if not network.can_implement(dist_circ):
             raise Exception(
                 "This circuit cannot be implemented on this network."
-                )
+            )
 
         # List of all vertices to be placed
         vertex_list = dist_circ.vertex_list
@@ -53,8 +52,9 @@ class Brute(Distributor):
         # These lists of servers will be transformed into placements.
         all_placement_list = [
             list(placement_list)
-            for placement_list
-            in itertools.product(server_list, repeat=len(vertex_list))
+            for placement_list in itertools.product(
+                server_list, repeat=len(vertex_list)
+            )
         ]
 
         # TODO: It would be preferable to only check placement which are valid.
@@ -66,8 +66,10 @@ class Brute(Distributor):
         for placement_list in all_placement_list:
 
             # build placement from list of vertices and servers.
-            placement_dict = {vertex: server for vertex, server in zip(
-                vertex_list, placement_list)}
+            placement_dict = {
+                vertex: server
+                for vertex, server in zip(vertex_list, placement_list)
+            }
             placement = Placement(placement_dict)
 
             # Append to list is placement is valid.
@@ -82,11 +84,14 @@ class Brute(Distributor):
         # Initialise minimum placement cost to be that of the first
         # valid placement.
         minimum_placement_cost = valid_placement_list[0].cost(
-            dist_circ, network)
+            dist_circ, network, brute_force_steiner=True
+        )
         minimum_cost_placement = valid_placement_list[0]
         # Check if any of the other valid placements have smaller cost.
         for placement in valid_placement_list[1:]:
-            placement_cost = placement.cost(dist_circ, network)
+            placement_cost = placement.cost(
+                dist_circ, network, brute_force_steiner=True
+            )
             if placement_cost < minimum_placement_cost:
                 minimum_cost_placement = placement
                 minimum_placement_cost = placement_cost

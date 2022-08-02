@@ -61,7 +61,9 @@ class GainManager:
             if vertex in qubit_vertices:
                 self.occupancy[server] += 1
 
-    def gain(self, vertex: int, new_server: int) -> int:
+    def gain(
+        self, vertex: int, new_server: int, brute_force_steiner: bool = True
+    ) -> int:
         """Compute the gain of moving ``vertex`` to ``new_server``. Instead
         of calculating the cost of the whole hypergraph using the new
         placement, we simply compare the previous cost of all hyperedges
@@ -76,6 +78,10 @@ class GainManager:
         :type vertex: int
         :param new_server: The server ``vertex`` would be moved to
         :type: int
+        :param brute_force_steiner: If True, the Steiner tree subproblem is
+            solved optimally using a brute force approach, otherwise it is
+            solved using a poly-time 2-approximate algorithm.
+        :type brute_force_steiner: bool
 
         :return: The improvement (may be negative) of the cost of the
             placement after applying the move.
@@ -97,16 +103,20 @@ class GainManager:
             ]
 
             current_cost = self.steiner_cost(
-                frozenset(connected_servers + [current_server])
+                frozenset(connected_servers + [current_server]),
+                brute_force_steiner,
             )
             new_cost = self.steiner_cost(
-                frozenset(connected_servers + [new_server])
+                frozenset(connected_servers + [new_server]),
+                brute_force_steiner,
             )
             gain += hyperedge.weight * (current_cost - new_cost)
 
         return gain
 
-    def steiner_cost(self, servers: frozenset[int]) -> int:
+    def steiner_cost(
+        self, servers: frozenset[int], brute_force_steiner: bool = True
+    ) -> int:
         """Finds a Steiner tree connecting all ``servers`` and returns number
         of edges. Makes use of the cache if the cost has already been computed
         and otherwise updates it.
@@ -114,17 +124,25 @@ class GainManager:
         :param servers: The servers to be connected by the Steiner tree.
             The set is required to be a frozenset so that it is hashable.
         :type servers: frozenset[int]
+        :param brute_force_steiner: If True, the Steiner tree subproblem is
+            solved optimally using a brute force approach, otherwise it is
+            solved using a poly-time 2-approximate algorithm.
+        :type brute_force_steiner: bool
 
         :return: The cost of connecting ``servers``
         :rtype: int
         """
         if len(servers) <= self.max_key_size:
             if servers not in self.cache.keys():
-                tree = steiner_tree(self.server_graph, list(servers))
+                tree = steiner_tree(
+                    self.server_graph, list(servers), brute_force_steiner
+                )
                 self.cache[servers] = len(tree.edges)
             cost = self.cache[servers]
         else:
-            tree = steiner_tree(self.server_graph, list(servers))
+            tree = steiner_tree(
+                self.server_graph, list(servers), brute_force_steiner
+            )
             cost = len(tree.edges)
 
         return cost

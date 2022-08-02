@@ -43,6 +43,9 @@ class GraphPartitioning(Distributor):
             is 0.05.
         :key cache_limit: The maximum size of the set of servers whose cost is
             stored in cache; see GainManager. Default value is 5.
+        :key brute_force_steiner: If True, the Steiner tree subproblem is
+            solved optimally using a brute force approach, otherwise it is
+            solved using a poly-time 2-approximate algorithm. Default True.
 
         :return: Placement of ``dist_circ`` onto ``network``.
         :rtype: Placement
@@ -51,7 +54,7 @@ class GraphPartitioning(Distributor):
         if not network.can_implement(dist_circ):
             raise Exception(
                 "This circuit cannot be implemented on this network."
-                )
+            )
 
         package_path = importlib_resources.files("pytket_dqc")
         default_ini = f"{package_path}/distributors/km1_kKaHyPar_sea20.ini"
@@ -60,6 +63,7 @@ class GraphPartitioning(Distributor):
         num_rounds = kwargs.get("num_rounds", 1000)
         stop_parameter = kwargs.get("stop_parameter", 0.05)
         cache_limit = kwargs.get("cache_limit", None)
+        brute_force_steiner = kwargs.get("brute_force_steiner", True)
 
         # First step is to call KaHyPar using the connectivity metric (i.e. no
         # knowledge about network topology other than server sizes)
@@ -77,6 +81,7 @@ class GraphPartitioning(Distributor):
             num_rounds=num_rounds,
             stop_parameter=stop_parameter,
             cache_limit=cache_limit,
+            brute_force_steiner=brute_force_steiner,
         )
 
         assert placement.is_valid(dist_circ, network)
@@ -122,6 +127,9 @@ class GraphPartitioning(Distributor):
             is 0.05.
         :key cache_limit: The maximum size of the set of servers whose cost is
             stored in cache; see GainManager. Default value is 5.
+        :key brute_force_steiner: If True, the Steiner tree subproblem is
+            solved optimally using a brute force approach, otherwise it is
+            solved using a poly-time 2-approximate algorithm. Default True.
 
         :return: Placement of ``dist_circ`` onto ``network``.
         :rtype: Placement
@@ -133,6 +141,7 @@ class GraphPartitioning(Distributor):
         if seed is not None:
             random.seed(seed)
         cache_limit = kwargs.get("cache_limit", None)
+        brute_force_steiner = kwargs.get("brute_force_steiner", True)
 
         qubit_vertices = frozenset(
             [v for v in dist_circ.vertex_list if dist_circ.is_qubit_vertex(v)]
@@ -196,7 +205,9 @@ class GraphPartitioning(Distributor):
                     # have the worst gain since they contain no neighbours
                     # of ``vertex``. As such, we  simply ignore them.
 
-                    gain = gain_manager.gain(vertex, server)
+                    gain = gain_manager.gain(
+                        vertex, server, brute_force_steiner
+                    )
 
                     # If the move is not valid (i.e. the server is full) we
                     # find the best vertex in ``server`` to swap this one with
@@ -220,7 +231,9 @@ class GraphPartitioning(Distributor):
                         best_swap_gain = float("-inf")
                         for swap_vertex in valid_swaps:
                             swap_gain = gain_manager.gain(
-                                swap_vertex, current_server
+                                swap_vertex,
+                                current_server,
+                                brute_force_steiner,
                             )
 
                             if (
@@ -312,7 +325,7 @@ class GraphPartitioning(Distributor):
         seed = kwargs.get("seed", None)
 
         # This should only arise if the circuit is completely empty.
-        if (len(dist_circ.hyperedge_list) == 0):
+        if len(dist_circ.hyperedge_list) == 0:
             assert dist_circ.circuit == Circuit()
             return Placement(dict())
         else:
@@ -365,8 +378,9 @@ class GraphPartitioning(Distributor):
                 hypergraph.blockID(i) for i in range(hypergraph.numNodes())
             ]
 
-            placement_dict = {i: server for i,
-                              server in enumerate(partition_list)}
+            placement_dict = {
+                i: server for i, server in enumerate(partition_list)
+            }
             placement = Placement(placement_dict)
 
         return placement

@@ -390,7 +390,8 @@ class DistributedCircuit(Hypergraph):
                     dist_tree = placement.get_distribution_tree(
                         hyperedge.vertices,
                         hyperedge_qubit_vertex,
-                        network
+                        network,
+                        brute_force_steiner=True
                     )
                     unique_server_used = set(
                         server
@@ -510,7 +511,8 @@ class DistributedCircuit(Hypergraph):
 
             dist_tree = placement.get_distribution_tree(
                 edge.vertices,
-                qubit_vertex, network
+                qubit_vertex, network,
+                brute_force_steiner=True
             )
 
             # For every server used by hyperedge distribution tree, add a
