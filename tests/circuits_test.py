@@ -15,9 +15,6 @@ from pytket_dqc.utils.gateset import (
     end_proc,
     telep_proc,
 )
-from pytket_dqc.utils.circuit_analysis import (
-    circuits_are_equivalent
-)
 from pytket_dqc.distributors import Brute, GraphPartitioning
 from pytket_dqc.networks import NISQNetwork
 from pytket.circuit import QControlBox, Op, OpType  # type: ignore
@@ -550,7 +547,5 @@ def test_from_placed_circuit():
         placement = distributor.distribute(dist_circ, network, seed = seed)
         bp_circuit = BipartiteCircuit(circuit, placement)
 
-        assert circuits_are_equivalent(
-            Circuit.from_dict(packed_circuit_dict),
-            bp_circuit.packed_circuit
-        )
+        assert Circuit.from_dict(packed_circuit_dict) == bp_circuit.packed_circuit
+
