@@ -220,3 +220,13 @@ class Hypergraph:
                     break
 
         return boundary
+
+    def weight_one_predicate(self) -> bool:
+        """Returns True if all of the hyperedges in the hypergraph have weight
+        equal to one.
+        """
+        for hyperedge in self.hyperedge_list:
+            if hyperedge.weight != 1:
+                return False
+
+        return True
