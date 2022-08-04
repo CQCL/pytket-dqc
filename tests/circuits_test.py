@@ -15,7 +15,7 @@ from pytket_dqc.utils.gateset import (
     end_proc,
     telep_proc,
 )
-from pytket_dqc.distributors import Brute, GraphPartitioning
+from pytket_dqc.distributors import Brute, Random
 from pytket_dqc.networks import NISQNetwork
 from pytket.circuit import QControlBox, Op, OpType  # type: ignore
 
@@ -522,9 +522,9 @@ def test_to_relabeled_registers():
 
 def test_from_placed_circuit():
     seed = 27
-    distributor = GraphPartitioning()
+    distributor = Random()
 
-    for i in range(5):
+    for i in range(6):
         with open(
             f"tests/test_circuits/packing/networks/network{i}.pickle",
             "rb"
@@ -546,6 +546,5 @@ def test_from_placed_circuit():
         dist_circ = DistributedCircuit(circuit)
         placement = distributor.distribute(dist_circ, network, seed = seed)
         bp_circuit = BipartiteCircuit(circuit, placement)
-
-        assert Circuit.from_dict(packed_circuit_dict) == bp_circuit.packed_circuit
-
+        test_circuit = Circuit.from_dict(packed_circuit_dict)
+        assert test_circuit == bp_circuit.packed_circuit
