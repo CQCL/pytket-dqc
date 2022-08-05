@@ -42,11 +42,9 @@ def ebit_memory_required(circ: Circuit) -> dict[int, int]:
 
     # Find all server IDs and initialise their ebit memory to 0
     for qubit in circ.qubits:
-        if not is_link_qubit(qubit):
-            # This is a workspace qubit, get the server ID
-            server_id = get_server_id(qubit)
-            ebit_memory_required[server_id] = 0
-            current[server_id] = 0
+        server_id = get_server_id(qubit)
+        ebit_memory_required[server_id] = 0
+        current[server_id] = 0
 
     # Scan the circuit for starting and ending EJPP processes and update
     #   the ebit memory requirement accordingly
