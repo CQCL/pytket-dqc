@@ -119,6 +119,11 @@ def test_graph_partitioning_refinement():
     assert refined_placement == good_placement
 
 
+@pytest.mark.skip(reason="Circuit contains CX gates that are not supported.")
+# NOTE: Moreover, when we do support them again (after including Junyi's work)
+# the hypergraph will likely be different, so there is no guarantee the inital
+# solution by KaHyPar will fail to be valid. Perhaps we should just remove
+# this test, since validity is asserted at the end of refinement anyway.
 def test_refinement_makes_valid():
     """In the case of an initial partition using KaHyPar this test fails
     since KaHyPar returns an invalid placement. Refinement fixes this.
@@ -360,6 +365,7 @@ def test_q_control_box_circuits():
     assert placement.cost(dist_circ, network) == 3
 
 
+@pytest.mark.skip(reason="Support for CRz gates temporarily disabled")
 def test_CRz_circuits():
 
     network = NISQNetwork([[0, 1]], {0: [0], 1: [1]})

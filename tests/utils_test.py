@@ -12,7 +12,8 @@ from pytket_dqc.distributors import Brute
 from pytket_dqc.placement import Placement
 import networkx as nx  # type: ignore
 from sympy import Symbol  # type: ignore
-import json  # type: ignore
+import json # type: ignore
+import pytest
 
 
 def test_rebase():
@@ -23,6 +24,7 @@ def test_rebase():
     assert dqc_gateset_predicate.verify(circ)
 
 
+@pytest.mark.skip(reason="Support for CX gates temporarily disabled")
 def test_CX_circuit():
 
     circ = Circuit(3).CX(0, 1).CZ(1, 2).Rx(0.3, 1).CX(1, 0)

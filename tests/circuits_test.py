@@ -100,6 +100,7 @@ def test_hypergrpah_kahypar_hyperedges():
     assert hyperedges == [3, 6, 2, 3, 1, 4, 5, 6]
 
 
+@pytest.mark.skip(reason="Support for CRz gates temporarily disabled")
 def test_CRz_circuit():
     circ = Circuit(2)
     circ.CRz(0.3, 1, 0)
@@ -201,6 +202,7 @@ def test_q_control_box_circuits():
     assert dist_circ.vertex_list == [0, 2, 3, 4, 5, 6, 1]
 
 
+@pytest.mark.skip(reason="Support for CRz gates temporarily disabled")
 def test_to_pytket_circ_CRz():
 
     network = NISQNetwork(
@@ -440,6 +442,7 @@ def test_to_pytket_circuit_with_branching_distribution_tree():
     assert test_circ.q_registers == circ_with_dist.q_registers
 
 
+@pytest.mark.skip(reason="Support for teleportation has been disabled")
 def test_to_pytket_circuit_with_teleportation():
 
     network = NISQNetwork(
