@@ -12,7 +12,7 @@ from pytket_dqc.distributors import Brute
 from pytket_dqc.placement import Placement
 import networkx as nx  # type: ignore
 from sympy import Symbol  # type: ignore
-import json # type: ignore
+import json  # type: ignore
 import pytest
 
 
