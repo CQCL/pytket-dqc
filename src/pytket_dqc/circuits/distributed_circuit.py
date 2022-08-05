@@ -156,7 +156,7 @@ class DistributedCircuit(Hypergraph):
 
         two_q_gate_count = 0
         # For each command in the circuit, add the command to a list.
-        # If the command is a CZ, CRz or CX, store n, where the
+        # If the command is a two-qubit gate, store n, where the
         # command is the nth 2 qubit gate in the circuit.
         for command in self.circuit.get_commands():
             if command.op.type in [OpType.CZ, OpType.CRz, OpType.CX]:
@@ -250,6 +250,12 @@ class DistributedCircuit(Hypergraph):
             # commands have bee iterated through, add it now.
             if len(hyperedge) > 1 or not two_qubit_gate_found:
                 self.add_hyperedge(hyperedge)
+
+        # TODO: Currently we are not supporting teleportation within our
+        # distributors, so we assert that all hyperedges have weight one.
+        # This should be guaranteed due to `dqc_gateset` only containing
+        # gates that may be implemented via EJPP packing.
+        assert self.weight_one_predicate()
 
     def _get_server_to_qubit_vertex(
             self, placement: Placement

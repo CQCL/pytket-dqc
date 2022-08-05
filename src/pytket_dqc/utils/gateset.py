@@ -15,9 +15,7 @@ dqc_gateset = {
     OpType.Rx,
     OpType.CZ,
     OpType.Rz,
-    OpType.CX,
     OpType.Measure,
-    OpType.CRz,
 }
 
 
