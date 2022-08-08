@@ -563,6 +563,11 @@ def test_to_relabeled_registers():
 
 
 def test_from_placed_circuit():
+    """Tests that generation of BipartiteCircuit.from_placed_circuit() method
+    functions as it should.
+
+    Test circuits were manually verified in the packed_examples.ipynb example Jupyter Notebook to be correct.
+    """
     seed = 27
     distributor = Random()
 
