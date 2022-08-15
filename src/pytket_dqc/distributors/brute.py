@@ -56,7 +56,7 @@ class Brute(Distributor):
         # Iterate over all placements, even those that are not valid.
         # Determin if they are valid, and add them to list if so.
         for placement_set in itertools.product(
-            server_list, 
+            server_list,
             repeat=len(vertex_list)
         ):
 
