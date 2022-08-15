@@ -48,22 +48,16 @@ class Brute(Distributor):
         # Initialise list of all valid placements
         valid_placement_list = []
 
-        # A list of all possible lists, of length equal to the number of
-        # vertices to be placed, with entries from the list of all servers.
-        # These lists of servers will be transformed into placements.
-        all_placement_list = [
-            list(placement_list)
-            for placement_list
-            in itertools.product(server_list, repeat=len(vertex_list))
-        ]
-
         # TODO: It would be preferable to only check placement which are valid.
         # It may also be more memory efficient to not store a list of all
         # valid placements but to check their cost as they are generated.
 
         # Iterate over all placements, even those that are not valid.
         # Determin if they are valid, and add them to list if so.
-        for placement_list in all_placement_list:
+        # for placement_list in all_placement_list:
+        for placement_set in itertools.product(server_list, repeat=len(vertex_list)):
+
+            placement_list = list(placement_set)
 
             # build placement from list of vertices and servers.
             placement_dict = {vertex: server for vertex, server in zip(
