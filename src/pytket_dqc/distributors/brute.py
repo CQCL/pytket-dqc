@@ -14,6 +14,7 @@ class Brute(Distributor):
     """Brute force distributor which searches through all placements
     for the best one.
     """
+
     def __init__(self) -> None:
         pass
 
@@ -38,7 +39,7 @@ class Brute(Distributor):
         if not network.can_implement(dist_circ):
             raise Exception(
                 "This circuit cannot be implemented on this network."
-                )
+            )
 
         # List of all vertices to be placed
         vertex_list = dist_circ.vertex_list
@@ -54,7 +55,10 @@ class Brute(Distributor):
 
         # Iterate over all placements, even those that are not valid.
         # Determin if they are valid, and add them to list if so.
-        for placement_set in itertools.product(server_list, repeat=len(vertex_list)):
+        for placement_set in itertools.product(
+            server_list, 
+            repeat=len(vertex_list)
+        ):
 
             placement_list = list(placement_set)
 
