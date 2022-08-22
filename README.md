@@ -73,3 +73,9 @@ You should now be able to use KaHyPar in Python. To test this, run `pytest tests
 ### Install pytket-dqc
 
 1. `pip install .`
+
+### Install pyzx and pytket-pyzx
+
+1. `pip install pyzx`
+2. `pip install pytket-pyzx`
+
