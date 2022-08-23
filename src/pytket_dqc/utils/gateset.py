@@ -31,19 +31,25 @@ def check_function(circ):
 dqc_gateset_predicate = UserDefinedPredicate(check_function)
 
 
-def tk2_zzphase_to_crz(a, b, c) -> Circuit:
-    """Given a TK2 gate XXPhase(a)*YYPhase(b)*ZZPhase(c), assume that
-    a=0 and b=0 so that the gate is simply a ZZPhase(c); then, return
-    an equivalent circuit using CRz and Rz gates.
+def tk2_to_crz(a, b, c) -> Circuit:
+    """Given a TK2 gate XXPhase(a)*YYPhase(b)*ZZPhase(c), return
+    an equivalent circuit using CRz and single qubit gates.
 
     Note: Unfortunately, pytket does not currently support a simple
     interface to write rebase passes other than those based on replacing
     TK2 gates and CX gates; in this case, we are using the former.
     """
-    return Circuit(2).CRz(-2*c, 0, 1).Rz(c, 1)
+    circ = Circuit(2)
+    # The ZZPhase(c) gate
+    circ.CRz(-2*c, 0, 1).Rz(c, 1)
+    # The YYPhase(b) gate
+    circ.Sdg(0).Sdg(1).H(0).H(1).CRz(-2*b, 0, 1).Rz(b, 1).H(0).H(1).S(0).S(1)
+    # The XXPhase(a) gate
+    circ.H(0).H(1).CRz(-2*a, 0, 1).Rz(a, 1).H(0).H(1)
+    return circ
 
 
-def tk1_to_Rz_H(a, b, c) -> Circuit:
+def tk1_to_rz_h(a, b, c) -> Circuit:
     """Given a TK1 gate Rz(a)*Rx(b)*Rz(c), return an equivalent circuit
     using Rz and H gates.
     """
@@ -51,7 +57,7 @@ def tk1_to_Rz_H(a, b, c) -> Circuit:
 
 
 #: Pass rebasing gates to those valid within pytket-dqc
-dqc_rebase = RebaseCustom(dqc_gateset, tk2_zzphase_to_crz, tk1_to_Rz_H)
+dqc_rebase = RebaseCustom(dqc_gateset, tk2_to_crz, tk1_to_rz_h)
 
 #: Defining StartingProcess and EndingProcess custom gates
 def_circ = Circuit(2)
