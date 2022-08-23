@@ -17,3 +17,5 @@ from .graph_tools import direct_from_origin  # noqa:F401
 from .circuit_analysis import (  # noqa:F401
     _cost_from_circuit,
 )
+
+from .verification import check_equivalence  # noqa:F401
