@@ -44,6 +44,10 @@ def to_pyzx(circuit: Circuit) -> zx.Graph:
     a projection (and if we use projections, we should check each of them).
     However, this is enough for our purposes to give strong evidence of
     circuit equality.
+
+    Note: Instead of initialising and projecting the aunxiliary qubit on each
+    starting/ending process, we keep the wire alive for the whole duration of
+    the circuit and only initialise and project at the two ends.
     """
 
     # To convert the circuit to a "simple" one (required by pytket-pyzx) we
