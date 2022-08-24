@@ -3,7 +3,7 @@ from pytket.passes import auto_rebase_pass
 from .circuit_analysis import is_link_qubit
 
 from pytket.extensions.pyzx import tk_to_pyzx  # type: ignore
-import pyzx.circuit as zx  # type: ignore
+import pyzx as zx  # type: ignore
 
 
 def check_equivalence(circ1: Circuit, circ2: Circuit) -> bool:
@@ -12,36 +12,39 @@ def check_equivalence(circ1: Circuit, circ2: Circuit) -> bool:
     concatenating the ZX diagram of ``circ1`` with the adjoint of the
     ZX diagram of ``circ2`` to see if the result is the identity.
 
-    Note: Since pytket-pyzx cannot deal with initial states and projections,
-    we instead leave the ancilla qubits used in EJPP processes both
-    unprepared and unmeasured and add extra wires on the other circuit as
-    necessary so that both have the same width.
+    Note: the implementation is based on the code for verify_equality from
+    https://github.com/Quantomatic/pyzx/blob/master/pyzx/circuit/__init__.py
+    altered so that it works with zx.Graph instead of zx.Circuit.
     """
-    width = max(len(circ1.qubits), len(circ2.qubits))
-    zx1 = to_pyzx(circ1, width)
-    zx2 = to_pyzx(circ2, width)
-    return zx1.verify_equality(zx2)
+    zx1 = to_pyzx(circ1)
+    zx2 = to_pyzx(circ2)
+    # Check that the number of workspace qubits match
+    if len(zx1.inputs()) != len(zx2.inputs()):
+        return False
+
+    # Compose the adjoint of zx1 with zx2 and simplify
+    g = zx1.adjoint()
+    g.compose(zx2)
+    zx.full_reduce(g)
+    # Check that the only vertices that remain in the graph are those of
+    # input and output per wire.
+    # To make sure that the g has not introduced any swaps, we check that
+    # the input and output vertices are connected in the right order
+    return g.num_vertices() == 2 * len(g.inputs()) and all(
+        g.connected(v, w) for v, w in zip(g.inputs(), g.outputs())
+    )
 
 
-def to_pyzx(circuit: Circuit, n_wires: int) -> zx.Circuit:
+def to_pyzx(circuit: Circuit) -> zx.Graph:
     """Convert a circuit to a ZX diagram in PyZX. Every starting EJPP
-    process and ending EJPP process is converted to a CX gate with control
-    on the shared qubit and target on the ancilla qubit; no initial state nor
-    projection is included: each ancilla qubit's wire exist from beginning to
-    end.
-    If ``n_wires`` is larger than the total number of qubits in the circuit,
-    the circuit is tensored by the corresponding number of indentity wires so
-    that the output circuit has the appropriate width.
+    process and ending EJPP process is converted to a CX gate with an initial
+    state 0 for starting processes and projection to 0 for ending processes.
 
-    Note: Using CX gates to represent the start/end of an EJPP process is a
-    valid simplification of the actual circuits that would be required (which
-    involve Bell pairs and classically-controlled corrections. To be precise,
-    state preparation and discarding would need to be included. Since
-    discarding is not supported by PyZX (only projection), we instead keep
-    ancilla qubits unprepared/unmeasured; this is a reliable way to check for
-    equality without checking each possible measurement projection separately.
+    Note: This is not equivalent, since what we really need is a discard not
+    a projection (and if we use projections, we should check each of them).
+    However, this is enough for our purposes to give strong evidence of
+    circuit equality.
     """
-    assert len(circuit.qubits) <= n_wires
 
     # To convert the circuit to a "simple" one (required by pytket-pyzx) we
     # need to figure out how to swap "link" qubits to the bottom so that we
@@ -55,26 +58,35 @@ def to_pyzx(circuit: Circuit, n_wires: int) -> zx.Circuit:
             workspace_qubits.append(q)
     qubit_dict = {q: n for n, q in enumerate(workspace_qubits + link_qubits)}
 
-    # Create the circuit by adding the swaps and rebasing every CustomGate
-    new_circ = Circuit(n_wires)
+    # Create the body of the circuit by rebasing every CustomGate
+    the_circ = Circuit(len(qubit_dict))
     for command in circuit.get_commands():
         qubits = [qubit_dict[q] for q in command.qubits]
 
         if command.op.type == OpType.CustomGate:
             if command.op.get_name() == "StartingProcess":
-                new_circ.CX(qubits[0], qubits[1])
+                the_circ.CX(qubits[0], qubits[1])
             elif command.op.get_name() == "EndingProcess":
-                new_circ.CX(qubits[1], qubits[0])
+                the_circ.CX(qubits[1], qubits[0])
             else:
                 raise Exception(
                     f"CustomGate {command.op.get_name()} not supported!"
                 )
-
         else:
-            new_circ.add_gate(command.op, qubits)
+            the_circ.add_gate(command.op, qubits)
 
-    # Rebase the circuit to a gateset that pytket-pyzx can handle
-    pyzx_gateset = {OpType.Rz, OpType.Rx, OpType.CX}
-    auto_rebase_pass(pyzx_gateset).apply(new_circ)
+    # Rebase body_circ to a gateset that pytket-pyzx can handle
+    pyzx_gateset = {OpType.H, OpType.Rz, OpType.Rx, OpType.CZ, OpType.CX}
+    auto_rebase_pass(pyzx_gateset).apply(the_circ)
+    zx_graph = tk_to_pyzx(the_circ).to_graph()
 
-    return tk_to_pyzx(new_circ)
+    # Add states 0 on link qubits and projections to state 0. To do so we
+    # create a string that indicates what to do per qubit; '/' is "do-nothing"
+    # '0' is "place a 0 state/effect"
+    values = "/" * len(workspace_qubits) + "0" * len(link_qubits)
+    zx_graph.apply_state(values)
+    zx_graph.apply_effect(values)
+
+    assert len(zx_graph.inputs()) == len(workspace_qubits)
+    assert len(zx_graph.outputs()) == len(workspace_qubits)
+    return zx_graph
