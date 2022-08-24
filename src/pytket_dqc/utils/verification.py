@@ -35,6 +35,9 @@ def check_equivalence(circ1: Circuit, circ2: Circuit) -> bool:
     )
 
 
+# TODO: Important!! The input to the circuit need not have link qubits.
+# TODO: Important!! The distributed circuit may have changed the ordering
+#   of the wires. This is a problem when checking for equality.
 def to_pyzx(circuit: Circuit) -> zx.Graph:
     """Convert a circuit to a ZX diagram in PyZX. Every starting EJPP
     process and ending EJPP process is converted to a CX gate with an initial
