@@ -107,7 +107,7 @@ def is_link_qubit(qubit) -> bool:
 # the qubit. Is there a better way to access this information?
 def get_server_id(qubit) -> int:
     qubit_name = str(qubit).split()
-    # ``qubit_name`` either follows either of these patterns:
+    # ``qubit_name`` follows either of these patterns:
     #     Workspace qubit: ['Server', server_id+'['+qubit_id+']']
     #     Link qubit: ['Server', server_id, 'Link', 'Edge', edge_id+'[0]']
     # Sanity check
