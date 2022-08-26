@@ -97,7 +97,7 @@ def evicted_gate_count(circ: Circuit) -> int:
 # Is there a better way to do this?
 def is_link_qubit(qubit) -> bool:
     qubit_name = str(qubit).split()
-    # ``qubit_name`` either follows either of these patterns:
+    # ``qubit_name`` follows either of these patterns:
     #     Workspace qubit: ['Server', server_id+'['+qubit_id+']']
     #     Link qubit: ['Server', server_id, 'Link', 'Edge', edge_id+'[0]']
     return len(qubit_name) > 2
