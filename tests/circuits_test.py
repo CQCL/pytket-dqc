@@ -239,12 +239,12 @@ def test_to_pytket_circ_CRz():
 
     test_circ = Circuit()
 
-    server_1 = test_circ.add_q_register("Server 1", 1)
-    server_2 = test_circ.add_q_register("Server 2", 1)
+    server_1 = test_circ.add_q_register("server_1", 1)
+    server_2 = test_circ.add_q_register("server_2", 1)
 
-    server_0_link_0 = test_circ.add_q_register("Server 0 Link Edge 0", 1)
-    server_0_link_1 = test_circ.add_q_register("Server 0 Link Edge 1", 1)
-    server_0_link_2 = test_circ.add_q_register("Server 0 Link Edge 2", 1)
+    server_0_link_0 = test_circ.add_q_register("server_0_link_edge_0", 1)
+    server_0_link_1 = test_circ.add_q_register("server_0_link_edge_1", 1)
+    server_0_link_2 = test_circ.add_q_register("server_0_link_edge_2", 1)
 
     test_circ.add_custom_gate(
         start_proc, [], [server_1[0], server_0_link_0[0]]
@@ -309,14 +309,14 @@ def test_to_pytket_circuit_detached_gate():
 
     test_circ = Circuit()
 
-    server_1 = test_circ.add_q_register("Server 1", 1)
-    server_2 = test_circ.add_q_register("Server 2", 1)
+    server_1 = test_circ.add_q_register("server_1", 1)
+    server_2 = test_circ.add_q_register("server_2", 1)
 
-    server_0_link_0 = test_circ.add_q_register("Server 0 Link Edge 0", 1)
-    server_0_link_1 = test_circ.add_q_register("Server 0 Link Edge 1", 1)
-    server_0_link_2 = test_circ.add_q_register("Server 0 Link Edge 2", 1)
+    server_0_link_0 = test_circ.add_q_register("server_0_link_edge_0", 1)
+    server_0_link_1 = test_circ.add_q_register("server_0_link_edge_1", 1)
+    server_0_link_2 = test_circ.add_q_register("server_0_link_edge_2", 1)
 
-    server_1_link_2 = test_circ.add_q_register("Server 1 Link Edge 2", 1)
+    server_1_link_2 = test_circ.add_q_register("server_1_link_edge_2", 1)
 
     test_circ.add_custom_gate(
         start_proc, [], [server_1[0], server_0_link_0[0]]
@@ -390,13 +390,13 @@ def test_to_pytket_circuit_gates_on_different_servers():
 
     test_circ = Circuit()
 
-    server_1 = test_circ.add_q_register("Server 1", 1)
-    server_2 = test_circ.add_q_register("Server 2", 1)
+    server_1 = test_circ.add_q_register("server_1", 1)
+    server_2 = test_circ.add_q_register("server_2", 1)
 
-    server_0_link_0 = test_circ.add_q_register("Server 0 Link Edge 0", 1)
-    server_0_link_1 = test_circ.add_q_register("Server 0 Link Edge 1", 1)
-    server_1_link_1 = test_circ.add_q_register("Server 1 Link Edge 1", 1)
-    server_1_link_2 = test_circ.add_q_register("Server 1 Link Edge 2", 1)
+    server_0_link_0 = test_circ.add_q_register("server_0_link_edge_0", 1)
+    server_0_link_1 = test_circ.add_q_register("server_0_link_edge_1", 1)
+    server_1_link_1 = test_circ.add_q_register("server_1_link_edge_1", 1)
+    server_1_link_2 = test_circ.add_q_register("server_1_link_edge_2", 1)
 
     test_circ.add_custom_gate(
         start_proc, [], [server_1[0], server_0_link_0[0]]
@@ -462,13 +462,13 @@ def test_to_pytket_circuit_with_branching_distribution_tree():
 
     test_circ = Circuit()
 
-    server_0 = test_circ.add_q_register("Server 0", 1)
-    server_2 = test_circ.add_q_register("Server 2", 1)
-    server_3 = test_circ.add_q_register("Server 3", 1)
+    server_0 = test_circ.add_q_register("server_0", 1)
+    server_2 = test_circ.add_q_register("server_2", 1)
+    server_3 = test_circ.add_q_register("server_3", 1)
 
-    server_1_link_0 = test_circ.add_q_register("Server 1 Link Edge 0", 1)
-    server_2_link_0 = test_circ.add_q_register("Server 2 Link Edge 0", 1)
-    server_3_link_0 = test_circ.add_q_register("Server 3 Link Edge 0", 1)
+    server_1_link_0 = test_circ.add_q_register("server_1_link_edge_0", 1)
+    server_2_link_0 = test_circ.add_q_register("server_2_link_edge_0", 1)
+    server_3_link_0 = test_circ.add_q_register("server_3_link_edge_0", 1)
 
     test_circ.add_custom_gate(
         start_proc, [], [server_0[0], server_1_link_0[0]]
@@ -529,13 +529,13 @@ def test_to_pytket_circuit_with_teleportation():
 
     test_circ = Circuit()
 
-    server_1 = test_circ.add_q_register("Server 1", 1)
-    server_2 = test_circ.add_q_register("Server 2", 1)
+    server_1 = test_circ.add_q_register("server_1", 1)
+    server_2 = test_circ.add_q_register("server_2", 1)
 
-    server_0_link_0 = test_circ.add_q_register("Server 0 Link Edge 0", 1)
-    server_0_link_2 = test_circ.add_q_register("Server 0 Link Edge 2", 1)
-    server_1_link_2 = test_circ.add_q_register("Server 1 Link Edge 2", 1)
-    server_2_link_1 = test_circ.add_q_register("Server 2 Link Edge 1", 1)
+    server_0_link_0 = test_circ.add_q_register("server_0_link_edge_0", 1)
+    server_0_link_2 = test_circ.add_q_register("server_0_link_edge_2", 1)
+    server_1_link_2 = test_circ.add_q_register("server_1_link_edge_2", 1)
+    server_2_link_1 = test_circ.add_q_register("server_2_link_edge_1", 1)
 
     test_circ.add_custom_gate(
         start_proc, [], [server_1[0], server_0_link_0[0]]
@@ -598,8 +598,8 @@ def test_to_relabeled_registers():
     circ_with_dist = dist_circ.to_relabeled_registers(placement)
 
     test_circ = Circuit()
-    server_1 = test_circ.add_q_register("Server 1", 1)
-    server_2 = test_circ.add_q_register("Server 2", 2)
+    server_1 = test_circ.add_q_register("server_1", 1)
+    server_2 = test_circ.add_q_register("server_2", 2)
     test_circ.add_gate(OpType.CU1, 1.0, [server_1[0], server_2[0]]).H(
         server_1[0]
     ).add_gate(OpType.CU1, 1.0, [server_1[0], server_2[0]])

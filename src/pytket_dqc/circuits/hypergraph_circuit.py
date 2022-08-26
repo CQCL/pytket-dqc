@@ -411,8 +411,7 @@ class HypergraphCircuit(Hypergraph):
         # Add registers to new circuit.
         for server, vertex_list in server_to_vertex_dict.items():
             server_to_register[server] = circ.add_q_register(
-                f"Server {server}", len(vertex_list)
-            )
+                f'server_{server}', len(vertex_list))
 
         # Build map from circuit qubits to server registers
         qubit_qubit_map = {}
@@ -484,8 +483,7 @@ class HypergraphCircuit(Hypergraph):
 
             # Add a register for all of the qubits assigned to this server.
             server_to_register[server] = circ.add_q_register(
-                f"Server {server}", len(qubit_vertex_list)
-            )
+                f'server_{server}', len(qubit_vertex_list))
 
             server_to_link_register[server] = {}
             # For each hyperedge, add the necessary link qubits
@@ -512,8 +510,7 @@ class HypergraphCircuit(Hypergraph):
 
                     if server in unique_server_used:
                         register = circ.add_q_register(
-                            f"Server {server} Link Edge {index}", 1
-                        )
+                            f'server_{server}_link_edge_{index}', 1)
                         server_to_link_register[server][index] = register[0]
 
         # Dictionary mapping qubit vertices in hypergraph to server qubit
