@@ -130,7 +130,7 @@ def test_ebit_memory_required():
         }
     )
     pauli_final = pauli_circ.to_pytket_circuit(placement, network)
-    # Comparing against calculationby hand
+    # Comparing against calculation by hand
     assert ebit_memory_required(pauli_final) == {0: 0, 1: 2, 2: 3}
 
     # Randomly generated circuit of type frac_CZ=0.7, depth 6 and 6 qubits
