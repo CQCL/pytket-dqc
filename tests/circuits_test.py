@@ -8,6 +8,7 @@ from pytket_dqc.circuits import (
     Hypergraph,
     Hyperedge,
     BipartiteCircuit,
+    Distribution,
 )
 
 from pytket_dqc.utils.gateset import (
@@ -598,3 +599,22 @@ def test_from_placed_circuit():
         bp_circuit = BipartiteCircuit(circuit, placement)
         test_circuit = Circuit.from_dict(packed_circuit_dict)
         assert test_circuit == bp_circuit.packed_circuit
+
+
+def test_distribution_initialisation():
+
+    circ = Circuit(3)
+    circ.CZ(0, 1).CZ(0, 2)
+    dist_circ = DistributedCircuit(circ)
+
+    hypgraph = Hypergraph()
+
+    hypgraph.add_vertices([i for i in range(5)])
+    hypgraph.add_hyperedge([0, 3])
+    hypgraph.add_hyperedge([0, 4])
+    hypgraph.add_hyperedge([1, 3])
+    hypgraph.add_hyperedge([2, 4])
+
+    placement = Placement({0: 1, 1: 2, 2: 2, 3: 0, 4: 1})
+
+    Distribution(dist_circ, hypgraph, placement)
