@@ -5,11 +5,12 @@ from pytket import OpType, Circuit, Qubit
 from pytket.circuit import Command, Unitary2qBox  # type: ignore
 from scipy.stats import unitary_group  # type: ignore
 import numpy as np
-from pytket.passes import DecomposeBoxes, auto_rebase_pass  # type: ignore
+from pytket.passes import DecomposeBoxes  # type: ignore
 import networkx as nx  # type: ignore
 import random
 from pytket_dqc.utils import (
     dqc_gateset_predicate,
+    dqc_rebase,
     _cost_from_circuit,
 )
 from pytket_dqc.utils.gateset import (
@@ -647,7 +648,7 @@ class RandomDistributedCircuit(DistributedCircuit):
 
         # Rebase to a valid gate set.
         DecomposeBoxes().apply(circ)
-        auto_rebase_pass({OpType.CZ, OpType.Rz, OpType.Rx}).apply(circ)
+        dqc_rebase.apply(circ)
 
         super().__init__(circ)
 
@@ -672,6 +673,7 @@ class CyclicDistributedCircuit(DistributedCircuit):
                 circ.CZ(qubit, qubit+1)
             circ.CZ(n_qubits-1, 0)
 
+        dqc_rebase.apply(circ)
         super().__init__(circ)
 
 
@@ -709,4 +711,5 @@ class RegularGraphDistributedCircuit(DistributedCircuit):
                 circ.Rx(random.uniform(0, 2), random.choice(list(G.nodes)))
                 circ.Rz(random.uniform(0, 2), random.choice(list(G.nodes)))
 
+        dqc_rebase.apply(circ)
         super().__init__(circ)
