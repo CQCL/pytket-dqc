@@ -8,7 +8,7 @@ from .random import Random
 import math
 
 if TYPE_CHECKING:
-    from pytket_dqc import DistributedCircuit
+    from pytket_dqc import HypergraphCircuit
     from pytket_dqc.networks import NISQNetwork
 
 
@@ -55,14 +55,14 @@ class Annealing(Distributor):
 
     def distribute(
         self,
-        dist_circ: DistributedCircuit,
+        dist_circ: HypergraphCircuit,
         network: NISQNetwork,
         **kwargs
     ) -> Placement:
         """Distribute quantum circuit using simulated annealing approach.
 
         :param dist_circ: Circuit to distribute.
-        :type dist_circ: DistributedCircuit
+        :type dist_circ: HypergraphCircuit
         :param network: Network onto which circuit is to be distributed.
         :type network: NISQNetwork
         :return: Placement of ``dist_circ`` onto ``network``.

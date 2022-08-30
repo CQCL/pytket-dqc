@@ -6,7 +6,7 @@ from pytket_dqc.utils import (
     evicted_gate_count,
 )
 from pytket import Circuit
-from pytket_dqc.circuits import DistributedCircuit
+from pytket_dqc.circuits import HypergraphCircuit
 from pytket_dqc.networks import NISQNetwork, AllToAll
 from pytket_dqc.distributors import Brute
 from pytket_dqc.placement import Placement
@@ -30,7 +30,7 @@ def test_CX_circuit():
     circ = Circuit(3).CX(0, 1).CZ(1, 2).Rx(0.3, 1).CX(1, 0)
     assert dqc_gateset_predicate.verify(circ)
 
-    dist_circ = DistributedCircuit(circ)
+    dist_circ = HypergraphCircuit(circ)
 
     network = NISQNetwork([[0, 1]], {0: [0, 1], 1: [2, 3]})
 
@@ -84,7 +84,7 @@ def test_ebit_memory_required():
     with open(
         "tests/test_circuits/2f1cc964-1518-4109-97ca-5538906a3dff.json", "r"
     ) as fp:
-        pauli_circ = DistributedCircuit(Circuit().from_dict(json.load(fp)))
+        pauli_circ = HypergraphCircuit(Circuit().from_dict(json.load(fp)))
     placement = Placement(
         {
             0: 2,
@@ -137,7 +137,7 @@ def test_ebit_memory_required():
     with open(
         "tests/test_circuits/f9f22168-8168-48ad-baed-aceb2c9aca4d.json", "r"
     ) as fp:
-        frac_CZ_circ = DistributedCircuit(Circuit().from_dict(json.load(fp)))
+        frac_CZ_circ = HypergraphCircuit(Circuit().from_dict(json.load(fp)))
     placement = Placement(
         {
             0: 1,
@@ -178,7 +178,7 @@ def test_evicted_gate_count():
     with open(
         "tests/test_circuits/2f1cc964-1518-4109-97ca-5538906a3dff.json", "r"
     ) as fp:
-        pauli_circ = DistributedCircuit(Circuit().from_dict(json.load(fp)))
+        pauli_circ = HypergraphCircuit(Circuit().from_dict(json.load(fp)))
     placement = Placement(
         {
             0: 2,
@@ -231,7 +231,7 @@ def test_evicted_gate_count():
     with open(
         "tests/test_circuits/f9f22168-8168-48ad-baed-aceb2c9aca4d.json", "r"
     ) as fp:
-        frac_CZ_circ = DistributedCircuit(Circuit().from_dict(json.load(fp)))
+        frac_CZ_circ = HypergraphCircuit(Circuit().from_dict(json.load(fp)))
     placement = Placement(
         {
             0: 1,

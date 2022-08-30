@@ -6,7 +6,7 @@ from pytket_dqc.placement import Placement
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from pytket_dqc import DistributedCircuit
+    from pytket_dqc import HypergraphCircuit
     from pytket_dqc.networks import NISQNetwork
 
 
@@ -20,7 +20,7 @@ class Brute(Distributor):
 
     def distribute(
         self,
-        dist_circ: DistributedCircuit,
+        dist_circ: HypergraphCircuit,
         network: NISQNetwork,
         **kwargs
     ) -> Placement:
@@ -28,7 +28,7 @@ class Brute(Distributor):
         and returning the one with the lowest cost.
 
         :param dist_circ: Circuit to distribute.
-        :type dist_circ: DistributedCircuit
+        :type dist_circ: HypergraphCircuit
         :param network: Network onto which ``dist_circ`` should be distributed.
         :type network: NISQNetwork
         :raises Exception: Raised if no valid placement could be found.

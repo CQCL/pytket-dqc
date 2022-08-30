@@ -5,7 +5,7 @@ from pytket_dqc.placement import Placement
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from pytket_dqc import DistributedCircuit
+    from pytket_dqc import HypergraphCircuit
     from pytket_dqc.networks import NISQNetwork
 
 
@@ -63,7 +63,7 @@ class Ordered(Distributor):
 
     def distribute(
         self,
-        dist_circ: DistributedCircuit,
+        dist_circ: HypergraphCircuit,
         network: NISQNetwork,
         **kwargs
     ) -> Placement:
@@ -71,7 +71,7 @@ class Ordered(Distributor):
         servers, in decreasing order of size, until they are full.
 
         :param dist_circ: Circuit to distribute.
-        :type dist_circ: DistributedCircuit
+        :type dist_circ: HypergraphCircuit
         :param network: Network onto which ``dist_circ`` should be distributed.
         :type network: NISQNetwork
         :return: Placement of ``dist_circ`` onto ``network``.
@@ -92,7 +92,7 @@ class Ordered(Distributor):
 
         # A list of all the vertices in the hypergraph which correspond to
         # qubits in the original circuit.
-        # TODO: Turn this into a method of DistributedCircuit as
+        # TODO: Turn this into a method of HypergraphCircuit as
         # it is used often.
         qubit_vertex_list = [
             vertex
@@ -111,7 +111,7 @@ class Ordered(Distributor):
 
         # A list of all the vertices in the hypergraph which correspond to
         # gate in the original circuit.
-        # TODO: Turn this into a method of DistributedCircuit as
+        # TODO: Turn this into a method of HypergraphCircuit as
         # it is used often.
         gate_vertex_list = [
             vertex

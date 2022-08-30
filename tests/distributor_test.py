@@ -7,7 +7,7 @@ from pytket_dqc.distributors import (
     Brute,
 )
 from pytket_dqc.distributors.annealing import acceptance_criterion
-from pytket_dqc import DistributedCircuit
+from pytket_dqc import HypergraphCircuit
 from pytket import Circuit
 from pytket_dqc.networks import NISQNetwork
 from pytket_dqc.distributors.ordered import order_reducing_size
@@ -30,7 +30,7 @@ def test_annealing_distribute():
     circ = (
         Circuit(4).CZ(0, 3).Rz(0.5, 3).CZ(1, 3).Rz(0.5, 3).CZ(2, 3).Rz(0.5, 3)
     )
-    dist_circ = DistributedCircuit(circ)
+    dist_circ = HypergraphCircuit(circ)
 
     distributor = Annealing()
 
@@ -70,7 +70,7 @@ def test_graph_initial_partitioning():
     circ = (
         Circuit(4).CZ(0, 3).Rz(0.5, 3).CZ(1, 3).Rz(0.5, 3).CZ(2, 3).Rz(0.5, 3)
     )
-    dist_circ = DistributedCircuit(circ)
+    dist_circ = HypergraphCircuit(circ)
 
     distributor = GraphPartitioning()
 
@@ -102,7 +102,7 @@ def test_graph_partitioning_refinement():
         .CZ(1, 3)
         .CZ(2, 3)
     )
-    dist_circ = DistributedCircuit(circ)
+    dist_circ = HypergraphCircuit(circ)
 
     distributor = GraphPartitioning()
     bad_placement = Placement({v: 2 for v in dist_circ.vertex_list})
@@ -139,7 +139,7 @@ def test_refinement_makes_valid():
     with open("tests/test_circuits/not_valid_circ.json", "r") as fp:
         circuit = Circuit().from_dict(json.load(fp))
 
-    dist_circ = DistributedCircuit(circuit)
+    dist_circ = HypergraphCircuit(circuit)
     distributor = GraphPartitioning()
 
     placement = distributor.distribute(dist_circ, network, seed=0)
@@ -152,19 +152,19 @@ def test_graph_partitioning_unused_qubits():
     distributor = GraphPartitioning()
 
     circ = Circuit(2)
-    dist_circ = DistributedCircuit(circ)
+    dist_circ = HypergraphCircuit(circ)
 
     placement = distributor.distribute(dist_circ, network, seed=1)
     assert placement == Placement({0: 1, 1: 0})
 
     circ = Circuit(0)
-    dist_circ = DistributedCircuit(circ)
+    dist_circ = HypergraphCircuit(circ)
 
     placement = distributor.distribute(dist_circ, network, seed=1)
     assert placement == Placement(dict())
 
     circ = Circuit(3).CZ(1, 2)
-    dist_circ = DistributedCircuit(circ)
+    dist_circ = HypergraphCircuit(circ)
 
     placement = distributor.distribute(dist_circ, network, seed=1)
     assert (
@@ -215,7 +215,7 @@ def test_order_reducing_size():
 def test_random_distributor():
 
     circ = Circuit(3).CZ(0, 2).CZ(1, 2)
-    dist_circ = DistributedCircuit(circ)
+    dist_circ = HypergraphCircuit(circ)
 
     network = NISQNetwork([[0, 1], [0, 2]], {0: [0, 1], 1: [2, 3], 2: [4]})
 
@@ -229,10 +229,10 @@ def test_random_distributor():
 def test_ordered_distributor():
 
     small_circ = Circuit(2).CZ(0, 1)
-    dist_small_circ = DistributedCircuit(small_circ)
+    dist_small_circ = HypergraphCircuit(small_circ)
 
     med_circ = Circuit(4).CZ(0, 1).CZ(1, 2).CZ(2, 3)
-    dist_med_circ = DistributedCircuit(med_circ)
+    dist_med_circ = HypergraphCircuit(med_circ)
 
     small_network = NISQNetwork([[0, 1]], {0: [0, 1], 1: [2, 3, 4]})
 
@@ -262,7 +262,7 @@ def test_brute_distribute_small_hyperedge():
     circ = (
         Circuit(4).CZ(0, 3).Rz(0.5, 3).CZ(1, 3).Rz(0.5, 3).CZ(2, 3).Rz(0.5, 3)
     )
-    dist_circ = DistributedCircuit(circ)
+    dist_circ = HypergraphCircuit(circ)
 
     distributor = Brute()
     placement = distributor.distribute(dist_circ, network)
@@ -275,11 +275,11 @@ def test_brute_distribute():
 
     small_network = NISQNetwork([[0, 1]], {0: [0, 1], 1: [2]})
     small_circ = Circuit(2).CZ(0, 1)
-    dist_small_circ = DistributedCircuit(small_circ)
+    dist_small_circ = HypergraphCircuit(small_circ)
 
     med_network = NISQNetwork([[0, 1], [0, 2]], {0: [0], 1: [1], 2: [2, 3]})
     med_circ = Circuit(4).CZ(0, 1).CZ(1, 2).CZ(2, 3)
-    dist_med_circ = DistributedCircuit(med_circ)
+    dist_med_circ = HypergraphCircuit(med_circ)
 
     distributor = Brute()
 
@@ -298,7 +298,7 @@ def test_routing_distribute():
 
     small_network = NISQNetwork([[0, 1], [0, 2]], {0: [0], 1: [1], 2: [2, 3]})
     small_circ = Circuit(4).CZ(0, 1).CZ(1, 2).CZ(2, 3)
-    dist_small_circ = DistributedCircuit(small_circ)
+    dist_small_circ = HypergraphCircuit(small_circ)
 
     distributor = Routing()
     routing_placement = distributor.distribute(dist_small_circ, small_network)
@@ -309,7 +309,7 @@ def test_routing_distribute():
 
     med_network = NISQNetwork([[0, 1]], {0: [0, 1], 1: [2, 3, 4]})
     med_circ = Circuit(5).CZ(0, 1).CZ(1, 2).CZ(0, 2).CZ(2, 3).CZ(3, 4).CZ(3, 2)
-    dist_med_circ = DistributedCircuit(med_circ)
+    dist_med_circ = HypergraphCircuit(med_circ)
 
     routing_placement = distributor.distribute(dist_med_circ, med_network)
     cost = routing_placement.cost(dist_med_circ, med_network)
@@ -323,7 +323,7 @@ def test_routing_distribute():
     med_circ_flipped = (
         Circuit(5).CZ(0, 1).CZ(1, 2).CZ(0, 2).CZ(2, 3).CZ(3, 4).CZ(2, 3)
     )
-    dist_med_circ_flipped = DistributedCircuit(med_circ_flipped)
+    dist_med_circ_flipped = HypergraphCircuit(med_circ_flipped)
 
     routing_placement = distributor.distribute(
         dist_med_circ_flipped, med_network
@@ -354,7 +354,7 @@ def test_q_control_box_circuits():
     circ.add_qcontrolbox(cv, [0, 1])
     circ.add_qcontrolbox(cv, [0, 1])
 
-    dist_circ = DistributedCircuit(circ)
+    dist_circ = HypergraphCircuit(circ)
 
     distributor = Brute()
 
@@ -379,7 +379,7 @@ def test_CRz_circuits():
     circ.CRz(0.5, 1, 0)
     circ.CRz(0.2, 0, 1)
 
-    dist_circ = DistributedCircuit(circ)
+    dist_circ = HypergraphCircuit(circ)
 
     distributor = Brute()
 

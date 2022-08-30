@@ -11,7 +11,7 @@ from pytket import Circuit
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from pytket_dqc import DistributedCircuit
+    from pytket_dqc import HypergraphCircuit
     from pytket_dqc.networks import NISQNetwork
 
 
@@ -24,14 +24,14 @@ class GraphPartitioning(Distributor):
     """
 
     def distribute(
-        self, dist_circ: DistributedCircuit, network: NISQNetwork, **kwargs
+        self, dist_circ: HypergraphCircuit, network: NISQNetwork, **kwargs
     ) -> Placement:
         """Distribute ``dist_circ`` onto ``network``. The initial placement
         is found by KaHyPar using the connectivity metric, then it is
         refined to reduce the cost taking into account the network topology.
 
         :param dist_circ: Circuit to distribute.
-        :type dist_circ: DistributedCircuit
+        :type dist_circ: HypergraphCircuit
         :param network: Network onto which ``dist_circ`` should be placed.
         :type network: NISQNetwork
 
@@ -85,7 +85,7 @@ class GraphPartitioning(Distributor):
     def refine(
         self,
         placement: Placement,
-        dist_circ: DistributedCircuit,
+        dist_circ: HypergraphCircuit,
         network: NISQNetwork,
         **kwargs,
     ) -> Placement:
@@ -111,7 +111,7 @@ class GraphPartitioning(Distributor):
         :param placement: Initial placement.
         :type placement: Placement
         :param dist_circ: Circuit to distribute.
-        :type dist_circ: DistributedCircuit
+        :type dist_circ: HypergraphCircuit
         :param network: Network onto which ``dist_circ`` should be placed.
         :type network: NISQNetwork
 
@@ -283,7 +283,7 @@ class GraphPartitioning(Distributor):
 
     def initial_distribute(
         self,
-        dist_circ: DistributedCircuit,
+        dist_circ: HypergraphCircuit,
         network: NISQNetwork,
         ini_path: str,
         **kwargs,
@@ -294,7 +294,7 @@ class GraphPartitioning(Distributor):
         However, it does take into account server sizes.
 
         :param dist_circ: Circuit to distribute.
-        :type dist_circ: DistributedCircuit
+        :type dist_circ: HypergraphCircuit
         :param network: Network onto which ``dist_circ`` should be placed.
         :type network: NISQNetwork
         :param ini_path: Path to kahypar ini file.

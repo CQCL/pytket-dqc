@@ -3,8 +3,8 @@ import pytest
 from pytket import Circuit
 from pytket_dqc.placement import Placement
 from pytket_dqc.circuits import (
-    RegularGraphDistributedCircuit,
-    DistributedCircuit,
+    RegularGraphHypergraphCircuit,
+    HypergraphCircuit,
     Hypergraph,
     Hyperedge,
     BipartiteCircuit,
@@ -36,7 +36,7 @@ def test_hypergraph_is_valid():
 def test_distributed_circuit():
 
     circ = Circuit(2).CZ(0, 1)
-    dist_circ = DistributedCircuit(circ)
+    dist_circ = HypergraphCircuit(circ)
 
     assert dist_circ.circuit == circ
 
@@ -48,7 +48,7 @@ def test_distributed_circuit():
 
 def test_regular_graph_distributed_circuit():
 
-    dist_circ = RegularGraphDistributedCircuit(3, 2, 1, seed=0)
+    dist_circ = RegularGraphHypergraphCircuit(3, 2, 1, seed=0)
     network = NISQNetwork([[0, 1], [0, 2]], {0: [0, 1], 1: [2, 3, 4], 2: [5]})
     distributor = Brute()
     placement = distributor.distribute(dist_circ, network)
@@ -76,10 +76,10 @@ def test_hypergraph():
 def test_hypergraph_is_placement():
 
     small_circ = Circuit(2).CZ(0, 1)
-    dist_small_circ = DistributedCircuit(small_circ)
+    dist_small_circ = HypergraphCircuit(small_circ)
 
     med_circ = Circuit(4).CZ(0, 1).CZ(1, 2).CZ(2, 3)
-    dist_med_circ = DistributedCircuit(med_circ)
+    dist_med_circ = HypergraphCircuit(med_circ)
 
     placement_one = Placement({0: 1, 1: 1, 2: 1, 3: 0, 4: 1, 5: 1, 6: 1})
     assert dist_med_circ.is_placement(placement_one)
@@ -110,7 +110,7 @@ def test_CRz_circuit():
     circ = Circuit(2)
     circ.CRz(0.3, 1, 0)
 
-    dist_circ = DistributedCircuit(circ)
+    dist_circ = HypergraphCircuit(circ)
 
     assert dist_circ.vertex_list == [0, 2, 1]
     assert dist_circ.hyperedge_list == [
@@ -124,7 +124,7 @@ def test_CRz_circuit():
     circ.Rz(0.3, 1)
     circ.CZ(1, 0)
 
-    dist_circ = DistributedCircuit(circ)
+    dist_circ = HypergraphCircuit(circ)
 
     assert dist_circ.hyperedge_list == [
         Hyperedge([0, 2, 3, 4], weight=1),
@@ -142,7 +142,7 @@ def test_CRz_circuit():
     circ.CRz(0.3, 1, 0)
     circ.CRz(0.3, 0, 1)
 
-    dist_circ = DistributedCircuit(circ)
+    dist_circ = HypergraphCircuit(circ)
 
     assert dist_circ.hyperedge_list == [
         Hyperedge([0, 3, 4], weight=1),
@@ -162,7 +162,7 @@ def test_q_control_box_circuits():
     circ = Circuit(2)
     circ.add_qcontrolbox(cv, [1, 0])
 
-    dist_circ = DistributedCircuit(circ)
+    dist_circ = HypergraphCircuit(circ)
 
     assert dist_circ.vertex_list == [0, 2, 1]
     assert dist_circ.hyperedge_list == [
@@ -176,7 +176,7 @@ def test_q_control_box_circuits():
     circ.Rz(0.3, 1)
     circ.CZ(1, 0)
 
-    dist_circ = DistributedCircuit(circ)
+    dist_circ = HypergraphCircuit(circ)
 
     assert dist_circ.hyperedge_list == [
         Hyperedge([0, 2], weight=1),
@@ -196,7 +196,7 @@ def test_q_control_box_circuits():
     circ.add_qcontrolbox(cv, [0, 1])
     circ.add_qcontrolbox(cv, [0, 1])
 
-    dist_circ = DistributedCircuit(circ)
+    dist_circ = HypergraphCircuit(circ)
 
     assert dist_circ.hyperedge_list == [
         Hyperedge([0, 2, 3], weight=1),
@@ -217,7 +217,7 @@ def test_to_pytket_circ_CRz():
     network = NISQNetwork([[0, 1], [1, 2], [0, 2]], {0: [0], 1: [1], 2: [2]})
 
     circ = Circuit(2).CRz(0.3, 0, 1).Rx(0.3, 0).CZ(0, 1).CRz(0.3, 1, 0)
-    dist_circ = DistributedCircuit(circ)
+    dist_circ = HypergraphCircuit(circ)
 
     placement = Placement({0: 1, 1: 2, 2: 0, 3: 0, 4: 0})
 
@@ -277,7 +277,7 @@ def test_to_pytket_circuit_detached_gate():
     network = NISQNetwork([[0, 1], [1, 2]], {0: [0], 1: [1], 2: [2]})
 
     circ = Circuit(2).CZ(0, 1).Rx(0.3, 0).CZ(0, 1)
-    dist_circ = DistributedCircuit(circ)
+    dist_circ = HypergraphCircuit(circ)
 
     placement = Placement({0: 1, 1: 2, 2: 0, 3: 0})
 
@@ -349,7 +349,7 @@ def test_to_pytket_circuit_gates_on_different_servers():
     network = NISQNetwork([[0, 1], [1, 2]], {0: [0], 1: [1], 2: [2]})
 
     circ = Circuit(2).CZ(0, 1).Rx(0.3, 1).CZ(0, 1)
-    dist_circ = DistributedCircuit(circ)
+    dist_circ = HypergraphCircuit(circ)
 
     placement = Placement({0: 1, 1: 2, 2: 0, 3: 1})
 
@@ -418,7 +418,7 @@ def test_to_pytket_circuit_with_branching_distribution_tree():
     )
 
     two_CZ_circ = Circuit(3).CZ(0, 1).CZ(0, 2)
-    dist_two_CZ_circ = DistributedCircuit(two_CZ_circ)
+    dist_two_CZ_circ = HypergraphCircuit(two_CZ_circ)
 
     placement_two = Placement({0: 0, 1: 2, 2: 3, 3: 2, 4: 3})
     circ_with_dist = dist_two_CZ_circ.to_pytket_circuit(placement_two, network)
@@ -483,7 +483,7 @@ def test_to_pytket_circuit_with_teleportation():
     )
 
     circ = Circuit(2).CZ(0, 1).Rx(0.3, 1).CX(1, 0)
-    dist_circ = DistributedCircuit(circ)
+    dist_circ = HypergraphCircuit(circ)
 
     placement = Placement({0: 1, 1: 2, 2: 0, 3: 2})
     assert dist_circ.is_placement(placement)
@@ -549,7 +549,7 @@ def test_to_relabeled_registers():
 
     circ = Circuit(3)
     circ.CZ(0, 1).Rx(0.3, 0).CZ(0, 1)
-    dist_circ = DistributedCircuit(circ)
+    dist_circ = HypergraphCircuit(circ)
 
     placement = Placement({0: 1, 1: 2, 2: 2, 3: 0, 4: 1})
     assert dist_circ.is_placement(placement)
@@ -594,7 +594,7 @@ def test_from_placed_circuit():
         circuit = Circuit.from_dict(circuit_dict)
         network = NISQNetwork(network_tuple[0], network_tuple[1])
 
-        dist_circ = DistributedCircuit(circuit)
+        dist_circ = HypergraphCircuit(circuit)
         placement = distributor.distribute(dist_circ, network, seed=seed)
         bp_circuit = BipartiteCircuit(circuit, placement)
         test_circuit = Circuit.from_dict(packed_circuit_dict)
@@ -605,7 +605,7 @@ def test_distribution_initialisation():
 
     circ = Circuit(3)
     circ.CZ(0, 1).CZ(0, 2)
-    dist_circ = DistributedCircuit(circ)
+    dist_circ = HypergraphCircuit(circ)
 
     hypgraph = Hypergraph()
 

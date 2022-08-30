@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from pytket_dqc.placement import Placement
     from pytket_dqc.networks import NISQNetwork
-    from pytket_dqc.circuits import DistributedCircuit
+    from pytket_dqc.circuits import HypergraphCircuit
 
 
 class Distributor(ABC):
@@ -21,6 +21,6 @@ class Distributor(ABC):
     # TODO: Correct type here to be any subclass of ServerNetwork
     @abstractmethod
     def distribute(
-        self, dist_circ: DistributedCircuit, network: NISQNetwork, **kwargs
+        self, dist_circ: HypergraphCircuit, network: NISQNetwork, **kwargs
     ) -> Placement:
         pass

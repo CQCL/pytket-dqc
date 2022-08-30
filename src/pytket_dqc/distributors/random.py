@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 import random
 
 if TYPE_CHECKING:
-    from pytket_dqc import DistributedCircuit
+    from pytket_dqc import HypergraphCircuit
     from pytket_dqc.networks import NISQNetwork
 
 
@@ -20,7 +20,7 @@ class Random(Distributor):
 
     def distribute(
         self,
-        dist_circ: DistributedCircuit,
+        dist_circ: HypergraphCircuit,
         network: NISQNetwork,
         **kwargs
     ) -> Placement:
@@ -30,7 +30,7 @@ class Random(Distributor):
         without restriction.
 
         :param dist_circ: Circuit to distribute.
-        :type dist_circ: DistributedCircuit
+        :type dist_circ: HypergraphCircuit
         :param network: Network onto which ``dist_circ`` should be distributed.
         :type network: NISQNetwork
         :return: Placement of ``dist_circ`` onto ``network``.

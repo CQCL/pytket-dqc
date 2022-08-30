@@ -1,8 +1,8 @@
-from .distributed_circuit import (  # noqa:F401
-    DistributedCircuit,
-    RandomDistributedCircuit,
-    CyclicDistributedCircuit,
-    RegularGraphDistributedCircuit,
+from .hypergraph_circuit import (  # noqa:F401
+    HypergraphCircuit,
+    RandomHypergraphCircuit,
+    CyclicHypergraphCircuit,
+    RegularGraphHypergraphCircuit,
 )
 from .hypergraph import Hypergraph, Hyperedge  # noqa:F401
 
