@@ -8,7 +8,7 @@ from pytket_dqc.utils import (
 from pytket import Circuit
 from pytket_dqc.circuits import HypergraphCircuit
 from pytket_dqc.networks import NISQNetwork, AllToAll
-from pytket_dqc.distributors import Brute
+from pytket_dqc.allocators import Brute
 from pytket_dqc.placement import Placement
 import networkx as nx  # type: ignore
 from sympy import Symbol  # type: ignore
@@ -34,8 +34,8 @@ def test_CX_circuit():
 
     network = NISQNetwork([[0, 1]], {0: [0, 1], 1: [2, 3]})
 
-    distributor = Brute()
-    placement = distributor.distribute(dist_circ, network)
+    alloc = Brute()
+    placement = alloc.allocate(dist_circ, network)
 
     assert placement == Placement({0: 0, 3: 0, 5: 0, 1: 0, 4: 0, 2: 1})
     assert placement.cost(dist_circ, network) == 1

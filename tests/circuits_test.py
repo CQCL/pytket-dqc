@@ -16,7 +16,7 @@ from pytket_dqc.utils.gateset import (
     end_proc,
     telep_proc,
 )
-from pytket_dqc.distributors import Brute, Random
+from pytket_dqc.allocators import Brute, Random
 from pytket_dqc.networks import NISQNetwork
 from pytket.circuit import QControlBox, Op, OpType  # type: ignore
 
@@ -50,8 +50,8 @@ def test_regular_graph_distributed_circuit():
 
     dist_circ = RegularGraphHypergraphCircuit(3, 2, 1, seed=0)
     network = NISQNetwork([[0, 1], [0, 2]], {0: [0, 1], 1: [2, 3, 4], 2: [5]})
-    distributor = Brute()
-    placement = distributor.distribute(dist_circ, network)
+    alloc = Brute()
+    placement = alloc.allocate(dist_circ, network)
     cost = placement.cost(dist_circ, network)
 
     assert cost == 0
@@ -574,7 +574,7 @@ def test_from_placed_circuit():
     example Jupyter Notebook to be correct.
     """
     seed = 27
-    distributor = Random()
+    alloc = Random()
 
     for i in range(6):
         with open(
@@ -595,7 +595,7 @@ def test_from_placed_circuit():
         network = NISQNetwork(network_tuple[0], network_tuple[1])
 
         dist_circ = HypergraphCircuit(circuit)
-        placement = distributor.distribute(dist_circ, network, seed=seed)
+        placement = alloc.allocate(dist_circ, network, seed=seed)
         bp_circuit = BipartiteCircuit(circuit, placement)
         test_circuit = Circuit.from_dict(packed_circuit_dict)
         assert test_circuit == bp_circuit.packed_circuit
