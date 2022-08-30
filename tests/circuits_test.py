@@ -32,7 +32,7 @@ def test_hypergraph_is_valid():
 # TODO: Include vertex type information in this test
 def test_distributed_circuit():
 
-    circ = Circuit(2).CZ(0, 1)
+    circ = Circuit(2).CRz(0.3, 0, 1)
     dist_circ = DistributedCircuit(circ)
 
     assert dist_circ.circuit == circ
@@ -70,10 +70,10 @@ def test_hypergraph():
 
 def test_hypergraph_is_placement():
 
-    small_circ = Circuit(2).CZ(0, 1)
+    small_circ = Circuit(2).CRz(0.0, 0, 1)
     dist_small_circ = DistributedCircuit(small_circ)
 
-    med_circ = Circuit(4).CZ(0, 1).CZ(1, 2).CZ(2, 3)
+    med_circ = Circuit(4).CRz(0.0, 0, 1).CRz(0.0, 1, 2).CRz(0.0, 2, 3)
     dist_med_circ = DistributedCircuit(med_circ)
 
     placement_one = Placement({0: 1, 1: 1, 2: 1, 3: 0, 4: 1, 5: 1, 6: 1})
@@ -100,7 +100,6 @@ def test_hypergrpah_kahypar_hyperedges():
     assert hyperedges == [3, 6, 2, 3, 1, 4, 5, 6]
 
 
-@pytest.mark.skip(reason="Support for CRz gates temporarily disabled")
 def test_CRz_circuit():
     circ = Circuit(2)
     circ.CRz(0.3, 1, 0)
@@ -112,10 +111,10 @@ def test_CRz_circuit():
         Hyperedge([0, 2], weight=1), Hyperedge([1, 2], weight=1)]
 
     circ = Circuit(2)
-    circ.CZ(0, 1)
+    circ.CRz(0.0, 0, 1)
     circ.CRz(0.3, 1, 0)
     circ.Rz(0.3, 1)
-    circ.CZ(1, 0)
+    circ.CRz(0.0, 1, 0)
 
     dist_circ = DistributedCircuit(circ)
 
@@ -162,10 +161,10 @@ def test_q_control_box_circuits():
         Hyperedge([0, 2], weight=2), Hyperedge([1, 2], weight=1)]
 
     circ = Circuit(2)
-    circ.CZ(0, 1)
+    circ.CRz(0.0, 0, 1)
     circ.add_qcontrolbox(cv, [1, 0])
     circ.Rz(0.3, 1)
-    circ.CZ(1, 0)
+    circ.CRz(0.0, 1, 0)
 
     dist_circ = DistributedCircuit(circ)
 
@@ -202,7 +201,6 @@ def test_q_control_box_circuits():
     assert dist_circ.vertex_list == [0, 2, 3, 4, 5, 6, 1]
 
 
-@pytest.mark.skip(reason="Support for CRz gates temporarily disabled")
 def test_to_pytket_circ_CRz():
 
     network = NISQNetwork(
@@ -210,7 +208,7 @@ def test_to_pytket_circ_CRz():
         {0: [0], 1: [1], 2: [2]}
     )
 
-    circ = Circuit(2).CRz(0.3, 0, 1).Rx(0.3, 0).CZ(0, 1).CRz(0.3, 1, 0)
+    circ = Circuit(2).CRz(0.3, 0, 1).Rx(0.3, 0).CRz(0.0, 0, 1).CRz(0.3, 1, 0)
     dist_circ = DistributedCircuit(circ)
 
     placement = Placement({0: 1, 1: 2, 2: 0, 3: 0, 4: 0})
@@ -237,7 +235,7 @@ def test_to_pytket_circ_CRz():
     test_circ.Rx(0.3, server_1[0])
     test_circ.add_custom_gate(
         start_proc, [], [server_1[0], server_0_link_1[0]])
-    test_circ.CZ(server_0_link_1[0], server_0_link_2[0])
+    test_circ.CRz(0.0, server_0_link_1[0], server_0_link_2[0])
     test_circ.CRz(0.3, server_0_link_2[0], server_0_link_1[0])
     test_circ.add_custom_gate(end_proc, [], [server_0_link_1[0], server_1[0]])
     test_circ.add_custom_gate(end_proc, [], [server_0_link_2[0], server_2[0]])
@@ -266,7 +264,7 @@ def test_to_pytket_circuit_detached_gate():
         {0: [0], 1: [1], 2: [2]}
     )
 
-    circ = Circuit(2).CZ(0, 1).Rx(0.3, 0).CZ(0, 1)
+    circ = Circuit(2).CRz(0.0, 0, 1).Rx(0.3, 0).CRz(0.0, 0, 1)
     dist_circ = DistributedCircuit(circ)
 
     placement = Placement({0: 1, 1: 2, 2: 0, 3: 0})
@@ -292,12 +290,12 @@ def test_to_pytket_circuit_detached_gate():
         start_proc, [], [server_2[0], server_1_link_2[0]])
     test_circ.add_custom_gate(
         start_proc, [], [server_1_link_2[0], server_0_link_2[0]])
-    test_circ.CZ(server_0_link_0[0], server_0_link_2[0])
+    test_circ.CRz(0.0, server_0_link_0[0], server_0_link_2[0])
     test_circ.add_custom_gate(end_proc, [], [server_0_link_0[0], server_1[0]])
     test_circ.Rx(0.3, server_1[0])
     test_circ.add_custom_gate(
         start_proc, [], [server_1[0], server_0_link_1[0]])
-    test_circ.CZ(server_0_link_1[0], server_0_link_2[0])
+    test_circ.CRz(0.0, server_0_link_1[0], server_0_link_2[0])
     test_circ.add_custom_gate(end_proc, [], [server_0_link_1[0], server_1[0]])
     test_circ.add_custom_gate(
         end_proc, [], [server_0_link_2[0], server_1_link_2[0]])
@@ -332,7 +330,7 @@ def test_to_pytket_circuit_gates_on_different_servers():
         {0: [0], 1: [1], 2: [2]}
     )
 
-    circ = Circuit(2).CZ(0, 1).Rx(0.3, 1).CZ(0, 1)
+    circ = Circuit(2).CRz(0.0, 0, 1).Rx(0.3, 1).CRz(0.0, 0, 1)
     dist_circ = DistributedCircuit(circ)
 
     placement = Placement({0: 1, 1: 2, 2: 0, 3: 1})
@@ -357,14 +355,14 @@ def test_to_pytket_circuit_gates_on_different_servers():
         start_proc, [], [server_2[0], server_1_link_1[0]])
     test_circ.add_custom_gate(
         start_proc, [], [server_1_link_1[0], server_0_link_1[0]])
-    test_circ.CZ(server_0_link_0[0], server_0_link_1[0])
+    test_circ.CRz(0.0, server_0_link_0[0], server_0_link_1[0])
     test_circ.add_custom_gate(
         end_proc, [], [server_0_link_1[0], server_1_link_1[0]])
     test_circ.add_custom_gate(end_proc, [], [server_1_link_1[0], server_2[0]])
     test_circ.Rx(0.3, server_2[0])
     test_circ.add_custom_gate(
         start_proc, [], [server_2[0], server_1_link_2[0]])
-    test_circ.CZ(server_1[0], server_1_link_2[0])
+    test_circ.CRz(0.0, server_1[0], server_1_link_2[0])
     test_circ.add_custom_gate(end_proc, [], [server_0_link_0[0], server_1[0]])
     test_circ.add_custom_gate(end_proc, [], [server_1_link_2[0], server_2[0]])
 
@@ -392,7 +390,7 @@ def test_to_pytket_circuit_with_branching_distribution_tree():
         {0: [0], 1: [1], 2: [2], 3: [3], 4: [4]}
     )
 
-    two_CZ_circ = Circuit(3).CZ(0, 1).CZ(0, 2)
+    two_CZ_circ = Circuit(3).CRz(0.0, 0, 1).CRz(0.0, 0, 2)
     dist_two_CZ_circ = DistributedCircuit(two_CZ_circ)
 
     placement_two = Placement({0: 0, 1: 2, 2: 3, 3: 2, 4: 3})
@@ -415,8 +413,8 @@ def test_to_pytket_circuit_with_branching_distribution_tree():
     test_circ.add_custom_gate(
         start_proc, [], [server_1_link_0[0], server_3_link_0[0]])
 
-    test_circ.CZ(server_2_link_0[0], server_2[0])
-    test_circ.CZ(server_3_link_0[0], server_3[0])
+    test_circ.CRz(0.0, server_2_link_0[0], server_2[0])
+    test_circ.CRz(0.0, server_3_link_0[0], server_3[0])
 
     test_circ.add_custom_gate(
         end_proc, [], [server_3_link_0[0], server_1_link_0[0]])
@@ -450,7 +448,7 @@ def test_to_pytket_circuit_with_teleportation():
         {0: [0], 1: [1], 2: [2], 3: [3]}
     )
 
-    circ = Circuit(2).CZ(0, 1).Rx(0.3, 1).CX(1, 0)
+    circ = Circuit(2).CRz(0.0, 0, 1).Rx(0.3, 1).CX(1, 0)
     dist_circ = DistributedCircuit(circ)
 
     placement = Placement({0: 1, 1: 2, 2: 0, 3: 2})
@@ -474,7 +472,7 @@ def test_to_pytket_circuit_with_teleportation():
         start_proc, [], [server_2[0], server_1_link_2[0]])
     test_circ.add_custom_gate(
         start_proc, [], [server_1_link_2[0], server_0_link_2[0]])
-    test_circ.CZ(server_0_link_0[0], server_0_link_2[0])
+    test_circ.CRz(0.0, server_0_link_0[0], server_0_link_2[0])
     test_circ.add_custom_gate(end_proc, [], [server_0_link_0[0], server_1[0]])
     test_circ.add_custom_gate(
         end_proc, [], [server_0_link_2[0], server_1_link_2[0]])
@@ -506,7 +504,7 @@ def test_to_pytket_circuit_with_teleportation():
 def test_to_relabeled_registers():
 
     circ = Circuit(3)
-    circ.CZ(0, 1).Rx(0.3, 0).CZ(0, 1)
+    circ.CRz(0.0, 0, 1).Rx(0.3, 0).CRz(0.0, 0, 1)
     dist_circ = DistributedCircuit(circ)
 
     placement = Placement({0: 1, 1: 2, 2: 2, 3: 0, 4: 1})
@@ -517,7 +515,7 @@ def test_to_relabeled_registers():
     test_circ = Circuit()
     server_1 = test_circ.add_q_register('Server 1', 1)
     server_2 = test_circ.add_q_register('Server 2', 2)
-    test_circ.CZ(server_1[0], server_2[0]).Rx(
-        0.3, server_1[0]).CZ(server_1[0], server_2[0])
+    test_circ.CRz(0.0, server_1[0], server_2[0]).Rx(
+        0.3, server_1[0]).CRz(0.0, server_1[0], server_2[0])
 
     assert circ_with_dist == test_circ
