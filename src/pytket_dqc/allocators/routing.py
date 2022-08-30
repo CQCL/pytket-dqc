@@ -8,6 +8,7 @@ from pytket.passes import (  # type:ignore
 )
 from pytket.passes import auto_rebase_pass
 from pytket_dqc.placement import Placement
+from pytket_dqc.circuits.distribution import Distribution
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -29,7 +30,7 @@ class Routing(Allocator):
         dist_circ: HypergraphCircuit,
         network: NISQNetwork,
         **kwargs
-    ) -> Placement:
+    ) -> Distribution:
         """Distribute quantum circuits using routing tools available in
         `tket <https://cqcl.github.io/tket/pytket/api/routing.html>`_. Note
         that this allocator will alter the initial circuit.
@@ -38,8 +39,8 @@ class Routing(Allocator):
         :type dist_circ: HypergraphCircuit
         :param network: Network onto which ``dist_circ`` should be distributed.
         :type network: NISQNetwork
-        :return: Placement of ``dist_circ`` onto ``network``.
-        :rtype: Placement
+        :return: Distribution of ``dist_circ`` onto ``network``.
+        :rtype: Distribution
         """
 
         if not network.can_implement(dist_circ):
@@ -92,4 +93,4 @@ class Routing(Allocator):
 
         placement = Placement(placement_dict)
         assert placement.is_valid(dist_circ, network)
-        return placement
+        return Distribution(dist_circ, dist_circ, placement)

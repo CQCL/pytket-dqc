@@ -3,6 +3,7 @@ from __future__ import annotations
 from pytket_dqc.allocators import Allocator
 import itertools
 from pytket_dqc.placement import Placement
+from pytket_dqc.circuits.distribution import Distribution
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -23,7 +24,7 @@ class Brute(Allocator):
         dist_circ: HypergraphCircuit,
         network: NISQNetwork,
         **kwargs
-    ) -> Placement:
+    ) -> Distribution:
         """Distribute quantum circuit by looking at all possible placements
         and returning the one with the lowest cost.
 
@@ -32,8 +33,8 @@ class Brute(Allocator):
         :param network: Network onto which ``dist_circ`` should be distributed.
         :type network: NISQNetwork
         :raises Exception: Raised if no valid placement could be found.
-        :return: Placement of ``dist_circ`` onto ``network``.
-        :rtype: Placement
+        :return: Distribution of ``dist_circ`` onto ``network``.
+        :rtype: Distribution
         """
 
         if not network.can_implement(dist_circ):
@@ -91,4 +92,4 @@ class Brute(Allocator):
                 break
 
         assert minimum_cost_placement.is_valid(dist_circ, network)
-        return minimum_cost_placement
+        return Distribution(dist_circ, dist_circ, minimum_cost_placement)

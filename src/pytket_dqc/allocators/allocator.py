@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from pytket_dqc.placement import Placement
+    from pytket_dqc.circuits.distribution import Distribution
     from pytket_dqc.networks import NISQNetwork
     from pytket_dqc.circuits import HypergraphCircuit
 
@@ -22,5 +22,5 @@ class Allocator(ABC):
     @abstractmethod
     def allocate(
         self, dist_circ: HypergraphCircuit, network: NISQNetwork, **kwargs
-    ) -> Placement:
+    ) -> Distribution:
         pass

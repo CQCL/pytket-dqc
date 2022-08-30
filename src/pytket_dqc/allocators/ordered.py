@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pytket_dqc.allocators import Allocator
 from pytket_dqc.placement import Placement
+from pytket_dqc.circuits.distribution import Distribution
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -66,7 +67,7 @@ class Ordered(Allocator):
         dist_circ: HypergraphCircuit,
         network: NISQNetwork,
         **kwargs
-    ) -> Placement:
+    ) -> Distribution:
         """Distribute ``dist_circ`` onto ``network`` by placing quibts onto
         servers, in decreasing order of size, until they are full.
 
@@ -74,8 +75,8 @@ class Ordered(Allocator):
         :type dist_circ: HypergraphCircuit
         :param network: Network onto which ``dist_circ`` should be distributed.
         :type network: NISQNetwork
-        :return: Placement of ``dist_circ`` onto ``network``.
-        :rtype: Placement
+        :return: Distribution of ``dist_circ`` onto ``network``.
+        :rtype: Distribution
         """
 
         if not network.can_implement(dist_circ):
@@ -130,4 +131,4 @@ class Ordered(Allocator):
 
         assert placement.is_valid(dist_circ, network)
 
-        return placement
+        return Distribution(dist_circ, dist_circ, placement)

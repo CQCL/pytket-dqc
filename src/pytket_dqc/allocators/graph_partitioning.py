@@ -4,6 +4,7 @@ import random
 import kahypar as kahypar  # type:ignore
 from pytket_dqc.allocators import Allocator, GainManager
 from pytket_dqc.placement import Placement
+from pytket_dqc.circuits.distribution import Distribution
 import importlib_resources
 from pytket import Circuit
 
@@ -25,8 +26,8 @@ class GraphPartitioning(Allocator):
 
     def allocate(
         self, dist_circ: HypergraphCircuit, network: NISQNetwork, **kwargs
-    ) -> Placement:
-        """Distribute ``dist_circ`` onto ``network``. The initial placement
+    ) -> Distribution:
+        """Distribute ``dist_circ`` onto ``network``. The initial distribution
         is found by KaHyPar using the connectivity metric, then it is
         refined to reduce the cost taking into account the network topology.
 
@@ -44,8 +45,8 @@ class GraphPartitioning(Allocator):
         :key cache_limit: The maximum size of the set of servers whose cost is
             stored in cache; see GainManager. Default value is 5.
 
-        :return: Placement of ``dist_circ`` onto ``network``.
-        :rtype: Placement
+        :return: Distribution of ``dist_circ`` onto ``network``.
+        :rtype: Distribution
         """
 
         if not network.can_implement(dist_circ):
@@ -80,7 +81,7 @@ class GraphPartitioning(Allocator):
         )
 
         assert placement.is_valid(dist_circ, network)
-        return placement
+        return Distribution(dist_circ, dist_circ, placement)
 
     def refine(
         self,
