@@ -1,4 +1,3 @@
-import numpy as np
 from pytket.predicates import (  # type: ignore
     GateSetPredicate,
     NoSymbolsPredicate,
@@ -21,7 +20,7 @@ dqc_1_qubit = {
 dqc_2_qubit = {
     OpType.CRz,
 }
-dqc_gateset = {OpType.Measure}.union(dqc_1_qubit).union(dqc_2_qubit)
+dqc_gateset = dqc_1_qubit.union(dqc_2_qubit)
 
 
 def check_function(circ):
