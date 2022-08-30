@@ -3,7 +3,7 @@ from pytket_dqc.allocators import (
     Random,
     Ordered,
     Routing,
-    GraphPartitioning,
+    HypergraphPartitioning,
     Brute,
 )
 from pytket_dqc.allocators.annealing import acceptance_criterion
@@ -76,7 +76,7 @@ def test_graph_initial_partitioning():
     )
     dist_circ = HypergraphCircuit(circ)
 
-    alloc = GraphPartitioning()
+    alloc = HypergraphPartitioning()
 
     # num_rounds = 0 so that there are no refinement rounds
     initial_distribution = alloc.allocate(
@@ -108,7 +108,7 @@ def test_graph_partitioning_refinement():
     )
     dist_circ = HypergraphCircuit(circ)
 
-    alloc = GraphPartitioning()
+    alloc = HypergraphPartitioning()
     bad_placement = Placement({v: 2 for v in dist_circ.vertex_list})
     assert not bad_placement.is_valid(dist_circ, network)
 
@@ -144,7 +144,7 @@ def test_refinement_makes_valid():
         circuit = Circuit().from_dict(json.load(fp))
 
     dist_circ = HypergraphCircuit(circuit)
-    alloc = GraphPartitioning()
+    alloc = HypergraphPartitioning()
 
     placement = alloc.allocate(dist_circ, network, seed=0)
     assert placement.is_valid(dist_circ, network)
@@ -153,7 +153,7 @@ def test_refinement_makes_valid():
 def test_graph_partitioning_unused_qubits():
 
     network = NISQNetwork([[0, 1], [0, 2]], {0: [0], 1: [1, 2], 2: [3, 4]})
-    alloc = GraphPartitioning()
+    alloc = HypergraphPartitioning()
 
     circ = Circuit(2)
     dist_circ = HypergraphCircuit(circ)
