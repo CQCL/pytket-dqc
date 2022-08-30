@@ -311,7 +311,6 @@ def test_brute_distribute():
     assert placement_med.cost(dist_med_circ, med_network) == 2
 
 
-@pytest.mark.skip(reason="This test needs to be fixed")
 def test_routing_distribute():
 
     small_network = NISQNetwork([[0, 1], [0, 2]], {0: [0], 1: [1], 2: [2, 3]})

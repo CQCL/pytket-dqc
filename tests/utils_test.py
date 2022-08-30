@@ -84,7 +84,9 @@ def test_ebit_memory_required():
     with open(
         "tests/test_circuits/2f1cc964-1518-4109-97ca-5538906a3dff.json", "r"
     ) as fp:
-        pauli_circ = DistributedCircuit(Circuit().from_dict(json.load(fp)))
+        circ = Circuit().from_dict(json.load(fp))
+        dqc_rebase.apply(circ)
+        pauli_circ = DistributedCircuit(circ)
     placement = Placement(
         {
             0: 2,
@@ -137,7 +139,9 @@ def test_ebit_memory_required():
     with open(
         "tests/test_circuits/f9f22168-8168-48ad-baed-aceb2c9aca4d.json", "r"
     ) as fp:
-        frac_CZ_circ = DistributedCircuit(Circuit().from_dict(json.load(fp)))
+        circ = Circuit().from_dict(json.load(fp))
+        dqc_rebase.apply(circ)
+        frac_CZ_circ = DistributedCircuit(circ)
     placement = Placement(
         {
             0: 1,
@@ -178,7 +182,9 @@ def test_evicted_gate_count():
     with open(
         "tests/test_circuits/2f1cc964-1518-4109-97ca-5538906a3dff.json", "r"
     ) as fp:
-        pauli_circ = DistributedCircuit(Circuit().from_dict(json.load(fp)))
+        circ = Circuit().from_dict(json.load(fp))
+        dqc_rebase.apply(circ)
+        pauli_circ = DistributedCircuit(circ)
     placement = Placement(
         {
             0: 2,
@@ -231,7 +237,9 @@ def test_evicted_gate_count():
     with open(
         "tests/test_circuits/f9f22168-8168-48ad-baed-aceb2c9aca4d.json", "r"
     ) as fp:
-        frac_CZ_circ = DistributedCircuit(Circuit().from_dict(json.load(fp)))
+        circ = Circuit().from_dict(json.load(fp))
+        dqc_rebase.apply(circ)
+        frac_CZ_circ = DistributedCircuit(circ)
     placement = Placement(
         {
             0: 1,
