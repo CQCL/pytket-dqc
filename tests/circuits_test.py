@@ -2,7 +2,8 @@ from pytket_dqc.circuits import (
     RegularGraphDistributedCircuit,
     DistributedCircuit,
     Hypergraph,
-    Hyperedge
+    Hyperedge,
+    BipartiteCircuit
 )
 
 from pytket_dqc.utils.gateset import (
@@ -12,10 +13,11 @@ from pytket_dqc.utils.gateset import (
 )
 from pytket import Circuit
 from pytket_dqc.placement import Placement
-from pytket_dqc.distributors import Brute
+from pytket_dqc.distributors import Brute, Random
 from pytket_dqc.networks import NISQNetwork
 from pytket.circuit import QControlBox, Op, OpType  # type: ignore
 import pytest
+import pickle
 
 
 # TODO: Test new circuit classes
@@ -521,3 +523,36 @@ def test_to_relabeled_registers():
         0.3, server_1[0]).CZ(server_1[0], server_2[0])
 
     assert circ_with_dist == test_circ
+
+
+def test_from_placed_circuit():
+    """Tests that generation of BipartiteCircuit.from_placed_circuit() method
+    functions as it should.
+    Test circuits were manually verified in the packed_examples.ipynb
+    example Jupyter Notebook to be correct.
+    """
+    seed = 27
+    distributor = Random()
+
+    test_directory = "./test_circuits/packing/"
+
+    for i in range(6):
+        with open(
+            f"{test_directory}networks/network{i}.pickle", "rb"
+        ) as f:
+            network = pickle.load(f)
+        with open(
+            f"{test_directory}/original_circuits/original_circuit{i}.pickle",
+            "rb",
+        ) as f:
+            circuit = pickle.load(f)
+        with open(
+            f"{test_directory}/packed_circuits/packed_circuit{i}.pickle",
+            "rb",
+        ) as f:
+            expected_packed_circuit = pickle.load(f)
+
+        dist_circ = DistributedCircuit(circuit)
+        placement = distributor.distribute(dist_circ, network, seed=seed)
+        bp_circuit = BipartiteCircuit(circuit, placement)
+        assert expected_packed_circuit == bp_circuit.packed_circuit
