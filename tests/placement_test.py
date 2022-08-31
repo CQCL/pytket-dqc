@@ -13,10 +13,10 @@ def test_placement_valid():
                                 0: [0, 1, 2], 1: [3, 4, 5], 2: [6, 7, 8, 9]})
     small_network = NISQNetwork([[0, 1]], {0: [0, 1], 1: [2]})
 
-    small_circ = Circuit(2).CRz(0.0, 0, 1)
+    small_circ = Circuit(2).CRz(1.0, 0, 1)
     dist_small_circ = DistributedCircuit(small_circ)
 
-    med_circ = Circuit(4).CRz(0.0, 0, 1).CRz(0.0, 1, 2).CRz(0.0, 2, 3)
+    med_circ = Circuit(4).CRz(1.0, 0, 1).CRz(1.0, 1, 2).CRz(1.0, 2, 3)
     dist_med_circ = DistributedCircuit(med_circ)
 
     placement_one = Placement({0: 1, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1})
@@ -42,7 +42,7 @@ def test_placement_valid():
 
 def test_placement_cost():
 
-    two_CZ_circ = Circuit(3).CRz(0.0, 0, 1).CRz(0.0, 0, 2)
+    two_CZ_circ = Circuit(3).CRz(1.0, 0, 1).CRz(1.0, 0, 2)
     dist_two_CZ_circ = DistributedCircuit(two_CZ_circ)
 
     three_line_network = NISQNetwork(

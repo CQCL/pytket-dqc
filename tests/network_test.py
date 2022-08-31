@@ -19,10 +19,10 @@ def test_can_implement():
     }
     network = NISQNetwork(server_coupling, server_qubits)
 
-    large_circ = Circuit(4).CRz(0.0, 0, 1).CRz(0.0, 1, 2).CRz(0.0, 2, 3)
+    large_circ = Circuit(4).CRz(1.0, 0, 1).CRz(1.0, 1, 2).CRz(1.0, 2, 3)
     large_dist_circ = DistributedCircuit(large_circ)
 
-    small_circ = Circuit(2).CRz(0.0, 0, 1)
+    small_circ = Circuit(2).CRz(1.0, 0, 1)
     small_dist_circ = DistributedCircuit(small_circ)
 
     assert not network.can_implement(large_dist_circ)

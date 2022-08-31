@@ -29,11 +29,11 @@ def test_annealing_distribute():
 
     circ = (
         Circuit(4)
-        .CRz(0.0, 0, 3)
+        .CRz(1.0, 0, 3)
         .Rz(0.5, 3)
-        .CRz(0.0, 1, 3)
+        .CRz(1.0, 1, 3)
         .Rz(0.5, 3)
-        .CRz(0.0, 2, 3)
+        .CRz(1.0, 2, 3)
         .Rz(0.5, 3)
     )
     dist_circ = DistributedCircuit(circ)
@@ -75,11 +75,11 @@ def test_graph_initial_partitioning():
 
     circ = (
         Circuit(4)
-        .CRz(0.0, 0, 3)
+        .CRz(1.0, 0, 3)
         .Rz(0.5, 3)
-        .CRz(0.0, 1, 3)
+        .CRz(1.0, 1, 3)
         .Rz(0.5, 3)
-        .CRz(0.0, 2, 3)
+        .CRz(1.0, 2, 3)
         .Rz(0.5, 3)
     )
     dist_circ = DistributedCircuit(circ)
@@ -104,15 +104,15 @@ def test_graph_partitioning_refinement():
 
     circ = (
         Circuit(4)
-        .CRz(0.0, 0, 3)
+        .CRz(1.0, 0, 3)
         .Rx(0.3, 0)
-        .CRz(0.0, 1, 3)
+        .CRz(1.0, 1, 3)
         .Rx(0.3, 1)
-        .CRz(0.0, 2, 3)
+        .CRz(1.0, 2, 3)
         .Rx(0.3, 2)
-        .CRz(0.0, 0, 3)
-        .CRz(0.0, 1, 3)
-        .CRz(0.0, 2, 3)
+        .CRz(1.0, 0, 3)
+        .CRz(1.0, 1, 3)
+        .CRz(1.0, 2, 3)
     )
     dist_circ = DistributedCircuit(circ)
 
@@ -175,7 +175,7 @@ def test_graph_partitioning_unused_qubits():
     placement = distributor.distribute(dist_circ, network, seed=1)
     assert placement == Placement(dict())
 
-    circ = Circuit(3).CRz(0.0, 1, 2)
+    circ = Circuit(3).CRz(1.0, 1, 2)
     dist_circ = DistributedCircuit(circ)
 
     placement = distributor.distribute(dist_circ, network, seed=1)
@@ -225,7 +225,7 @@ def test_order_reducing_size():
 
 def test_random_distributor():
 
-    circ = Circuit(3).CRz(0.0, 0, 2).CRz(0.0, 1, 2)
+    circ = Circuit(3).CRz(1.0, 0, 2).CRz(1.0, 1, 2)
     dist_circ = DistributedCircuit(circ)
 
     network = NISQNetwork([[0, 1], [0, 2]], {0: [0, 1], 1: [2, 3], 2: [4]})
@@ -239,10 +239,10 @@ def test_random_distributor():
 
 def test_ordered_distributor():
 
-    small_circ = Circuit(2).CRz(0.0, 0, 1)
+    small_circ = Circuit(2).CRz(1.0, 0, 1)
     dist_small_circ = DistributedCircuit(small_circ)
 
-    med_circ = Circuit(4).CRz(0.0, 0, 1).CRz(0.0, 1, 2).CRz(0.0, 2, 3)
+    med_circ = Circuit(4).CRz(1.0, 0, 1).CRz(1.0, 1, 2).CRz(1.0, 2, 3)
     dist_med_circ = DistributedCircuit(med_circ)
 
     small_network = NISQNetwork([[0, 1]], {0: [0, 1], 1: [2, 3, 4]})
@@ -272,11 +272,11 @@ def test_brute_distribute_small_hyperedge():
 
     circ = (
         Circuit(4)
-        .CRz(0.0, 0, 3)
+        .CRz(1.0, 0, 3)
         .Rz(0.5, 3)
-        .CRz(0.0, 1, 3)
+        .CRz(1.0, 1, 3)
         .Rz(0.5, 3)
-        .CRz(0.0, 2, 3)
+        .CRz(1.0, 2, 3)
         .Rz(0.5, 3)
     )
     dist_circ = DistributedCircuit(circ)
@@ -291,11 +291,11 @@ def test_brute_distribute_small_hyperedge():
 def test_brute_distribute():
 
     small_network = NISQNetwork([[0, 1]], {0: [0, 1], 1: [2]})
-    small_circ = Circuit(2).CRz(0.0, 0, 1)
+    small_circ = Circuit(2).CRz(1.0, 0, 1)
     dist_small_circ = DistributedCircuit(small_circ)
 
     med_network = NISQNetwork([[0, 1], [0, 2]], {0: [0], 1: [1], 2: [2, 3]})
-    med_circ = Circuit(4).CRz(0.0, 0, 1).CRz(0.0, 1, 2).CRz(0.0, 2, 3)
+    med_circ = Circuit(4).CRz(1.0, 0, 1).CRz(1.0, 1, 2).CRz(1.0, 2, 3)
     dist_med_circ = DistributedCircuit(med_circ)
 
     distributor = Brute()
@@ -314,7 +314,7 @@ def test_brute_distribute():
 def test_routing_distribute():
 
     small_network = NISQNetwork([[0, 1], [0, 2]], {0: [0], 1: [1], 2: [2, 3]})
-    small_circ = Circuit(4).CRz(0.0, 0, 1).CRz(0.0, 1, 2).CRz(0.0, 2, 3)
+    small_circ = Circuit(4).CRz(1.0, 0, 1).CRz(1.0, 1, 2).CRz(1.0, 2, 3)
     dist_small_circ = DistributedCircuit(small_circ)
 
     distributor = Routing()
@@ -327,12 +327,12 @@ def test_routing_distribute():
     med_network = NISQNetwork([[0, 1]], {0: [0, 1], 1: [2, 3, 4]})
     med_circ = (
         Circuit(5)
-        .CRz(0.0, 0, 1)
-        .CRz(0.0, 1, 2)
-        .CRz(0.0, 0, 2)
-        .CRz(0.0, 2, 3)
-        .CRz(0.0, 3, 4)
-        .CRz(0.0, 3, 2)
+        .CRz(1.0, 0, 1)
+        .CRz(1.0, 1, 2)
+        .CRz(1.0, 0, 2)
+        .CRz(1.0, 2, 3)
+        .CRz(1.0, 3, 4)
+        .CRz(1.0, 3, 2)
     )
     dist_med_circ = DistributedCircuit(med_circ)
 
@@ -347,12 +347,12 @@ def test_routing_distribute():
 
     med_circ_flipped = (
         Circuit(5)
-        .CRz(0.0, 0, 1)
-        .CRz(0.0, 1, 2)
-        .CRz(0.0, 0, 2)
-        .CRz(0.0, 2, 3)
-        .CRz(0.0, 3, 4)
-        .CRz(0.0, 2, 3)
+        .CRz(1.0, 0, 1)
+        .CRz(1.0, 1, 2)
+        .CRz(1.0, 0, 2)
+        .CRz(1.0, 2, 3)
+        .CRz(1.0, 3, 4)
+        .CRz(1.0, 2, 3)
     )
     dist_med_circ_flipped = DistributedCircuit(med_circ_flipped)
 
