@@ -7,7 +7,7 @@ from pytket_dqc.utils import (
 )
 from pytket import Circuit
 from pytket_dqc.circuits import DistributedCircuit
-from pytket_dqc.networks import NISQNetwork, AllToAll
+from pytket_dqc.networks import NISQNetwork
 from pytket_dqc.distributors import Brute
 from pytket_dqc.placement import Placement
 import networkx as nx  # type: ignore
@@ -78,196 +78,36 @@ def test_symbolic_circuit():
 
 
 def test_ebit_memory_required():
-    network = AllToAll(3, 2)
-
     # This is a randomly generated circuit of type pauli, depth 6 and 6 qubits
     with open(
-        "tests/test_circuits/2f1cc964-1518-4109-97ca-5538906a3dff.json", "r"
+        "tests/test_circuits/pauli_6.json", "r"
     ) as fp:
         circ = Circuit().from_dict(json.load(fp))
-        dqc_rebase.apply(circ)
-        pauli_circ = DistributedCircuit(circ)
-    placement = Placement(
-        {
-            0: 2,
-            1: 2,
-            2: 1,
-            3: 1,
-            4: 0,
-            5: 0,
-            6: 2,
-            7: 0,
-            8: 1,
-            9: 2,
-            10: 2,
-            11: 1,
-            12: 0,
-            13: 0,
-            14: 1,
-            15: 2,
-            16: 2,
-            17: 2,
-            18: 1,
-            19: 0,
-            20: 1,
-            21: 1,
-            22: 2,
-            23: 2,
-            24: 2,
-            25: 2,
-            26: 1,
-            27: 1,
-            28: 2,
-            29: 2,
-            30: 2,
-            31: 2,
-            32: 0,
-            33: 2,
-            34: 2,
-            35: 2,
-            36: 0,
-            37: 2,
-            38: 2,
-            39: 2,
-        }
-    )
-    pauli_final = pauli_circ.to_pytket_circuit(placement, network)
     # Comparing against calculation by hand
-    assert ebit_memory_required(pauli_final) == {0: 0, 1: 2, 2: 3}
+    assert ebit_memory_required(circ) == {0: 0, 1: 2, 2: 3}
 
-    # Randomly generated circuit of type frac_CZ=0.7, depth 6 and 6 qubits
+    # Randomly generated circuit of type frac_CZ, depth 6 and 6 qubits
     with open(
-        "tests/test_circuits/f9f22168-8168-48ad-baed-aceb2c9aca4d.json", "r"
+        "tests/test_circuits/frac_CZ_6.json", "r"
     ) as fp:
         circ = Circuit().from_dict(json.load(fp))
-        dqc_rebase.apply(circ)
-        frac_CZ_circ = DistributedCircuit(circ)
-    placement = Placement(
-        {
-            0: 1,
-            1: 2,
-            2: 0,
-            3: 1,
-            4: 0,
-            5: 2,
-            6: 1,
-            7: 1,
-            8: 1,
-            9: 1,
-            10: 2,
-            11: 0,
-            12: 1,
-            13: 1,
-            14: 1,
-            15: 1,
-            16: 2,
-            17: 1,
-            18: 1,
-            19: 1,
-            20: 1,
-            21: 1,
-            22: 1,
-            23: 1,
-        }
-    )
-    frac_CZ_final = frac_CZ_circ.to_pytket_circuit(placement, network)
     # Comparing against calculationby hand
-    assert ebit_memory_required(frac_CZ_final) == {0: 0, 1: 4, 2: 0}
+    assert ebit_memory_required(circ) == {0: 0, 1: 4, 2: 0}
 
 
 def test_evicted_gate_count():
-    network = AllToAll(3, 2)
-
     # This is a randomly generated circuit of type pauli, depth 6 and 6 qubits
     with open(
-        "tests/test_circuits/2f1cc964-1518-4109-97ca-5538906a3dff.json", "r"
+        "tests/test_circuits/pauli_6.json", "r"
     ) as fp:
         circ = Circuit().from_dict(json.load(fp))
-        dqc_rebase.apply(circ)
-        pauli_circ = DistributedCircuit(circ)
-    placement = Placement(
-        {
-            0: 2,
-            1: 2,
-            2: 1,
-            3: 1,
-            4: 0,
-            5: 0,
-            6: 2,
-            7: 0,
-            8: 1,
-            9: 2,
-            10: 2,
-            11: 1,
-            12: 0,
-            13: 0,
-            14: 1,
-            15: 2,
-            16: 2,
-            17: 2,
-            18: 1,
-            19: 0,
-            20: 1,
-            21: 1,
-            22: 2,
-            23: 2,
-            24: 2,
-            25: 2,
-            26: 1,
-            27: 1,
-            28: 2,
-            29: 2,
-            30: 2,
-            31: 2,
-            32: 0,
-            33: 2,
-            34: 2,
-            35: 2,
-            36: 0,
-            37: 2,
-            38: 2,
-            39: 2,
-        }
-    )
-    pauli_final = pauli_circ.to_pytket_circuit(placement, network)
-    # Comparing against calculationby hand
-    assert evicted_gate_count(pauli_final) == 0
+    # Comparing against calculation by hand
+    assert evicted_gate_count(circ) == 0
 
-    # Randomly generated circuit of type frac_CZ=0.7, depth 6 and 6 qubits
+    # Randomly generated circuit of type frac_CZ, depth 6 and 6 qubits
     with open(
-        "tests/test_circuits/f9f22168-8168-48ad-baed-aceb2c9aca4d.json", "r"
+        "tests/test_circuits/frac_CZ_6.json", "r"
     ) as fp:
         circ = Circuit().from_dict(json.load(fp))
-        dqc_rebase.apply(circ)
-        frac_CZ_circ = DistributedCircuit(circ)
-    placement = Placement(
-        {
-            0: 1,
-            1: 2,
-            2: 0,
-            3: 1,
-            4: 0,
-            5: 2,
-            6: 1,
-            7: 1,
-            8: 1,
-            9: 1,
-            10: 2,
-            11: 0,
-            12: 1,
-            13: 1,
-            14: 1,
-            15: 1,
-            16: 2,
-            17: 1,
-            18: 1,
-            19: 1,
-            20: 1,
-            21: 1,
-            22: 1,
-            23: 1,
-        }
-    )
-    frac_CZ_final = frac_CZ_circ.to_pytket_circuit(placement, network)
-    # Comparing against calculationby hand
-    assert evicted_gate_count(frac_CZ_final) == 6
+    # Comparing against calculation by
+    assert evicted_gate_count(circ) == 6
