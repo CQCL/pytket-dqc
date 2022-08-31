@@ -27,7 +27,7 @@ def test_rebase():
 @pytest.mark.skip(reason="Support for CX gates temporarily disabled")
 def test_CX_circuit():
 
-    circ = Circuit(3).CX(0, 1).CZ(1, 2).Rx(0.3, 1).CX(1, 0)
+    circ = Circuit(3).CX(0, 1).CZ(1, 2).H(1).CX(1, 0)
     assert dqc_gateset_predicate.verify(circ)
 
     dist_circ = DistributedCircuit(circ)

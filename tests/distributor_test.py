@@ -105,11 +105,11 @@ def test_graph_partitioning_refinement():
     circ = (
         Circuit(4)
         .CRz(1.0, 0, 3)
-        .Rx(0.3, 0)
+        .H(0)
         .CRz(1.0, 1, 3)
-        .Rx(0.3, 1)
+        .H(1)
         .CRz(1.0, 2, 3)
-        .Rx(0.3, 2)
+        .H(2)
         .CRz(1.0, 0, 3)
         .CRz(1.0, 1, 3)
         .CRz(1.0, 2, 3)
@@ -321,7 +321,7 @@ def test_routing_distribute():
     routing_placement = distributor.distribute(dist_small_circ, small_network)
     ideal_placement = Placement({0: 0, 4: 1, 5: 0, 1: 1, 2: 2, 6: 2, 3: 2})
     cost = routing_placement.cost(dist_small_circ, small_network)
-    assert routing_placement.placement == ideal_placement
+    assert routing_placement == ideal_placement
     assert cost == 2
 
     med_network = NISQNetwork([[0, 1]], {0: [0, 1], 1: [2, 3, 4]})
@@ -381,7 +381,7 @@ def test_q_control_box_circuits():
     circ.add_qcontrolbox(cv, [0, 1])
     circ.Rz(0.3, 0)
     circ.add_qcontrolbox(cv, [0, 1])
-    circ.Rx(0.3, 0)
+    circ.H(0)
     circ.add_qcontrolbox(cv, [0, 1])
     circ.add_qcontrolbox(cv, [0, 1])
 
@@ -405,7 +405,7 @@ def test_CRz_circuits():
     circ.CRz(0.1, 0, 1)
     circ.Rz(0.3, 0)
     circ.CRz(0.4, 0, 1)
-    circ.Rx(0.3, 0)
+    circ.H(0)
     circ.CRz(0.5, 1, 0)
     circ.CRz(0.2, 0, 1)
 
