@@ -72,24 +72,6 @@ def tk1_to_euler(a, b, c) -> Circuit:
         return Circuit(1).Rz(c, 0).H(0).Rz(b, 0).H(0).Rz(a, 0)
 
 
-def normalise_z_phases(circ) -> Circuit:
-    """Replaces Z phases in ``circ`` with their phase modulo 2pi.
-    Note: it does not keep track of the change in global phase.
-    """
-    n_qubits = circ.n_qubits
-    new_circ = Circuit(n_qubits)
-
-    for cmd in circ.get_commands():
-        qubit_list = cmd.qubits
-        if cmd.op.type == OpType.Rz:
-            phase = cmd.op.params[0]
-            new_circ.Rz(phase % 2, 0)
-        else:  # If it's any other gate, simply append it changing nothing
-            new_circ.add_gate(cmd.op.type, cmd.op.params, qubit_list)
-
-    return new_circ
-
-
 #: Pass rebasing gates to those valid within pytket-dqc
 dqc_rebase = SequencePass(
     [
