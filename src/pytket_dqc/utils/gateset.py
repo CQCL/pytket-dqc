@@ -59,6 +59,10 @@ def tk2_to_crz(a, b, c) -> Circuit:
 def tk1_to_euler(a, b, c) -> Circuit:
     """Given a TK1 gate Rz(a)*Rx(b)*Rz(c), return an equivalent circuit
     using Rz and Rx gates.
+    NOTE: The correctness of these gate replacements has been checked by
+    composing the new circuit with the adjoint of the original one. Such a
+    test was done for each of the cases (choosing appropriate values of ``b``)
+    where ``a`` and ``c`` were chosen at random.
     """
     if np.isclose(b % 2, 0) or np.isclose(b % 2, 2):
         return Circuit(1).Rz(c + a, 0)
