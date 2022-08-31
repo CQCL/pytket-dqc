@@ -372,6 +372,6 @@ class Vertex:
                 extended_command.get_op_type() == OpType.CRz
                 and not extended_command.is_local()
             ):
-                nonlocal_added_cz_count += 1
+                nonlocal_added_crz_count += 1
 
         return nonlocal_crz_count == nonlocal_added_crz_count
