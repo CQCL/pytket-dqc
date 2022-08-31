@@ -393,14 +393,21 @@ class BipartiteCircuit:
                 and vertex.vertex_index in self.mvc
                 and vertex.added_all_nonlocal_czs()
             ):
-                assert vertex.link_qubit is not None,\
-                    f"""
+                assert (
+                    vertex.link_qubit is not None
+                ), f"""
                     This vertex has no link_qubit associated with it.
                     Vertex register:{vertex.get_register().register}
                     Qubit: {vertex.extended_qubit.qubit}
                     Linked Register: {vertex.linked_register.register}
-                    N non-local commands: {len([x for x in vertex.extended_commands if x.get_op_type() == OpType.CRz])}
-                    N added non-local commands: {len([x for x in vertex.added_extended_commands if x.get_op_type() == OpType.CRz])}
+                    N non-local commands: {len(
+                        [x for x in vertex.extended_commands
+                        if x.get_op_type() == OpType.CRz]
+                        )}
+                    N added non-local commands: {len(
+                        [x for x in vertex.added_extended_commands
+                        if x.get_op_type() == OpType.CRz
+                        ])}
                     """
                 link_qubit = vertex.link_qubit
                 link_qubit.end_packing()
