@@ -85,7 +85,7 @@ def evicted_gate_count(circ: Circuit) -> int:
     n_evicted = 0
 
     for command in circ.get_commands():
-        if command.op.type == OpType.CRz:
+        if command.op.type in {OpType.CRz, OpType.CZ}:
             qubits = command.qubits
             if is_link_qubit(qubits[0]) and is_link_qubit(qubits[1]):
                 n_evicted += 1
