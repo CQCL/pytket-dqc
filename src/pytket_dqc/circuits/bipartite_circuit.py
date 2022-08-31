@@ -142,12 +142,12 @@ class BipartiteCircuit:
                     next_vertex_index += 1
                     vertex = extended_qubit.last_used_vertex
 
-                # Gate is a non-local CZ gate
+                # Gate is a non-local CRz gate
                 # => Add to relevant vertices
                 else:
                     assert (
-                        extended_command.get_op_type() == OpType.CZ
-                    ), "Expected this to be a non-local CZ gate."
+                        extended_command.get_op_type() == OpType.CRz
+                    ), "Expected this to be a non-local CRz gate."
                     currently_linked_registers = (
                         extended_qubit.get_currently_linked_registers()
                     )
@@ -211,15 +211,15 @@ class BipartiteCircuit:
                 added_edges.append(set(extended_command.vertices))
 
     def add_edge_to_graph(self, extended_command):
-        """Given an ExtendedCommand for a non-local CZ,
+        """Given an ExtendedCommand for a non-local CRz,
         add an edge between the two vertices on this ExtendedCommand
 
-        :param extended_command: A (non-local CZ) ExtendedCommand
+        :param extended_command: A (non-local CRz) ExtendedCommand
         :type extended_command: pytket_dqc.packing.ExtendedCommand
         """
         assert (
-            extended_command.get_op_type() == OpType.CZ
-        ), "This ExtendedCommand must be a CZ."
+            extended_command.get_op_type() == OpType.CRz
+        ), "This ExtendedCommand must be a CRz."
         assert (
             not extended_command.is_local()
         ), "This ExtendedCommand must be non-local."
@@ -270,7 +270,7 @@ class BipartiteCircuit:
 
         Cases are divided into two types:
         1. EC is local gate
-        2. EC is a non-local CZ gate
+        2. EC is a non-local CRz gate
 
         For 1. there are two subcases
         where adjustments to the circuit must be made
@@ -281,7 +281,7 @@ class BipartiteCircuit:
           -> For each ongoing packing,
              an X gate must be added to the link qubit.
 
-        For 2. need to add the CZ to the LinkQubit
+        For 2. need to add the CRz to the LinkQubit
         that one of the argument qubits has been teleported to.
         If such a LinkQubit does not yet exist
         then it needs to be created.
@@ -326,8 +326,8 @@ class BipartiteCircuit:
         # Case 2.
         else:
             assert (
-                extended_command.get_op_type() == OpType.CZ
-            ), "The command being added to the circuit should be a CZ"
+                extended_command.get_op_type() == OpType.CRz
+            ), "The command being added to the circuit should be a CRz"
             for vertex in extended_command.vertices:
                 # Make a LinkQubit if one does not already exist
                 # and add a starting process to it
@@ -359,7 +359,7 @@ class BipartiteCircuit:
                         ],
                     )
 
-            # Non-local CZ
+            # Non-local CRz
             # -> one of it's two vertices must be in self.mvc.
             # Select that vertex.
             packed_vertex = [
@@ -382,7 +382,7 @@ class BipartiteCircuit:
             for vertex in extended_command.vertices:
                 vertex.added_extended_commands.append(extended_command)
 
-        # If all non-local CZs on this vertex
+        # If all non-local CRzs on this vertex
         # have been added to the circuit
         # then add an EndingProcess to the LinkQubits.
         # This prevents redundant correction X gates
@@ -393,6 +393,15 @@ class BipartiteCircuit:
                 and vertex.vertex_index in self.mvc
                 and vertex.added_all_nonlocal_czs()
             ):
+                assert vertex.link_qubit is not None,\
+                    f"""
+                    This vertex has no link_qubit associated with it.
+                    Vertex register:{vertex.get_register().register}
+                    Qubit: {vertex.extended_qubit.qubit}
+                    Linked Register: {vertex.linked_register.register}
+                    N non-local commands: {len([x for x in vertex.extended_commands if x.get_op_type() == OpType.CRz])}
+                    N added non-local commands: {len([x for x in vertex.added_extended_commands if x.get_op_type() == OpType.CRz])}
+                    """
                 link_qubit = vertex.link_qubit
                 link_qubit.end_packing()
                 circuit.add_custom_gate(
