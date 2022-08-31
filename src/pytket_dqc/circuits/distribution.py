@@ -20,14 +20,14 @@ class Distribution():
         :param circuit: Circuit which is to be distributed
         :type circuit: HypergraphCircuit
         :param packets: A description of the packets within the circuit.
-        These are those gates which can be implemented with a single e-bit.
+            These are those gates which can be implemented with a single e-bit.
         :type packets: Hypergraph
         :param placement: A placement of the qubits and gates onto servers.
         :type placement: Placement
         :raises Exception: Raised if the placement is not valid for the
-        circuit.
+            circuit.
         :raises Exception: Raised if the placement is not valid for the
-        packets.
+            packets.
         """
 
         if not circuit.is_placement(placement):
