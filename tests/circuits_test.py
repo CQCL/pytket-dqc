@@ -579,12 +579,14 @@ def test_from_placed_circuit():
         ) as f:
             network_tuple = pickle.load(f)
         with open(
-            f"tests/test_circuits/packing/rebased_circuits/rebased_circuit{i}.pickle",
+            "tests/test_circuits/packing/"
+            + f"rebased_circuits/rebased_circuit{i}.pickle",
             "rb",
         ) as f:
             rebased_circuit = pickle.load(f)
         with open(
-            f"tests/test_circuits/packing/packed_circuits/packed_circuit{i}.pickle",
+            "tests/test_circuits/packing/"
+            + f"packed_circuits/packed_circuit{i}.pickle",
             "rb",
         ) as f:
             packed_circuit = pickle.load(f)
