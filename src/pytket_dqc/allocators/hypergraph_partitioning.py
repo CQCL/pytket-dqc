@@ -81,7 +81,7 @@ class HypergraphPartitioning(Allocator):
         )
 
         assert placement.is_valid(dist_circ, network)
-        return Distribution(dist_circ, dist_circ, placement)
+        return Distribution(dist_circ, dist_circ, placement, network)
 
     def refine(
         self,

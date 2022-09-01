@@ -175,4 +175,4 @@ class Annealing(Allocator):
 
         assert gain_manager.placement.is_valid(dist_circ, network)
         placement = gain_manager.placement
-        return Distribution(dist_circ, dist_circ, placement)
+        return Distribution(dist_circ, dist_circ, placement, network)

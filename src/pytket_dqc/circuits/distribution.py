@@ -14,6 +14,7 @@ class Distribution():
         circuit: HypergraphCircuit,
         packets: Hypergraph,
         placement: Placement,
+        network: NISQNetwork,
     ):
         """Initialisation function for Distribution
 
@@ -24,13 +25,15 @@ class Distribution():
         :type packets: Hypergraph
         :param placement: A placement of the qubits and gates onto servers.
         :type placement: Placement
+        :param network: Network onto which circuit is distributed.
+        :type network: NISQNetwork
         :raises Exception: Raised if the placement is not valid for the
             circuit.
         :raises Exception: Raised if the placement is not valid for the
             packets.
         """
 
-        if not circuit.is_placement(placement):
+        if not placement.is_valid(circuit, network):
             raise Exception("This placement is not valid for circuit")
 
         if not packets.is_placement(placement):
@@ -45,6 +48,7 @@ class Distribution():
         self.circuit = circuit
         self.packets = packets
         self.placement = placement
+        self.network = network
 
-    def to_pytket_circuit(self, network: NISQNetwork) -> Circuit:
+    def to_pytket_circuit(self) -> Circuit:
         raise NotImplementedError
