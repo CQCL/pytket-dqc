@@ -579,18 +579,20 @@ def test_from_placed_circuit():
         ) as f:
             network_tuple = pickle.load(f)
         with open(
-            f"tests/test_circuits/packing/rebased_circuits/rebased_circuit{i}.pickle",
+            f"tests/test_circuits/packing/original_circuits/circuit{i}.pickle",
             "rb",
         ) as f:
-            rebased_circuit = pickle.load(f)
+            circuit_dict = pickle.load(f)
         with open(
-            f"tests/test_circuits/packing/packed_circuits/packed_circuit{i}.pickle",
+            f"tests/test_circuits/packing/packed_circuits/circuit{i}.pickle",
             "rb",
         ) as f:
-            packed_circuit = pickle.load(f)
+            packed_circuit_dict = pickle.load(f)
+        circuit = Circuit.from_dict(circuit_dict)
         network = NISQNetwork(network_tuple[0], network_tuple[1])
 
-        dist_circ = DistributedCircuit(rebased_circuit)
+        dist_circ = DistributedCircuit(circuit)
         placement = distributor.distribute(dist_circ, network, seed=seed)
-        bp_circuit = BipartiteCircuit(rebased_circuit, placement)
-        assert packed_circuit == bp_circuit.packed_circuit
+        bp_circuit = BipartiteCircuit(circuit, placement)
+        test_circuit = Circuit.from_dict(packed_circuit_dict)
+        assert test_circuit == bp_circuit.packed_circuit
