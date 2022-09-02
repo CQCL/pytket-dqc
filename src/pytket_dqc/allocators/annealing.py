@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-from pytket_dqc.distributors import Distributor, GainManager
-from pytket_dqc.placement import Placement
+from pytket_dqc.allocators import Allocator, GainManager
+from pytket_dqc.circuits.distribution import Distribution
 from typing import TYPE_CHECKING
 import random
 from .random import Random
 import math
 
 if TYPE_CHECKING:
-    from pytket_dqc import DistributedCircuit
+    from pytket_dqc import HypergraphCircuit
     from pytket_dqc.networks import NISQNetwork
 
 
@@ -45,33 +45,33 @@ def acceptance_criterion(
     return acceptance
 
 
-class Annealing(Distributor):
-    """Distributor taking a simulated annealing approach to quantum circuit
+class Annealing(Allocator):
+    """Allocator taking a simulated annealing approach to quantum circuit
     distribution.
     """
 
     def __init__(self) -> None:
         pass
 
-    def distribute(
+    def allocate(
         self,
-        dist_circ: DistributedCircuit,
+        dist_circ: HypergraphCircuit,
         network: NISQNetwork,
         **kwargs
-    ) -> Placement:
+    ) -> Distribution:
         """Distribute quantum circuit using simulated annealing approach.
 
         :param dist_circ: Circuit to distribute.
-        :type dist_circ: DistributedCircuit
+        :type dist_circ: HypergraphCircuit
         :param network: Network onto which circuit is to be distributed.
         :type network: NISQNetwork
-        :return: Placement of ``dist_circ`` onto ``network``.
-        :rtype: Placement
+        :return: Distribution of ``dist_circ`` onto ``network``.
+        :rtype: Distribution
 
         :key seed: Seed for randomness. Default is None
         :key iterations: The number of iterations in the annealing procedure.
             Default is 10000.
-        :key initial_place_method: Distributor to use to find the initial
+        :key initial_place_method: Allocator to use to find the initial
             placement. Default is Random.
         :key cache_limit: The maximum size of the set of servers whose cost is
             stored in cache; see GainManager. Default value is 5.
@@ -83,7 +83,7 @@ class Annealing(Distributor):
                 )
 
         iterations = kwargs.get("iterations", 10000)
-        initial_distributor = kwargs.get("initial_place_method", Random())
+        initial_aloc = kwargs.get("initial_place_method", Random())
         seed = kwargs.get("seed", None)
         cache_limit = kwargs.get("cache_limit", None)
 
@@ -95,7 +95,8 @@ class Annealing(Distributor):
 
         # The annealing procedure requires an initial placement to work with.
         # An initial placement is arrived at here.
-        initial_placement = initial_distributor.distribute(dist_circ, network)
+        initial_distribution = initial_aloc.allocate(dist_circ, network)
+        initial_placement = initial_distribution.placement
 
         # TODO: Check that the initial placement does not have cost 0, and
         # that not all qubits are already in the same server etc.
@@ -173,4 +174,5 @@ class Annealing(Distributor):
                     gain_manager.move(swap_vertex, home_server)
 
         assert gain_manager.placement.is_valid(dist_circ, network)
-        return gain_manager.placement
+        placement = gain_manager.placement
+        return Distribution(dist_circ, dist_circ, placement, network)

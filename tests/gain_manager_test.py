@@ -1,7 +1,7 @@
 from pytket_dqc.networks import NISQNetwork
 from pytket_dqc.circuits import Hypergraph
 from pytket_dqc.placement import Placement
-from pytket_dqc.distributors import GainManager
+from pytket_dqc.allocators import GainManager
 
 simple_hypergraph = Hypergraph()
 simple_hypergraph.add_vertices(list(range(1, 10)))
