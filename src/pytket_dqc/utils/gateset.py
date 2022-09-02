@@ -60,11 +60,24 @@ def tk2_to_crz(a, b, c) -> Circuit:
 def tk1_to_euler(a, b, c) -> Circuit:
     """Given a TK1 gate Rz(a)*Rx(b)*Rz(c), return an equivalent circuit
     using Rz and Rx gates.
-    NOTE: The correctness of these gate replacements has been checked by
-    composing the new circuit with the adjoint of the original one. Such a
-    test was done for each of the cases (choosing appropriate values of ``b``)
-    where ``a`` and ``c`` were chosen at random.
     """
+    # NOTE: The correctness of these gate replacements has been checked by
+    # composing the new circuit with the adjoint of the original one. Such a
+    # test was done for each of the cases (with appropriate values of ``b``)
+    # where ``a`` and ``c`` were chosen at random.
+    #
+    # NOTE: Every sequence of gates that could be written down as a Rz*H*Rz
+    # will be written down as such. To prove this we need to check that such
+    # sequences of gates would always be represented by an Euler decomposition
+    # where the Rx gate has phase pi/2 or -pi/2. The argument is as follows:
+    #  - if it can be written as Rz*H*Rz it means that the absolute value of
+    #    each entry in the matrix is 1/sqrt(2);
+    #  - in the Euler decomposition, only Rx changes the absolute value of
+    #    entries; in particular, for absolute value 1/sqrt(2) it must be
+    #    either pi/2 or -pi/2.
+    # We then use the decomposition of H = Rz(0.5)*Rx(0.5)*Rz(0.5) and
+    # H = Rz(-0.5)*Rx(-0.5)*Rz(-0.5) to introduce the H gates as needed.
+    #
     if np.isclose(b % 2, 0) or np.isclose(b % 2, 2):
         return Circuit(1).Rz(c + a, 0)
     if np.isclose(b % 2, 1):
