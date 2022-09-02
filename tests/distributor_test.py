@@ -32,9 +32,9 @@ def test_annealing_distribute():
     )
     dist_circ = HypergraphCircuit(circ)
 
-    alloc = Annealing()
+    allocator = Annealing()
 
-    distribution = alloc.allocate(
+    distribution = allocator.allocate(
         dist_circ,
         network,
         seed=2,
@@ -47,7 +47,7 @@ def test_annealing_distribute():
     )
     assert distribution.placement.cost(dist_circ, network) == 5
 
-    distribution = alloc.allocate(
+    distribution = allocator.allocate(
         dist_circ,
         network,
         seed=1,
@@ -76,10 +76,10 @@ def test_graph_initial_partitioning():
     )
     dist_circ = HypergraphCircuit(circ)
 
-    alloc = HypergraphPartitioning()
+    allocator = HypergraphPartitioning()
 
     # num_rounds = 0 so that there are no refinement rounds
-    initial_distribution = alloc.allocate(
+    initial_distribution = allocator.allocate(
         dist_circ, network, seed=1, num_rounds=0
     )
 
@@ -108,11 +108,11 @@ def test_graph_partitioning_refinement():
     )
     dist_circ = HypergraphCircuit(circ)
 
-    alloc = HypergraphPartitioning()
+    allocator = HypergraphPartitioning()
     bad_placement = Placement({v: 2 for v in dist_circ.vertex_list})
     assert not bad_placement.is_valid(dist_circ, network)
 
-    refined_placement = alloc.refine(
+    refined_placement = allocator.refine(
         bad_placement, dist_circ, network, seed=1
     )
     good_placement = Placement(
@@ -144,33 +144,33 @@ def test_refinement_makes_valid():
         circuit = Circuit().from_dict(json.load(fp))
 
     dist_circ = HypergraphCircuit(circuit)
-    alloc = HypergraphPartitioning()
+    allocator = HypergraphPartitioning()
 
-    placement = alloc.allocate(dist_circ, network, seed=0)
+    placement = allocator.allocate(dist_circ, network, seed=0)
     assert placement.is_valid(dist_circ, network)
 
 
 def test_graph_partitioning_unused_qubits():
 
     network = NISQNetwork([[0, 1], [0, 2]], {0: [0], 1: [1, 2], 2: [3, 4]})
-    alloc = HypergraphPartitioning()
+    allocator = HypergraphPartitioning()
 
     circ = Circuit(2)
     dist_circ = HypergraphCircuit(circ)
 
-    distribution = alloc.allocate(dist_circ, network, seed=1)
+    distribution = allocator.allocate(dist_circ, network, seed=1)
     assert distribution.placement == Placement({0: 1, 1: 0})
 
     circ = Circuit(0)
     dist_circ = HypergraphCircuit(circ)
 
-    distribution = alloc.allocate(dist_circ, network, seed=1)
+    distribution = allocator.allocate(dist_circ, network, seed=1)
     assert distribution.placement == Placement(dict())
 
     circ = Circuit(3).CZ(1, 2)
     dist_circ = HypergraphCircuit(circ)
 
-    distribution = alloc.allocate(dist_circ, network, seed=1)
+    distribution = allocator.allocate(dist_circ, network, seed=1)
     assert (
         (distribution.placement == Placement({0: 2, 1: 1, 2: 1, 3: 1})) or
         (distribution.placement == Placement({0: 1, 1: 2, 2: 2, 3: 2}))
@@ -223,8 +223,8 @@ def test_random_allocator():
 
     network = NISQNetwork([[0, 1], [0, 2]], {0: [0, 1], 1: [2, 3], 2: [4]})
 
-    alloc = Random()
-    distribution = alloc.allocate(dist_circ, network, seed=0)
+    allocator = Random()
+    distribution = allocator.allocate(dist_circ, network, seed=0)
 
     assert distribution.placement == Placement({0: 1, 3: 1, 1: 0, 4: 1, 2: 2})
     assert distribution.placement.cost(dist_circ, network) == 3
@@ -244,14 +244,14 @@ def test_ordered_allocator():
         [[0, 1], [0, 2]], {0: [0, 1, 2], 1: [3, 4, 5], 2: [6, 7, 8, 9]}
     )
 
-    alloc = Ordered()
+    allocator = Ordered()
 
     placement_one = Placement({0: 2, 1: 2, 2: 2})
-    alloc_distribution_one = alloc.allocate(
+    alloc_distribution_one = allocator.allocate(
         dist_small_circ, large_network
     )
     placement_two = Placement({0: 1, 1: 1, 2: 1, 3: 0, 4: 1, 5: 1, 6: 1})
-    alloc_distribution_two = alloc.allocate(
+    alloc_distribution_two = allocator.allocate(
         dist_med_circ, small_network
     )
 
@@ -268,8 +268,8 @@ def test_brute_distribute_small_hyperedge():
     )
     dist_circ = HypergraphCircuit(circ)
 
-    alloc = Brute()
-    distribution = alloc.allocate(dist_circ, network)
+    allocator = Brute()
+    distribution = allocator.allocate(dist_circ, network)
 
     assert distribution.placement.cost(dist_circ, network) == 3
     assert distribution.placement == Placement(
@@ -287,15 +287,15 @@ def test_brute_distribute():
     med_circ = Circuit(4).CZ(0, 1).CZ(1, 2).CZ(2, 3)
     dist_med_circ = HypergraphCircuit(med_circ)
 
-    alloc = Brute()
+    allocator = Brute()
 
-    distribution_small = alloc.allocate(dist_small_circ, small_network)
+    distribution_small = allocator.allocate(dist_small_circ, small_network)
     assert distribution_small.placement == Placement({0: 0, 2: 0, 1: 0})
     assert distribution_small.placement.cost(
         dist_small_circ,
         small_network) == 0
 
-    distribution_med = alloc.allocate(dist_med_circ, med_network)
+    distribution_med = allocator.allocate(dist_med_circ, med_network)
     assert distribution_med.placement == Placement(
         {0: 0, 4: 0, 1: 1, 5: 0, 2: 2, 6: 2, 3: 2}
     )
@@ -308,8 +308,8 @@ def test_routing_allocator():
     small_circ = Circuit(4).CZ(0, 1).CZ(1, 2).CZ(2, 3)
     dist_small_circ = HypergraphCircuit(small_circ)
 
-    alloc = Routing()
-    routing_distribution = alloc.allocate(dist_small_circ, small_network)
+    allocator = Routing()
+    routing_distribution = allocator.allocate(dist_small_circ, small_network)
     ideal_placement = Placement({0: 0, 4: 1, 5: 0, 1: 1, 2: 2, 6: 2, 3: 2})
     cost = routing_distribution.placement.cost(dist_small_circ, small_network)
     assert routing_distribution.placement == ideal_placement
@@ -319,7 +319,7 @@ def test_routing_allocator():
     med_circ = Circuit(5).CZ(0, 1).CZ(1, 2).CZ(0, 2).CZ(2, 3).CZ(3, 4).CZ(3, 2)
     dist_med_circ = HypergraphCircuit(med_circ)
 
-    routing_distribution = alloc.allocate(dist_med_circ, med_network)
+    routing_distribution = allocator.allocate(dist_med_circ, med_network)
     cost = routing_distribution.placement.cost(dist_med_circ, med_network)
     ideal_placement = Placement(
         {0: 0, 8: 1, 9: 0, 10: 0, 1: 0, 2: 1, 6: 1, 7: 1, 3: 1, 5: 1, 4: 1}
@@ -333,7 +333,7 @@ def test_routing_allocator():
     )
     dist_med_circ_flipped = HypergraphCircuit(med_circ_flipped)
 
-    routing_distribution = alloc.allocate(
+    routing_distribution = allocator.allocate(
         dist_med_circ_flipped, med_network
     )
     cost = routing_distribution.placement.cost(
@@ -366,9 +366,9 @@ def test_q_control_box_circuits():
 
     dist_circ = HypergraphCircuit(circ)
 
-    alloc = Brute()
+    allocator = Brute()
 
-    placement = alloc.allocate(dist_circ, network)
+    placement = allocator.allocate(dist_circ, network)
     ideal_placement = Placement({0: 0, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 1: 1})
 
     assert placement == ideal_placement
@@ -391,9 +391,9 @@ def test_CRz_circuits():
 
     dist_circ = HypergraphCircuit(circ)
 
-    alloc = Brute()
+    allocator = Brute()
 
-    placement = alloc.allocate(dist_circ, network)
+    placement = allocator.allocate(dist_circ, network)
 
     assert placement == Placement({0: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 1: 1})
     assert placement.cost(dist_circ, network) == 1

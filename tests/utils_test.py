@@ -34,8 +34,8 @@ def test_CX_circuit():
 
     network = NISQNetwork([[0, 1]], {0: [0, 1], 1: [2, 3]})
 
-    alloc = Brute()
-    placement = alloc.allocate(dist_circ, network)
+    allocator = Brute()
+    placement = allocator.allocate(dist_circ, network)
 
     assert placement == Placement({0: 0, 3: 0, 5: 0, 1: 0, 4: 0, 2: 1})
     assert placement.cost(dist_circ, network) == 1

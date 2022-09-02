@@ -50,8 +50,8 @@ def test_regular_graph_distributed_circuit():
 
     dist_circ = RegularGraphHypergraphCircuit(3, 2, 1, seed=0)
     network = NISQNetwork([[0, 1], [0, 2]], {0: [0, 1], 1: [2, 3, 4], 2: [5]})
-    alloc = Brute()
-    distribution = alloc.allocate(dist_circ, network)
+    allocator = Brute()
+    distribution = allocator.allocate(dist_circ, network)
     cost = distribution.placement.cost(dist_circ, network)
 
     assert cost == 0
@@ -576,7 +576,7 @@ def test_from_placed_circuit():
     example Jupyter Notebook to be correct.
     """
     seed = 27
-    alloc = Random()
+    allocator = Random()
 
     for i in range(6):
         with open(
@@ -597,7 +597,7 @@ def test_from_placed_circuit():
         network = NISQNetwork(network_tuple[0], network_tuple[1])
 
         dist_circ = HypergraphCircuit(circuit)
-        distribution = alloc.allocate(dist_circ, network, seed=seed)
+        distribution = allocator.allocate(dist_circ, network, seed=seed)
         bp_circuit = BipartiteCircuit(circuit, distribution.placement)
         test_circuit = Circuit.from_dict(packed_circuit_dict)
         assert test_circuit == bp_circuit.packed_circuit
