@@ -34,7 +34,7 @@ def test_hypergraph_is_valid():
 # TODO: Include vertex type information in this test
 def test_distributed_circuit():
 
-    circ = Circuit(2).CRz(0.3, 0, 1)
+    circ = Circuit(2).CRz(1.0, 0, 1)
     dist_circ = DistributedCircuit(circ)
 
     assert dist_circ.circuit == circ
