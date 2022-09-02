@@ -7,6 +7,7 @@ from pytket.predicates import (  # type: ignore
 
 from pytket import OpType, Circuit
 from pytket.passes import (  # type: ignore
+    EulerAngleReduction,
     RebaseCustom,
     SquashCustom,
     RemoveRedundancies,
@@ -81,7 +82,8 @@ dqc_rebase = SequencePass(
     [
         RebaseCustom(dqc_gateset, tk2_to_crz, tk1_to_euler),
         SquashCustom(dqc_1_qubit, tk1_to_euler),
-        RemoveRedundancies(),
+        EulerAngleReduction(p=OpType.Rz,q=OpType.Rx),
+        RemoveRedundancies()
     ]
 )
 
