@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from pytket_dqc.distributors import Distributor
+from pytket_dqc.allocators import Allocator
 from pytket_dqc.placement import Placement
+from pytket_dqc.circuits.distribution import Distribution
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from pytket_dqc import DistributedCircuit
+    from pytket_dqc import HypergraphCircuit
     from pytket_dqc.networks import NISQNetwork
 
 
@@ -54,28 +55,28 @@ def order_reducing_size(
     return {server: server_qubits[server] for server in order}
 
 
-class Ordered(Distributor):
+class Ordered(Allocator):
     """Distribute hypergraph vertices onto servers, populating the largest
     servers first until all vertices are assigned.
     """
     def __init__(self) -> None:
         pass
 
-    def distribute(
+    def allocate(
         self,
-        dist_circ: DistributedCircuit,
+        dist_circ: HypergraphCircuit,
         network: NISQNetwork,
         **kwargs
-    ) -> Placement:
+    ) -> Distribution:
         """Distribute ``dist_circ`` onto ``network`` by placing quibts onto
         servers, in decreasing order of size, until they are full.
 
         :param dist_circ: Circuit to distribute.
-        :type dist_circ: DistributedCircuit
+        :type dist_circ: HypergraphCircuit
         :param network: Network onto which ``dist_circ`` should be distributed.
         :type network: NISQNetwork
-        :return: Placement of ``dist_circ`` onto ``network``.
-        :rtype: Placement
+        :return: Distribution of ``dist_circ`` onto ``network``.
+        :rtype: Distribution
         """
 
         if not network.can_implement(dist_circ):
@@ -92,7 +93,7 @@ class Ordered(Distributor):
 
         # A list of all the vertices in the hypergraph which correspond to
         # qubits in the original circuit.
-        # TODO: Turn this into a method of DistributedCircuit as
+        # TODO: Turn this into a method of HypergraphCircuit as
         # it is used often.
         qubit_vertex_list = [
             vertex
@@ -111,7 +112,7 @@ class Ordered(Distributor):
 
         # A list of all the vertices in the hypergraph which correspond to
         # gate in the original circuit.
-        # TODO: Turn this into a method of DistributedCircuit as
+        # TODO: Turn this into a method of HypergraphCircuit as
         # it is used often.
         gate_vertex_list = [
             vertex
@@ -130,4 +131,4 @@ class Ordered(Distributor):
 
         assert placement.is_valid(dist_circ, network)
 
-        return placement
+        return Distribution(dist_circ, dist_circ, placement, network)

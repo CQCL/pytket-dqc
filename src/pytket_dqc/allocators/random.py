@@ -1,16 +1,17 @@
 from __future__ import annotations
 
-from pytket_dqc.distributors import Distributor
+from pytket_dqc.allocators import Allocator
 from pytket_dqc.placement import Placement
+from pytket_dqc.circuits.distribution import Distribution
 from typing import TYPE_CHECKING
 import random
 
 if TYPE_CHECKING:
-    from pytket_dqc import DistributedCircuit
+    from pytket_dqc import HypergraphCircuit
     from pytket_dqc.networks import NISQNetwork
 
 
-class Random(Distributor):
+class Random(Allocator):
     """Distribute hypergraph vertices onto servers at random. The resulting
     placement is valid, which is to say vertices will not be placed on servers
     once that are full.
@@ -18,23 +19,23 @@ class Random(Distributor):
     def __init__(self) -> None:
         pass
 
-    def distribute(
+    def allocate(
         self,
-        dist_circ: DistributedCircuit,
+        dist_circ: HypergraphCircuit,
         network: NISQNetwork,
         **kwargs
-    ) -> Placement:
+    ) -> Distribution:
         """Distribute ``dist_circ`` onto ``network`` by randomly placing
         vertices onto servers. Qubit vertices are placed onto servers
         until the server is full. Gate vertices are placed on servers at random
         without restriction.
 
         :param dist_circ: Circuit to distribute.
-        :type dist_circ: DistributedCircuit
+        :type dist_circ: HypergraphCircuit
         :param network: Network onto which ``dist_circ`` should be distributed.
         :type network: NISQNetwork
-        :return: Placement of ``dist_circ`` onto ``network``.
-        :rtype: Placement
+        :return: Distribution of ``dist_circ`` onto ``network``.
+        :rtype: Distribution
         """
 
         if not network.can_implement(dist_circ):
@@ -87,4 +88,4 @@ class Random(Distributor):
         placement = Placement(placement_dict)
         assert placement.is_valid(dist_circ, network)
 
-        return placement
+        return Distribution(dist_circ, dist_circ, placement, network)

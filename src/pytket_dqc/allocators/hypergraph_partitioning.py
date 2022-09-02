@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import random
 import kahypar as kahypar  # type:ignore
-from pytket_dqc.distributors import Distributor, GainManager
+from pytket_dqc.allocators import Allocator, GainManager
 from pytket_dqc.placement import Placement
+from pytket_dqc.circuits.distribution import Distribution
 import importlib_resources
 from pytket import Circuit
 
@@ -11,27 +12,27 @@ from pytket import Circuit
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from pytket_dqc import DistributedCircuit
+    from pytket_dqc import HypergraphCircuit
     from pytket_dqc.networks import NISQNetwork
 
 
-class GraphPartitioning(Distributor):
+class HypergraphPartitioning(Allocator):
     """Distribution technique, making use of existing tools for hypergraph
     partitioning available through the `kahypar <https://kahypar.org/>`_
-    package. This distributor will ignore weighted hypergraphs and assume
-    all hyperedges have weight 1. This distributor will ignore the
+    package. This allocator will ignore weighted hypergraphs and assume
+    all hyperedges have weight 1. This allocator will ignore the
     connectivity of the NISQNetwork.
     """
 
-    def distribute(
-        self, dist_circ: DistributedCircuit, network: NISQNetwork, **kwargs
-    ) -> Placement:
-        """Distribute ``dist_circ`` onto ``network``. The initial placement
+    def allocate(
+        self, dist_circ: HypergraphCircuit, network: NISQNetwork, **kwargs
+    ) -> Distribution:
+        """Distribute ``dist_circ`` onto ``network``. The initial distribution
         is found by KaHyPar using the connectivity metric, then it is
         refined to reduce the cost taking into account the network topology.
 
         :param dist_circ: Circuit to distribute.
-        :type dist_circ: DistributedCircuit
+        :type dist_circ: HypergraphCircuit
         :param network: Network onto which ``dist_circ`` should be placed.
         :type network: NISQNetwork
 
@@ -44,8 +45,8 @@ class GraphPartitioning(Distributor):
         :key cache_limit: The maximum size of the set of servers whose cost is
             stored in cache; see GainManager. Default value is 5.
 
-        :return: Placement of ``dist_circ`` onto ``network``.
-        :rtype: Placement
+        :return: Distribution of ``dist_circ`` onto ``network``.
+        :rtype: Distribution
         """
 
         if not network.can_implement(dist_circ):
@@ -54,7 +55,7 @@ class GraphPartitioning(Distributor):
                 )
 
         package_path = importlib_resources.files("pytket_dqc")
-        default_ini = f"{package_path}/distributors/km1_kKaHyPar_sea20.ini"
+        default_ini = f"{package_path}/allocators/km1_kKaHyPar_sea20.ini"
         ini_path = kwargs.get("ini_path", default_ini)
         seed = kwargs.get("seed", None)
         num_rounds = kwargs.get("num_rounds", 1000)
@@ -80,12 +81,12 @@ class GraphPartitioning(Distributor):
         )
 
         assert placement.is_valid(dist_circ, network)
-        return placement
+        return Distribution(dist_circ, dist_circ, placement, network)
 
     def refine(
         self,
         placement: Placement,
-        dist_circ: DistributedCircuit,
+        dist_circ: HypergraphCircuit,
         network: NISQNetwork,
         **kwargs,
     ) -> Placement:
@@ -111,7 +112,7 @@ class GraphPartitioning(Distributor):
         :param placement: Initial placement.
         :type placement: Placement
         :param dist_circ: Circuit to distribute.
-        :type dist_circ: DistributedCircuit
+        :type dist_circ: HypergraphCircuit
         :param network: Network onto which ``dist_circ`` should be placed.
         :type network: NISQNetwork
 
@@ -283,7 +284,7 @@ class GraphPartitioning(Distributor):
 
     def initial_distribute(
         self,
-        dist_circ: DistributedCircuit,
+        dist_circ: HypergraphCircuit,
         network: NISQNetwork,
         ini_path: str,
         **kwargs,
@@ -294,7 +295,7 @@ class GraphPartitioning(Distributor):
         However, it does take into account server sizes.
 
         :param dist_circ: Circuit to distribute.
-        :type dist_circ: DistributedCircuit
+        :type dist_circ: HypergraphCircuit
         :param network: Network onto which ``dist_circ`` should be placed.
         :type network: NISQNetwork
         :param ini_path: Path to kahypar ini file.
@@ -349,7 +350,7 @@ class GraphPartitioning(Distributor):
             context = kahypar.Context()
 
             package_path = importlib_resources.files("pytket_dqc")
-            default_ini = f"{package_path}/distributors/km1_kKaHyPar_sea20.ini"
+            default_ini = f"{package_path}/allocators/km1_kKaHyPar_sea20.ini"
             ini_path = kwargs.get("ini_path", default_ini)
             context.loadINIconfiguration(ini_path)
 

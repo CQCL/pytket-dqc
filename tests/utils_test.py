@@ -6,9 +6,9 @@ from pytket_dqc.utils import (
     evicted_gate_count,
 )
 from pytket import Circuit
-from pytket_dqc.circuits import DistributedCircuit
+from pytket_dqc.circuits import HypergraphCircuit
 from pytket_dqc.networks import NISQNetwork
-from pytket_dqc.distributors import Brute
+from pytket_dqc.allocators import Brute
 from pytket_dqc.placement import Placement
 import networkx as nx  # type: ignore
 from sympy import Symbol  # type: ignore
@@ -30,12 +30,12 @@ def test_CX_circuit():
     circ = Circuit(3).CX(0, 1).CZ(1, 2).H(1).CX(1, 0)
     assert dqc_gateset_predicate.verify(circ)
 
-    dist_circ = DistributedCircuit(circ)
+    dist_circ = HypergraphCircuit(circ)
 
     network = NISQNetwork([[0, 1]], {0: [0, 1], 1: [2, 3]})
 
-    distributor = Brute()
-    placement = distributor.distribute(dist_circ, network)
+    allocator = Brute()
+    placement = allocator.allocate(dist_circ, network)
 
     assert placement == Placement({0: 0, 3: 0, 5: 0, 1: 0, 4: 0, 2: 1})
     assert placement.cost(dist_circ, network) == 1
@@ -83,6 +83,7 @@ def test_ebit_memory_required():
         "tests/test_circuits/pauli_6.json", "r"
     ) as fp:
         circ = Circuit().from_dict(json.load(fp))
+
     # Comparing against calculation by hand
     assert ebit_memory_required(circ) == {0: 0, 1: 2, 2: 3}
 
@@ -91,6 +92,7 @@ def test_ebit_memory_required():
         "tests/test_circuits/frac_CZ_6.json", "r"
     ) as fp:
         circ = Circuit().from_dict(json.load(fp))
+
     # Comparing against calculationby hand
     assert ebit_memory_required(circ) == {0: 0, 1: 4, 2: 0}
 

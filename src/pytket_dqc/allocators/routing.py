@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pytket_dqc.distributors import Distributor
+from pytket_dqc.allocators import Allocator
 from pytket.passes import (  # type:ignore
     DecomposeSwapsToCXs,
     PlacementPass,
@@ -8,37 +8,38 @@ from pytket.passes import (  # type:ignore
 )
 from pytket_dqc.placement import Placement
 from pytket_dqc.utils import dqc_rebase
+from pytket_dqc.circuits.distribution import Distribution
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from pytket_dqc import DistributedCircuit
+    from pytket_dqc import HypergraphCircuit
     from pytket_dqc.networks import NISQNetwork
 
 
-class Routing(Distributor):
+class Routing(Allocator):
     """Distribute quantum circuits using routing tools available in
     `tket <https://cqcl.github.io/tket/pytket/api/routing.html>`_. Note that
-    this distributor will alter the initial circuit.
+    this allocator will alter the initial circuit.
     """
     def __init__(self) -> None:
         pass
 
-    def distribute(
+    def allocate(
         self,
-        dist_circ: DistributedCircuit,
+        dist_circ: HypergraphCircuit,
         network: NISQNetwork,
         **kwargs
-    ) -> Placement:
+    ) -> Distribution:
         """Distribute quantum circuits using routing tools available in
         `tket <https://cqcl.github.io/tket/pytket/api/routing.html>`_. Note
-        that this distributor will alter the initial circuit.
+        that this allocator will alter the initial circuit.
 
         :param dist_circ: Circuit to distribute.
-        :type dist_circ: DistributedCircuit
+        :type dist_circ: HypergraphCircuit
         :param network: Network onto which ``dist_circ`` should be distributed.
         :type network: NISQNetwork
-        :return: Placement of ``dist_circ`` onto ``network``.
-        :rtype: Placement
+        :return: Distribution of ``dist_circ`` onto ``network``.
+        :rtype: Distribution
         """
 
         if not network.can_implement(dist_circ):
@@ -91,4 +92,4 @@ class Routing(Distributor):
 
         placement = Placement(placement_dict)
         assert placement.is_valid(dist_circ, network)
-        return placement
+        return Distribution(dist_circ, dist_circ, placement, network)

@@ -25,9 +25,9 @@ if TYPE_CHECKING:
     from pytket_dqc import Placement, NISQNetwork
 
 
-class DistributedCircuit(Hypergraph):
+class HypergraphCircuit(Hypergraph):
     """Class representing circuit to be distributed on a network.
-    DistributedCircuit is a child of Hypergraph. DistributedCircuit adds
+    HypergraphCircuit is a child of Hypergraph. HypergraphCircuit adds
     additional information on top of Hypergraph which describes the
     correspondence to a circuit.
 
@@ -614,7 +614,7 @@ class DistributedCircuit(Hypergraph):
         return circ
 
 
-class RandomDistributedCircuit(DistributedCircuit):
+class RandomHypergraphCircuit(HypergraphCircuit):
     """Generates circuit to be distributed, where the circuit is a random
     circuit of the form used in quantum volume experiments.
     """
@@ -653,8 +653,8 @@ class RandomDistributedCircuit(DistributedCircuit):
         super().__init__(circ)
 
 
-class CyclicDistributedCircuit(DistributedCircuit):
-    """Particular instance of the DistributedCircuit class, where the circuit
+class CyclicHypergraphCircuit(HypergraphCircuit):
+    """Particular instance of the HypergraphCircuit class, where the circuit
     is constructed from CZ gates acting in a loop accross all qubits.
     """
 
@@ -677,8 +677,8 @@ class CyclicDistributedCircuit(DistributedCircuit):
         super().__init__(circ)
 
 
-class RegularGraphDistributedCircuit(DistributedCircuit):
-    """DistributedCircuit constructed by acting CZ gates between qubits which
+class RegularGraphHypergraphCircuit(HypergraphCircuit):
+    """HypergraphCircuit constructed by acting CZ gates between qubits which
     neighbour each other in a random regular graph.
     """
 

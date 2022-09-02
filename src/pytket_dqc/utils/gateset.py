@@ -95,7 +95,7 @@ dqc_rebase = SequencePass(
     [
         RebaseCustom(dqc_gateset, tk2_to_crz, tk1_to_euler),
         SquashCustom(dqc_1_qubit, tk1_to_euler),
-        EulerAngleReduction(p=OpType.Rz,q=OpType.Rx),
+        EulerAngleReduction(p=OpType.Rz, q=OpType.Rx),
         RemoveRedundancies()
     ]
 )
