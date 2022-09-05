@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, List, Tuple
 
 if TYPE_CHECKING:
     from pytket_dqc.networks import NISQNetwork
-    from pytket_dqc.circuits import DistributedCircuit
+    from pytket_dqc.circuits import HypergraphCircuit
 
 from networkx.algorithms.approximation.steinertree import (  # type: ignore
     steiner_tree
@@ -34,14 +34,14 @@ class Placement:
 
     def is_valid(
         self,
-        circuit: DistributedCircuit,
+        circuit: HypergraphCircuit,
         network: NISQNetwork
     ) -> bool:
         """Check if placement is valid. In particular check that no more
         qubits are allotted to a server than can be accommodated.
 
         :param circuit: Circuit being placed onto ``network`` by placement.
-        :type circuit: DistributedCircuit
+        :type circuit: HypergraphCircuit
         :param network: Network ``circuit`` is placed onto by placement.
         :type network: NISQNetwork
         :return: Is a valid placement.
@@ -72,14 +72,14 @@ class Placement:
 
     def cost(
         self,
-        circuit: DistributedCircuit,
+        circuit: HypergraphCircuit,
         network: NISQNetwork
     ) -> int:
         """Cost of placement of ``circuit`` onto ``network``. The cost is
         measured as the number of e-bits which would be required.
 
         :param circuit: Circuit placed onto ``network`` by placement.
-        :type circuit: DistributedCircuit
+        :type circuit: HypergraphCircuit
         :param network: Network onto which ``circuit`` is placed by placement.
         :type network: NISQNetwork
         :raises Exception: Raised if this is not a valid placement of

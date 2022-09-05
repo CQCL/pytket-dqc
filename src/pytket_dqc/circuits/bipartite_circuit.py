@@ -11,7 +11,7 @@ from networkx.algorithms.bipartite import (  # type: ignore
 )
 from pytket import Circuit
 from pytket.circuit import QubitRegister, OpType  # type: ignore
-from pytket_dqc.circuits import DistributedCircuit
+from pytket_dqc.circuits import HypergraphCircuit
 
 from pytket_dqc.packing import (
     ExtendedCommand,
@@ -58,7 +58,7 @@ class BipartiteCircuit:
         """
         if not dqc_gateset_predicate.verify(circuit):
             raise Exception("The given circuit is not in the allowed gateset.")
-        dist_circ = DistributedCircuit(circuit)
+        dist_circ = HypergraphCircuit(circuit)
         self.circuit = dist_circ.to_relabeled_registers(self.placement)
         self.build_bipartite_graph()
         self.build_top_vertices()

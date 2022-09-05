@@ -15,7 +15,7 @@ Check out the :doc:`usage` section for further information, including how to
    usage
    circuits
    networks
-   distributors
+   allocators
    placement
    utils
    :maxdepth: 2
