@@ -1,26 +1,36 @@
-from pytket import Circuit, OpType
+from pytket import Circuit, OpType, Qubit
 from pytket.passes import auto_rebase_pass
-from .circuit_analysis import is_link_qubit
 
 from pytket.extensions.pyzx import tk_to_pyzx  # type: ignore
 import pyzx as zx  # type: ignore
 
 
-def check_equivalence(circ1: Circuit, circ2: Circuit) -> bool:
+def check_equivalence(
+    circ1: Circuit, circ2: Circuit, qubit_mapping: dict[Qubit, Qubit]
+) -> bool:
     """
     Use PyZX to check the two circuits are equivalent. This is done by
     concatenating the ZX diagram of ``circ1`` with the adjoint of the
     ZX diagram of ``circ2`` to see if the result is the identity.
 
-    Note: the implementation is based on the code for verify_equality from
-    https://github.com/Quantomatic/pyzx/blob/master/pyzx/circuit/__init__.py
-    altered so that it works with zx.Graph instead of zx.Circuit.
+    :param circ1: The first of the two circuits to be compared for equality
+    :type circ1: Circuit
+    :param circ2: The second of the two circuits to be compared for equality
+    :type circ2: Circuit
+    :param qubit_mapping: A mapping from qubits of ``circ1`` to qubits of
+        ``circ2``. If a qubit is not included in this dictionary it means that
+        it ought to be treated as an ancilla (i.e. prepared and measured).
+    :type qubit_mapping: dict[Qubit, Qubit]
     """
-    zx1 = to_pyzx(circ1)
-    zx2 = to_pyzx(circ2)
-    # Check that the number of workspace qubits match
-    if len(zx1.inputs()) != len(zx2.inputs()):
-        return False
+
+    # Note: the implementation is based on the code for verify_equality from
+    # https://github.com/Quantomatic/pyzx/blob/master/pyzx/circuit/__init__.py
+    # altered so that it works with zx.Graph instead of zx.Circuit.
+    qubits1 = list(qubit_mapping.keys())
+    qubits2 = list(qubit_mapping.values())
+
+    zx1 = to_pyzx(circ1, qubits1)
+    zx2 = to_pyzx(circ2, qubits2)
 
     # Compose the adjoint of zx1 with zx2 and simplify
     g = zx1.adjoint()
@@ -28,45 +38,46 @@ def check_equivalence(circ1: Circuit, circ2: Circuit) -> bool:
     zx.full_reduce(g)
     # Check that the only vertices that remain in the graph are those of
     # input and output per wire.
-    # To make sure that the g has not introduced any swaps, we check that
-    # the input and output vertices are connected in the right order
+    # To make sure that g has no swaps, we check that the input and
+    # output vertices are connected in the right order
     return g.num_vertices() == 2 * len(g.inputs()) and all(
         g.connected(v, w) for v, w in zip(g.inputs(), g.outputs())
     )
 
 
-# TODO: Important!! The input to the circuit need not have link qubits.
-# TODO: Important!! The distributed circuit may have changed the ordering
-#   of the wires. This is a problem when checking for equality.
-def to_pyzx(circuit: Circuit) -> zx.Graph:
+def to_pyzx(circuit: Circuit, mask: list[Qubit]) -> zx.Graph:
     """Convert a circuit to a ZX diagram in PyZX. Every starting EJPP
-    process and ending EJPP process is converted to a CX gate with an initial
-    state 0 for starting processes and projection to 0 for ending processes.
+    process and ending EJPP process is converted to a CX gate. The ancilla
+    qubits should not be inside ``mask``, so that they are initialised to
+    state 0 and projected to 0 at the end of the circuit.
 
     Note: This is not equivalent, since what we really need is a discard not
     a projection (and if we use projections, we should check each of them).
     However, this is enough for our purposes to give strong evidence of
     circuit equality.
 
-    Note: Instead of initialising and projecting the aunxiliary qubit on each
+    Note: Instead of initialising and projecting the auxiliary qubit on each
     starting/ending process, we keep the wire alive for the whole duration of
     the circuit and only initialise and project at the two ends.
+
+    :param circuit: The circuit to be converted to a ZX-diagram
+    :type circuit: Circuit
+    :param mask: The list of qubits that are not ancillas, ordered according
+        to the intended order of wires in the output ZX-diagram.
+    :type mask: list[Qubit]
     """
 
-    # To convert the circuit to a "simple" one (required by pytket-pyzx) we
-    # need to figure out how to swap "link" qubits to the bottom so that we
-    # need not distinguishing between "link" qubits and "workspace" qubits
-    workspace_qubits = []
-    link_qubits = []
+    # We need that the logical qubits in ``mask`` are on the top
+    # wires of the circuit, ordered as in ``mask``.
+    # To do so, we figure out a dictionary of qubits to positions.
+    omitted = []
     for q in circuit.qubits:
-        if is_link_qubit(q):
-            link_qubits.append(q)
-        else:
-            workspace_qubits.append(q)
-    qubit_dict = {q: n for n, q in enumerate(workspace_qubits + link_qubits)}
+        if q not in mask:
+            omitted.append(q)
+    qubit_dict = {q: n for n, q in enumerate(mask + omitted)}
 
     # Create the body of the circuit by rebasing every CustomGate
-    the_circ = Circuit(len(qubit_dict))
+    the_circ = Circuit(circuit.n_qubits)
     for command in circuit.get_commands():
         qubits = [qubit_dict[q] for q in command.qubits]
 
@@ -90,10 +101,10 @@ def to_pyzx(circuit: Circuit) -> zx.Graph:
     # Add states 0 on link qubits and projections to state 0. To do so we
     # create a string that indicates what to do per qubit; '/' is "do-nothing"
     # '0' is "place a 0 state/effect"
-    values = "/" * len(workspace_qubits) + "0" * len(link_qubits)
+    values = "/" * len(mask) + "0" * len(omitted)
     zx_graph.apply_state(values)
     zx_graph.apply_effect(values)
 
-    assert len(zx_graph.inputs()) == len(workspace_qubits)
-    assert len(zx_graph.outputs()) == len(workspace_qubits)
+    assert len(zx_graph.inputs()) == len(mask)
+    assert len(zx_graph.outputs()) == len(mask)
     return zx_graph
