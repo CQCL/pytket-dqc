@@ -7,7 +7,7 @@ from pytket.passes import (  # type:ignore
     RoutingPass
 )
 from pytket_dqc.placement import Placement
-from pytket_dqc.utils import dqc_rebase
+from pytket_dqc.utils import DQCPass
 from pytket_dqc.circuits.distribution import Distribution
 
 from typing import TYPE_CHECKING
@@ -58,7 +58,7 @@ class Routing(Allocator):
 
         DecomposeSwapsToCXs(arch).apply(routed_circ)
         # TODO: Add some optimisation to account for impact of adding SWAPs.
-        dqc_rebase.apply(routed_circ)
+        DQCPass().apply(routed_circ)
 
         # Map of vertices to servers
         node_server_map = {}

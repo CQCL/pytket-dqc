@@ -12,6 +12,7 @@ from pytket.passes import (  # type: ignore
     SquashCustom,
     RemoveRedundancies,
     SequencePass,
+    BasePass,
 )
 from pytket.circuit import CustomGateDef  # type: ignore
 
@@ -91,14 +92,18 @@ def tk1_to_euler(a, b, c) -> Circuit:
 
 
 #: Pass rebasing gates to those valid within pytket-dqc
-dqc_rebase = SequencePass(
-    [
-        RebaseCustom(dqc_gateset, tk2_to_crz, tk1_to_euler),
-        SquashCustom(dqc_1_qubit, tk1_to_euler),
-        EulerAngleReduction(p=OpType.Rz, q=OpType.Rx),
-        RemoveRedundancies()
-    ]
-)
+def DQCPass() -> BasePass:
+    # This is the convention used by pytket: use camel case for the naming
+    # of functions that return BasePass
+    return SequencePass(
+        [
+            RebaseCustom(dqc_gateset, tk2_to_crz, tk1_to_euler),
+            SquashCustom(dqc_1_qubit, tk1_to_euler),
+            EulerAngleReduction(p=OpType.Rz, q=OpType.Rx),
+            RemoveRedundancies()
+        ]
+    )
+
 
 #: Defining StartingProcess and EndingProcess custom gates
 def_circ = Circuit(2)

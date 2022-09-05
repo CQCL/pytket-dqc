@@ -10,7 +10,7 @@ import networkx as nx  # type: ignore
 import random
 from pytket_dqc.utils import (
     dqc_gateset_predicate,
-    dqc_rebase,
+    DQCPass,
     _cost_from_circuit,
 )
 from pytket_dqc.utils.gateset import (
@@ -648,7 +648,7 @@ class RandomHypergraphCircuit(HypergraphCircuit):
 
         # Rebase to a valid gate set.
         DecomposeBoxes().apply(circ)
-        dqc_rebase.apply(circ)
+        DQCPass().apply(circ)
 
         super().__init__(circ)
 
@@ -673,7 +673,7 @@ class CyclicHypergraphCircuit(HypergraphCircuit):
                 circ.CZ(qubit, qubit+1)
             circ.CZ(n_qubits-1, 0)
 
-        dqc_rebase.apply(circ)
+        DQCPass().apply(circ)
         super().__init__(circ)
 
 
@@ -711,5 +711,5 @@ class RegularGraphHypergraphCircuit(HypergraphCircuit):
                 circ.Rx(random.uniform(0, 2), random.choice(list(G.nodes)))
                 circ.Rz(random.uniform(0, 2), random.choice(list(G.nodes)))
 
-        dqc_rebase.apply(circ)
+        DQCPass().apply(circ)
         super().__init__(circ)

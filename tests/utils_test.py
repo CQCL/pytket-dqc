@@ -1,6 +1,6 @@
 from pytket_dqc.utils import (
     dqc_gateset_predicate,
-    dqc_rebase,
+    DQCPass,
     direct_from_origin,
     ebit_memory_required,
     evicted_gate_count,
@@ -20,7 +20,7 @@ def test_rebase():
 
     circ = Circuit(2).CY(0, 1)
     assert not (dqc_gateset_predicate.verify(circ))
-    dqc_rebase.apply(circ)
+    DQCPass().apply(circ)
     assert dqc_gateset_predicate.verify(circ)
 
 
