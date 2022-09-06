@@ -67,15 +67,18 @@ You should now be able to use KaHyPar in Python. To test this, run `pytest tests
 
 ### Install graphviz
 
+This package is used for graph visualisation.
+
 1. `brew install graphviz`
 2. `pip install --global-option=build_ext --global-option="-I/opt/homebrew/include/" --global-option="-L/opt/homebrew/lib/graphviz" pygraphviz`
 
-### Install pytket-dqc
-
-1. `pip install .`
-
 ### Install pyzx and pytket-pyzx
+
+These packages are used to verify the correctness of our circuit transformations.
 
 1. `pip install pyzx`
 2. `pip install pytket-pyzx`
 
+### Install pytket-dqc
+
+1. `pip install .`
