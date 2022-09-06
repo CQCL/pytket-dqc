@@ -6,15 +6,14 @@ from pytket.passes import (  # type:ignore
     PlacementPass,
     RoutingPass
 )
-from pytket.passes import auto_rebase_pass
 from pytket_dqc.placement import Placement
+from pytket_dqc.utils import DQCPass
 from pytket_dqc.circuits.distribution import Distribution
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from pytket_dqc import HypergraphCircuit
     from pytket_dqc.networks import NISQNetwork
-from pytket.circuit import OpType  # type:ignore
 
 
 class Routing(Allocator):
@@ -59,7 +58,7 @@ class Routing(Allocator):
 
         DecomposeSwapsToCXs(arch).apply(routed_circ)
         # TODO: Add some optimisation to account for impact of adding SWAPs.
-        auto_rebase_pass({OpType.CZ, OpType.Rz, OpType.Rx}).apply(routed_circ)
+        DQCPass().apply(routed_circ)
 
         # Map of vertices to servers
         node_server_map = {}
