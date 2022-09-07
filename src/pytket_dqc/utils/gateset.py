@@ -40,7 +40,7 @@ def check_function(circ):
 dqc_gateset_predicate = UserDefinedPredicate(check_function)
 
 
-def tk2_to_crz(a, b, c) -> Circuit:
+def tk2_to_cu1(a, b, c) -> Circuit:
     """Given a TK2 gate XXPhase(a)*YYPhase(b)*ZZPhase(c), return
     an equivalent circuit using CU1 and single qubit gates.
 
@@ -103,7 +103,7 @@ def DQCPass() -> BasePass:
     # of functions that return BasePass
     return SequencePass(
         [
-            RebaseCustom(dqc_gateset, tk2_to_crz, tk1_to_euler),
+            RebaseCustom(dqc_gateset, tk2_to_cu1, tk1_to_euler),
             SquashCustom(dqc_1_qubit, tk1_to_euler),
             EulerAngleReduction(p=OpType.Rz, q=OpType.Rx),
             RemoveRedundancies(),
