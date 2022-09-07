@@ -348,13 +348,13 @@ class Vertex:
         self.is_top_half = is_top_half
         self.is_on_graph = True
 
-    def added_all_nonlocal_crzs(self):
-        """Check if all the non-local CRzs on this
+    def added_all_nonlocal_cu1s(self):
+        """Check if all the non-local CU1s on this
         circuit have been added to the circuit.
 
 
         :return: A bool describing if all the
-        non-local CRzs have been added.
+        non-local CU1s have been added.
         :rtype: bool
         """
         nonlocal_crz_count = 0
@@ -362,14 +362,14 @@ class Vertex:
 
         for extended_command in self.extended_commands:
             if (
-                extended_command.get_op_type() == OpType.CRz
+                extended_command.get_op_type() == OpType.CU1
                 and not extended_command.is_local()
             ):
                 nonlocal_crz_count += 1
 
         for extended_command in self.added_extended_commands:
             if (
-                extended_command.get_op_type() == OpType.CRz
+                extended_command.get_op_type() == OpType.CU1
                 and not extended_command.is_local()
             ):
                 nonlocal_added_crz_count += 1
