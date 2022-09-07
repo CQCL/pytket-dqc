@@ -5,7 +5,7 @@ from pytket.circuit import Node  # type:ignore
 import pytest
 from pytket_dqc.placement import Placement
 from pytket_dqc import HypergraphCircuit
-from pytket import Circuit
+from pytket import Circuit, OpType
 
 
 def test_can_implement():
@@ -19,10 +19,15 @@ def test_can_implement():
     }
     network = NISQNetwork(server_coupling, server_qubits)
 
-    large_circ = Circuit(4).CRz(1.0, 0, 1).CRz(1.0, 1, 2).CRz(1.0, 2, 3)
+    large_circ = (
+        Circuit(4)
+        .add_gate(OpType.CU1, 1.0, [0, 1])
+        .add_gate(OpType.CU1, 1.0, [1, 2])
+        .add_gate(OpType.CU1, 1.0, [2, 3])
+    )
     large_dist_circ = HypergraphCircuit(large_circ)
 
-    small_circ = Circuit(2).CRz(1.0, 0, 1)
+    small_circ = Circuit(2).add_gate(OpType.CU1, 1.0, [0, 1])
     small_dist_circ = HypergraphCircuit(small_circ)
 
     assert not network.can_implement(large_dist_circ)
@@ -33,7 +38,8 @@ def test_nisq_get_architecture():
 
     med_network = NISQNetwork([[0, 1], [0, 2]], {0: [0], 1: [1], 2: [2, 3]})
     med_arch = Architecture(
-        [(Node(2), Node(3)), (Node(2), Node(0)), (Node(0), Node(1))])
+        [(Node(2), Node(3)), (Node(2), Node(0)), (Node(0), Node(1))]
+    )
     arc, node_qubit_map = med_network.get_architecture()
     assert arc == med_arch
     assert node_qubit_map == {Node(0): 0, Node(1): 1, Node(2): 2, Node(3): 3}
@@ -44,7 +50,8 @@ def test_nisq_get_placer():
 
     med_network = NISQNetwork([[0, 1], [0, 2]], {0: [0], 1: [1], 2: [2, 3]})
     med_arch = Architecture(
-        [(Node(2), Node(3)), (Node(2), Node(0)), (Node(0), Node(1))])
+        [(Node(2), Node(3)), (Node(2), Node(0)), (Node(0), Node(1))]
+    )
     link_errors = {
         (Node(2), Node(3)): 0,
         (Node(2), Node(0)): 1,
@@ -55,20 +62,37 @@ def test_nisq_get_placer():
 
 
 def test_nisq_draw():
-    network = NISQNetwork([[0, 1], [0, 2], [2, 3]], {
-                          0: [0, 1], 1: [2, 3, 4], 2: [5, 6, 7, 8], 3: [9]})
+    network = NISQNetwork(
+        [[0, 1], [0, 2], [2, 3]],
+        {0: [0, 1], 1: [2, 3, 4], 2: [5, 6, 7, 8], 3: [9]},
+    )
     network.draw_nisq_network()
 
 
 def test_nisq_get_nx():
     network = NISQNetwork(
-        [[0, 1], [0, 2]], {0: [0, 1, 2], 1: [3, 4, 5], 2: [6, 7, 8, 9]})
+        [[0, 1], [0, 2]], {0: [0, 1, 2], 1: [3, 4, 5], 2: [6, 7, 8, 9]}
+    )
 
     G_full = network.get_nisq_nx()
     G_server = network.get_server_nx()
 
-    assert list(G_full.edges()) == [(0, 1), (0, 2), (0, 3), (0, 6), (1, 2), (
-        3, 4), (3, 5), (4, 5), (6, 7), (6, 8), (6, 9), (7, 8), (7, 9), (8, 9)]
+    assert list(G_full.edges()) == [
+        (0, 1),
+        (0, 2),
+        (0, 3),
+        (0, 6),
+        (1, 2),
+        (3, 4),
+        (3, 5),
+        (4, 5),
+        (6, 7),
+        (6, 8),
+        (6, 9),
+        (7, 8),
+        (7, 9),
+        (8, 9),
+    ]
     assert list(G_server.edges()) == [(0, 1), (0, 2)]
 
 
@@ -81,8 +105,9 @@ def test_server_get_nx():
 
 def test_get_server_list():
 
-    large_network = NISQNetwork([[0, 1], [0, 2], [1, 2]], {
-                                0: [0, 1, 2], 1: [3, 4, 5], 2: [6, 7, 8, 9]})
+    large_network = NISQNetwork(
+        [[0, 1], [0, 2], [1, 2]], {0: [0, 1, 2], 1: [3, 4, 5], 2: [6, 7, 8, 9]}
+    )
     small_network = NISQNetwork([[0, 1]], {0: [0, 1], 1: [2, 3, 4]})
 
     assert small_network.get_server_list() == [0, 1]

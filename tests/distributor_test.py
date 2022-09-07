@@ -29,11 +29,11 @@ def test_annealing_distribute():
 
     circ = (
         Circuit(4)
-        .CRz(1.0, 0, 3)
+        .add_gate(OpType.CU1, 1.0, [0, 3])
         .Rz(0.5, 3)
-        .CRz(1.0, 1, 3)
+        .add_gate(OpType.CU1, 1.0, [1, 3])
         .Rz(0.5, 3)
-        .CRz(1.0, 2, 3)
+        .add_gate(OpType.CU1, 1.0, [2, 3])
         .Rz(0.5, 3)
     )
     dist_circ = HypergraphCircuit(circ)
@@ -79,11 +79,11 @@ def test_graph_initial_partitioning():
 
     circ = (
         Circuit(4)
-        .CRz(1.0, 0, 3)
+        .add_gate(OpType.CU1, 1.0, [0, 3])
         .Rz(0.5, 3)
-        .CRz(1.0, 1, 3)
+        .add_gate(OpType.CU1, 1.0, [1, 3])
         .Rz(0.5, 3)
-        .CRz(1.0, 2, 3)
+        .add_gate(OpType.CU1, 1.0, [2, 3])
         .Rz(0.5, 3)
     )
     dist_circ = HypergraphCircuit(circ)
@@ -108,15 +108,15 @@ def test_graph_partitioning_refinement():
 
     circ = (
         Circuit(4)
-        .CRz(1.0, 0, 3)
+        .add_gate(OpType.CU1, 1.0, [0, 3])
         .H(0)
-        .CRz(1.0, 1, 3)
+        .add_gate(OpType.CU1, 1.0, [1, 3])
         .H(1)
-        .CRz(1.0, 2, 3)
+        .add_gate(OpType.CU1, 1.0, [2, 3])
         .H(2)
-        .CRz(1.0, 0, 3)
-        .CRz(1.0, 1, 3)
-        .CRz(1.0, 2, 3)
+        .add_gate(OpType.CU1, 1.0, [0, 3])
+        .add_gate(OpType.CU1, 1.0, [1, 3])
+        .add_gate(OpType.CU1, 1.0, [2, 3])
     )
     dist_circ = HypergraphCircuit(circ)
 
@@ -179,7 +179,7 @@ def test_graph_partitioning_unused_qubits():
     distribution = allocator.allocate(dist_circ, network, seed=1)
     assert distribution.placement == Placement(dict())
 
-    circ = Circuit(3).CRz(1.0, 1, 2)
+    circ = Circuit(3).add_gate(OpType.CU1, 1.0, [1, 2])
     dist_circ = HypergraphCircuit(circ)
 
     distribution = allocator.allocate(dist_circ, network, seed=1)
@@ -229,7 +229,11 @@ def test_order_reducing_size():
 
 def test_random_allocator():
 
-    circ = Circuit(3).CRz(1.0, 0, 2).CRz(1.0, 1, 2)
+    circ = (
+        Circuit(3)
+        .add_gate(OpType.CU1, 1.0, [0, 2])
+        .add_gate(OpType.CU1, 1.0, [1, 2])
+    )
     dist_circ = HypergraphCircuit(circ)
 
     network = NISQNetwork([[0, 1], [0, 2]], {0: [0, 1], 1: [2, 3], 2: [4]})
@@ -243,10 +247,15 @@ def test_random_allocator():
 
 def test_ordered_allocator():
 
-    small_circ = Circuit(2).CRz(1.0, 0, 1)
+    small_circ = Circuit(2).add_gate(OpType.CU1, 1.0, [0, 1])
     dist_small_circ = HypergraphCircuit(small_circ)
 
-    med_circ = Circuit(4).CRz(1.0, 0, 1).CRz(1.0, 1, 2).CRz(1.0, 2, 3)
+    med_circ = (
+        Circuit(4)
+        .add_gate(OpType.CU1, 1.0, [0, 1])
+        .add_gate(OpType.CU1, 1.0, [1, 2])
+        .add_gate(OpType.CU1, 1.0, [2, 3])
+    )
     dist_med_circ = HypergraphCircuit(med_circ)
 
     small_network = NISQNetwork([[0, 1]], {0: [0, 1], 1: [2, 3, 4]})
@@ -272,11 +281,11 @@ def test_brute_distribute_small_hyperedge():
 
     circ = (
         Circuit(4)
-        .CRz(1.0, 0, 3)
+        .add_gate(OpType.CU1, 1.0, [0, 3])
         .Rz(0.5, 3)
-        .CRz(1.0, 1, 3)
+        .add_gate(OpType.CU1, 1.0, [1, 3])
         .Rz(0.5, 3)
-        .CRz(1.0, 2, 3)
+        .add_gate(OpType.CU1, 1.0, [2, 3])
         .Rz(0.5, 3)
     )
     dist_circ = HypergraphCircuit(circ)
@@ -293,11 +302,16 @@ def test_brute_distribute_small_hyperedge():
 def test_brute_distribute():
 
     small_network = NISQNetwork([[0, 1]], {0: [0, 1], 1: [2]})
-    small_circ = Circuit(2).CRz(1.0, 0, 1)
+    small_circ = Circuit(2).add_gate(OpType.CU1, 1.0, [0, 1])
     dist_small_circ = HypergraphCircuit(small_circ)
 
     med_network = NISQNetwork([[0, 1], [0, 2]], {0: [0], 1: [1], 2: [2, 3]})
-    med_circ = Circuit(4).CRz(1.0, 0, 1).CRz(1.0, 1, 2).CRz(1.0, 2, 3)
+    med_circ = (
+        Circuit(4)
+        .add_gate(OpType.CU1, 1.0, [0, 1])
+        .add_gate(OpType.CU1, 1.0, [1, 2])
+        .add_gate(OpType.CU1, 1.0, [2, 3])
+    )
     dist_med_circ = HypergraphCircuit(med_circ)
 
     allocator = Brute()
@@ -318,7 +332,12 @@ def test_brute_distribute():
 def test_routing_allocator():
 
     small_network = NISQNetwork([[0, 1], [0, 2]], {0: [0], 1: [1], 2: [2, 3]})
-    small_circ = Circuit(4).CRz(1.0, 0, 1).CRz(1.0, 1, 2).CRz(1.0, 2, 3)
+    small_circ = (
+        Circuit(4)
+        .add_gate(OpType.CU1, 1.0, [0, 1])
+        .add_gate(OpType.CU1, 1.0, [1, 2])
+        .add_gate(OpType.CU1, 1.0, [2, 3])
+    )
     dist_small_circ = HypergraphCircuit(small_circ)
 
     allocator = Routing()
@@ -331,12 +350,12 @@ def test_routing_allocator():
     med_network = NISQNetwork([[0, 1]], {0: [0, 1], 1: [2, 3, 4]})
     med_circ = (
         Circuit(5)
-        .CRz(1.0, 0, 1)
-        .CRz(1.0, 1, 2)
-        .CRz(1.0, 0, 2)
-        .CRz(1.0, 2, 3)
-        .CRz(1.0, 3, 4)
-        .CRz(1.0, 3, 2)
+        .add_gate(OpType.CU1, 1.0, [0, 1])
+        .add_gate(OpType.CU1, 1.0, [1, 2])
+        .add_gate(OpType.CU1, 1.0, [0, 2])
+        .add_gate(OpType.CU1, 1.0, [2, 3])
+        .add_gate(OpType.CU1, 1.0, [3, 4])
+        .add_gate(OpType.CU1, 1.0, [3, 2])
     )
     dist_med_circ = HypergraphCircuit(med_circ)
 
@@ -351,12 +370,12 @@ def test_routing_allocator():
 
     med_circ_flipped = (
         Circuit(5)
-        .CRz(1.0, 0, 1)
-        .CRz(1.0, 1, 2)
-        .CRz(1.0, 0, 2)
-        .CRz(1.0, 2, 3)
-        .CRz(1.0, 3, 4)
-        .CRz(1.0, 2, 3)
+        .add_gate(OpType.CU1, 1.0, [0, 1])
+        .add_gate(OpType.CU1, 1.0, [1, 2])
+        .add_gate(OpType.CU1, 1.0, [0, 2])
+        .add_gate(OpType.CU1, 1.0, [2, 3])
+        .add_gate(OpType.CU1, 1.0, [3, 4])
+        .add_gate(OpType.CU1, 1.0, [2, 3])
     )
     dist_med_circ_flipped = HypergraphCircuit(med_circ_flipped)
 
@@ -407,13 +426,13 @@ def test_CRz_circuits():
     network = NISQNetwork([[0, 1]], {0: [0], 1: [1]})
 
     circ = Circuit(2)
-    circ.CRz(0.3, 1, 0)
-    circ.CRz(0.1, 0, 1)
+    circ.add_gate(OpType.CU1, 0.3, [1, 0])
+    circ.add_gate(OpType.CU1, 0.1, [0, 1])
     circ.Rz(0.3, 0)
-    circ.CRz(0.4, 0, 1)
+    circ.add_gate(OpType.CU1, 0.4, [0, 1])
     circ.H(0)
-    circ.CRz(0.5, 1, 0)
-    circ.CRz(0.2, 0, 1)
+    circ.add_gate(OpType.CU1, 0.5, [1, 0])
+    circ.add_gate(OpType.CU1, 0.2, [0, 1])
 
     dist_circ = HypergraphCircuit(circ)
 

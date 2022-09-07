@@ -24,7 +24,7 @@ dqc_1_qubit = {
     OpType.Z,
 }
 dqc_2_qubit = {
-    OpType.CRz,
+    OpType.CU1,
 }
 dqc_gateset = dqc_1_qubit.union(dqc_2_qubit)
 
@@ -42,7 +42,7 @@ dqc_gateset_predicate = UserDefinedPredicate(check_function)
 
 def tk2_to_crz(a, b, c) -> Circuit:
     """Given a TK2 gate XXPhase(a)*YYPhase(b)*ZZPhase(c), return
-    an equivalent circuit using CRz and single qubit gates.
+    an equivalent circuit using CU1 and single qubit gates.
 
     Note: Unfortunately, pytket does not currently support a simple
     interface to write rebase passes other than those based on replacing
@@ -50,11 +50,17 @@ def tk2_to_crz(a, b, c) -> Circuit:
     """
     circ = Circuit(2)
     # The ZZPhase(c) gate
-    circ.CRz(-2 * c, 0, 1).Rz(c, 1)
+    circ.add_gate(OpType.CU1, -2 * c, [0, 1]).Rz(c, 0).Rz(c, 1)
     # The YYPhase(b) gate
-    circ.Sdg(0).Sdg(1).H(0).H(1).CRz(-2 * b, 0, 1).Rz(b, 1).H(0).H(1).S(0).S(1)
+    circ.Sdg(0).Sdg(1).H(0).H(1).add_gate(OpType.CU1, -2 * b, [0, 1]).Rz(
+        b, 0
+    ).Rz(b, 1).H(0).H(1).S(0).S(1)
     # The XXPhase(a) gate
-    circ.H(0).H(1).CRz(-2 * a, 0, 1).Rz(a, 1).H(0).H(1)
+    circ.H(0).H(1).add_gate(OpType.CU1, -2 * a, [0, 1]).Rz(a, 0).Rz(a, 1).H(
+        0
+    ).H(1)
+    # The global phase (we could ignore it, but TKET lets us track it)
+    circ.add_phase((a + b + c) / 2)
     return circ
 
 
@@ -100,7 +106,7 @@ def DQCPass() -> BasePass:
             RebaseCustom(dqc_gateset, tk2_to_crz, tk1_to_euler),
             SquashCustom(dqc_1_qubit, tk1_to_euler),
             EulerAngleReduction(p=OpType.Rz, q=OpType.Rx),
-            RemoveRedundancies()
+            RemoveRedundancies(),
         ]
     )
 
