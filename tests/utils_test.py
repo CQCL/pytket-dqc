@@ -6,7 +6,7 @@ from pytket_dqc.utils import (
     evicted_gate_count,
     check_equivalence,
 )
-from pytket import Circuit  # type: ignore
+from pytket import Circuit, OpType  # type: ignore
 from pytket.pauli import Pauli  # type: ignore
 from pytket_dqc.circuits import HypergraphCircuit
 from pytket_dqc.networks import NISQNetwork
@@ -202,3 +202,34 @@ def test_verification_rebase():
     DQCPass().apply(c)
 
     assert check_equivalence(orig_c, c, {q: q for q in c.qubits})
+
+
+def test_tk2_to_cu1():
+
+    np.random.seed(42)
+    a = round(np.random.uniform(-2, 2), 2)
+    b = round(np.random.uniform(-2, 2), 2)
+    c = round(np.random.uniform(-2, 2), 2)
+
+    circ = Circuit(2).add_gate(OpType.TK2, [a, b, c], [0, 1])
+    orig_circ = circ.copy()
+    DQCPass().apply(circ)
+    assert dqc_gateset_predicate.verify(circ)
+    assert check_equivalence(orig_circ, circ, {q: q for q in circ.qubits})
+
+
+def test_tk1_to_euler():
+
+    np.random.seed(42)
+    a = round(np.random.uniform(-2, 2), 2)
+    rnd_b = round(np.random.uniform(-2, 2), 2)
+    c = round(np.random.uniform(-2, 2), 2)
+
+    b_values = [rnd_b, 0, 1, 2, 0.5, 1.5, -0.5, 3.5]
+
+    for b in b_values:
+        circ = Circuit(1).add_gate(OpType.TK1, [a, b, c], [0])
+        orig_circ = circ.copy()
+        DQCPass().apply(circ)
+        assert dqc_gateset_predicate.verify(circ)
+        assert check_equivalence(orig_circ, circ, {q: q for q in circ.qubits})
