@@ -233,3 +233,16 @@ def test_tk1_to_euler():
         DQCPass().apply(circ)
         assert dqc_gateset_predicate.verify(circ)
         assert check_equivalence(orig_circ, circ, {q: q for q in circ.qubits})
+
+
+def test_verify_non_equal():
+
+    h_circ = Circuit(1).H(0)
+    s_circ = Circuit(1).S(0)
+    assert not check_equivalence(h_circ, s_circ, {q: q for q in h_circ.qubits})
+
+    ab_circ = Circuit(2).CX(0, 1).CX(1, 0)
+    ba_circ = Circuit(2).CX(1, 0).CX(0, 1)
+    assert not check_equivalence(
+        ab_circ, ba_circ, {q: q for q in h_circ.qubits}
+    )
