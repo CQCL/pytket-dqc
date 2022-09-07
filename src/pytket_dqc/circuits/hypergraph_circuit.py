@@ -160,7 +160,7 @@ class HypergraphCircuit(Hypergraph):
         # If the command is a two-qubit gate, store n, where the
         # command is the nth 2 qubit gate in the circuit.
         for command in self.circuit.get_commands():
-            if command.op.type in [OpType.CZ, OpType.CRz, OpType.CX]:
+            if command.op.type in [OpType.CZ, OpType.CU1, OpType.CX]:
                 self.commands.append(
                     {"command": command, "two q gate count": two_q_gate_count}
                 )
@@ -197,7 +197,7 @@ class HypergraphCircuit(Hypergraph):
                 command_index = command_dict['command_index']
                 # If the command is a CZ gate add it to the current working
                 # hyperedge.
-                if command["command"].op.type in [OpType.CZ, OpType.CRz]:
+                if command["command"].op.type in [OpType.CZ, OpType.CU1]:
                     two_qubit_gate_found = True
                     vertex = command["two q gate count"] + \
                         self.circuit.n_qubits

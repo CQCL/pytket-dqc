@@ -1,7 +1,7 @@
 from pytket_dqc.networks import NISQNetwork
 from pytket_dqc import HypergraphCircuit
 from pytket_dqc.placement import Placement
-from pytket import Circuit
+from pytket import Circuit, OpType
 
 
 # TODO: Add tests with circuits where one or more qubits are unused
@@ -9,14 +9,20 @@ from pytket import Circuit
 
 def test_placement_valid():
 
-    large_network = NISQNetwork([[0, 1], [0, 2], [1, 2]], {
-                                0: [0, 1, 2], 1: [3, 4, 5], 2: [6, 7, 8, 9]})
+    large_network = NISQNetwork(
+        [[0, 1], [0, 2], [1, 2]], {0: [0, 1, 2], 1: [3, 4, 5], 2: [6, 7, 8, 9]}
+    )
     small_network = NISQNetwork([[0, 1]], {0: [0, 1], 1: [2]})
 
-    small_circ = Circuit(2).CRz(1.0, 0, 1)
+    small_circ = Circuit(2).add_gate(OpType.CU1, 1.0, [0, 1])
     dist_small_circ = HypergraphCircuit(small_circ)
 
-    med_circ = Circuit(4).CRz(1.0, 0, 1).CRz(1.0, 1, 2).CRz(1.0, 2, 3)
+    med_circ = (
+        Circuit(4)
+        .add_gate(OpType.CU1, 1.0, [0, 1])
+        .add_gate(OpType.CU1, 1.0, [1, 2])
+        .add_gate(OpType.CU1, 1.0, [2, 3])
+    )
     dist_med_circ = HypergraphCircuit(med_circ)
 
     placement_one = Placement({0: 1, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1})
@@ -42,22 +48,21 @@ def test_placement_valid():
 
 def test_placement_cost():
 
-    two_CZ_circ = Circuit(3).CRz(1.0, 0, 1).CRz(1.0, 0, 2)
+    two_CZ_circ = (
+        Circuit(3)
+        .add_gate(OpType.CU1, 1.0, [0, 1])
+        .add_gate(OpType.CU1, 1.0, [0, 2])
+    )
     dist_two_CZ_circ = HypergraphCircuit(two_CZ_circ)
 
     three_line_network = NISQNetwork(
         [[0, 1], [1, 2], [1, 3], [2, 4]],
-        {0: [0], 1: [1], 2: [2], 3: [3], 4: [4]}
-        )
+        {0: [0], 1: [1], 2: [2], 3: [3], 4: [4]},
+    )
 
     placement_one = Placement({0: 0, 1: 1, 2: 2, 3: 1, 4: 2})
-    assert placement_one.cost(
-        dist_two_CZ_circ,
-        three_line_network
-    ) == 2
+    assert placement_one.cost(dist_two_CZ_circ, three_line_network) == 2
     placement_two = Placement({0: 0, 1: 1, 2: 2, 3: 1, 4: 0})
-    assert placement_two.cost(
-        dist_two_CZ_circ, three_line_network) == 3
+    assert placement_two.cost(dist_two_CZ_circ, three_line_network) == 3
     placement_three = Placement({0: 1, 1: 0, 2: 2, 3: 0, 4: 2})
-    assert placement_three.cost(
-        dist_two_CZ_circ, three_line_network) == 2
+    assert placement_three.cost(dist_two_CZ_circ, three_line_network) == 2
