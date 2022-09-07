@@ -176,7 +176,7 @@ def test_verification_from_placed_circuit():
 def test_verification_rebase():
     # Creates a random circuit, rebases it and uses ``check_equivalence``
     # to verify they are equivalent
-    np.random.seed(42)  # This also sets the seed for scipy (unitary_group)
+    np.random.seed(42)
     n_qubits = 8
     depth = 8
 
