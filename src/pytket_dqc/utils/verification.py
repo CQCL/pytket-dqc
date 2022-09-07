@@ -40,7 +40,8 @@ def check_equivalence(
     qubits1 = list(qubit_mapping.keys())
     qubits2 = list(qubit_mapping.values())
     # Check that the ``qubit_mapping`` is 1-to-1
-    assert len(list(set(qubits2))) == len(qubits2)
+    if len(list(set(qubits2))) != len(qubits2):
+        raise Exception("The qubit mapping must be 1-to-1.")
 
     zx1 = to_pyzx(circ1, qubits1)
     zx2 = to_pyzx(circ2, qubits2)
