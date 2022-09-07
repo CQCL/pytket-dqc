@@ -13,6 +13,17 @@ def check_equivalence(
     concatenating the ZX diagram of ``circ1`` with the adjoint of the
     ZX diagram of ``circ2`` to see if the result is the identity.
 
+    NOTE: returning False does not guarantee that the circuits are different;
+    it just means that PyZX could not prove that they are equivalent.
+    If it returns True and the ``qubit_mapping`` covers all qubits of both
+    circuits, then it is guaranteed that the circuits are equivalent.
+    If some qubits are missing from ``qubit_mapping`` then there are
+    post-selections/projections to state 0, which means that the test is not
+    a formal proof -- we would need to test for projection to state 1 as well
+    (and, in fact, all combinations of 0 and 1).
+    Hence, in the latter case, we can only say "we have strong evidence that
+    the circuits are equivalent".
+
     :param circ1: The first of the two circuits to be compared for equality
     :type circ1: Circuit
     :param circ2: The second of the two circuits to be compared for equality
@@ -28,6 +39,8 @@ def check_equivalence(
     # altered so that it works with zx.Graph instead of zx.Circuit.
     qubits1 = list(qubit_mapping.keys())
     qubits2 = list(qubit_mapping.values())
+    # Check that the ``qubit_mapping`` is 1-to-1
+    assert len(list(set(qubits2))) == len(qubits2)
 
     zx1 = to_pyzx(circ1, qubits1)
     zx2 = to_pyzx(circ2, qubits2)
