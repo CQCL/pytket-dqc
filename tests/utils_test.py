@@ -6,7 +6,8 @@ from pytket_dqc.utils import (
     evicted_gate_count,
     check_equivalence,
 )
-from pytket import Circuit
+from pytket import Circuit  # type: ignore
+from pytket.pauli import Pauli  # type: ignore
 from pytket_dqc.circuits import HypergraphCircuit
 from pytket_dqc.networks import NISQNetwork
 from pytket_dqc.allocators import Brute
@@ -14,8 +15,11 @@ from pytket_dqc.placement import Placement
 import networkx as nx  # type: ignore
 from sympy import Symbol  # type: ignore
 import json  # type: ignore
-import pickle
-import pytest
+import pickle  # type: ignore
+from pytket.circuit import PauliExpBox  # type: ignore
+from pytket.passes import DecomposeBoxes  # type: ignore
+import numpy as np  # type: ignore
+import pytest  # type: ignore
 
 
 def test_rebase():
@@ -167,3 +171,34 @@ def test_verification_from_placed_circuit():
         assert check_equivalence(
             rebased_circuits[i], packed_circuits[i], qubit_mappings[i]
         )
+
+
+def test_verification_rebase():
+    # Creates a random circuit, rebases it and uses ``check_equivalence``
+    # to verify they are equivalent
+    np.random.seed(42)  # This also sets the seed for scipy (unitary_group)
+    n_qubits = 8
+    depth = 8
+
+    c = Circuit(n_qubits)
+
+    qubit_list = [i for i in range(n_qubits)]
+    pauli_list = [Pauli.X, Pauli.Y, Pauli.X, Pauli.I]
+
+    for _ in range(depth):
+
+        # Randomly reorder the qubits on which the gate will act, generate
+        # random angle, and choose random Pauli string.
+        subset = np.random.permutation(qubit_list)
+        angle = np.random.uniform(-2, 2)
+        random_pauli = np.random.choice(pauli_list, n_qubits)
+
+        # Generate gate corresponding to pauli string and angle
+        pauli_box = PauliExpBox(random_pauli, angle)
+        c.add_pauliexpbox(pauli_box, subset)
+
+    DecomposeBoxes().apply(c)
+    orig_c = c.copy()
+    DQCPass().apply(c)
+
+    assert check_equivalence(orig_c, c, {q: q for q in c.qubits})
