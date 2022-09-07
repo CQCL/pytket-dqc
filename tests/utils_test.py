@@ -4,6 +4,7 @@ from pytket_dqc.utils import (
     direct_from_origin,
     ebit_memory_required,
     evicted_gate_count,
+    check_equivalence,
 )
 from pytket import Circuit
 from pytket_dqc.circuits import HypergraphCircuit
@@ -13,6 +14,7 @@ from pytket_dqc.placement import Placement
 import networkx as nx  # type: ignore
 from sympy import Symbol  # type: ignore
 import json  # type: ignore
+import pickle
 import pytest
 
 
@@ -79,18 +81,14 @@ def test_symbolic_circuit():
 
 def test_ebit_memory_required():
     # This is a randomly generated circuit of type pauli, depth 6 and 6 qubits
-    with open(
-        "tests/test_circuits/pauli_6.json", "r"
-    ) as fp:
+    with open("tests/test_circuits/pauli_6.json", "r") as fp:
         circ = Circuit().from_dict(json.load(fp))
 
     # Comparing against calculation by hand
     assert ebit_memory_required(circ) == {0: 0, 1: 2, 2: 3}
 
     # Randomly generated circuit of type frac_CZ, depth 6 and 6 qubits
-    with open(
-        "tests/test_circuits/frac_CZ_6.json", "r"
-    ) as fp:
+    with open("tests/test_circuits/frac_CZ_6.json", "r") as fp:
         circ = Circuit().from_dict(json.load(fp))
 
     # Comparing against calculationby hand
@@ -99,17 +97,73 @@ def test_ebit_memory_required():
 
 def test_evicted_gate_count():
     # This is a randomly generated circuit of type pauli, depth 6 and 6 qubits
-    with open(
-        "tests/test_circuits/pauli_6.json", "r"
-    ) as fp:
+    with open("tests/test_circuits/pauli_6.json", "r") as fp:
         circ = Circuit().from_dict(json.load(fp))
     # Comparing against calculation by hand
     assert evicted_gate_count(circ) == 0
 
     # Randomly generated circuit of type frac_CZ, depth 6 and 6 qubits
-    with open(
-        "tests/test_circuits/frac_CZ_6.json", "r"
-    ) as fp:
+    with open("tests/test_circuits/frac_CZ_6.json", "r") as fp:
         circ = Circuit().from_dict(json.load(fp))
     # Comparing against calculation by
     assert evicted_gate_count(circ) == 6
+
+
+def test_verification_from_placed_circuit():
+    # This is the same test as in ``test_from_placed_circuit`` but instead of
+    # distributing the ``rebased_circuit`` we are just verifying that
+    # ``rebased_circuit`` and ``packed_circuit`` are actually equivalent.
+    # This is meant to be a test for ``check_equivalence`` in utils.
+
+    rebased_circuits = dict()
+    packed_circuits = dict()
+    qubit_mappings = dict()
+
+    for i in range(6):
+        with open(
+            "tests/test_circuits/packing/"
+            + f"rebased_circuits/rebased_circuit{i}.pickle",
+            "rb",
+        ) as f:
+            rebased_circuits[i] = pickle.load(f)
+        with open(
+            "tests/test_circuits/packing/"
+            + f"packed_circuits/packed_circuit{i}.pickle",
+            "rb",
+        ) as f:
+            packed_circuits[i] = pickle.load(f)
+
+    qubit_mappings[0] = {
+        rebased_circuits[0].qubits[0]: packed_circuits[0].qubits[1],
+        rebased_circuits[0].qubits[1]: packed_circuits[0].qubits[0],
+    }
+    qubit_mappings[1] = {
+        rebased_circuits[1].qubits[0]: packed_circuits[1].qubits[2],
+        rebased_circuits[1].qubits[1]: packed_circuits[1].qubits[0],
+    }
+    qubit_mappings[2] = {
+        rebased_circuits[2].qubits[0]: packed_circuits[2].qubits[2],
+        rebased_circuits[2].qubits[1]: packed_circuits[2].qubits[0],
+    }
+    qubit_mappings[3] = {
+        rebased_circuits[3].qubits[0]: packed_circuits[3].qubits[3],
+        rebased_circuits[3].qubits[1]: packed_circuits[3].qubits[0],
+    }
+    qubit_mappings[4] = {
+        rebased_circuits[4].qubits[0]: packed_circuits[4].qubits[5],
+        rebased_circuits[4].qubits[1]: packed_circuits[4].qubits[3],
+        rebased_circuits[4].qubits[2]: packed_circuits[4].qubits[0],
+    }
+    qubit_mappings[5] = {
+        rebased_circuits[5].qubits[0]: packed_circuits[5].qubits[6],
+        rebased_circuits[5].qubits[1]: packed_circuits[5].qubits[7],
+        rebased_circuits[5].qubits[2]: packed_circuits[5].qubits[8],
+        rebased_circuits[5].qubits[3]: packed_circuits[5].qubits[0],
+        rebased_circuits[5].qubits[4]: packed_circuits[5].qubits[1],
+        rebased_circuits[5].qubits[5]: packed_circuits[5].qubits[2],
+    }
+
+    for i in range(6):
+        assert check_equivalence(
+            rebased_circuits[i], packed_circuits[i], qubit_mappings[i]
+        )
