@@ -244,5 +244,5 @@ def test_verify_non_equal():
     ab_circ = Circuit(2).CX(0, 1).CX(1, 0)
     ba_circ = Circuit(2).CX(1, 0).CX(0, 1)
     assert not check_equivalence(
-        ab_circ, ba_circ, {q: q for q in h_circ.qubits}
+        ab_circ, ba_circ, {q: q for q in ab_circ.qubits}
     )
