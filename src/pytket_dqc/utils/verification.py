@@ -61,18 +61,14 @@ def check_equivalence(
 
 def to_pyzx(circuit: Circuit, mask: list[Qubit]) -> zx.Graph:
     """Convert a circuit to a ZX diagram in PyZX. Every starting EJPP
-    process and ending EJPP process is converted to a CX gate. The ancilla
-    qubits should not be inside ``mask``, so that they are initialised to
-    state 0 and projected to 0 at the end of the circuit.
+    process and ending EJPP process is converted to a CX gate. All non-ancilla
+    qubits should be in ``mask`` and no ancilla qubits should be in ``mask``.
 
-    Note: This is not equivalent, since what we really need is a discard not
-    a projection (and if we use projections, we should check each of them).
-    However, this is enough for our purposes to give strong evidence of
-    circuit equality.
-
-    Note: Instead of initialising and projecting the auxiliary qubit on each
-    starting/ending process, we keep the wire alive for the whole duration of
-    the circuit and only initialise and project at the two ends.
+    Note: Ancilla qubits are projected to state 0. This is not equivalent to
+    and EJPP ending process, since what we really need is to discard the qubit
+    so we should check for every combination of projections to 0 and 1 states.
+    However, projecting to 0 is enough for our purposes to give strong evidence
+    of circuit equality.
 
     :param circuit: The circuit to be converted to a ZX-diagram
     :type circuit: Circuit
@@ -84,28 +80,70 @@ def to_pyzx(circuit: Circuit, mask: list[Qubit]) -> zx.Graph:
     # We need that the logical qubits in ``mask`` are on the top
     # wires of the circuit, ordered as in ``mask``.
     # To do so, we figure out a dictionary of qubits to positions.
-    omitted = []
-    for q in circuit.qubits:
-        if q not in mask:
-            omitted.append(q)
-    qubit_dict = {q: n for n, q in enumerate(mask + omitted)}
+    qubit_dict = {q: n for n, q in enumerate(mask)}
+    qubit_counter = len(qubit_dict)
 
-    # Create the body of the circuit by rebasing every CustomGate
-    the_circ = Circuit(circuit.n_qubits)
+    # We now check that the qubits not in ``mask`` are all ancilla qubits
+    # "created" by a StartingProcess
+    n_ebits = 0
+    ancillas = set()
     for command in circuit.get_commands():
-        qubits = [qubit_dict[q] for q in command.qubits]
-
         if command.op.type == OpType.CustomGate:
             if command.op.get_name() == "StartingProcess":
-                the_circ.CX(qubits[0], qubits[1])
+                ancillas.add(command.qubits[1])
+                n_ebits += 1
+    if set(circuit.qubits) - set(mask) != ancillas:
+        raise Exception("Violated: q in mask <=> q not ancilla")
+
+    # Create the body of the circuit by rebasing every CustomGate
+    the_circ = Circuit(len(mask) + n_ebits)
+    for command in circuit.get_commands():
+        if command.op.type == OpType.CustomGate:
+
+            if command.op.get_name() == "StartingProcess":
+                # Identify the qubit to share and create a new ancilla qubit
+                if command.qubits[0] not in qubit_dict.keys():
+                    raise Exception("Attempting to act on a discarded qubit")
+                qubit_to_share = qubit_dict[command.qubits[0]]
+                new_ancilla_qubit = qubit_counter
+                # Update the qubit_counter, making room for the next ebit
+                qubit_counter += 1
+                # Apply the CX on ancilla (equivalent to a starting process)
+                the_circ.CX(qubit_to_share, new_ancilla_qubit)
+                # Update the qubit_dict to include the newly created ancilla
+                qubit_dict[command.qubits[1]] = new_ancilla_qubit
+
             elif command.op.get_name() == "EndingProcess":
-                the_circ.CX(qubits[1], qubits[0])
+                # Identify the qubits
+                if not all(q in qubit_dict.keys() for q in command.qubits):
+                    raise Exception("Attempting to act on a discarded qubit")
+                ancilla_qubit = qubit_dict[command.qubits[0]]
+                qubit_shared = qubit_dict[command.qubits[1]]
+                # Apply a CX; for this to be equivalent to an ending process
+                # we would need to discard the ancilla qubit after the CX.
+                # PyZX doesn't support simplification of diagrams with discard
+                # so, instead, we will project this ancilla at the end.
+                # In principle, we should project both to 0 and to 1; but
+                # we will only project to 0; see the note in the docstring.
+                the_circ.CX(qubit_shared, ancilla_qubit)
+                # We no longer wish to apply more operations on the ancilla.
+                # For the sake of sanity checks, we remove it from the
+                # qubit_dict so that, if we attempt to apply an operation on
+                # it, an exception will be raised.
+                del qubit_dict[command.qubits[0]]
+
             else:
                 raise Exception(
                     f"CustomGate {command.op.get_name()} not supported!"
                 )
         else:
+            if not all(q in qubit_dict.keys() for q in command.qubits):
+                raise Exception("Attempting to act on a discarded qubit")
+            qubits = [qubit_dict[q] for q in command.qubits]
             the_circ.add_gate(command.op, qubits)
+
+    # At the end of the loop it should be satisfied that:
+    assert qubit_counter == len(mask) + n_ebits
 
     # Rebase body_circ to a gateset that pytket-pyzx can handle
     pyzx_gateset = {OpType.H, OpType.Rz, OpType.Rx, OpType.CZ, OpType.CX}
@@ -115,7 +153,7 @@ def to_pyzx(circuit: Circuit, mask: list[Qubit]) -> zx.Graph:
     # Add states 0 on link qubits and projections to state 0. To do so we
     # create a string that indicates what to do per qubit; '/' is "do-nothing"
     # '0' is "place a 0 state/effect"
-    values = "/" * len(mask) + "0" * len(omitted)
+    values = "/" * len(mask) + "0" * n_ebits
     zx_graph.apply_state(values)
     zx_graph.apply_effect(values)
 
