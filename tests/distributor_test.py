@@ -7,7 +7,7 @@ from pytket_dqc.allocators import (
     Brute,
 )
 from pytket_dqc.allocators.annealing import acceptance_criterion
-from pytket_dqc import HypergraphCircuit
+from pytket_dqc import HypergraphCircuit, Distribution
 from pytket import Circuit
 from pytket_dqc.networks import NISQNetwork
 from pytket_dqc.allocators.ordered import order_reducing_size
@@ -124,15 +124,16 @@ def test_graph_partitioning_refinement():
     bad_placement = Placement({v: 2 for v in dist_circ.vertex_list})
     assert not bad_placement.is_valid(dist_circ, network)
 
-    refined_placement = allocator.refine(
-        bad_placement, dist_circ, network, seed=1
+    initial_distribution = Distribution(
+        dist_circ, dist_circ, bad_placement, network
     )
+    refined_distribution = allocator.refine(initial_distribution, seed=1)
     good_placement = Placement(
         {0: 2, 1: 2, 2: 2, 3: 0, 4: 2, 5: 2, 6: 2, 7: 2, 8: 2, 9: 2}
     )
 
-    assert refined_placement.is_valid(dist_circ, network)
-    assert refined_placement == good_placement
+    assert refined_distribution.is_valid()
+    assert refined_distribution.placement == good_placement
 
 
 @pytest.mark.skip(reason="Circuit contains CX gates that are not supported.")

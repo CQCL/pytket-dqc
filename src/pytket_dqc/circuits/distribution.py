@@ -5,7 +5,7 @@ from pytket_dqc.networks import NISQNetwork
 from pytket import Circuit
 
 
-class Distribution():
+class Distribution:
     """Class containing all information required to generate pytket circuit.
     """
 
@@ -33,22 +33,23 @@ class Distribution():
             packets.
         """
 
-        if not placement.is_valid(circuit, network):
-            raise Exception("This placement is not valid for circuit")
+        self.circuit = circuit
+        self.packets = packets
+        self.placement = placement
+        self.network = network
 
-        if not packets.is_placement(placement):
-            raise Exception("This placement is not valid for packets")
+    def is_valid(self) -> bool:
 
         # TODO: There may be some other checks that we want to do here to check
         # that the packets hypergraph is not totally nonsensical. For example
         # that gate nodes are not in too many packets. I think the conditions
         # that are most relevant will emerge as the to_pytket_circuit method
         # is written.
-
-        self.circuit = circuit
-        self.packets = packets
-        self.placement = placement
-        self.network = network
+        return self.placement.is_valid(
+            self.circuit, self.network
+        ) and self.packets.is_placement(self.placement)
 
     def to_pytket_circuit(self) -> Circuit:
+        if self.is_valid():
+            raise Exception("The distribution of the circuit is not valid!")
         raise NotImplementedError

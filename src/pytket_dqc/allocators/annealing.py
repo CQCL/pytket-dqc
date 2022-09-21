@@ -89,23 +89,16 @@ class Annealing(Allocator):
 
         random.seed(seed)
 
-        qubit_vertices = frozenset(
-            [v for v in dist_circ.vertex_list if dist_circ.is_qubit_vertex(v)]
-        )
-
         # The annealing procedure requires an initial placement to work with.
         # An initial placement is arrived at here.
         initial_distribution = initial_aloc.allocate(dist_circ, network)
-        initial_placement = initial_distribution.placement
 
         # TODO: Check that the initial placement does not have cost 0, and
         # that not all qubits are already in the same server etc.
 
         # We will use a ``GainManager`` to manage the calculation of gains
         # (and management of pre-computed values) in a transparent way
-        gain_manager = GainManager(
-            dist_circ, qubit_vertices, network, initial_placement
-        )
+        gain_manager = GainManager(initial_distribution)
         if cache_limit is not None:
             gain_manager.set_max_key_size(cache_limit)
 
@@ -173,6 +166,5 @@ class Annealing(Allocator):
                 if swap_vertex is not None:
                     gain_manager.move(swap_vertex, home_server)
 
-        assert gain_manager.placement.is_valid(dist_circ, network)
-        placement = gain_manager.placement
-        return Distribution(dist_circ, dist_circ, placement, network)
+        assert gain_manager.distribution.is_valid()
+        return gain_manager.distribution

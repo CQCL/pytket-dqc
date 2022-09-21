@@ -8,9 +8,7 @@ from networkx.algorithms.approximation.steinertree import (  # type: ignore
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from pytket_dqc.placement import Placement
-    from pytket_dqc.networks import NISQNetwork
-    from pytket_dqc.circuits import Hypergraph
+    from pytket_dqc.circuits import Distribution
 
 
 class GainManager:
@@ -19,20 +17,17 @@ class GainManager:
     multiple times and computing it requires solving a minimum spanning tree
     problem which takes non-negligible computation time.
 
-    :param hypergraph: The hypergraph to be partitioned
-    :type hypergraph: Hypergraph
+    :param distribution: The current state of the distribution
+    :type distribution: Distribution
     :param qubit_vertices: The subset of vertices that correspond to qubits
     :type qubit_vertices: frozenset[int]
-    :param network: The network topology that the circuit must be mapped to
-    :type network: NISQNetwork
-    :param server_graph: The nx.Graph of ``network``
+    :param server_graph: The nx.Graph of ``distribution.network``
     :type server_graph: nx.Graph
-    :param placement: The current placement
-    :type placement: Placement
     :param occupancy: Maps servers to its current number of qubit vertices
     :type occupancy: dict[int, int]
-    :param cache: A dictionary of sets of servers to their communication cost
-    :type cache: dict[frozenset[int], int]
+    :param steiner_cache: A dictionary of sets of servers to their
+        communication cost
+    :type steiner_cache: dict[frozenset[int], int]
     :param max_key_size: The maximum size of the set of servers whose cost is
         stored in cache. If there are N servers and m = ``max_key_size`` then
         the cache will store up to N^m values. If set to 0, cache is ignored.
@@ -41,26 +36,23 @@ class GainManager:
     """
 
     def __init__(
-        self,
-        hypergraph: Hypergraph,
-        qubit_vertices: frozenset[int],
-        network: NISQNetwork,
-        placement: Placement,
-        max_key_size: int = 5,
+        self, initial_distribution: Distribution, max_key_size: int = 5,
     ):
-        self.hypergraph: Hypergraph = hypergraph
-        self.qubit_vertices: frozenset[int] = qubit_vertices
-        self.network: NISQNetwork = network
-        self.server_graph: nx.Graph = network.get_server_nx()
-        self.placement: Placement = placement
-        self.occupancy: dict[int, int] = dict()
-        self.cache: dict[frozenset[int], int] = dict()
+        self.distribution: Distribution = initial_distribution
         self.max_key_size: int = max_key_size
 
-        for server in network.server_qubits.keys():
+        dist_circ = initial_distribution.circuit
+        self.qubit_vertices: frozenset[int] = frozenset(
+            [v for v in dist_circ.vertex_list if dist_circ.is_qubit_vertex(v)]
+        )
+        self.server_graph: nx.Graph = self.distribution.network.get_server_nx()
+        self.occupancy: dict[int, int] = dict()
+        self.steiner_cache: dict[frozenset[int], int] = dict()
+
+        for server in self.distribution.network.server_qubits.keys():
             self.occupancy[server] = 0
-        for vertex, server in placement.placement.items():
-            if vertex in qubit_vertices:
+        for vertex, server in self.distribution.placement.placement.items():
+            if vertex in self.qubit_vertices:
                 self.occupancy[server] += 1
 
     def gain(self, vertex: int, new_server: int) -> int:
@@ -85,15 +77,15 @@ class GainManager:
         """
 
         # If the move is not changing servers, the gain is zero
-        current_server = self.placement.placement[vertex]
+        current_server = self.distribution.placement.placement[vertex]
         if current_server == new_server:
             return 0
 
         gain = 0
-        for hyperedge in self.hypergraph.hyperedge_dict[vertex]:
+        for hyperedge in self.distribution.circuit.hyperedge_dict[vertex]:
             # List of servers connected by ``hyperedge - {vertex}``
             connected_servers = [
-                self.placement.placement[v]
+                self.distribution.placement.placement[v]
                 for v in hyperedge.vertices
                 if v != vertex
             ]
@@ -121,10 +113,10 @@ class GainManager:
         :rtype: int
         """
         if len(servers) <= self.max_key_size:
-            if servers not in self.cache.keys():
+            if servers not in self.steiner_cache.keys():
                 tree = steiner_tree(self.server_graph, servers)
-                self.cache[servers] = len(tree.edges)
-            cost = self.cache[servers]
+                self.steiner_cache[servers] = len(tree.edges)
+            cost = self.steiner_cache[servers]
         else:
             tree = steiner_tree(self.server_graph, servers)
             cost = len(tree.edges)
@@ -139,9 +131,9 @@ class GainManager:
         """
         if vertex in self.qubit_vertices:
             self.occupancy[server] += 1
-            self.occupancy[self.placement.placement[vertex]] -= 1
+            self.occupancy[self.distribution.placement.placement[vertex]] -= 1
 
-        self.placement.placement[vertex] = server
+        self.distribution.placement.placement[vertex] = server
 
     def is_move_valid(self, vertex: int, server: int) -> bool:
         """ The move is only invalid when ``vertex`` is a qubit vertex and
@@ -149,7 +141,7 @@ class GainManager:
         be where ``vertex`` was already placed.
         """
         if vertex in self.qubit_vertices:
-            capacity = len(self.network.server_qubits[server])
+            capacity = len(self.distribution.network.server_qubits[server])
 
             if server == self.current_server(vertex):
                 return self.occupancy[server] <= capacity
@@ -163,7 +155,7 @@ class GainManager:
     def current_server(self, vertex: int):
         """Return the server that ``vertex`` is placed at.
         """
-        return self.placement.placement[vertex]
+        return self.distribution.placement.placement[vertex]
 
     def set_max_key_size(self, max_key_size: int):
         """Set the ``max_key_size`` parameter.
