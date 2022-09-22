@@ -646,18 +646,10 @@ def test_distribution_initialisation():
     circ.add_gate(OpType.CU1, 1.0, [0, 1]).add_gate(OpType.CU1, 1.0, [0, 2])
     dist_circ = HypergraphCircuit(circ)
 
-    hypgraph = Hypergraph()
-
-    hypgraph.add_vertices([i for i in range(5)])
-    hypgraph.add_hyperedge([0, 3])
-    hypgraph.add_hyperedge([0, 4])
-    hypgraph.add_hyperedge([1, 3])
-    hypgraph.add_hyperedge([2, 4])
-
     placement = Placement({0: 1, 1: 2, 2: 2, 3: 0, 4: 1})
 
     network = NISQNetwork(
         [[0, 1], [1, 2]], {0: [0, 1, 2], 1: [3, 4, 5], 2: [6, 7, 8]},
     )
 
-    Distribution(dist_circ, hypgraph, placement, network)
+    Distribution(dist_circ, placement, network)

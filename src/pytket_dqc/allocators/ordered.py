@@ -132,4 +132,4 @@ class Ordered(Allocator):
 
         assert placement.is_valid(dist_circ, network)
 
-        return Distribution(dist_circ, dist_circ, placement, network)
+        return Distribution(dist_circ, placement, network)

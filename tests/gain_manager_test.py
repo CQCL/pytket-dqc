@@ -48,7 +48,7 @@ def test_moves():
     placement = Placement(
         {1: 1, 2: 1, 3: 2, 4: 3, 5: 3, 6: 4, 7: 5, 8: 5, 9: 5}
     )
-    distribution = Distribution(dummy_circ, dummy_circ, placement, t_network)
+    distribution = Distribution(dummy_circ, placement, t_network)
     t_manager = GainManager(distribution)
 
     assert t_manager.occupancy[3] == 2
@@ -76,7 +76,7 @@ def test_gain_on_t_network():
     placement = Placement(
         {1: 1, 2: 1, 3: 2, 4: 3, 5: 3, 6: 4, 7: 5, 8: 5, 9: 5}
     )
-    distribution = Distribution(dummy_circ, dummy_circ, placement, t_network)
+    distribution = Distribution(dummy_circ, placement, t_network)
     t_manager = GainManager(distribution)
 
     # Moving a vertex to where it already is has no gain
@@ -128,7 +128,7 @@ def test_gain_and_steiner_cache_on_house_network():
         {1: 1, 2: 1, 3: 2, 4: 3, 5: 3, 6: 4, 7: 5, 8: 5, 9: 5}
     )
     distribution = Distribution(
-        dummy_circ, dummy_circ, placement, house_network
+        dummy_circ, placement, house_network
     )
     house_manager = GainManager(distribution)
 

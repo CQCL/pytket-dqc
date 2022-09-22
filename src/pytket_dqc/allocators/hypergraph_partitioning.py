@@ -69,7 +69,7 @@ class HypergraphPartitioning(Allocator):
         )
 
         initial_distribution = Distribution(
-            dist_circ, dist_circ, placement, network
+            dist_circ, placement, network
         )
 
         # Then, we refine the placement using label propagation. This will

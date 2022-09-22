@@ -95,7 +95,6 @@ class Brute(Allocator):
         assert minimum_cost_placement.is_valid(dist_circ, network)
         return Distribution(
             dist_circ,
-            dist_circ,
             minimum_cost_placement,
             network
         )

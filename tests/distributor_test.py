@@ -123,7 +123,7 @@ def test_graph_partitioning_refinement():
     assert not bad_placement.is_valid(dist_circ, network)
 
     initial_distribution = Distribution(
-        dist_circ, dist_circ, bad_placement, network
+        dist_circ, bad_placement, network
     )
     refined_distribution = allocator.refine(initial_distribution, seed=1)
     good_placement = Placement(

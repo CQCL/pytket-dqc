@@ -1,5 +1,4 @@
 from pytket_dqc.circuits.hypergraph_circuit import HypergraphCircuit
-from pytket_dqc.circuits.hypergraph import Hypergraph
 from pytket_dqc.placement import Placement
 from pytket_dqc.networks import NISQNetwork
 from pytket import Circuit
@@ -12,17 +11,13 @@ class Distribution:
     def __init__(
         self,
         circuit: HypergraphCircuit,
-        packets: Hypergraph,
         placement: Placement,
         network: NISQNetwork,
     ):
         """Initialisation function for Distribution
 
-        :param circuit: Circuit which is to be distributed
+        :param circuit: Circuit to be distributed, including its hypergraph.
         :type circuit: HypergraphCircuit
-        :param packets: A description of the packets within the circuit.
-            These are those gates which can be implemented with a single e-bit.
-        :type packets: Hypergraph
         :param placement: A placement of the qubits and gates onto servers.
         :type placement: Placement
         :param network: Network onto which circuit is distributed.
@@ -34,11 +29,12 @@ class Distribution:
         """
 
         self.circuit = circuit
-        self.packets = packets
         self.placement = placement
         self.network = network
 
     def is_valid(self) -> bool:
+        """Check that this distribution can be implemented.
+        """
 
         # TODO: There may be some other checks that we want to do here to check
         # that the packets hypergraph is not totally nonsensical. For example
@@ -47,7 +43,7 @@ class Distribution:
         # is written.
         return self.placement.is_valid(
             self.circuit, self.network
-        ) and self.packets.is_placement(self.placement)
+        )
 
     def cost(self) -> int:
         """Return the number of ebits required for this distribution.
