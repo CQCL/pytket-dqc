@@ -48,11 +48,11 @@ def test_distributed_circuit():
 
 def test_regular_graph_distributed_circuit():
 
-    dist_circ = RegularGraphHypergraphCircuit(3, 2, 1, seed=0)
+    circ = RegularGraphHypergraphCircuit(3, 2, 1, seed=0).circuit
     network = NISQNetwork([[0, 1], [0, 2]], {0: [0, 1], 1: [2, 3, 4], 2: [5]})
     allocator = Brute()
-    distribution = allocator.allocate(dist_circ, network)
-    cost = distribution.placement.cost(dist_circ, network)
+    distribution = allocator.allocate(circ, network)
+    cost = distribution.cost()
 
     assert cost == 0
     assert distribution.placement == Placement(
@@ -635,8 +635,7 @@ def test_from_placed_circuit():
             packed_circuit = pickle.load(f)
         network = NISQNetwork(network_tuple[0], network_tuple[1])
 
-        dist_circ = HypergraphCircuit(rebased_circuit)
-        distribution = allocator.allocate(dist_circ, network, seed=seed)
+        distribution = allocator.allocate(rebased_circuit, network, seed=seed)
         bp_circuit = BipartiteCircuit(rebased_circuit, distribution.placement)
         assert packed_circuit == bp_circuit.packed_circuit
 

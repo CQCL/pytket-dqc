@@ -8,11 +8,11 @@ from pytket.passes import (  # type:ignore
 )
 from pytket_dqc.placement import Placement
 from pytket_dqc.utils import DQCPass
-from pytket_dqc.circuits.distribution import Distribution
+from pytket_dqc.circuits import HypergraphCircuit, Distribution
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from pytket_dqc import HypergraphCircuit
+    from pytket import Circuit
     from pytket_dqc.networks import NISQNetwork
 
 
@@ -26,7 +26,7 @@ class Routing(Allocator):
 
     def allocate(
         self,
-        dist_circ: HypergraphCircuit,
+        circ: Circuit,
         network: NISQNetwork,
         **kwargs
     ) -> Distribution:
@@ -34,14 +34,15 @@ class Routing(Allocator):
         `tket <https://cqcl.github.io/tket/pytket/api/routing.html>`_. Note
         that this allocator will alter the initial circuit.
 
-        :param dist_circ: Circuit to distribute.
-        :type dist_circ: HypergraphCircuit
-        :param network: Network onto which ``dist_circ`` should be distributed.
+        :param circ: Circuit to distribute.
+        :type circ: pytket.Circuit
+        :param network: Network onto which ``circ`` should be distributed.
         :type network: NISQNetwork
-        :return: Distribution of ``dist_circ`` onto ``network``.
+        :return: Distribution of ``circ`` onto ``network``.
         :rtype: Distribution
         """
 
+        dist_circ = HypergraphCircuit(circ)
         if not network.can_implement(dist_circ):
             raise Exception(
                 "This circuit cannot be implemented on this network."

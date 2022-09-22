@@ -4,7 +4,7 @@ import random
 import kahypar as kahypar  # type:ignore
 from pytket_dqc.allocators import Allocator, GainManager
 from pytket_dqc.placement import Placement
-from pytket_dqc.circuits.distribution import Distribution
+from pytket_dqc.circuits import HypergraphCircuit, Distribution
 import importlib_resources
 from pytket import Circuit
 
@@ -12,7 +12,6 @@ from pytket import Circuit
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from pytket_dqc import HypergraphCircuit
     from pytket_dqc.networks import NISQNetwork
 
 
@@ -25,15 +24,15 @@ class HypergraphPartitioning(Allocator):
     """
 
     def allocate(
-        self, dist_circ: HypergraphCircuit, network: NISQNetwork, **kwargs
+        self, circ: Circuit, network: NISQNetwork, **kwargs
     ) -> Distribution:
-        """Distribute ``dist_circ`` onto ``network``. The initial distribution
+        """Distribute ``circ`` onto ``network``. The initial distribution
         is found by KaHyPar using the connectivity metric, then it is
         refined to reduce the cost taking into account the network topology.
 
-        :param dist_circ: Circuit to distribute.
-        :type dist_circ: HypergraphCircuit
-        :param network: Network onto which ``dist_circ`` should be placed.
+        :param circ: Circuit to distribute.
+        :type circ: pytket.Circuit
+        :param network: Network onto which ``circ`` should be placed.
         :type network: NISQNetwork
 
         :key ini_path: Path to kahypar ini file.
@@ -45,10 +44,11 @@ class HypergraphPartitioning(Allocator):
         :key cache_limit: The maximum size of the set of servers whose cost is
             stored in cache; see GainManager. Default value is 5.
 
-        :return: Distribution of ``dist_circ`` onto ``network``.
+        :return: Distribution of ``circ`` onto ``network``.
         :rtype: Distribution
         """
 
+        dist_circ = HypergraphCircuit(circ)
         if not network.can_implement(dist_circ):
             raise Exception(
                 "This circuit cannot be implemented on this network."

@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from pytket_dqc.allocators import Allocator
 from pytket_dqc.placement import Placement
-from pytket_dqc.circuits.distribution import Distribution
+from pytket_dqc.circuits import HypergraphCircuit, Distribution
 from typing import TYPE_CHECKING
 import random
 
 if TYPE_CHECKING:
-    from pytket_dqc import HypergraphCircuit
+    from pytket import Circuit
     from pytket_dqc.networks import NISQNetwork
 
 
@@ -21,23 +21,24 @@ class Random(Allocator):
 
     def allocate(
         self,
-        dist_circ: HypergraphCircuit,
+        circ: Circuit,
         network: NISQNetwork,
         **kwargs
     ) -> Distribution:
-        """Distribute ``dist_circ`` onto ``network`` by randomly placing
+        """Distribute ``circ`` onto ``network`` by randomly placing
         vertices onto servers. Qubit vertices are placed onto servers
         until the server is full. Gate vertices are placed on servers at random
         without restriction.
 
-        :param dist_circ: Circuit to distribute.
-        :type dist_circ: HypergraphCircuit
-        :param network: Network onto which ``dist_circ`` should be distributed.
+        :param circ: Circuit to distribute.
+        :type circ: pytket.Circuit
+        :param network: Network onto which ``circ`` should be distributed.
         :type network: NISQNetwork
-        :return: Distribution of ``dist_circ`` onto ``network``.
+        :return: Distribution of ``circ`` onto ``network``.
         :rtype: Distribution
         """
 
+        dist_circ = HypergraphCircuit(circ)
         if not network.can_implement(dist_circ):
             raise Exception(
                 "This circuit cannot be implemented on this network."

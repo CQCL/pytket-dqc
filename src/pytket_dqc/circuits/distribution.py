@@ -49,6 +49,15 @@ class Distribution:
             self.circuit, self.network
         ) and self.packets.is_placement(self.placement)
 
+    def cost(self) -> int:
+        """Return the number of ebits required for this distribution.
+        """
+
+        # TODO: Once the ALAP algorithm is introduced, this will be replaced
+        # by a for loop over all hyperedges, calling the function to calculate
+        # their cost, which uses GainManager.
+        return self.placement.cost(self.circuit, self.network)
+
     def to_pytket_circuit(self) -> Circuit:
         if self.is_valid():
             raise Exception("The distribution of the circuit is not valid!")
