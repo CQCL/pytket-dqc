@@ -670,8 +670,8 @@ def test_get_hyperedge_subcircuit():
     hyp_circ = HypergraphCircuit(circ)
 
     # The hyperedges to test
-    hyp_1 = Hyperedge([1, 3, 4, 6], 1)  # This one is in hyp_circ
-    hyp_2 = Hyperedge([0, 3, 5], 1)  # This is a merge of two (has embeddings)
+    hyp_1 = Hyperedge([1, 3, 4, 6])  # This one is in hyp_circ
+    hyp_2 = Hyperedge([0, 3, 5])  # This is a merge of two (has embeddings)
 
     # Testing for hyp_1
     test_c = Circuit(3)
