@@ -155,10 +155,24 @@ class HypergraphCircuit(Hypergraph):
         but embedded gates within the hyperedge are included.
         """
         qubit = vertex_circuit_map[self.get_qubit_vertex(hyperedge)]['node']
-        hyp_commands = [vertex_circuit_map[gate_vertex]['command'] for gate_vertex in self.get_gate_vertices(hyperedge)]
-
+        hyp_commands = {vertex_circuit_map[gate_vertex]['command'] for gate_vertex in self.get_gate_vertices(hyperedge)}
         circ_commands = self.circuit.get_commands()
 
+        the_commands = []
+        first_found = False
+        for cmd in circ_commands:
+
+            if not hyp_commands:  # If there are no commands left, we are done
+                continue
+            elif cmd in hyp_commands:
+                first_found = True
+                the_commands.append(cmd)
+                hyp_commands.remove(cmd)
+            elif first_found and qubit in cmd.qubits:  # cmd must be embedded
+                # TODO: May be worth asserting it is embeddable
+                the_commands.append(cmd)
+
+        return the_commands
 
     def from_circuit(self):
         """Method to create a hypergraph from a circuit.
