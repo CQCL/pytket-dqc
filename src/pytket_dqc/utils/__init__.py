@@ -10,6 +10,7 @@ from .gateset import (  # noqa:F401
 from .op_analysis import (  # noqa:F401
     is_antidiagonal,
     is_diagonal,
+    is_distributable
 )
 
 from .graph_tools import direct_from_origin  # noqa:F401

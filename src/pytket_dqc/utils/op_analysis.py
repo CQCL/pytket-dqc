@@ -20,3 +20,6 @@ def is_antidiagonal(op):
     i, j = array.shape
     test = array.reshape(-1)[:-1].reshape(i - 1, j + 1)
     return ~np.any(test[:, 1:])
+
+def is_distributable(op):
+    return is_antidiagonal(op) or is_diagonal(op)
