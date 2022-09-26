@@ -653,3 +653,40 @@ def test_distribution_initialisation():
     )
 
     Distribution(dist_circ, placement, network)
+
+
+def test_get_hyperedge_subcircuit():
+
+    # The test circuit
+    circ = Circuit(3)
+    circ.add_gate(OpType.CU1, 0.1, [0, 1])
+    circ.Rz(0.2, 0)
+    circ.H(0)
+    circ.add_gate(OpType.CU1, 0.3, [1, 2])
+    circ.Z(0)
+    circ.add_gate(OpType.CU1, 1.0, [0, 2])
+    circ.H(0)
+    circ.add_gate(OpType.CU1, 0.4, [0, 1])
+    hyp_circ = HypergraphCircuit(circ)
+
+    # The hyperedges to test
+    hyp_1 = Hyperedge([1, 3, 4, 6], 1)  # This one is in hyp_circ
+    hyp_2 = Hyperedge([0, 3, 5], 1)  # This is a merge of two (has embeddings)
+
+    # Testing for hyp_1
+    test_c = Circuit(3)
+    test_c.add_gate(OpType.CU1, 0.1, [0, 1])
+    test_c.add_gate(OpType.CU1, 0.3, [1, 2])
+    test_c.add_gate(OpType.CU1, 0.4, [0, 1])
+
+    assert test_c.get_commands() == hyp_circ.get_hyperedge_subcircuit(hyp_1)
+
+    # Testing for hyp_2
+    test_c = Circuit(3)
+    test_c.add_gate(OpType.CU1, 0.1, [0, 1])
+    test_c.Rz(0.2, 0)
+    test_c.H(0)
+    test_c.Z(0)
+    test_c.add_gate(OpType.CU1, 1.0, [0, 2])
+
+    assert test_c.get_commands() == hyp_circ.get_hyperedge_subcircuit(hyp_2)

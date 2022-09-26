@@ -116,7 +116,10 @@ class GainManager:
         extra ebits when distributed.
         """
         if hyperedge.weight != 1:
-            raise Exception("Hyperedges with weight other than 1 are not currently supported")
+            raise Exception(
+                "Hyperedges with weight other than 1 \
+                 are not currently supported"
+            )
 
         dist_circ = self.distribution.circuit
         placement_map = self.distribution.placement.placement
@@ -124,19 +127,16 @@ class GainManager:
         # Extract hyperedge data
         shared_qubit = dist_circ.get_qubit_vertex(hyperedge)
         home_server = placement_map[shared_qubit]
-        connected_servers = [
-            placement_map[v]
-            for v in hyperedge.vertices
-        ]
+        servers = frozenset(placement_map[v] for v in hyperedge.vertices)
         # Obtain the Steiner tree, retrieve it from the cache if possible
         if len(servers) <= self.max_key_size:
             if servers not in self.steiner_cache.keys():
-                steiner_tree = steiner_tree(self.server_graph, servers)
-                self.steiner_cache[servers] = steiner_tree
+                tree = steiner_tree(self.server_graph, servers)
+                self.steiner_cache[servers] = tree
             else:
-                steiner_tree = self.steiner_cache[servers]
+                tree = self.steiner_cache[servers]
         else:
-            steiner_tree = steiner_tree(self.server_graph, servers)
+            tree = steiner_tree(self.server_graph, servers)
 
         # Collect all of the commands between the first and last gates in the
         # hyperedge. Ignore the commands that do not act on the shared qubit.
@@ -154,7 +154,10 @@ class GainManager:
                 pass  # These gates can always be embedded
 
             elif command.op.type == OpType.Rz:
-                assert isclose(command.op.params[0] % 2, 1) or not currently_embedding
+                assert (
+                    isclose(command.op.params[0] % 2, 1)
+                    or not currently_embedding
+                )
 
             elif command.op.type == OpType.CU1:
                 other_qubits = [q for q in command.qubits if q != shared_qubit]
@@ -169,8 +172,12 @@ class GainManager:
                     # all others need to be disconnected since, otherwise,
                     # extra ebits would be required to implement the new
                     # correction gates that would be introduced
-                    connection_path = nx.shortest_path(steiner_tree, home_server, remote_server)
-                    connected_servers = connected_servers.intersection(connection_path)
+                    connection_path = nx.shortest_path(
+                        tree, home_server, remote_server
+                    )
+                    connected_servers = connected_servers.intersection(
+                        connection_path
+                    )
                     # Note: we do not need to consider the ebits required
                     # to implement the embedded gate since that one is not
                     # within this hyperedge. Thus, we are done here.
@@ -179,13 +186,15 @@ class GainManager:
                     # If the remote_server doesn't have access to shared_qubit
                     # update the cost, adding the necessary ebits
                     if remote_server not in connected_servers:
-                        connection_path = set(nx.shortest_path(steiner_tree, home_server, remote_server))
-                        required_connections = connection_path.difference(connected_servers)
-                        connected_servers.updated(required_connections)
+                        connection_path = set(
+                            nx.shortest_path(tree, home_server, remote_server)
+                        )
+                        required_connections = connection_path.difference(
+                            connected_servers
+                        )
+                        connected_servers.update(required_connections)
                         cost += len(required_connections)
         return cost
-
-
 
     def steiner_cost(self, servers: frozenset[int]) -> int:
         """Finds a Steiner tree connecting all ``servers`` and returns number
