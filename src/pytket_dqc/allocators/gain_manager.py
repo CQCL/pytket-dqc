@@ -1,14 +1,17 @@
 from __future__ import annotations
 
 import networkx as nx  # type: ignore
+from numpy import isclose  # type: ignore
 from networkx.algorithms.approximation.steinertree import (  # type: ignore
     steiner_tree,
 )
+from pytket import OpType
 
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from pytket_dqc.circuits import Distribution
+    from pytket_dqc import Distribution
+    from pytket_dqc.circuits import Hyperedge
 
 
 class GainManager:
@@ -99,6 +102,90 @@ class GainManager:
             gain += hyperedge.weight * (current_cost - new_cost)
 
         return gain
+
+    def hyperedge_cost(self, hyperedge: Hyperedge) -> int:
+        """The cost implementing the hyperedge is calculated using an "as lazy
+        as possible" (ALAP) algorithm which we expect not to be optimal, but
+        decent enough. Both reduction of ebit cost via Steiner trees and
+        embedding are considered.
+
+        Note: the cost only takes into account the ebits required to
+        distribute the gates in the hyperedge; it does not consider the ebit
+        cost of distributing the embedded gates. However, it does guarantee
+        that the correction gates added during the embedding will not require
+        extra ebits when distributed.
+        """
+        if hyperedge.weight != 1:
+            raise Exception("Hyperedges with weight other than 1 are not currently supported")
+
+        dist_circ = self.distribution.circuit
+        placement_map = self.distribution.placement.placement
+
+        # Extract hyperedge data
+        shared_qubit = dist_circ.get_qubit_vertex(hyperedge)
+        home_server = placement_map[shared_qubit]
+        connected_servers = [
+            placement_map[v]
+            for v in hyperedge.vertices
+        ]
+        # Obtain the Steiner tree, retrieve it from the cache if possible
+        if len(servers) <= self.max_key_size:
+            if servers not in self.steiner_cache.keys():
+                steiner_tree = steiner_tree(self.server_graph, servers)
+                self.steiner_cache[servers] = steiner_tree
+            else:
+                steiner_tree = self.steiner_cache[servers]
+        else:
+            steiner_tree = steiner_tree(self.server_graph, servers)
+
+        # Collect all of the commands between the first and last gates in the
+        # hyperedge. Ignore the commands that do not act on the shared qubit.
+        commands = dist_circ.get_hyperedge_subcircuit(hyperedge)
+
+        cost = 0
+        currently_embedding = False  # Switched when encountering a Hadamard
+        connected_servers = {home_server}  # Servers with shared_qubit access
+        for command in commands:
+
+            if command.op.type == OpType.H:
+                currently_embedding = not currently_embedding
+
+            elif command.op.type in [OpType.X, OpType.Z]:
+                pass  # These gates can always be embedded
+
+            elif command.op.type == OpType.Rz:
+                assert isclose(command.op.params[0] % 2, 1) or not currently_embedding
+
+            elif command.op.type == OpType.CU1:
+                other_qubits = [q for q in command.qubits if q != shared_qubit]
+                assert len(other_qubits) == 1
+                remote_qubit = dist_circ.qubit_to_vertex_map[other_qubits[0]]
+                remote_server = placement_map[remote_qubit]
+
+                if currently_embedding:  # Gate to be embedded
+                    assert isclose(command.op.params[0] % 2, 1)  # CZ gate
+
+                    # Only servers in the connection path are left connected
+                    # all others need to be disconnected since, otherwise,
+                    # extra ebits would be required to implement the new
+                    # correction gates that would be introduced
+                    connection_path = nx.shortest_path(steiner_tree, home_server, remote_server)
+                    connected_servers = connected_servers.intersection(connection_path)
+                    # Note: we do not need to consider the ebits required
+                    # to implement the embedded gate since that one is not
+                    # within this hyperedge. Thus, we are done here.
+
+                else:  # Gate to be distributed (or already local)
+                    # If the remote_server doesn't have access to shared_qubit
+                    # update the cost, adding the necessary ebits
+                    if remote_server not in connected_servers:
+                        connection_path = set(nx.shortest_path(steiner_tree, home_server, remote_server))
+                        required_connections = connection_path.difference(connected_servers)
+                        connected_servers.updated(required_connections)
+                        cost += len(required_connections)
+        return cost
+
+
 
     def steiner_cost(self, servers: frozenset[int]) -> int:
         """Finds a Steiner tree connecting all ``servers`` and returns number

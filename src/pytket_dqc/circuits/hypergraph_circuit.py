@@ -36,6 +36,8 @@ class HypergraphCircuit(Hypergraph):
     :param vertex_circuit_map: Map from hypergraph vertices to circuit
         commands.
     :type vertex_circuit_map: dict[int, dict]
+    :param qubit_to_vertex_map: Map from circuit qubits to vertices.
+    :type qubit_to_vertex_map: dict[Qubit, int]
     """
 
     def __init__(self, circuit: Circuit):
@@ -69,6 +71,7 @@ class HypergraphCircuit(Hypergraph):
 
         self.circuit = circuit
         self.vertex_circuit_map: dict[int, dict] = {}
+        self.qubit_to_vertex_map: dict[Qubit, int] = {}
         self.commands: list[dict[str,
                                  Union[Command, str, int, list[Qubit]]]] = []
         self.from_circuit()
@@ -85,6 +88,7 @@ class HypergraphCircuit(Hypergraph):
         """
         self.add_vertex(vertex)
         self.vertex_circuit_map[vertex] = {'type': 'qubit', 'node': qubit}
+        self.qubit_to_vertex_map[qubit] = vertex
 
     def get_qubit_vertices(self) -> list[int]:
         """Return list of vertices which correspond to qubits
@@ -144,6 +148,17 @@ class HypergraphCircuit(Hypergraph):
 
         assert len(gate_vertex_list) == len(hyperedge.vertices) - 1
         return gate_vertex_list
+
+    def get_hyperedge_subcircuit(self, hyperedge: Hyperedge) -> list[Command]:
+        """Returns the list of commands between the first and last gate within
+        the hyperedge. Commands that don't act on the qubit vertex are omitted
+        but embedded gates within the hyperedge are included.
+        """
+        qubit = vertex_circuit_map[self.get_qubit_vertex(hyperedge)]['node']
+        hyp_commands = [vertex_circuit_map[gate_vertex]['command'] for gate_vertex in self.get_gate_vertices(hyperedge)]
+
+        circ_commands = self.circuit.get_commands()
+
 
     def from_circuit(self):
         """Method to create a hypergraph from a circuit.
