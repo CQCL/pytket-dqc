@@ -68,9 +68,7 @@ class HypergraphPartitioning(Allocator):
             dist_circ, network, ini_path, seed=seed
         )
 
-        initial_distribution = Distribution(
-            dist_circ, placement, network
-        )
+        initial_distribution = Distribution(dist_circ, placement, network)
 
         # Then, we refine the placement using label propagation. This will
         # also ensure that the servers do not exceed their qubit capacity
@@ -195,9 +193,7 @@ class HypergraphPartitioning(Allocator):
                     if not gain_manager.is_move_valid(vertex, server):
                         # The only vertices we can swap with are qubit ones
                         # so that the occupancy of the server is maintained
-                        vs = placement.get_vertices_in(
-                            server
-                        )
+                        vs = placement.get_vertices_in(server)
                         valid_swaps = [
                             vertex
                             for vertex in vs
@@ -208,7 +204,9 @@ class HypergraphPartitioning(Allocator):
                         # ``server`` first and move it back at the end. This is
                         # possible because ``move`` is an unsafe function, i.e.
                         # it does not require that the move is valid.
-                        gain_manager.move(vertex, server)
+                        gain_manager.move(
+                            vertex, server, recalculate_cost=False
+                        )
 
                         best_swap_gain = float("-inf")
                         for swap_vertex in valid_swaps:
@@ -225,7 +223,9 @@ class HypergraphPartitioning(Allocator):
                                 best_swap_gain = swap_gain
                                 best_swap_vertex = swap_vertex
                         # Restore ``vertex`` to its original server.
-                        gain_manager.move(vertex, current_server)
+                        gain_manager.move(
+                            vertex, current_server, recalculate_cost=False
+                        )
 
                         # Since no server has capacity 0, we should always
                         # find a vertex to swap with

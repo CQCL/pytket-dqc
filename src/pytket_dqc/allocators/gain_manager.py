@@ -28,9 +28,11 @@ class GainManager:
     :type server_graph: nx.Graph
     :param occupancy: Maps servers to its current number of qubit vertices
     :type occupancy: dict[int, int]
+    :param hyperedge_cost_map: Contains the current cost of each hyperedge
+    :type hyperedge_cost_map: dict[Hyperedge, int]
     :param steiner_cache: A dictionary of sets of servers to their
-        communication cost
-    :type steiner_cache: dict[frozenset[int], int]
+        steiner tree
+    :type steiner_cache: dict[frozenset[int], nx.Graph]
     :param max_key_size: The maximum size of the set of servers whose cost is
         stored in cache. If there are N servers and m = ``max_key_size`` then
         the cache will store up to N^m values. If set to 0, cache is ignored.
@@ -50,23 +52,22 @@ class GainManager:
         )
         self.server_graph: nx.Graph = self.distribution.network.get_server_nx()
         self.occupancy: dict[int, int] = dict()
-        self.steiner_cache: dict[frozenset[int], int] = dict()
+        self.hyperedge_cost_map = dict()
+        self.steiner_cache: dict[frozenset[int], nx.Graph] = dict()
 
         for server in self.distribution.network.server_qubits.keys():
             self.occupancy[server] = 0
         for vertex, server in self.distribution.placement.placement.items():
             if vertex in self.qubit_vertices:
                 self.occupancy[server] += 1
+        for hypedge in dist_circ.hyperedge_list:
+            self.hyperedge_cost_map[hypedge] = self.hyperedge_cost(hypedge)
 
     def gain(self, vertex: int, new_server: int) -> int:
         """Compute the gain of moving ``vertex`` to ``new_server``. Instead
         of calculating the cost of the whole hypergraph using the new
         placement, we simply compare the previous cost of all hyperedges
-        incident to ``vertex`` and substract their new cost. Moreover, if
-        these values are available in the cache they are used; otherwise,
-        the cache is updated.
-        The costs of each hyperedge are calculated using Steiner trees over
-         ``network``.
+        incident to ``vertex`` and substract their new cost.
         Positive gains mean improvement.
 
         :param vertex: The vertex that would be moved
@@ -80,28 +81,73 @@ class GainManager:
         """
 
         # If the move is not changing servers, the gain is zero
-        current_server = self.distribution.placement.placement[vertex]
-        if current_server == new_server:
+        prev_server = self.distribution.placement.placement[vertex]
+        if prev_server == new_server:
             return 0
 
-        gain = 0
-        for hyperedge in self.distribution.circuit.hyperedge_dict[vertex]:
-            # List of servers connected by ``hyperedge - {vertex}``
-            connected_servers = [
-                self.distribution.placement.placement[v]
-                for v in hyperedge.vertices
-                if v != vertex
-            ]
+        prev_cost_map = dict()
+        prev_cost = 0
+        for hypedge in self.distribution.circuit.hyperedge_dict[vertex]:
+            prev_cost_map[hypedge] = self.hyperedge_cost_map[hypedge]
+            prev_cost += self.hyperedge_cost_map[hypedge]
 
-            current_cost = self.steiner_cost(
-                frozenset(connected_servers + [current_server])
-            )
-            new_cost = self.steiner_cost(
-                frozenset(connected_servers + [new_server])
-            )
-            gain += hyperedge.weight * (current_cost - new_cost)
+        self.move(vertex, new_server)  # This will recalculate the costs
 
-        return gain
+        new_cost = 0
+        for hypedge in self.distribution.circuit.hyperedge_dict[vertex]:
+            new_cost += self.hyperedge_cost_map[hypedge]
+
+        # Move back without recalculating costs
+        self.move(vertex, prev_server, recalculate_cost=False)
+        # Reassign previous costs
+        for hypedge, cost in prev_cost_map.items():
+            self.hyperedge_cost_map[hypedge] = cost
+
+        return prev_cost - new_cost
+
+    def move(self, vertex: int, server: int, recalculate_cost=True):
+        """Moves ``vertex`` to ``server``, updating ``placement`` and
+        ``occupancy`` accordingly.
+        By default it updates the cost of the hyperedge, but this can
+        be switched off via ``recalculate_cost``.
+        Note: this operation is (purposefully) unsafe, i.e. it is not
+        checked whether the move is valid or not. If unsure, you should
+        call ``is_move_valid``.
+        """
+        placement_dict = self.distribution.placement.placement
+        dist_circ = self.distribution.circuit
+
+        # Ignore if the move would leave in the same server
+        if placement_dict[vertex] != server:
+
+            if vertex in self.qubit_vertices:
+                self.occupancy[server] += 1
+                self.occupancy[placement_dict[vertex]] -= 1
+
+            placement_dict[vertex] = server
+
+            if recalculate_cost:
+                for hypedge in dist_circ.hyperedge_dict[vertex]:
+                    self.hyperedge_cost_map[hypedge] = self.hyperedge_cost(
+                        hypedge
+                    )
+
+    def is_move_valid(self, vertex: int, server: int) -> bool:
+        """ The move is only invalid when ``vertex`` is a qubit vertex and
+        ``server`` is at its maximum occupancy. Notice that ``server`` may
+        be where ``vertex`` was already placed.
+        """
+        if vertex in self.qubit_vertices:
+            capacity = len(self.distribution.network.server_qubits[server])
+
+            if server == self.current_server(vertex):
+                return self.occupancy[server] <= capacity
+            else:
+                return self.occupancy[server] < capacity
+
+        # Gate vertices can be moved freely
+        else:
+            return True
 
     def hyperedge_cost(self, hyperedge: Hyperedge) -> int:
         """The cost implementing the hyperedge is calculated using an "as lazy
@@ -160,9 +206,10 @@ class GainManager:
                 )
 
             elif command.op.type == OpType.CU1:
-                other_qubits = [q for q in command.qubits if q != shared_qubit]
-                assert len(other_qubits) == 1
-                remote_qubit = dist_circ.qubit_to_vertex_map[other_qubits[0]]
+                qubits = [
+                    dist_circ.qubit_to_vertex_map[q] for q in command.qubits
+                ]
+                remote_qubit = [q for q in qubits if q != shared_qubit][0]
                 remote_server = placement_map[remote_qubit]
 
                 if currently_embedding:  # Gate to be embedded
@@ -195,58 +242,6 @@ class GainManager:
                         connected_servers.update(required_connections)
                         cost += len(required_connections)
         return cost
-
-    def steiner_cost(self, servers: frozenset[int]) -> int:
-        """Finds a Steiner tree connecting all ``servers`` and returns number
-        of edges. Makes use of the cache if the cost has already been computed
-        and otherwise updates it.
-
-        :param servers: The servers to be connected by the Steiner tree.
-            The set is required to be a frozenset so that it is hashable.
-        :type servers: frozenset[int]
-
-        :return: The cost of connecting ``servers``
-        :rtype: int
-        """
-        if len(servers) <= self.max_key_size:
-            if servers not in self.steiner_cache.keys():
-                tree = steiner_tree(self.server_graph, servers)
-                self.steiner_cache[servers] = len(tree.edges)
-            cost = self.steiner_cache[servers]
-        else:
-            tree = steiner_tree(self.server_graph, servers)
-            cost = len(tree.edges)
-
-        return cost
-
-    def move(self, vertex: int, server: int):
-        """Moves ``vertex`` to ``server``, updating ``placement`` and
-        ``occupancy`` accordingly. Note: this operation is (purposefully)
-        unsafe, i.e. it is not checked whether the move is valid or not.
-        If unsure, you should call ``is_move_valid``.
-        """
-        if vertex in self.qubit_vertices:
-            self.occupancy[server] += 1
-            self.occupancy[self.distribution.placement.placement[vertex]] -= 1
-
-        self.distribution.placement.placement[vertex] = server
-
-    def is_move_valid(self, vertex: int, server: int) -> bool:
-        """ The move is only invalid when ``vertex`` is a qubit vertex and
-        ``server`` is at its maximum occupancy. Notice that ``server`` may
-        be where ``vertex`` was already placed.
-        """
-        if vertex in self.qubit_vertices:
-            capacity = len(self.distribution.network.server_qubits[server])
-
-            if server == self.current_server(vertex):
-                return self.occupancy[server] <= capacity
-            else:
-                return self.occupancy[server] < capacity
-
-        # Gate vertices can be moved freely
-        else:
-            return True
 
     def current_server(self, vertex: int):
         """Return the server that ``vertex`` is placed at.
