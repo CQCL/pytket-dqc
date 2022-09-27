@@ -1,5 +1,5 @@
 import numpy as np
-from pytket.circuit import OpType
+from pytket.circuit import OpType  # type: ignore
 
 distributable_1q_op_types = [
     OpType.Rz,

@@ -1,15 +1,15 @@
-from numpy import isclose
+from numpy import isclose, bool_
 
 from pytket_dqc.circuits import HypergraphCircuit, Hyperedge, Vertex
 from pytket_dqc.placement import Placement
-from pytket.circuit import Command, OpType, Op, Qubit
+from pytket.circuit import Command, OpType, Op, Qubit  # type: ignore
 from pytket_dqc.utils import (
     is_distributable,
     distributable_1q_op_types,
     distributable_op_types,
 )
 
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Optional
 
 
 class Packet:
@@ -107,8 +107,8 @@ class PacMan:
                     self.merge_packets(qubit_vertex, packet_list)
 
     def identify_hopping_packets(self):
-        # For each packet, see if we can find a subsequent packet that can be packed together
-        # via embedding
+        # For each packet, see if we can find a
+        # subsequent packet that can be packed together via embedding
         # once one is found then we stop and look for the next one
 
         for qubit_vertex in self.hypergraph_circuit.get_qubit_vertices():
@@ -126,7 +126,8 @@ class PacMan:
                     j += 1
 
                 if i + j < len(self.packets_by_qubit[qubit_vertex]):
-                    # Then the while loop exited because intermediate commands were embeddable
+                    # Then the while loop exited because
+                    # intermediate commands were embeddable
                     self.hopping_packets[qubit_vertex].append(
                         (packet, self.packets_by_qubit[qubit_vertex][i + j])
                     )
@@ -144,7 +145,7 @@ class PacMan:
 
     def erase_packet(self, packet):
         for greater_packet in self.get_all_packets()[
-            packet.packet_index + 1 :
+            packet.packet_index + 1:
         ]:
             greater_packet.packet_index -= 1
 
@@ -167,7 +168,8 @@ class PacMan:
                 first_packet, packet
             )
 
-            # For reasons I do not understand, the line directly below must be called after the line directly above.
+            # For reasons I do not understand, the line directly below
+            # must be called after the line directly above.
             # Else intermediate_commands becomes a blank list
             first_packet.packet_gate_vertices.extend(
                 packet.packet_gate_vertices
@@ -197,8 +199,9 @@ class PacMan:
 
         return True
 
-    def get_next_packet(self, packet: Packet) -> Packet:
-        # Find the next packet on the same qubit that has the same connected server.
+    def get_next_packet(self, packet: Packet) -> Optional[Packet]:
+        # Find the next packet on the same qubit
+        # that has the same connected server.
         # Returns None if no such packet exists
         for potential_packet in self.packets_by_qubit[packet.qubit_vertex]:
             if potential_packet.packet_index <= packet.packet_index:
@@ -223,7 +226,7 @@ class PacMan:
         )
         connected_server_to_dist_gates: Dict[
             int, List[Vertex]
-        ] = {}  #  Server number to list of distributed gates on that server.
+        ] = {}  # Server number to list of distributed gates on that server.
         packets: List[Packet] = []
         for gate_vertex in self.hypergraph_circuit.get_gate_vertices(
             hyperedge
@@ -272,7 +275,7 @@ class PacMan:
         # Sort the hyperedges (probs room for optimisation here)
         for qubit_vertex in self.hypergraph_circuit.get_qubit_vertices():
             hyperedge_list: List[Hyperedge] = hyperedges[qubit_vertex]
-            changes = -1  #  Just a temporary storage value
+            changes = -1  # Just a temporary storage value
             while changes != 0:
                 changes = 0
                 for i in range(len(hyperedge_list) - 1):
@@ -292,7 +295,7 @@ class PacMan:
                         changes += 1
             hyperedges[
                 qubit_vertex
-            ] = hyperedge_list  #  Might be redundant line of code here
+            ] = hyperedge_list  # Might be redundant line of code here
 
         return hyperedges
 
@@ -340,10 +343,10 @@ class PacMan:
             ]
 
     def get_last_command_index(self, gate_vertex_list: List[Vertex]) -> int:
-        last_command_index: int = None
+        last_command_index: int = -1  # Placeholder value
         for vertex in gate_vertex_list:
             if (
-                last_command_index is None
+                last_command_index == -1
                 or self.vertex_to_command_index[vertex] > last_command_index
             ):
                 last_command_index = self.vertex_to_command_index[vertex]
@@ -351,10 +354,10 @@ class PacMan:
         return last_command_index
 
     def get_first_command_index(self, gate_vertex_list: List[Vertex]) -> int:
-        first_command_index: int = None
+        first_command_index: int = -1  # Placeholder value
         for vertex in gate_vertex_list:
             if (
-                first_command_index is None
+                first_command_index == -1
                 or self.vertex_to_command_index[vertex] < first_command_index
             ):
                 first_command_index = self.vertex_to_command_index[vertex]
@@ -381,7 +384,7 @@ class PacMan:
         intermediate_commands = []
 
         for command_dict in self.hypergraph_circuit.commands[
-            last_command_index + 1 : first_command_index
+            last_command_index + 1: first_command_index
         ]:
             command = command_dict["command"]
             if qubit in command.qubits:
@@ -415,11 +418,13 @@ class PacMan:
     def are_intermediate_commands_embeddable(
         self, first_packet: Packet, second_packet: Packet
     ) -> bool:
-        # Go through each command and create Hadamard sandwiches around the CU1s that appear
+        # Go through each command and
+        # create Hadamard sandwiches around the CU1s that appear
         # Whilst doing so, verify that these sandwiches are embeddable
 
         print(
-            f"Are packets {first_packet} and {second_packet} packable via embedding?"
+            f"Are packets {first_packet} and "
+            + f"{second_packet} packable via embedding?"
         )
 
         allowed_op_types = distributable_op_types + [OpType.H]
@@ -447,15 +452,15 @@ class PacMan:
 
         for i, cu1_index in enumerate(cu1_indices[1:-1]):
             commands = intermediate_commands[
-                cu1_indices[i - 1] + 1 : cu1_index
+                cu1_indices[i - 1] + 1: cu1_index
             ]
             ops = [command.op for op in commands]
             if OpType.H in [op.type for op in ops]:
-                ops_1q_list.append(convert_1q_ops(ops))
+                ops_1q_list.append(self.convert_1q_ops(ops))
             else:
                 ops_1q_list.append(ops)
 
-        last_commands = intermediate_commands[cu1_indices[-1] + 1 :]
+        last_commands = intermediate_commands[cu1_indices[-1] + 1:]
         last_ops = [command.op for command in last_commands]
         ops_1q_list.append(last_ops)
         print(ops_1q_list)
@@ -465,7 +470,8 @@ class PacMan:
                 n_hadamards = len([op for op in ops_1q if op.type == OpType.H])
                 if n_hadamards > 1:
                     print(
-                        f"No, there are too many Hadamards at the start of the Hadamard sandwich."
+                        "No, there are too many Hadamards at "
+                        + "the start of the Hadamard sandwich."
                     )
                     return False
 
@@ -475,13 +481,15 @@ class PacMan:
                 )
                 if n_hadamards > 1:
                     print(
-                        f"No, there are too many Hadamards at the end of the Hadamard sandwich."
+                        "No, there are too many Hadamards "
+                        + "at the end of the Hadamard sandwich."
                     )
                     return False
 
             if not self.are_1q_op_phases_npi(ops_1q, ops_1q_list[i + 1]):
                 print(
-                    f"No, the phases of {ops_1q} and {ops_1q_list[i+1]} prevent embedding."
+                    f"No, the phases of {ops_1q} and "
+                    + f"{ops_1q_list[i+1]} prevent embedding."
                 )
                 return False
 
@@ -524,7 +532,7 @@ class PacMan:
             if len(ops) == 1:
                 new_ops += [s_op, hadamard, s_op, hadamard, s_op]
 
-            elif len(ops == 2):
+            elif len(ops) == 2:
                 phase_op_index = int(
                     not hadamard_indices[0]
                 )  # only takes value of 1 or 0
@@ -556,9 +564,11 @@ class PacMan:
 
     def are_1q_op_phases_npi(
         self, prior_1q_ops: List[Op], post_1q_ops: List[Op]
-    ) -> bool:
-        # Check if the sum of the params of the U1 gates that sandwich a CU1 are
-        # equal to n (i.e. the actual phases are equal to n * pi)
+    ) -> bool_:
+        # Check if the sum of the params of the
+        # U1 gates that sandwich a CU1 are
+        # equal to n
+        # (i.e. the actual phases are equal to n * pi)
 
         if prior_1q_ops[-1].type == OpType.H or all(
             [op.type in distributable_1q_op_types for op in prior_1q_ops]
