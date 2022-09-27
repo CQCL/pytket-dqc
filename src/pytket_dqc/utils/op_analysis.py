@@ -1,5 +1,17 @@
 import numpy as np
+from pytket.circuit import OpType
 
+distributable_1q_op_types = [
+            OpType.Rz,
+            OpType.X,
+            OpType.U1, 
+        ]
+
+distributable_op_types = distributable_1q_op_types + [
+    OpType.CU1,
+    OpType.CRz,
+    OpType.CZ
+]
 
 def is_diagonal(op):
     # Boolean function that determines
