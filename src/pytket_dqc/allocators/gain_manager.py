@@ -188,6 +188,11 @@ class GainManager:
         # hyperedge. Ignore the commands that do not act on the shared qubit.
         commands = dist_circ.get_hyperedge_subcircuit(hyperedge)
 
+        # We will use the fact that, by construction, the index of the
+        # vertices is ordered (qubits first, then gates left to right)
+        vertices = sorted(hyperedge.vertices.copy())
+        assert vertices.pop(0) == shared_qubit
+
         cost = 0
         currently_embedding = False  # Switched when encountering a Hadamard
         connected_servers = {home_server}  # Servers with shared_qubit access
@@ -201,19 +206,27 @@ class GainManager:
 
             elif command.op.type == OpType.Rz:
                 assert (
-                    isclose(command.op.params[0] % 2, 1)
-                    or not currently_embedding
+                    not currently_embedding
+                    or isclose(command.op.params[0] % 1, 0)  # Identity
+                    or isclose(command.op.params[0] % 1, 1)  # Z gate
                 )
 
             elif command.op.type == OpType.CU1:
-                qubits = [
-                    dist_circ.qubit_to_vertex_map[q] for q in command.qubits
-                ]
-                remote_qubit = [q for q in qubits if q != shared_qubit][0]
-                remote_server = placement_map[remote_qubit]
 
                 if currently_embedding:  # Gate to be embedded
                     assert isclose(command.op.params[0] % 2, 1)  # CZ gate
+
+                    qubits = [
+                        dist_circ.qubit_to_vertex_map[q]
+                        for q in command.qubits
+                    ]
+                    remote_qubit = [q for q in qubits if q != shared_qubit][0]
+                    remote_server = placement_map[remote_qubit]
+
+                    # According to the condition for embeddability on multiple
+                    # servers, it is required that `remote_server` has access
+                    # to an ebit sharing `shared_qubit`; i.e. we assert:
+                    assert remote_server in connected_servers
 
                     # Only servers in the connection path are left connected
                     # all others need to be disconnected since, otherwise,
@@ -230,11 +243,19 @@ class GainManager:
                     # within this hyperedge. Thus, we are done here.
 
                 else:  # Gate to be distributed (or already local)
-                    # If the remote_server doesn't have access to shared_qubit
+
+                    # Retrieve the server where the gate is to be implemented
+                    gate_vertex = vertices.pop(0)
+                    assert (
+                        dist_circ.vertex_circuit_map[gate_vertex]["command"]
+                        == command
+                    )
+                    gate_server = placement_map[gate_vertex]
+                    # If the gate_server doesn't have access to shared_qubit
                     # update the cost, adding the necessary ebits
-                    if remote_server not in connected_servers:
+                    if gate_server not in connected_servers:
                         connection_path = set(
-                            nx.shortest_path(tree, home_server, remote_server)
+                            nx.shortest_path(tree, home_server, gate_server)
                         )
                         required_connections = connection_path.difference(
                             connected_servers
