@@ -177,6 +177,22 @@ class HypergraphCircuit(Hypergraph):
 
         return the_commands
 
+    def h_embedding_required(self, hyperedge: Hyperedge) -> bool:
+        """Returns whether or not H-type embedding of CU1 gates is required
+        to implement the given hyperedge.
+        """
+        commands = self.get_hyperedge_subcircuit(hyperedge)
+
+        currently_embedding = False
+        for cmd in commands:
+
+            if cmd.op.type == OpType.H:
+                currently_embedding = not currently_embedding
+            elif currently_embedding and cmd.op.type == OpType.CU1:
+                return True
+
+        return False
+
     def from_circuit(self):
         """Method to create a hypergraph from a circuit.
 
