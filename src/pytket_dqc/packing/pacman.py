@@ -1,16 +1,11 @@
-from numpy import allclose, floor, isclose
+from numpy import floor, isclose
 
 from pytket_dqc.circuits import HypergraphCircuit, Hyperedge, Vertex
 from pytket_dqc.placement import Placement
 from pytket.circuit import Command, OpType, Op, Qubit
-from pytket_dqc.utils import is_distributable
+from pytket_dqc.utils import is_distributable, distributable_1q_op_types, distributable_op_types
 
 from typing import List, Dict, Tuple
-
-D = "D"
-P = "P"
-M = "M"
-
 
 class Packet():
     """The basic structure of a collection of
@@ -30,32 +25,11 @@ class Packet():
         self.packet_gate_vertices: List[Vertex] = packet_gate_vertices
         self.intermediate_commands: List[Command] = []
 
+    def __str__(self):
+        return f'{self.packet_index}'
 
-
-# class HoppablePacket(Packet):
-#     """A collection of CX gates that can be embedded
-#     between two other distributable packets.
-#     """
-
-#     def __init__(
-#         self,
-#         packet_index: int,
-#         qubit_vertex: Vertex,
-#         connected_server_index: int,
-#         packet_gate_vertices: List[Vertex],
-#         contained_local_gates: Dict[Vertex, List[int]],
-#         embeddable_between: List[int],
-#     ):
-#         super().__init__(
-#             self,
-#             packet_index,
-#             qubit_vertex,
-#             connected_server_index,
-#             packet_gate_vertices,
-#         )
-#         self.contained_local_gates = contained_local_gates
-#         self.embeddable_between = embeddable_between
-
+    def __repr__(self):
+        return self.__str__()
 
 class PacMan():
     """Builds and manages packets using a HypergraphCircuit and a Placement
@@ -68,10 +42,9 @@ class PacMan():
     ):
         self.hypergraph_circuit = hypergraph_circuit
         self.placement = placement
-        self.packets: List[Packet] = []
-        self.packets_by_qubit: Dict[Vertex, List[int]] = {}
+        self.packets_by_qubit: Dict[Vertex, List[Packet]] = {}
         self.vertex_to_command_index: Dict[Vertex, int] = {}
-        self.hopping_packets: Dict[Vertex, Dict[int, List[int]]] = {}
+        self.hopping_packets: Dict[Vertex, List[Tuple[Packet]]] = {}
 
         self.build_vertex_to_command_index()
         self.build_packets()
@@ -99,28 +72,27 @@ class PacMan():
             self.packets_by_qubit[qubit_vertex] = []
             for hyperedge in hyperedges_ordered[qubit_vertex]:
                 starting_index, packets = self.hyperedge_to_packets(hyperedge, starting_index)
-                self.packets += packets
                 for packet in packets:
-                    self.packets_by_qubit[qubit_vertex].append(packet.packet_index)
+                    self.packets_by_qubit[qubit_vertex].append(packet)
 
     def identify_and_merge_neighbouring_packets(self):
         for qubit_vertex in self.hypergraph_circuit.get_qubit_vertices():
-            to_be_merged: List[List[int]] = []
-            already_merged: List[int] = []
-            for packet_index in self.packets_by_qubit[qubit_vertex][:-1]:
-                if packet_index in already_merged:
+            to_be_merged: List[List[Packet]] = []
+            already_merged: List[Packet] = []
+            for packet in self.packets_by_qubit[qubit_vertex][:-1]:
+                if packet in already_merged:
                     continue
 
-                next_packet_index = self.get_next_packet_index(packet_index)
-                mergeable: List[int] = [packet_index]
+                next_packet = self.get_next_packet(packet)
+                mergeable: List[Packet] = [packet]
 
                 # Find all the packets that can be merged with packet_index
-                while next_packet_index is not None:
-                    if self.can_be_merged(packet_index, next_packet_index):
-                        mergeable.append(next_packet_index)
-                        next_packet_index = self.get_next_packet_index(next_packet_index)
+                while next_packet is not None:
+                    if self.can_be_merged(packet, next_packet):
+                        mergeable.append(next_packet)
+                        next_packet = self.get_next_packet(next_packet)
                     else:
-                        next_packet_index = None
+                        next_packet = None
                 
                 to_be_merged.append(mergeable)
                 already_merged += mergeable
@@ -129,122 +101,86 @@ class PacMan():
                 if len(packet_list) > 1:
                     self.merge_packets(qubit_vertex, packet_list)
 
-        self.renew_packet_indices()
-
     def identify_hopping_packets(self):
-        # Packets are in order, so I just need to find groups
-        # of packets for which the intermediate packets and gates can be embedded
-
-        # YOU ARE DOING THE BELOW!!!!!!!!!
-        # Need to change so that if we find a hopping partner, we then see if that hopping partner can have a subsequent embedding
-        # Right now if we check beyond first hopping partner it won't work because the hopping partner might not be embeddable
-        # OK so the above is done BUT it's quite hacky and doesn't feel very robust
+        # For each packet, see if we can find a subsequent packet that can be packed together
+        # via embedding
+        # once one is found then we stop and look for the next one
 
         for qubit_vertex in self.hypergraph_circuit.get_qubit_vertices():
             print(f'Checking qubit vertex {qubit_vertex}')
             self.hopping_packets[qubit_vertex] = []
-            checked_packets = []
-            for i, packet_index in enumerate(self.packets_by_qubit[qubit_vertex][ : -2]):
-                if packet_index in checked_packets:
-                    continue
-                print(f'Checking packing index {packet_index}')
-                print(f'Checking {len(self.packets_by_qubit[qubit_vertex][i + 2 : ])} packets')
-
-                hopping_partners = [packet_index]
-                skip_indices = []
-                for j in self.packets_by_qubit[qubit_vertex][i + 2 : ]:
-                    # Should add a check here that if at any point a CU1 goes to a different
-                    # server/is local to stop bothering to check because nothing
-                    # can be embedded beyond a local/third server target gate
-                    if j in skip_indices:
-                        continue
-
-                    print(f'Checking packet {packet_index} against packet {self.packets_by_qubit[qubit_vertex][j]}')
-                    
-                    hopping_partner_index = self.packets_by_qubit[qubit_vertex][j]
-
-                    if self.are_intermediate_commands_embeddable(packet_index, hopping_partner_index):
-                        hopping_partners.append(hopping_partner_index)
-                        checked_packets.append(hopping_partner_index)
-                        packet_index = hopping_partner_index  # This feels quite dirty
-                        skip_indices.append(j+1) # Can't check against the neighbouring packet (otherwise get issues)
+            for i, packet in enumerate(self.packets_by_qubit[qubit_vertex][ : -2]):
+                j = 2
+                while(
+                    i + j < len(self.packets_by_qubit[qubit_vertex])
+                    and not self.are_intermediate_commands_embeddable(packet, self.packets_by_qubit[qubit_vertex][i+j])
+                ):
+                    j += 1
                 
-                if len(hopping_partners) > 1:
-                    self.hopping_packets[qubit_vertex].append(hopping_partners)
+                if i + j < len(self.packets_by_qubit[qubit_vertex]):
+                    # Then the while loop exited because intermediate commands were embeddable
+                    self.hopping_packets[qubit_vertex].append((packet, self.packets_by_qubit[qubit_vertex][i+j]))
+                else:
+                    print(f'Could not find hopping partner for packet {packet}')
 
-    def find_hopping_packets(self, packet_index):
-        # Find all the packets that can be hopped with this one
-        pass
+    def get_all_packets(self) -> List[Packet]:
+        all_packets: List[Packet] = []
+        for packets in self.packets_by_qubit.values():
+            all_packets += packets
+        all_packets.sort(key = lambda x: x.packet_index)
+        return all_packets
 
-    def renew_packet_indices(self):
-        for i, _ in enumerate(self.packets):
-            if self.packets[i] is None:
-                j = 1
-                replacement_packet_found = False
-                while i + j < len(self.packets) and not replacement_packet_found:
-                    if self.packets[i + j] is not None:
-                        not_none_packet = self.packets[i + j]
-                        not_none_packet.packet_index = i
-                        self.packets_by_qubit[not_none_packet.qubit_vertex].append(i)
-                        self.packets_by_qubit[not_none_packet.qubit_vertex].remove(i+j)
-                        self.packets[i], self.packets[i + j] = self.packets[i + j], self.packets[i]
-                        replacement_packet_found = True
-                    else:
-                        j += 1
-                
-                if not replacement_packet_found:
-                    assert all(elt is None for elt in self.packets[i:]),\
-                        'Packet index renewal failed.'
-                    self.packets = self.packets[:i]
-                    break
+    def erase_packet(self, packet):
+        for greater_packet in self.get_all_packets()[packet.packet_index + 1 : ]:
+            greater_packet.packet_index -= 1
 
-    def merge_packets(self, qubit_vertex: Vertex, packet_index_list: List[int]):
+        self.packets_by_qubit[packet.qubit_vertex].remove(packet)
+        largest_packet_index = self.get_all_packets()[-1].packet_index
+
+        assert largest_packet_index + 1 == len(self.get_all_packets()),\
+            'Have not properly reassigned the packed indices'
+
+    def merge_packets(self, qubit_vertex: Vertex, packets: List[Packet]):
         # Merges all the packets in packet_index_list.
-        # This should be followed by a call to self.renew_packet_indices()
         
-        packet_index_list.sort()
-        first_packet = self.packets[packet_index_list[0]]
+        packets.sort(key= lambda x: x.packet_index)
+        first_packet = packets[0]
 
-        for packet_index in packet_index_list[1:]:
+        for packet in packets[1:]:
             # Have the first packet absorb the other packets
-            intermediate_commands = self.get_intermediate_commands(first_packet.packet_index, packet_index)
+            intermediate_commands = self.get_intermediate_commands(first_packet, packet)
 
             # For reasons I do not understand, the line directly below must be called after the line directly above.
             # Else intermediate_commands becomes a blank list
-            first_packet.packet_gate_vertices.extend(self.packets[packet_index].packet_gate_vertices)
+            first_packet.packet_gate_vertices.extend(packet.packet_gate_vertices)
             first_packet.intermediate_commands.extend(intermediate_commands)
 
             # Erase the absorbed packets
-            self.packets[packet_index] = None  # Store as None for now to ensure packet referencing doesn't break
-            self.packets_by_qubit[first_packet.qubit_vertex].remove(packet_index)
+            self.erase_packet(packet)
                
-    def can_be_merged(self, first_packet_index: int, second_packet_index: int):
+    def can_be_merged(self, first_packet: Packet, second_packet: Packet):
         # Check a bunch of conditions to see if two packets can be merged
         # via neighbouring D type packing
-        first_packet = self.packets[first_packet_index]
-        second_packet = self.packets[second_packet_index]
 
         if first_packet.qubit_vertex != second_packet.qubit_vertex or first_packet.connected_server_index != second_packet.connected_server_index:
             return False
 
-        intermediate_commands = self.get_intermediate_commands(first_packet_index, second_packet_index)
+        intermediate_commands = self.get_intermediate_commands(first_packet, second_packet)
         for command in intermediate_commands:
             if not is_distributable(command.op):
                 return False
         
         return True
 
-    def get_next_packet_index(self, packet_index: int) -> int:
-        # Find the next packet index on the same qubit that has the same connected server.
+    def get_next_packet(self, packet: Packet) -> Packet:
+        # Find the next packet on the same qubit that has the same connected server.
         # Returns None if no such packet exists
-        qubit_vertex = self.packets[packet_index].qubit_vertex
-        checked_packets = 0
-        for potential_packet_index in self.packets_by_qubit[qubit_vertex]:
-            if potential_packet_index <= packet_index:
+        for potential_packet in self.packets_by_qubit[packet.qubit_vertex]:
+            if potential_packet.packet_index <= packet.packet_index:
                 continue
 
-            if self.packets[potential_packet_index].connected_server_index == self.packets[packet_index].connected_server_index:
-                return potential_packet_index
+            if potential_packet.connected_server_index == packet.connected_server_index:
+                return potential_packet
 
         return None
 
@@ -271,6 +207,7 @@ class PacMan():
         return starting_index, packets
 
     def get_hyperedges_ordered(self) -> Dict[Vertex, List[Hyperedge]]:
+        # Orders hyperedges into their circuit sequential order
         hyperedges: Dict[Vertex, List[Hyperedge]] = {}
 
         # Populate the qubit_vertex keys
@@ -345,14 +282,11 @@ class PacMan():
         
         return first_command_index
 
-    def get_intermediate_commands(self, first_packet_index: int, second_packet_index: int) -> List[Command]:
-        first_packet = self.packets[first_packet_index]
-        second_packet = self.packets[second_packet_index]
-
+    def get_intermediate_commands(self, first_packet: Packet, second_packet: Packet) -> List[Command]:
         assert first_packet.qubit_vertex == second_packet.qubit_vertex,\
             'Qubit vertices do not match.'
 
-        qubit_vertex = self.packets[first_packet_index].qubit_vertex
+        qubit_vertex = first_packet.qubit_vertex
         qubit = self.circuit_element_from_vertex(qubit_vertex)
 
         last_command_index = self.get_last_command_index(first_packet.packet_gate_vertices)
@@ -367,104 +301,80 @@ class PacMan():
 
         return intermediate_commands
 
-    def is_embeddable_CU1(self, command: Command, first_packet_index: int, second_packet_index: int) -> bool:
+    def is_embeddable_CU1(self, command: Command, packet: Packet) -> bool:
         # Bad function name but this checks that a CU1 itself
         # COULD be embeddable
         # i.e. only prove that we cannot embed but does not check the 1q
         # gates surrounding it, hence doesn't prove it IS embeddable
-        qubit_vertex = self.packets[first_packet_index].qubit_vertex
-        servers = {
-            self.placement.placement[qubit_vertex], self.packets[first_packet_index].connected_server_index
+        packet_servers = {
+            self.placement.placement[packet.qubit_vertex], packet.connected_server_index
         }
 
         this_command_qubit_vertices = [self.qubit_vertex_from_qubit(qubit) for qubit in command.qubits]
         this_command_servers = {self.placement.placement[qubit_vertex] for qubit_vertex in this_command_qubit_vertices}
-        if servers != this_command_servers:
+        if packet_servers != this_command_servers:
             return False
-        elif not allclose([command.op.params[0]], [1]):
+        elif not isclose(command.op.params[0], 1):
             return False
         return True
 
-    def are_intermediate_commands_embeddable(self, first_packet_index: int, second_packet_index: int) -> bool:
-        # Given two packet indices, are the gates between them embeddable?
+    def are_intermediate_commands_embeddable(self, first_packet: Packet, second_packet: Packet) -> bool:
+        # Go through each command and create Hadamard sandwiches around the CU1s that appear
+        # Whilst doing so, verify that these sandwiches are embeddable
 
-        # Get the intermediate commands and also a list where they are converted to ops
-        intermediate_commands = self.get_intermediate_commands(first_packet_index, second_packet_index)
-        intermediate_ops = [
-            command.op for command in intermediate_commands
+        print(f'Are packets {first_packet} and {second_packet} packable via embedding?')
+
+        allowed_op_types = distributable_op_types + [
+            OpType.H
         ]
 
-        distributable_1q_optypes = [
-            OpType.Rz,
-            OpType.X,
-            OpType.U1,
-            OpType.Z
-        ]
-
-        allowed_optypes = distributable_1q_optypes + [OpType.H, OpType.CU1]
-
-        # Get a list of the indicies in intermediate ops where
-        # the op is a CU1
-        cu1_op_indicies = [
-            i for i, op in enumerate(intermediate_ops)
-            if op.type == OpType.CU1
-        ]
-
-        for i, cu1_op_index in enumerate(cu1_op_indicies):
-            if not self.is_embeddable_CU1(intermediate_commands[cu1_op_index], first_packet_index, second_packet_index):
-                # Verify the CU1 can be embedded
-                print('Cannot embed CU1')
+        intermediate_commands = self.get_intermediate_commands(first_packet, second_packet)
+        cu1_indices = []
+        for i, command in enumerate(intermediate_commands):
+            if command.op.type not in allowed_op_types:
+                print(f'No, {command} is not embeddable.')
                 return False
+            if command.op.type == OpType.CU1:
+                if not self.is_embeddable_CU1(command, first_packet):
+                    print(f'No, CU1 command {command} is not embeddable.')
+                    return False
+                cu1_indices.append(i)
 
+        ops_1q_list: List[List[Op]] = []
+
+        # Convert the intermediate commands between CU1s as necessary
+        first_commands = intermediate_commands[ : cu1_indices[0]]
+        first_ops = [command.op for command in first_commands]
+        ops_1q_list.append(first_ops)
+
+        for i, cu1_index in enumerate(cu1_indices[1:-1]):
+                commands = intermediate_commands[cu1_indices[i-1] + 1 : cu1_index]
+                ops = [command.op for op in commands]
+                if OpType.H in [op.type for op in ops]:
+                    ops_1q_list.append(convert_1q_ops(ops))
+                else:
+                    ops_1q_list.append(ops)
+        
+        last_commands = intermediate_commands[cu1_indices[-1] + 1:]
+        last_ops = [command.op for command in last_commands]
+        ops_1q_list.append(last_ops)
+        print(ops_1q_list)
+
+        for i, ops_1q in enumerate(ops_1q_list[:-1]):
             if i == 0:
-                prior_1q_ops = intermediate_ops[:cu1_op_index]
-                prior_allowed_Hs = 1
-            else:
-                prior_1q_ops = intermediate_ops[cu1_op_indicies[i-1] + 1: cu1_op_index]
-                prior_allowed_Hs = 2
-            
-            if i == len(cu1_op_indicies) - 1:
-                post_1q_ops = intermediate_ops[cu1_op_index + 1:]
-                post_allowed_Hs = 1
-            else:
-                post_1q_ops = intermediate_ops[cu1_op_index + 1: cu1_op_indicies[i + 1]]
-                post_allowed_Hs = 2
-            
-            H_count = 0
-            for op in prior_1q_ops:
-                if op.type == OpType.H:
-                    H_count += 1
-                    if H_count > prior_allowed_Hs:
-                        print('Too many Hs')
-                        return False
-                elif op.type not in distributable_1q_optypes:
-                    print(f'1q gate {op} not distributable')
+                n_hadamards = len([op for op in ops_1q if op.type == OpType.H])
+                if n_hadamards > 1:
+                    print(f'No, there are too many Hadamards at the start of the Hadamard sandwich.')
                     return False
             
-            H_count = 0
-            for op in post_1q_ops:
-                if op.type == OpType.H:
-                    H_count += 1
-                    if H_count > post_allowed_Hs:
-                        print('Too many Hs')
-                        return False
-                elif op.type not in distributable_1q_optypes:
-                    print(f'1q gate {op} not distributable')
+            if i == len(ops_1q_list) - 2:
+                n_hadamards = len([op for op in ops_1q_list[-1] if op.type == OpType.H])
+                if n_hadamards > 1:
+                    print(f'No, there are too many Hadamards at the end of the Hadamard sandwich.')
                     return False
 
-            # Convert from 1 Hadamard -> Hadamards as needed for embedding
-            # Bit inefficient since checking same conditions as above but needed
-            # to verify that the 1q ops are allowed to be distributed
-            if i != 0:
-                prior_1q_ops = self.convert_1q_ops(prior_1q_ops)
-            
-            if i != len(cu1_op_indicies) - 1:
-                post_1q_ops = self.convert_1q_ops(post_1q_ops)
-            
-            if not self.are_1q_op_phases_npi(prior_1q_ops, post_1q_ops):
-                print('1q phases are not n * pi')
-                print(f'Prior 1q gate is {prior_1q_ops[-1]}')
-                print(f'Post 1q gate is {post_1q_ops[0]}')
+            if not self.are_1q_op_phases_npi(ops_1q, ops_1q_list[i+1]):
+                print(f'No, the phases of {ops_1q} and {ops_1q_list[i+1]} prevent embedding.')
                 return False
         
         return True
@@ -472,7 +382,7 @@ class PacMan():
     def convert_1q_ops(self, ops: List[Op]) -> List[Op]:
         # Converts a set of 1q ops
         # in the gateset of Rz, Z, X, H
-        # with up to 1 Hadamard
+        # with 1 Hadamard
         # so that it is in the same gateset
         # but has 2 Hadamards in the list.
         # BREAKS IF Z or X or Rz
@@ -527,14 +437,20 @@ class PacMan():
         # Check if the sum of the params of the U1 gates that sandwich a CU1 are
         # equal to n (i.e. the actual phases are equal to n * pi)
 
-        if prior_1q_ops[-1].type == OpType.H:
+        if(
+            prior_1q_ops[-1].type == OpType.H
+            or all([op.type in distributable_1q_op_types for op in prior_1q_ops])
+        ):
             prior_phase = 0
 
         else:
             prior_op = prior_1q_ops[-1]
             prior_phase = prior_op.params[0]
 
-        if post_1q_ops[0].type == OpType.H:
+        if (
+            post_1q_ops[0].type == OpType.H
+            or all([op.type in distributable_1q_op_types for op in post_1q_ops])
+        ):
             post_phase = 0
 
         else:
@@ -543,7 +459,4 @@ class PacMan():
 
         phase_sum = prior_phase + post_phase
 
-        if allclose([phase_sum], [0]):
-            return True
-
-        return isclose([floor(phase_sum) / phase_sum], [1])
+        return isclose(phase_sum % 1, 0)
