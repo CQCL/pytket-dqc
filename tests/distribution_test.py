@@ -1,5 +1,5 @@
 from pytket_dqc.networks import NISQNetwork
-from pytket_dqc import HypergraphCircuit
+from pytket_dqc import HypergraphCircuit, Distribution
 from pytket_dqc.placement import Placement
 from pytket import Circuit, OpType
 
@@ -7,7 +7,7 @@ from pytket import Circuit, OpType
 # TODO: Add tests with circuits where one or more qubits are unused
 
 
-def test_placement_valid():
+def test_distribution_valid():
 
     large_network = NISQNetwork(
         [[0, 1], [0, 2], [1, 2]], {0: [0, 1, 2], 1: [3, 4, 5], 2: [6, 7, 8, 9]}
@@ -35,18 +35,34 @@ def test_placement_valid():
     placement_eight = Placement({0: 1, 1: 0, 2: 1})
     placement_nine = Placement({0: 2, 1: 2, 2: 2})
 
-    assert not placement_one.is_valid(dist_med_circ, large_network)
-    assert placement_two.is_valid(dist_med_circ, large_network)
-    assert placement_three.is_valid(dist_med_circ, large_network)
-    assert placement_four.is_valid(dist_med_circ, large_network)
-    assert not placement_five.is_valid(dist_med_circ, large_network)
-    assert not placement_six.is_valid(dist_med_circ, large_network)
-    assert not placement_seven.is_valid(dist_small_circ, small_network)
-    assert placement_eight.is_valid(dist_small_circ, small_network)
-    assert not placement_nine.is_valid(dist_small_circ, small_network)
+    assert not Distribution(
+        dist_med_circ, placement_one, large_network
+    ).is_valid()
+    assert Distribution(dist_med_circ, placement_two, large_network).is_valid()
+    assert Distribution(
+        dist_med_circ, placement_three, large_network
+    ).is_valid()
+    assert Distribution(
+        dist_med_circ, placement_four, large_network
+    ).is_valid()
+    assert not Distribution(
+        dist_med_circ, placement_five, large_network
+    ).is_valid()
+    assert not Distribution(
+        dist_med_circ, placement_six, large_network
+    ).is_valid()
+    assert not Distribution(
+        dist_small_circ, placement_seven, small_network
+    ).is_valid()
+    assert Distribution(
+        dist_small_circ, placement_eight, small_network
+    ).is_valid()
+    assert not Distribution(
+        dist_small_circ, placement_nine, small_network
+    ).is_valid()
 
 
-def test_placement_cost():
+def test_distribution_cost():
 
     two_CZ_circ = (
         Circuit(3)
@@ -61,8 +77,23 @@ def test_placement_cost():
     )
 
     placement_one = Placement({0: 0, 1: 1, 2: 2, 3: 1, 4: 2})
-    assert placement_one.cost(dist_two_CZ_circ, three_line_network) == 2
+    assert (
+        Distribution(
+            dist_two_CZ_circ, placement_one, three_line_network
+        ).cost()
+        == 2
+    )
     placement_two = Placement({0: 0, 1: 1, 2: 2, 3: 1, 4: 0})
-    assert placement_two.cost(dist_two_CZ_circ, three_line_network) == 3
+    assert (
+        Distribution(
+            dist_two_CZ_circ, placement_two, three_line_network
+        ).cost()
+        == 3
+    )
     placement_three = Placement({0: 1, 1: 0, 2: 2, 3: 0, 4: 2})
-    assert placement_three.cost(dist_two_CZ_circ, three_line_network) == 2
+    assert (
+        Distribution(
+            dist_two_CZ_circ, placement_three, three_line_network
+        ).cost()
+        == 2
+    )

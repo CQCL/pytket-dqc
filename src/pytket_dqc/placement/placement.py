@@ -68,43 +68,6 @@ class Placement:
 
         return is_valid
 
-    def cost(
-        self,
-        circuit: HypergraphCircuit,
-        network: NISQNetwork
-    ) -> int:
-        """Cost of placement of ``circuit`` onto ``network``. The cost is
-        measured as the number of e-bits which would be required.
-
-        :param circuit: Circuit placed onto ``network`` by placement.
-        :type circuit: HypergraphCircuit
-        :param network: Network onto which ``circuit`` is placed by placement.
-        :type network: NISQNetwork
-        :raises Exception: Raised if this is not a valid placement of
-            ``circuit`` onto ``network``.
-        :return: Cost, in e-bits required, of this placement of ``circuit``
-            onto ``network``.
-        :rtype: int
-        """
-
-        cost = 0
-        if self.is_valid(circuit, network):
-            for hyperedge in circuit.hyperedge_list:
-                # Cost of distributing gates in a hyperedge corresponds
-                # to the number of edges in steiner tree connecting all
-                # servers used by vertices in hyperedge.
-
-                dist_graph = self.get_distribution_tree(
-                    hyperedge.vertices,
-                    circuit.get_qubit_vertex(hyperedge),
-                    network
-                )
-                cost += len(dist_graph) * hyperedge.weight
-        else:
-            raise Exception("This is not a valid placement.")
-
-        return cost
-
     def get_distribution_tree(
         self,
         hyperedge: list[int],

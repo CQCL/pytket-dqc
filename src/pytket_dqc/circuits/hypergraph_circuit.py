@@ -11,7 +11,6 @@ import random
 from pytket_dqc.utils import (
     dqc_gateset_predicate,
     DQCPass,
-    _cost_from_circuit,
 )
 from pytket_dqc.utils.gateset import start_proc, end_proc, telep_proc
 
@@ -671,7 +670,9 @@ class HypergraphCircuit(Hypergraph):
             else:
                 raise Exception("This role has not been defined")
 
-        assert _cost_from_circuit(circ) == placement.cost(self, network)
+        # Commenting this out since placement.cost is deprecated and so is
+        # this to_pytket method
+        # assert _cost_from_circuit(circ) == placement.cost(self, network)
 
         return circ
 

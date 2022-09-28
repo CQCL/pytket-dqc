@@ -51,11 +51,13 @@ class Distribution:
     def cost(self) -> int:
         """Return the number of ebits required for this distribution.
         """
+        if not self.is_valid():
+            raise Exception("This is not a valid distribution")
 
-        # TODO: Once the ALAP algorithm is introduced, this will be replaced
-        # by a for loop over all hyperedges, calling the function to calculate
-        # their cost, which uses GainManager.
-        return self.placement.cost(self.circuit, self.network)
+        cost = 0
+        for hyperedge in self.circuit.hyperedge_list:
+            cost += self.hyperedge_cost(hyperedge)
+        return cost
 
     def hyperedge_cost(self, hyperedge: Hyperedge, **kwargs) -> int:
         """First, we check whether the hyperedge requires H-embeddings to be
