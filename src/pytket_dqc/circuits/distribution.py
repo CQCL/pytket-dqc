@@ -1,7 +1,10 @@
-from pytket_dqc.circuits.hypergraph_circuit import HypergraphCircuit
+from pytket_dqc.circuits import HypergraphCircuit, Hyperedge
 from pytket_dqc.placement import Placement
 from pytket_dqc.networks import NISQNetwork
-from pytket import Circuit
+from pytket_dqc.utils import steiner_tree
+from pytket import Circuit, OpType
+import networkx as nx  # type: ignore
+from numpy import isclose  # type: ignore
 
 
 class Distribution:
@@ -53,6 +56,152 @@ class Distribution:
         # by a for loop over all hyperedges, calling the function to calculate
         # their cost, which uses GainManager.
         return self.placement.cost(self.circuit, self.network)
+
+    def hyperedge_cost(self, hyperedge: Hyperedge, **kwargs) -> int:
+        """First, we check whether the hyperedge requires H-embeddings to be
+        implemented. If not, we calculate its cost by counting the number of
+        edges in the Steiner tree connecting all required servers. Otherwise,
+        the cost of implementing the hyperedge is calculated using an "as lazy
+        as possible" (ALAP) algorithm which we expect not to be optimal, but
+        decent enough. In the latter acse, both reduction of ebit cost via
+        Steiner trees and embedding are considered.
+
+        Note: the cost only takes into account the ebits required to
+        distribute the gates in the hyperedge; it does not consider the ebit
+        cost of distributing the embedded gates. However, it does guarantee
+        that the correction gates added during the embedding will not require
+        extra ebits when distributed.
+
+        :param hyperedge: The hyperedge whose cost is to be calculated.
+        :type hyperedge: Hyperedge
+
+        :key server_tree: The connectivity tree (subgraph of ``server_graph``)
+            that should be used. If not provided, this function will find a
+            Steiner tree.
+        :type server_tree: nx.Graph
+        :key h_embedding: Indicates whether or not the hyperedge requires
+            an H-embedding to be implemented. If not provided, it is checked.
+        :type h_embedding: bool
+
+        :return: The cost of the hyperedge.
+        :rtype: int
+        """
+        tree = kwargs.get("server_tree", None)
+        h_embedding = kwargs.get("h_embedding", None)
+
+        if hyperedge.weight != 1:
+            raise Exception(
+                "Hyperedges with weight other than 1 \
+                 are not currently supported"
+            )
+
+        dist_circ = self.circuit
+        placement_map = self.placement.placement
+
+        # Extract hyperedge data
+        shared_qubit = dist_circ.get_qubit_vertex(hyperedge)
+        home_server = placement_map[shared_qubit]
+        servers = [placement_map[v] for v in hyperedge.vertices]
+        # Obtain the Steiner tree or check that the one given is valid
+        if tree is None:
+            tree = steiner_tree(self.network.get_server_nx(), servers)
+        else:
+            assert all(s in tree.nodes for s in servers)
+        # If not known, check if H-embedding is required
+        if h_embedding is None:
+            h_embedding = dist_circ.h_embedding_required(hyperedge)
+
+        # If H-embedding is not required, we can easily calculate the cost
+        if not h_embedding:
+            return len(tree.edges)
+
+        # Otherwise, we need to run ALAP
+        else:
+            # Collect all of the commands between the first and last gates in
+            # the hyperedge. Ignore those do not act on the shared qubit.
+            commands = dist_circ.get_hyperedge_subcircuit(hyperedge)
+
+            # We will use the fact that, by construction, the index of the
+            # vertices is ordered (qubits first, then gates left to right)
+            vertices = sorted(hyperedge.vertices.copy())
+            assert vertices.pop(0) == shared_qubit
+
+            cost = 0
+            currently_embedding = False  # Switched when finding a Hadamard
+            connected_servers = {home_server}  # Servers shared_qubit access
+            for command in commands:
+
+                if command.op.type == OpType.H:
+                    currently_embedding = not currently_embedding
+
+                elif command.op.type in [OpType.X, OpType.Z]:
+                    pass  # These gates can always be embedded
+
+                elif command.op.type == OpType.Rz:
+                    assert (
+                        not currently_embedding
+                        or isclose(command.op.params[0] % 1, 0)  # Identity
+                        or isclose(command.op.params[0] % 1, 1)  # Z gate
+                    )
+
+                elif command.op.type == OpType.CU1:
+
+                    if currently_embedding:  # Gate to be embedded
+                        assert isclose(command.op.params[0] % 2, 1)  # CZ gate
+
+                        qubits = [
+                            dist_circ.qubit_to_vertex_map[q]
+                            for q in command.qubits
+                        ]
+                        remote_qubit = [
+                            q for q in qubits if q != shared_qubit
+                        ][0]
+                        remote_server = placement_map[remote_qubit]
+
+                        # According to the condition for embeddability on
+                        # multiple servers, we required that ``remote_server``
+                        # has access to an ebit sharing ``shared_qubit``
+                        assert remote_server in connected_servers
+
+                        # Only servers in the connection path are left intact
+                        # all others need to be disconnected since, otherwise,
+                        # extra ebits would be required to implement the new
+                        # correction gates that would be introduced
+                        connection_path = nx.shortest_path(
+                            tree, home_server, remote_server
+                        )
+                        connected_servers = connected_servers.intersection(
+                            connection_path
+                        )
+                        # Note: we do not need to consider the ebits required
+                        # to implement the embedded gate since that one is not
+                        # within this hyperedge. Thus, we are done here.
+
+                    else:  # Gate to be distributed (or already local)
+
+                        # Get the server where the gate is to be implemented
+                        gate_vertex = vertices.pop(0)
+                        assert (
+                            dist_circ.vertex_circuit_map[gate_vertex][
+                                "command"
+                            ]
+                            == command
+                        )
+                        gate_server = placement_map[gate_vertex]
+                        # If gate_server doesn't have access to shared_qubit
+                        # update the cost, adding the necessary ebits
+                        if gate_server not in connected_servers:
+                            connection_path = set(
+                                nx.shortest_path(
+                                    tree, home_server, gate_server
+                                )
+                            )
+                            required_connections = connection_path.difference(
+                                connected_servers
+                            )
+                            connected_servers.update(required_connections)
+                            cost += len(required_connections)
+            return cost
 
     def to_pytket_circuit(self) -> Circuit:
         if self.is_valid():
