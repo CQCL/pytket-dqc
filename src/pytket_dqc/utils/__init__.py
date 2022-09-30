@@ -19,3 +19,5 @@ from .circuit_analysis import (  # noqa:F401
     ebit_memory_required,
     evicted_gate_count,
 )
+
+from .verification import check_equivalence  # noqa:F401
