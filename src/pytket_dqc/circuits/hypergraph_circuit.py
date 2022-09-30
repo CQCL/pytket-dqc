@@ -151,30 +151,44 @@ class HypergraphCircuit(Hypergraph):
         the hyperedge. Commands that don't act on the qubit vertex are omitted
         but embedded gates within the hyperedge are included.
         """
-        qubit = self.vertex_circuit_map[self.get_qubit_vertex(hyperedge)][
+        hyp_qubit = self.vertex_circuit_map[self.get_qubit_vertex(hyperedge)][
             "node"
         ]
-        hyp_commands = [
-            self.vertex_circuit_map[gate_vertex]["command"]
-            for gate_vertex in self.get_gate_vertices(hyperedge)
-        ]
+        gate_vertices = self.get_gate_vertices(hyperedge)
+        if not gate_vertices:
+            return []
         circ_commands = self.circuit.get_commands()
 
-        the_commands = []
+        # We will abuse the fact that, by construction, the gate vertices are
+        # numbered from smaller to larger integers as we read the circuit from
+        # left to right.
+        # A solution that didn't use the trick would be preferable, but that'd
+        # require changing ``vertex_circuit_map`` to point at indices in the
+        # circuit.get_commands() list. Unfortunately, comparison of bindings
+        # via the "is" keyword does not work here because "get_commands"
+        # returns a deep copy of the command list (on each call, the Command
+        # objects are different).
+        subcirc_commands = []
+        first_gate = min(gate_vertices)
+        last_gate = max(gate_vertices)
+        current_vertex_id = len(self.circuit.qubits)
+
         first_found = False
         for cmd in circ_commands:
-
-            if not hyp_commands:  # If there are no commands left, we are done
-                continue
-            elif cmd in hyp_commands:
+            if current_vertex_id == first_gate and cmd.op.type == OpType.CU1:
                 first_found = True
-                the_commands.append(cmd)
-                hyp_commands.remove(cmd)
-            elif first_found and qubit in cmd.qubits:  # cmd must be embedded
-                # TODO: May be worth asserting it is embeddable
-                the_commands.append(cmd)
+            if first_found and hyp_qubit in cmd.qubits:
+                subcirc_commands.append(cmd)
+            if current_vertex_id == last_gate and cmd.op.type == OpType.CU1:
+                break
+            if cmd.op.type == OpType.CU1:
+                current_vertex_id += 1
 
-        return the_commands
+        assert first_found and current_vertex_id == last_gate
+        assert subcirc_commands[0].op.type == OpType.CU1
+        assert subcirc_commands[-1].op.type == OpType.CU1
+
+        return subcirc_commands
 
     def h_embedding_required(self, hyperedge: Hyperedge) -> bool:
         """Returns whether or not H-type embedding of CU1 gates is required
