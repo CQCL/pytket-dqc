@@ -4,7 +4,7 @@ import random
 import kahypar as kahypar  # type:ignore
 from pytket_dqc.allocators import Allocator, GainManager
 from pytket_dqc.placement import Placement
-from pytket_dqc.circuits.distribution import Distribution
+from pytket_dqc.circuits import HypergraphCircuit, Distribution
 import importlib_resources
 from pytket import Circuit
 
@@ -12,7 +12,6 @@ from pytket import Circuit
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from pytket_dqc import HypergraphCircuit
     from pytket_dqc.networks import NISQNetwork
 
 
@@ -25,15 +24,15 @@ class HypergraphPartitioning(Allocator):
     """
 
     def allocate(
-        self, dist_circ: HypergraphCircuit, network: NISQNetwork, **kwargs
+        self, circ: Circuit, network: NISQNetwork, **kwargs
     ) -> Distribution:
-        """Distribute ``dist_circ`` onto ``network``. The initial distribution
+        """Distribute ``circ`` onto ``network``. The initial distribution
         is found by KaHyPar using the connectivity metric, then it is
         refined to reduce the cost taking into account the network topology.
 
-        :param dist_circ: Circuit to distribute.
-        :type dist_circ: HypergraphCircuit
-        :param network: Network onto which ``dist_circ`` should be placed.
+        :param circ: Circuit to distribute.
+        :type circ: pytket.Circuit
+        :param network: Network onto which ``circ`` should be placed.
         :type network: NISQNetwork
 
         :key ini_path: Path to kahypar ini file.
@@ -45,14 +44,15 @@ class HypergraphPartitioning(Allocator):
         :key cache_limit: The maximum size of the set of servers whose cost is
             stored in cache; see GainManager. Default value is 5.
 
-        :return: Distribution of ``dist_circ`` onto ``network``.
+        :return: Distribution of ``circ`` onto ``network``.
         :rtype: Distribution
         """
 
+        dist_circ = HypergraphCircuit(circ)
         if not network.can_implement(dist_circ):
             raise Exception(
                 "This circuit cannot be implemented on this network."
-                )
+            )
 
         package_path = importlib_resources.files("pytket_dqc")
         default_ini = f"{package_path}/allocators/km1_kKaHyPar_sea20.ini"
@@ -68,28 +68,26 @@ class HypergraphPartitioning(Allocator):
             dist_circ, network, ini_path, seed=seed
         )
 
+        initial_distribution = Distribution(
+            dist_circ, placement, network
+        )
+
         # Then, we refine the placement using label propagation. This will
         # also ensure that the servers do not exceed their qubit capacity
-        placement = self.refine(
-            placement,
-            dist_circ,
-            network,
+        distribution = self.refine(
+            initial_distribution,
             seed=seed,
             num_rounds=num_rounds,
             stop_parameter=stop_parameter,
             cache_limit=cache_limit,
         )
 
-        assert placement.is_valid(dist_circ, network)
-        return Distribution(dist_circ, dist_circ, placement, network)
+        assert distribution.is_valid()
+        return distribution
 
     def refine(
-        self,
-        placement: Placement,
-        dist_circ: HypergraphCircuit,
-        network: NISQNetwork,
-        **kwargs,
-    ) -> Placement:
+        self, initial_distribution: Distribution, **kwargs,
+    ) -> Distribution:
         """The refinement algorithm proceeds in rounds. In each round, all of
         the vertices in the boundary are visited in random order and we
         we calculate the gain achieved by moving the vertex to other servers.
@@ -109,12 +107,8 @@ class HypergraphPartitioning(Allocator):
         This refinement algorithm is known as "label propagation" and it
         is discussed in https://arxiv.org/abs/1402.3281.
 
-        :param placement: Initial placement.
-        :type placement: Placement
-        :param dist_circ: Circuit to distribute.
-        :type dist_circ: HypergraphCircuit
-        :param network: Network onto which ``dist_circ`` should be placed.
-        :type network: NISQNetwork
+        :param initial_distribution: Distribution to refine.
+        :type distribution: Distribution
 
         :key seed: Seed for randomness. Default is None
         :key num_rounds: Max number of refinement rounds. Default is 1000.
@@ -124,8 +118,8 @@ class HypergraphPartitioning(Allocator):
         :key cache_limit: The maximum size of the set of servers whose cost is
             stored in cache; see GainManager. Default value is 5.
 
-        :return: Placement of ``dist_circ`` onto ``network``.
-        :rtype: Placement
+        :return: Distribution where the placement updated.
+        :rtype: Distribution
         """
 
         num_rounds = kwargs.get("num_rounds", 1000)
@@ -135,15 +129,9 @@ class HypergraphPartitioning(Allocator):
             random.seed(seed)
         cache_limit = kwargs.get("cache_limit", None)
 
-        qubit_vertices = frozenset(
-            [v for v in dist_circ.vertex_list if dist_circ.is_qubit_vertex(v)]
-        )
-
         # We will use a ``GainManager`` to manage the calculation of gains
         # (and management of pre-computed values) in a transparent way
-        gain_manager = GainManager(
-            dist_circ, qubit_vertices, network, placement
-        )
+        gain_manager = GainManager(initial_distribution)
         if cache_limit is not None:
             gain_manager.set_max_key_size(cache_limit)
 
@@ -169,10 +157,12 @@ class HypergraphPartitioning(Allocator):
         # refinement algorithm will move them around to optimise gains.
         # At the end of the previous subroutine, no server should be
         # overpopulated.
-        assert gain_manager.placement.is_valid(dist_circ, network)
+        assert gain_manager.distribution.is_valid()
 
         round_id = 0
         proportion_moved: float = 1
+        dist_circ = gain_manager.distribution.circuit
+        placement = gain_manager.distribution.placement
         while round_id < num_rounds and proportion_moved > stop_parameter:
             active_vertices = dist_circ.get_boundary(placement)
 
@@ -205,7 +195,9 @@ class HypergraphPartitioning(Allocator):
                     if not gain_manager.is_move_valid(vertex, server):
                         # The only vertices we can swap with are qubit ones
                         # so that the occupancy of the server is maintained
-                        vs = gain_manager.placement.get_vertices_in(server)
+                        vs = placement.get_vertices_in(
+                            server
+                        )
                         valid_swaps = [
                             vertex
                             for vertex in vs
@@ -279,8 +271,8 @@ class HypergraphPartitioning(Allocator):
                 moves / len(active_vertices) if active_vertices else 0
             )
 
-        assert gain_manager.placement.is_valid(dist_circ, network)
-        return gain_manager.placement
+        assert gain_manager.distribution.is_valid()
+        return gain_manager.distribution
 
     def initial_distribute(
         self,
@@ -313,7 +305,7 @@ class HypergraphPartitioning(Allocator):
         seed = kwargs.get("seed", None)
 
         # This should only arise if the circuit is completely empty.
-        if (len(dist_circ.hyperedge_list) == 0):
+        if len(dist_circ.hyperedge_list) == 0:
             assert dist_circ.circuit == Circuit()
             return Placement(dict())
         else:
@@ -366,8 +358,9 @@ class HypergraphPartitioning(Allocator):
                 hypergraph.blockID(i) for i in range(hypergraph.numNodes())
             ]
 
-            placement_dict = {i: server for i,
-                              server in enumerate(partition_list)}
+            placement_dict = {
+                i: server for i, server in enumerate(partition_list)
+            }
             placement = Placement(placement_dict)
 
         return placement
