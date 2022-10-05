@@ -1,7 +1,7 @@
 Allocators
 ============
 
-.. autoclass:: pytket_dqc.allocators.distributor.Allocator
+.. autoclass:: pytket_dqc.allocators.Allocator
 
     .. automethod:: Allocator.__init__
 

@@ -193,6 +193,7 @@ class HypergraphPartitioning(Allocator):
                     if not gain_manager.is_move_valid(vertex, server):
                         # The only vertices we can swap with are qubit ones
                         # so that the occupancy of the server is maintained
+
                         vs = placement.get_vertices_in(server)
                         valid_swaps = [
                             vertex
