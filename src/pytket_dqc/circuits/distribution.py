@@ -81,6 +81,9 @@ class Distribution:
             that should be used. If not provided, this function will find a
             Steiner tree.
         :type server_tree: nx.Graph
+        :key server_graph: The network's ``server_graph``. If not provided,
+            this is calculated from ``self.network``. Meant to save a call.
+        :type server_graph: nx.Graph
         :key h_embedding: Indicates whether or not the hyperedge requires
             an H-embedding to be implemented. If not provided, it is checked.
         :type h_embedding: bool
@@ -89,6 +92,7 @@ class Distribution:
         :rtype: int
         """
         tree = kwargs.get("server_tree", None)
+        server_graph = kwargs.get("server_graph", None)
         h_embedding = kwargs.get("h_embedding", None)
 
         if hyperedge.weight != 1:
@@ -109,7 +113,10 @@ class Distribution:
             tree = steiner_tree(self.network.get_server_nx(), servers)
         else:
             assert all(s in tree.nodes for s in servers)
-        # If not known, check if H-embedding is required
+        if server_graph is None:
+            server_graph = self.network.get_server_nx()
+
+        # If not known, check if H-embedding is required for this hyperedge
         if h_embedding is None:
             h_embedding = dist_circ.h_embedding_required(hyperedge)
 
@@ -160,24 +167,30 @@ class Distribution:
                         ][0]
                         remote_server = placement_map[remote_qubit]
 
-                        # According to the condition for embeddability on
-                        # multiple servers, we required that ``remote_server``
-                        # has access to an ebit sharing ``shared_qubit``
-                        assert remote_server in connected_servers
-
                         # Only servers in the connection path are left intact
                         # all others need to be disconnected since, otherwise,
                         # extra ebits would be required to implement the new
                         # correction gates that would be introduced
+                        #
+                        # Note: by the conditions of embeddability, all gates
+                        # being simultaneously embedded act on the same two
+                        # servers (and nonlocally).
+                        #
+                        # Note: the shortest path is found in server_graph
+                        # instead of in the tree since that is how the
+                        # embedded hyperedge would be implemented (it only
+                        # connects two servers, so its Steiner tree is the
+                        # shortest path) if it were not embedded. If we
+                        # used some other path then we would be changing the
+                        # way the embedded gates are distributed, possibly
+                        # increasing the cost of their distribution, hence,
+                        # not following Junyi's main design principle.
                         connection_path = nx.shortest_path(
-                            tree, home_server, remote_server
+                            server_graph, home_server, remote_server
                         )
                         connected_servers = connected_servers.intersection(
                             connection_path
                         )
-                        # Note: we do not need to consider the ebits required
-                        # to implement the embedded gate since that one is not
-                        # within this hyperedge. Thus, we are done here.
 
                     else:  # Gate to be distributed (or already local)
 

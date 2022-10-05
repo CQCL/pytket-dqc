@@ -93,6 +93,7 @@ class GainManager:
         self.hyperedge_cost_map[hyperedge] = self.distribution.hyperedge_cost(
             hyperedge,
             server_tree=tree,
+            server_graph=self.server_graph,
             h_embedding=self.h_embedding_required[hyperedge],
         )
 

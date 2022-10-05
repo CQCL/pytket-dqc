@@ -1,5 +1,6 @@
 from pytket_dqc.networks import NISQNetwork
 from pytket_dqc import HypergraphCircuit, Distribution
+from pytket_dqc.circuits import Hyperedge
 from pytket_dqc.placement import Placement
 from pytket import Circuit, OpType
 
@@ -62,7 +63,7 @@ def test_distribution_valid():
     ).is_valid()
 
 
-def test_distribution_cost():
+def test_distribution_cost_no_embedding():
 
     two_CZ_circ = (
         Circuit(3)
@@ -97,3 +98,59 @@ def test_distribution_cost():
         ).cost()
         == 2
     )
+
+
+def test_alap():
+
+    circ = Circuit(4)
+    circ.add_gate(OpType.CU1, 0.1234, [1, 2])
+    circ.add_gate(OpType.CU1, 0.1234, [0, 2])
+    circ.add_gate(OpType.CU1, 0.1234, [2, 3])
+    circ.add_gate(OpType.CU1, 0.1234, [0, 3])
+    circ.H(0).H(2).Rz(0.1234, 3)
+    circ.add_gate(OpType.CU1, 1.0, [0, 2])
+    circ.add_gate(OpType.CU1, 1.0, [0, 3])
+    circ.add_gate(OpType.CU1, 1.0, [1, 2])
+    circ.H(0).H(2).Rz(0.1234, 0)
+    circ.add_gate(OpType.CU1, 0.1234, [0, 1])
+    circ.add_gate(OpType.CU1, 0.1234, [0, 3])
+    circ.add_gate(OpType.CU1, 1.0, [1, 2])
+
+    network = NISQNetwork(
+        [[0, 1], [0, 2], [0, 3], [3, 4]],
+        {0: [0], 1: [1, 2], 2: [3, 4], 3: [7], 4: [5, 6]},
+    )
+
+    placement = Placement(
+        {
+            0: 1,
+            1: 1,
+            2: 4,
+            3: 4,
+            4: 1,
+            5: 2,
+            6: 1,
+            7: 4,
+            8: 4,
+            9: 4,
+            10: 0,
+            11: 1,
+            12: 4,
+            13: 2,
+        }
+    )
+
+    distribution = Distribution(HypergraphCircuit(circ), placement, network)
+
+    hyp_0 = Hyperedge([0, 5, 7, 11, 12])
+    hyp_2 = Hyperedge([2, 4, 5, 6, 13])
+
+    assert distribution.hyperedge_cost(hyp_0) == 4
+    assert distribution.hyperedge_cost(hyp_2) == 5
+
+    distribution.placement.placement[2] = 0
+    assert distribution.hyperedge_cost(hyp_2) == 3
+
+    distribution.placement.placement[2] = 0
+    distribution.placement.placement[13] = 1
+    assert distribution.hyperedge_cost(hyp_2) == 2
