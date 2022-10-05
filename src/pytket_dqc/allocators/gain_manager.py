@@ -148,6 +148,17 @@ class GainManager:
         checked whether the move is valid or not. If unsure, you should
         call ``is_move_valid``.
         """
+
+        # If a hyperedge requires embedding, moving a vertex that is contained
+        # in the embedded hyperedge could cause issues: it may be that it is
+        # no longer embeddable, so the hyperedge that required embedding can
+        # no longer be implemented with the estimated cost.
+        # To avoid this, we simply forbid placement moves once a hyperedge
+        # embedded.
+        if any(b for b in self.h_embedding_required.values()):
+            raise Exception("Changing the placement after gates are embedded \
+                             is not allowed.")
+
         placement_dict = self.distribution.placement.placement
         dist_circ = self.distribution.circuit
 
