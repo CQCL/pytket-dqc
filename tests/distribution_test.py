@@ -145,6 +145,9 @@ def test_alap():
     hyp_0 = Hyperedge([0, 5, 7, 11, 12])
     hyp_2 = Hyperedge([2, 4, 5, 6, 13])
 
+    # These costs have been calculated by hand.
+    # The examples attempted are meant to be interesting cases but this
+    # is not in any way exhaustive.
     assert distribution.hyperedge_cost(hyp_0) == 4
     assert distribution.hyperedge_cost(hyp_2) == 5
 
