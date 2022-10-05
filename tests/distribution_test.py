@@ -157,3 +157,83 @@ def test_alap():
     distribution.placement.placement[2] = 0
     distribution.placement.placement[13] = 1
     assert distribution.hyperedge_cost(hyp_2) == 2
+
+
+def test_distribution_cost_with_embedding():
+    # Note: This is testing ALAP as well
+
+    circ = Circuit(4)
+    circ.add_gate(OpType.CU1, 0.1234, [1, 2])
+    circ.add_gate(OpType.CU1, 0.1234, [0, 2])
+    circ.add_gate(OpType.CU1, 0.1234, [2, 3])
+    circ.add_gate(OpType.CU1, 0.1234, [0, 3])
+    circ.H(0).H(2).Rz(0.1234, 3)
+    circ.add_gate(OpType.CU1, 1.0, [0, 2])
+    circ.add_gate(OpType.CU1, 1.0, [0, 3])
+    circ.add_gate(OpType.CU1, 1.0, [1, 2])
+    circ.H(0).H(2).Rz(0.1234, 0)
+    circ.add_gate(OpType.CU1, 0.1234, [0, 1])
+    circ.add_gate(OpType.CU1, 0.1234, [0, 3])
+    circ.add_gate(OpType.CU1, 1.0, [1, 2])
+
+    network = NISQNetwork(
+        [[0, 1], [0, 2], [0, 3], [3, 4]],
+        {0: [0], 1: [1, 2], 2: [3, 4], 3: [7], 4: [5, 6]},
+    )
+
+    placement = Placement(
+        {
+            0: 1,
+            1: 1,
+            2: 2,
+            3: 4,
+            4: 1,
+            5: 2,
+            6: 4,
+            7: 4,
+            8: 2,
+            9: 4,
+            10: 0,
+            11: 1,
+            12: 4,
+            13: 3,
+        }
+    )
+
+    dist_circ = HypergraphCircuit(circ)
+    # Reset the hyperedges
+    dist_circ.hyperedge_list = []
+    for vertex in dist_circ.vertex_list:
+        dist_circ.hyperedge_dict[vertex] = []
+        dist_circ.vertex_neighbours[vertex] = set()
+    # New hyperedges: some are the same, some are merged
+    new_hyperedges = []
+    new_hyperedges.append(Hyperedge([0, 11, 12]))
+    new_hyperedges.append(Hyperedge([0, 5, 7]))
+    new_hyperedges.append(Hyperedge([0, 8, 9]))
+    new_hyperedges.append(Hyperedge([1, 4, 10, 11, 13]))
+    new_hyperedges.append(Hyperedge([2, 4, 5, 6, 13]))  # Merged hyperedge
+    new_hyperedges.append(Hyperedge([2, 8, 10]))
+    new_hyperedges.append(Hyperedge([3, 6, 7, 9, 12]))  # Merged hyperedge
+    # Add the new hyperedges
+    for hyperedge in new_hyperedges:
+        dist_circ.add_hyperedge(hyperedge.vertices)
+
+    distribution = Distribution(dist_circ, placement, network)
+
+    assert not dist_circ.h_embedding_required(new_hyperedges[0])
+    assert distribution.hyperedge_cost(new_hyperedges[0]) == 3
+    assert not dist_circ.h_embedding_required(new_hyperedges[1])
+    assert distribution.hyperedge_cost(new_hyperedges[1]) == 4
+    assert not dist_circ.h_embedding_required(new_hyperedges[2])
+    assert distribution.hyperedge_cost(new_hyperedges[2]) == 4
+    assert not dist_circ.h_embedding_required(new_hyperedges[3])
+    assert distribution.hyperedge_cost(new_hyperedges[3]) == 2
+    assert dist_circ.h_embedding_required(new_hyperedges[4])
+    assert distribution.hyperedge_cost(new_hyperedges[4]) == 5
+    assert not dist_circ.h_embedding_required(new_hyperedges[5])
+    assert distribution.hyperedge_cost(new_hyperedges[5]) == 1
+    assert not dist_circ.h_embedding_required(new_hyperedges[6])
+    assert distribution.hyperedge_cost(new_hyperedges[6]) == 0
+
+    assert distribution.cost() == 3 + 4 + 4 + 2 + 5 + 1 + 0
