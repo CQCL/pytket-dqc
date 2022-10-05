@@ -10,6 +10,7 @@ from pytket_dqc.circuits import (
     BipartiteCircuit,
     Distribution,
 )
+from pytket_dqc.circuits.hypergraph import Vertex
 
 from pytket_dqc.utils.gateset import (
     start_proc,
@@ -23,6 +24,64 @@ from pytket.circuit import QControlBox, Op, OpType  # type: ignore
 
 # TODO: Test new circuit classes
 
+def test_hypergraph_split_hyperedge():
+
+    hypergraph = Hypergraph()
+    hypergraph.add_vertices([Vertex(0), Vertex(1), Vertex(2)])
+    hypergraph.add_hyperedge([0,1,2])
+    hypergraph.add_hyperedge([0,1])
+
+    old_hyperedge = Hyperedge(vertices=[Vertex(0),Vertex(1),Vertex(2)], weight=1)
+    new_hyperedge_one = Hyperedge(vertices=[Vertex(0),Vertex(2)], weight=1)
+    new_hyperedge_two = Hyperedge(vertices=[Vertex(1),Vertex(2)], weight=1)
+
+    hypergraph.split_hyperedge(
+        old_hyperedge=old_hyperedge, 
+        new_hyperedge_list=[new_hyperedge_one, new_hyperedge_two]
+    )
+
+    assert hypergraph.vertex_neighbours == {0: {1, 2}, 1: {0, 2}, 2: {0, 1}}
+
+    hypergraph = Hypergraph()
+    hypergraph.add_vertices([Vertex(0), Vertex(1), Vertex(2)])
+    hypergraph.add_hyperedge([0,1,2])
+
+    hypergraph.split_hyperedge(
+        old_hyperedge=old_hyperedge, 
+        new_hyperedge_list=[new_hyperedge_one, new_hyperedge_two]
+    )
+
+    assert hypergraph.vertex_neighbours == {0: {2}, 1: {2}, 2: {0, 1}}
+
+def test_hypergraph_merge_hyperedge():
+
+    hypergraph = Hypergraph()
+    hypergraph.add_vertices([Vertex(0), Vertex(1), Vertex(2)])
+    hypergraph.add_hyperedge([0,1])
+    hypergraph.add_hyperedge([1,2])
+    hypergraph.add_hyperedge([2,0])
+
+    to_merge_hyperedge_one = Hyperedge(vertices=[Vertex(1),Vertex(2)], weight=1)
+    to_merge_hyperedge_two = Hyperedge(vertices=[Vertex(2),Vertex(0)], weight=1)
+
+    hypergraph.merge_hyperedge(
+        to_merge_hyperedge_list=[to_merge_hyperedge_one, to_merge_hyperedge_two]
+    )
+
+    assert hypergraph.vertex_neighbours == {0: {1, 2}, 1: {0, 2}, 2: {0, 1}}
+    assert len(hypergraph.hyperedge_list) == 2
+
+    hypergraph = Hypergraph()
+    hypergraph.add_vertices([Vertex(0), Vertex(1), Vertex(2)])
+    hypergraph.add_hyperedge([1,2])
+    hypergraph.add_hyperedge([2,0])
+
+    hypergraph.merge_hyperedge(
+        to_merge_hyperedge_list=[to_merge_hyperedge_one, to_merge_hyperedge_two]
+    )
+
+    assert hypergraph.vertex_neighbours == {0: {1, 2}, 1: {0, 2}, 2: {0, 1}}
+    assert len(hypergraph.hyperedge_list) == 1
 
 def test_hypergraph_is_valid():
 
