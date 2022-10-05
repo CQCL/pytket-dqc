@@ -137,7 +137,7 @@ class Distribution:
 
             cost = 0
             currently_embedding = False  # Switched when finding a Hadamard
-            connected_servers = {home_server}  # Servers shared_qubit access
+            connected_servers = {home_server}  # With access to shared_qubit
             for command in commands:
 
                 if command.op.type == OpType.H:
@@ -167,24 +167,25 @@ class Distribution:
                         ][0]
                         remote_server = placement_map[remote_qubit]
 
-                        # Only servers in the connection path are left intact
-                        # all others need to be disconnected since, otherwise,
+                        # Only servers in the shortest path from remote_server
+                        # to home_server are left intact. The rest of the
+                        # servers need to be disconnected since, otherwise,
                         # extra ebits would be required to implement the new
-                        # correction gates that would be introduced
-                        #
-                        # Note: by the conditions of embeddability, all gates
-                        # being simultaneously embedded act on the same two
-                        # servers (and nonlocally).
+                        # correction gates that would be introduced.
                         #
                         # Note: the shortest path is found in server_graph
                         # instead of in the tree since that is how the
-                        # embedded hyperedge would be implemented (it only
-                        # connects two servers, so its Steiner tree is the
-                        # shortest path) if it were not embedded. If we
-                        # used some other path then we would be changing the
+                        # embedded hyperedge would be implemented if it were
+                        # not embedded (it only connects two servers, so its
+                        # Steiner tree is the shortest path). If we used
+                        # some other path then we would be changing the
                         # way the embedded gates are distributed, possibly
                         # increasing the cost of their distribution, hence,
                         # not following Junyi's main design principle.
+                        #
+                        # Note: by the conditions of embeddability, all gates
+                        # that are being embedded simultaneously act on the
+                        # same two servers.
                         connection_path = nx.shortest_path(
                             server_graph, home_server, remote_server
                         )
