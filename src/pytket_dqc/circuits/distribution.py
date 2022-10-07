@@ -132,7 +132,7 @@ class Distribution:
 
             # We will use the fact that, by construction, the index of the
             # vertices is ordered (qubits first, then gates left to right)
-            vertices = sorted(hyperedge.vertices.copy())
+            vertices = sorted(hyperedge.vertices)
             assert vertices.pop(0) == shared_qubit
 
             cost = 0
