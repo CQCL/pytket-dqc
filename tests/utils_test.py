@@ -172,8 +172,18 @@ def test_verification_from_placed_circuit():
             rebased_circuits[i], packed_circuits[i], qubit_mappings[i]
         )
 
+def test_verification_rebase_simple():
+    c = Circuit(2).CZ(0, 1)
+    orig_c = c.copy()
+    DQCPass().apply(c)
 
-def test_verification_rebase():
+    # Check equivalence of unitaries explicitly
+    assert np.allclose(orig_c.get_unitary(), c.get_unitary())
+    # Check equivalence via PyZX
+    assert check_equivalence(orig_c, c, {q: q for q in c.qubits})
+
+
+def test_verification_rebase_random():
     # Creates a random circuit, rebases it and uses ``check_equivalence``
     # to verify they are equivalent
     np.random.seed(42)
@@ -201,6 +211,9 @@ def test_verification_rebase():
     orig_c = c.copy()
     DQCPass().apply(c)
 
+    # Check equivalence of unitaries explicitly
+    assert np.allclose(orig_c.get_unitary(), c.get_unitary())
+    # Check equivalence via PyZX
     assert check_equivalence(orig_c, c, {q: q for q in c.qubits})
 
 
@@ -215,6 +228,9 @@ def test_tk2_to_cu1():
     orig_circ = circ.copy()
     DQCPass().apply(circ)
     assert dqc_gateset_predicate.verify(circ)
+    # Check equivalence of unitaries explicitly
+    assert np.allclose(orig_circ.get_unitary(), circ.get_unitary())
+    # Check equivalence via PyZX
     assert check_equivalence(orig_circ, circ, {q: q for q in circ.qubits})
 
 
@@ -232,6 +248,9 @@ def test_tk1_to_euler():
         orig_circ = circ.copy()
         DQCPass().apply(circ)
         assert dqc_gateset_predicate.verify(circ)
+        # Check equivalence of unitaries explicitly
+        assert np.allclose(orig_circ.get_unitary(), circ.get_unitary())
+        # Check equivalence via PyZX
         assert check_equivalence(orig_circ, circ, {q: q for q in circ.qubits})
 
 
@@ -243,6 +262,9 @@ def test_verify_non_equal():
 
     ab_circ = Circuit(2).CX(0, 1).CX(1, 0)
     ba_circ = Circuit(2).CX(1, 0).CX(0, 1)
+    # Check inequivalence of unitaries explicitly
+    assert not np.allclose(ab_circ.get_unitary(), ba_circ.get_unitary())
+    # Check inequivalence via PyZX
     assert not check_equivalence(
         ab_circ, ba_circ, {q: q for q in ab_circ.qubits}
     )
