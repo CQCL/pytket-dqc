@@ -84,17 +84,28 @@ def tk1_to_euler(a, b, c) -> Circuit:
     #    either pi/2 or -pi/2.
     # We then use the decomposition of H = Rz(0.5)*Rx(0.5)*Rz(0.5) and
     # H = Rz(-0.5)*Rx(-0.5)*Rz(-0.5) to introduce the H gates as needed.
-    #
+    circ = Circuit(1)
+
+    # Case 1: the Rx gate can be removed
     if np.isclose(b % 2, 0) or np.isclose(b % 2, 2):
-        return Circuit(1).Rz(c + a, 0)
-    if np.isclose(b % 2, 1):
-        return Circuit(1).Rz(c, 0).X(0).Rz(a, 0)
-    if np.isclose(b % 2, 0.5):
-        return Circuit(1).Rz(c - 0.5, 0).H(0).Rz(a - 0.5, 0)
-    if np.isclose(b % 2, 1.5):
-        return Circuit(1).Rz(c + 0.5, 0).H(0).Rz(a + 0.5, 0)
+        circ.Rz(c + a, 0)
+        if np.isclose(b % 4, 2):
+            circ.add_phase(1.0)
+    # Case 2: the Rx gate corresponds to a Pauli gate
+    elif np.isclose(b % 2, 1):
+        circ.Rz(c, 0).X(0).Rz(a, 0).add_phase(-0.5)
+        if np.isclose(b % 4, 3):
+            circ.add_phase(1.0)
+    # Case 3: the Rx gate has a multiple of pi/2 phase
+    elif np.isclose(b % 2, 0.5) or np.isclose(b % 2, 1.5):
+        circ.Rz(c - b, 0).H(0).Rz(a - b, 0).add_phase(1.0)
+        if b % 4 > 2:
+            circ.add_phase(1.0)
+    # Case 4: for any other case, use Euler decomposition
     else:
-        return Circuit(1).Rz(c, 0).H(0).Rz(b, 0).H(0).Rz(a, 0)
+        circ.Rz(c, 0).H(0).Rz(b, 0).H(0).Rz(a, 0)
+
+    return circ
 
 
 #: Pass rebasing gates to those valid within pytket-dqc
