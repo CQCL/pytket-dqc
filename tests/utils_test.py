@@ -172,6 +172,7 @@ def test_verification_from_placed_circuit():
             rebased_circuits[i], packed_circuits[i], qubit_mappings[i]
         )
 
+
 def test_verification_rebase_simple():
     c = Circuit(2).CZ(0, 1)
     orig_c = c.copy()
