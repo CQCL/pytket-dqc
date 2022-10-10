@@ -38,9 +38,9 @@ def test_distributed_circuit():
     circ = Circuit(2).add_gate(OpType.CU1, 1.0, [0, 1])
     dist_circ = HypergraphCircuit(circ)
 
-    assert dist_circ.circuit == circ
+    assert dist_circ.get_circuit() == circ
 
-    vertex_circuit_map = dist_circ.vertex_circuit_map
+    vertex_circuit_map = dist_circ._vertex_circuit_map
     assert vertex_circuit_map[0]["type"] == "qubit"
     assert vertex_circuit_map[1]["type"] == "qubit"
     assert vertex_circuit_map[2]["type"] == "gate"
@@ -48,7 +48,7 @@ def test_distributed_circuit():
 
 def test_regular_graph_distributed_circuit():
 
-    circ = RegularGraphHypergraphCircuit(3, 2, 1, seed=0).circuit
+    circ = RegularGraphHypergraphCircuit(3, 2, 1, seed=0).get_circuit()
     network = NISQNetwork([[0, 1], [0, 2]], {0: [0, 1], 1: [2, 3, 4], 2: [5]})
     allocator = Brute()
     distribution = allocator.allocate(circ, network)

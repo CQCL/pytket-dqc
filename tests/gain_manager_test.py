@@ -32,7 +32,7 @@ dummy_circ.hyperedge_list = simple_hypergraph.hyperedge_list
 dummy_circ.hyperedge_dict = simple_hypergraph.hyperedge_dict
 dummy_circ.vertex_neighbours = simple_hypergraph.vertex_neighbours
 for vertex in simple_hypergraph.vertex_list:
-    dummy_circ.vertex_circuit_map[vertex] = {"type": "qubit"}
+    dummy_circ._vertex_circuit_map[vertex] = {"type": "qubit"}
 
 t_network = NISQNetwork(
     [[1, 2], [2, 4], [3, 4], [4, 5]],

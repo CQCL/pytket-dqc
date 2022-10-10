@@ -98,7 +98,7 @@ class Ordered(Allocator):
         # it is used often.
         qubit_vertex_list = [
             vertex
-            for vertex, vertex_info in dist_circ.vertex_circuit_map.items()
+            for vertex, vertex_info in dist_circ._vertex_circuit_map.items()
             if vertex_info['type'] == 'qubit'
         ]
 
@@ -117,7 +117,7 @@ class Ordered(Allocator):
         # it is used often.
         gate_vertex_list = [
             vertex
-            for vertex, vertex_info in dist_circ.vertex_circuit_map.items()
+            for vertex, vertex_info in dist_circ._vertex_circuit_map.items()
             if vertex_info['type'] == 'gate'
         ]
 
