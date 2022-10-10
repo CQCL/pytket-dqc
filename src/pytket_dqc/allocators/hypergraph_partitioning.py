@@ -307,7 +307,7 @@ class HypergraphPartitioning(Allocator):
 
         # This should only arise if the circuit is completely empty.
         if len(dist_circ.hyperedge_list) == 0:
-            assert dist_circ.circuit == Circuit()
+            assert dist_circ._circuit == Circuit()
             return Placement(dict())
         else:
             hyperedge_indices, hyperedges = dist_circ.kahypar_hyperedges()
@@ -321,7 +321,7 @@ class HypergraphPartitioning(Allocator):
             hyperedge_weights = [1 for i in range(0, num_hyperedges)]
             # Qubit vertices are given weight 1, gate vertices are given
             # weight 0
-            num_qubits = len(dist_circ.circuit.qubits)
+            num_qubits = len(dist_circ.get_qubit_vertices())
             vertex_weights = [1 for i in range(0, num_qubits)] + [
                 0 for i in range(num_qubits, num_vertices)
             ]

@@ -50,7 +50,7 @@ class Routing(Allocator):
 
         arch, node_qubit_map, pl = network.get_placer()
 
-        routed_circ = dist_circ.circuit.copy()
+        routed_circ = dist_circ.get_circuit()
 
         # Place and route circuit onto architecture.
         PlacementPass(pl).apply(routed_circ)
@@ -79,7 +79,7 @@ class Routing(Allocator):
 
         placement_dict = {}
         # For each vertex in the circuit hypergraph, place it in a server.
-        for vertex, vertex_info in dist_circ.vertex_circuit_map.items():
+        for vertex, vertex_info in dist_circ._vertex_circuit_map.items():
             # If the vertex is a qubit use node_server_map
             if vertex_info['type'] == 'qubit':
                 placement_dict[vertex] = node_server_map[vertex_info['node']]

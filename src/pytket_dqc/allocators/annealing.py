@@ -119,7 +119,9 @@ class Annealing(Allocator):
             # If the vertex to move corresponds to a qubit
             swap_vertex = None
             if (
-                distribution.circuit.vertex_circuit_map[vertex_to_move]["type"]
+                distribution.circuit._vertex_circuit_map[vertex_to_move][
+                    "type"
+                ]
                 == "qubit"
             ):
 
@@ -128,7 +130,7 @@ class Annealing(Allocator):
                     v
                     for v in distribution.circuit.vertex_list
                     if (
-                        distribution.circuit.vertex_circuit_map[v]["type"]
+                        distribution.circuit._vertex_circuit_map[v]["type"]
                         == "qubit"
                     )
                 ]

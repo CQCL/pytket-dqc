@@ -159,7 +159,7 @@ class Distribution:
                         assert isclose(command.op.params[0] % 2, 1)  # CZ gate
 
                         qubits = [
-                            dist_circ.qubit_to_vertex_map[q]
+                            dist_circ._qubit_to_vertex_map[q]
                             for q in command.qubits
                         ]
                         remote_qubit = [
@@ -198,7 +198,7 @@ class Distribution:
                         # Get the server where the gate is to be implemented
                         gate_vertex = vertices.pop(0)
                         assert (
-                            dist_circ.vertex_circuit_map[gate_vertex][
+                            dist_circ._vertex_circuit_map[gate_vertex][
                                 "command"
                             ]
                             == command

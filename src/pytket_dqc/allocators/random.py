@@ -77,7 +77,7 @@ class Random(Allocator):
                 # Get list of qubit vertices placed onto server.
                 vertices_places = [
                     v for v in vertices_places
-                    if dist_circ.vertex_circuit_map[v]['type'] == 'qubit'
+                    if dist_circ._vertex_circuit_map[v]['type'] == 'qubit'
                 ]
 
                 # Check if server is full
