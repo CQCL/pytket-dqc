@@ -108,13 +108,14 @@ class Distribution:
         shared_qubit = dist_circ.get_qubit_vertex(hyperedge)
         home_server = placement_map[shared_qubit]
         servers = [placement_map[v] for v in hyperedge.vertices]
-        # Obtain the Steiner tree or check that the one given is valid
-        if tree is None:
-            tree = steiner_tree(self.network.get_server_nx(), servers)
-        else:
-            assert all(s in tree.nodes for s in servers)
+        # Obtain the server graph if it is not given
         if server_graph is None:
             server_graph = self.network.get_server_nx()
+        # Obtain the Steiner tree or check that the one given is valid
+        if tree is None:
+            tree = steiner_tree(server_graph, servers)
+        else:
+            assert all(s in tree.nodes for s in servers)
 
         # If not known, check if H-embedding is required for this hyperedge
         if h_embedding is None:
