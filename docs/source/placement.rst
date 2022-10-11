@@ -5,7 +5,7 @@ Placement
 
     .. automethod:: Placement.__init__
 
-    .. automethod:: Placement.is_placement
+    .. automethod:: Placement.is_valid
 
     .. automethod:: Placement.cost
 

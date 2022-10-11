@@ -59,7 +59,7 @@ class NISQNetwork(ServerNetwork):
 
     def can_implement(self, dist_circ: HypergraphCircuit) -> bool:
 
-        if len(self.get_qubit_list()) < dist_circ.circuit.n_qubits:
+        if len(self.get_qubit_list()) < len(dist_circ.get_qubit_vertices()):
             return False
         return True
 

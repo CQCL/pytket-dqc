@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from pytket_dqc.allocators import Allocator
 from pytket_dqc.placement import Placement
-from pytket_dqc.circuits.distribution import Distribution
+from pytket_dqc.circuits import HypergraphCircuit, Distribution
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from pytket_dqc import HypergraphCircuit
+    from pytket import Circuit
     from pytket_dqc.networks import NISQNetwork
 
 
@@ -64,21 +64,22 @@ class Ordered(Allocator):
 
     def allocate(
         self,
-        dist_circ: HypergraphCircuit,
+        circ: Circuit,
         network: NISQNetwork,
         **kwargs
     ) -> Distribution:
-        """Distribute ``dist_circ`` onto ``network`` by placing quibts onto
+        """Distribute ``circ`` onto ``network`` by placing quibts onto
         servers, in decreasing order of size, until they are full.
 
-        :param dist_circ: Circuit to distribute.
-        :type dist_circ: HypergraphCircuit
-        :param network: Network onto which ``dist_circ`` should be distributed.
+        :param circ: Circuit to distribute.
+        :type circ: pytket.Circuit
+        :param network: Network onto which ``circ`` should be distributed.
         :type network: NISQNetwork
-        :return: Distribution of ``dist_circ`` onto ``network``.
+        :return: Distribution of ``circ`` onto ``network``.
         :rtype: Distribution
         """
 
+        dist_circ = HypergraphCircuit(circ)
         if not network.can_implement(dist_circ):
             raise Exception(
                 "This circuit cannot be implemented on this network."
@@ -97,7 +98,7 @@ class Ordered(Allocator):
         # it is used often.
         qubit_vertex_list = [
             vertex
-            for vertex, vertex_info in dist_circ.vertex_circuit_map.items()
+            for vertex, vertex_info in dist_circ._vertex_circuit_map.items()
             if vertex_info['type'] == 'qubit'
         ]
 
@@ -116,7 +117,7 @@ class Ordered(Allocator):
         # it is used often.
         gate_vertex_list = [
             vertex
-            for vertex, vertex_info in dist_circ.vertex_circuit_map.items()
+            for vertex, vertex_info in dist_circ._vertex_circuit_map.items()
             if vertex_info['type'] == 'gate'
         ]
 
@@ -131,4 +132,4 @@ class Ordered(Allocator):
 
         assert placement.is_valid(dist_circ, network)
 
-        return Distribution(dist_circ, dist_circ, placement, network)
+        return Distribution(dist_circ, placement, network)
