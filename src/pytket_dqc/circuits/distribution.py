@@ -159,7 +159,7 @@ class Distribution:
                         assert isclose(command.op.params[0] % 2, 1)  # CZ gate
 
                         qubits = [
-                            dist_circ._qubit_to_vertex_map[q]
+                            dist_circ.get_vertex_of_qubit(q)
                             for q in command.qubits
                         ]
                         remote_qubit = [

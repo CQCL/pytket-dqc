@@ -31,9 +31,6 @@ class HypergraphCircuit(Hypergraph):
     :type _circuit: Circuit
     :param _vertex_circuit_map: Map from hypergraph vertices to circuit
         commands.
-    :type vertex_circuit_map: dict[int, dict]
-    :param _qubit_to_vertex_map: Map from circuit qubits to vertices.
-    :type _qubit_to_vertex_map: dict[Qubit, int]
     :type _vertex_circuit_map: dict[int, dict]
     """
 
@@ -69,7 +66,6 @@ class HypergraphCircuit(Hypergraph):
 
         self._circuit = circuit
         self._vertex_circuit_map: dict[int, dict] = {}
-        self._qubit_to_vertex_map: dict[Qubit, int] = {}
         self._commands: list[
             dict[str, Union[Command, str, int, list[Qubit]]]
         ] = []
@@ -90,7 +86,6 @@ class HypergraphCircuit(Hypergraph):
         """
         self.add_vertex(vertex)
         self._vertex_circuit_map[vertex] = {"type": "qubit", "node": qubit}
-        self._qubit_to_vertex_map[qubit] = vertex
 
     def get_qubit_vertices(self) -> list[int]:
         """Return list of vertices which correspond to qubits
@@ -138,6 +133,19 @@ class HypergraphCircuit(Hypergraph):
 
         assert len(qubit_list) == 1
         return qubit_list[0]
+
+    def get_vertex_of_qubit(self, qubit: Qubit) -> int:
+        """Returns the vertex that corresponds to ``qubit``.
+        """
+        vertex_list = [
+            vertex
+            for vertex in self.vertex_list
+            if self.is_qubit_vertex(vertex)
+            if self._vertex_circuit_map[vertex]['node'] == qubit
+        ]
+
+        assert len(vertex_list) == 1
+        return vertex_list[0]
 
     def get_gate_vertices(self, hyperedge: Hyperedge) -> list[int]:
         """Returns the list of gate vertices in ``hyperedge``.
