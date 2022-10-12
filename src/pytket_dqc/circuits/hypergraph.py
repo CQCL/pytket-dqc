@@ -66,22 +66,13 @@ class Hypergraph:
 
     def split_hyperedge(self, old_hyperedge:Hyperedge, new_hyperedge_list:list[Hyperedge]):
 
-        # TODO: Do we need to check that the first element of the list of
-        # vertices in each hyperedge is a qubit? And indeed that there is
-        # one and only on qubit in each list. Note that this is a check
-        # which should take place in HypergraphCircuit to override this
-        # method.
-
-        if old_hyperedge not in self.hyperedge_list:
-            raise Exception(f"The hyper edge {old_hyperedge} is not in this hypergraph.")
-
         flat_edge_list = [edge for edge_list in new_hyperedge_list for edge in edge_list.vertices]
         if not (set(flat_edge_list) == set(old_hyperedge.vertices)):
             raise Exception(f"{new_hyperedge_list} does not match the vertices in {old_hyperedge}")
 
-        self.remove_hyperedge(old_hyperedge)
         for new_hyperedge in new_hyperedge_list:
             self.add_hyperedge(new_hyperedge.vertices, new_hyperedge.weight)
+        self.remove_hyperedge(old_hyperedge)
 
     def remove_hyperedge(self, old_hyperedge:Hyperedge):
         """Remove hypergraph. Update vertex_neighbours.

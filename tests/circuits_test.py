@@ -21,8 +21,45 @@ from pytket_dqc.utils import check_equivalence
 from pytket_dqc.allocators import Brute, Random
 from pytket_dqc.networks import NISQNetwork
 from pytket.circuit import QControlBox, Op, OpType  # type: ignore
+from copy import deepcopy
 
 # TODO: Test new circuit classes
+
+def test_failing_circuit_hyperedge_split_and_merge():
+
+    circ = Circuit(3)
+    circ.add_gate(OpType.CU1, 1.0, [0, 1])
+    circ.H(0)
+    circ.add_gate(OpType.CU1, 1.0, [0, 2])
+    hyp_circ = HypergraphCircuit(circ)
+
+    to_merge_hyperedge_one = Hyperedge(vertices=[3,0], weight=1)
+    to_merge_hyperedge_two = Hyperedge(vertices=[0,4], weight=1)
+
+    # This will fail as [3,0] is not a hyper edge. Note that [0,3] is a hyperedge
+    with pytest.raises(Exception) as e_info:
+        hyp_circ.merge_hyperedge(to_merge_hyperedge_list=[to_merge_hyperedge_one, to_merge_hyperedge_two])
+
+    assert str(e_info.value) == "At least one hyperedge in this list does not belong to this hypergraph."
+
+    to_merge_hyperedge_one = Hyperedge(vertices=[0,3], weight=1)
+    hyp_circ.merge_hyperedge(to_merge_hyperedge_list=[to_merge_hyperedge_one, to_merge_hyperedge_two])
+
+    old_hyperedge = Hyperedge(vertices=[0,3,4], weight=1)
+    new_hyperedge_one = Hyperedge(vertices=[3,0], weight=1)
+    new_hyperedge_two = Hyperedge(vertices=[0,4], weight=1)
+
+    # This will fail as [3,0] is not a valid hyper edge as 0 (the qubit) 
+    # must come first in the list.
+    with pytest.raises(Exception) as e_info:
+        hyp_circ.split_hyperedge(old_hyperedge=old_hyperedge, new_hyperedge_list=[new_hyperedge_one, new_hyperedge_two])
+
+    assert str(e_info.value) == "The first element of [3, 0] is required to be a qubit vertex."
+
+    new_hyperedge_one = Hyperedge(vertices=[0,3], weight=1)
+    hyp_circ.split_hyperedge(old_hyperedge=old_hyperedge, new_hyperedge_list=[new_hyperedge_one, new_hyperedge_two])
+
+    assert hyp_circ.hyperedge_list == [Hyperedge(vertices=[1,3], weight=1), Hyperedge(vertices=[2,4], weight=1), Hyperedge(vertices=[0,3], weight=1), Hyperedge(vertices=[0,4], weight=1)]
 
 def test_hypergraph_split_hyperedge():
 

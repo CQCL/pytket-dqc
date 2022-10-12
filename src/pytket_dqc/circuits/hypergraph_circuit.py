@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from .hypergraph import Hypergraph, Hyperedge
+from .hypergraph import Hypergraph, Hyperedge, Vertex
 from pytket import OpType, Circuit, Qubit
 from pytket.circuit import Command, Unitary2qBox  # type: ignore
 from scipy.stats import unitary_group  # type: ignore
@@ -73,6 +73,28 @@ class HypergraphCircuit(Hypergraph):
 
     def get_circuit(self):
         return self._circuit.copy()
+
+    def add_hyperedge(self, vertices: list[Vertex], weight: int = 1):
+        """Add hyperedge to hypergraph of circuit. Adds some checks on top
+            of add_hypergraph in `Hypergraph` in order to ensure that the
+            first vertex is a qubit.
+
+        :param vertices: List of vertices in hyperedge
+        :type vertices: list[Vertex]
+        :param weight: Hyperedge weight
+        :type weight: int
+        :raises Exception: Raised if first vertex in hyperedge is not a qubit
+        """
+
+        # TODO: Do we also need to check that the numbers in the list are in
+        # increasing order?
+        if not self.is_qubit_vertex(vertices[0]):
+            raise Exception(f"The first element of {vertices} is required to be a qubit vertex.")
+
+        if any(self.is_qubit_vertex(vertex) for vertex in vertices[1:]):
+            raise Exception("There must be only one qubit in the hyperedge")
+
+        super(HypergraphCircuit, self).add_hyperedge(vertices=vertices, weight=weight)
 
     def add_qubit_vertex(self, vertex: int, qubit: Qubit):
         """Add a vertex to the underlying hypergraph which corresponds to a
