@@ -76,14 +76,16 @@ class HypergraphCircuit(Hypergraph):
 
     def add_hyperedge(self, vertices: list[Vertex], weight: int = 1):
         """Add hyperedge to hypergraph of circuit. Adds some checks on top
-            of add_hypergraph in `Hypergraph` in order to ensure that the
-            first vertex is a qubit.
+        of add_hypergraph in `Hypergraph` in order to ensure that the
+        first vertex is a qubit, and that there is only one qubit vertex.
 
-        :param vertices: List of vertices in hyperedge
+        :param vertices: List of vertices in hyperedge to add.
         :type vertices: list[Vertex]
         :param weight: Hyperedge weight
         :type weight: int
         :raises Exception: Raised if first vertex in hyperedge is not a qubit
+        :raised Exception: Raised if there is more than one qubit
+            vertex in the list of vertices.
         """
 
         # TODO: Do we also need to check that the numbers in the list are in
