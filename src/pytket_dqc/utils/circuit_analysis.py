@@ -50,8 +50,6 @@ def ebit_memory_required(circ: Circuit) -> dict[int, int]:
     #   the ebit memory requirement accordingly
     for command in circ.get_commands():
 
-        print("command.op.get_name()", command.op.get_name())
-
         # Increase the current memory if an EJPP process starts
         if command.op.get_name() == "starting_process":
             link_qubit = command.qubits[1]
@@ -119,55 +117,3 @@ def get_server_id(qubit) -> int:
         return int(qubit_name[1])
     else:
         return int(qubit_name[1].split("[")[0])
-
-
-def to_qasm_str(circ: Circuit) -> str:
-    """Utility function generating QASM which corresponds a circuit containing
-    starting and ending processes
-
-    :param circ: Circuit for which QASM should be generated.
-    :type circ: Circuit
-    :return: QASM corresponding to inputted circuit
-    :rtype: str
-    """
-
-    # Initial imports and definitions of starting and ending processes
-    qasm_str = "OPENQASM 2.0;"
-    qasm_str += "\ninclude \"qelib1.inc\";"
-    qasm_str += "\n"
-    qasm_str += "\ngate starting_process q,e"
-    qasm_str += "\n{"
-    qasm_str += "\n\tcrz(0) q,e;"
-    qasm_str += "\n}"
-    qasm_str += "\ngate ending_process e,q"
-    qasm_str += "\n{"
-    qasm_str += "\n\tcrz(0) e,q;"
-    qasm_str += "\n}"
-    qasm_str += "\n"
-
-    # Specify qubit registers
-    for register in circ.q_registers:
-        qasm_str += f"\nqreg {register.name}[{register.size}];"
-    qasm_str += "\n"
-
-    # Add commands to QASM
-    for command in circ.get_commands():
-        if command.op.get_name() in ['starting_process', "ending_process"]:
-            qasm_str += f'\n{command.op.get_name()}'
-            qasm_str += f' {command.args[0]},{command.args[1]};'
-        else:
-            qasm_str += "\n"
-            qasm_str += command.op.type.name.lower()
-
-            if command.op.type in [OpType.Rx, OpType.Ry]:
-                qasm_str += "("
-                for param in command.op.params:
-                    qasm_str += f"{param}*pi"
-                qasm_str += ")"
-
-            qasm_str += f" {command.args[0]}"
-            for arg in command.args[1:]:
-                qasm_str += f",{arg}"
-            qasm_str += ';'
-
-    return qasm_str + '\n'
