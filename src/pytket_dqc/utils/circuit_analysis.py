@@ -50,6 +50,8 @@ def ebit_memory_required(circ: Circuit) -> dict[int, int]:
     #   the ebit memory requirement accordingly
     for command in circ.get_commands():
 
+        print("command.op.get_name()", command.op.get_name())
+
         # Increase the current memory if an EJPP process starts
         if command.op.get_name() == "starting_process":
             link_qubit = command.qubits[1]
@@ -98,8 +100,8 @@ def evicted_gate_count(circ: Circuit) -> int:
 def is_link_qubit(qubit) -> bool:
     qubit_name = str(qubit).split("_")
     # ``qubit_name`` follows either of these patterns:
-    #     Workspace qubit: ['Server', server_id+'['+qubit_id+']']
-    #     Link qubit: ['Server', server_id, 'Link', 'Edge', edge_id+'[0]']
+    #     Workspace qubit: ['server', server_id+'['+qubit_id+']']
+    #     Link qubit: ['server', server_id, 'link', 'edge', edge_id+'[0]']
     return len(qubit_name) > 2
 
 
@@ -108,8 +110,8 @@ def is_link_qubit(qubit) -> bool:
 def get_server_id(qubit) -> int:
     qubit_name = str(qubit).split("_")
     # ``qubit_name`` follows either of these patterns:
-    #     Workspace qubit: ['Server', server_id+'['+qubit_id+']']
-    #     Link qubit: ['Server', server_id, 'Link', 'Edge', edge_id+'[0]']
+    #     Workspace qubit: ['server', server_id+'['+qubit_id+']']
+    #     Link qubit: ['server', server_id, 'link', 'edge', edge_id+'[0]']
     # Sanity check
     assert qubit_name[0] == "server"
 

@@ -124,8 +124,7 @@ def DQCPass() -> BasePass:
 
 #: Defining starting_process and ending_process custom gates
 def_circ = Circuit(2)
-# def_circ.add_barrier([0, 1])
-def_circ.CRz(0, 0, 1)
+def_circ.add_barrier([0, 1])
 
 start_proc = CustomGateDef.define("starting_process", def_circ, [])
 end_proc = CustomGateDef.define("ending_process", def_circ, [])
