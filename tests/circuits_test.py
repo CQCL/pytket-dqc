@@ -47,8 +47,8 @@ def test_failing_circuit_hyperedge_split_and_merge():
         )
 
     assert str(e_info.value) == (
-        "At least one hyperedge in this " +
-        "list does not belong to this hypergraph."
+        "At least one hyperedge in to_merge_hyperedge_list " +
+        "does not belong to this hypergraph."
     )
 
     to_merge_hyperedge_one = Hyperedge(vertices=[0, 3], weight=1)

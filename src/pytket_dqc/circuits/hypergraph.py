@@ -50,31 +50,44 @@ class Hypergraph:
         return out_string
 
     def merge_hyperedge(self, to_merge_hyperedge_list: list[Hyperedge]):
+        """Merge vertices of each of the hyperedges in to_merge_hyperedge_list
+        into a single hyperedge.
+
+        :param to_merge_hyperedge_list: List ove hyperedges to merge.
+        :type to_merge_hyperedge_list: list[Hyperedge]
+        :raises Exception: Raised if any of the hyperedges in
+        to_merge_hyperedge_list are not in this hypergraph.
+        :raises Exception: Raised if the weights of the hyperedges to merge
+        do not match.
+        """
 
         if not all(
             to_merge_hyperedge in self.hyperedge_list
             for to_merge_hyperedge in to_merge_hyperedge_list
         ):
             raise Exception(
-                "At least one hyperedge in this list " +
+                "At least one hyperedge in to_merge_hyperedge_list " +
                 "does not belong to this hypergraph."
             )
 
         if not all(
-                to_merge_hyperedge_list[0].weight == to_merge_hyperedge.weight
-                for to_merge_hyperedge in to_merge_hyperedge_list):
+            to_merge_hyperedge_list[0].weight == to_merge_hyperedge.weight
+            for to_merge_hyperedge in to_merge_hyperedge_list
+        ):
             raise Exception("Weights of hyperedges should be equal.")
 
+        weight = to_merge_hyperedge_list[0].weight
+        vertices = list(
+            set(
+                vertex
+                for to_merge_hyperedge in to_merge_hyperedge_list
+                for vertex in to_merge_hyperedge.vertices
+            )
+        )
+        self.add_hyperedge(vertices=vertices, weight=weight)
+        
         for hyperedge in to_merge_hyperedge_list:
             self.remove_hyperedge(hyperedge)
-
-        weight = to_merge_hyperedge_list[0].weight
-        vertices = list(set(
-            vertex
-            for to_merge_hyperedge in to_merge_hyperedge_list
-            for vertex in to_merge_hyperedge.vertices
-        ))
-        self.add_hyperedge(vertices=vertices, weight=weight)
 
     def split_hyperedge(
         self,
