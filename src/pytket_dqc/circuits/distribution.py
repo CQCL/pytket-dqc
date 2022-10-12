@@ -70,9 +70,10 @@ class Distribution:
 
         Note: the cost only takes into account the ebits required to
         distribute the gates in the hyperedge; it does not consider the ebit
-        cost of distributing the embedded gates. However, it does guarantee
-        that the correction gates added during the embedding will not require
-        extra ebits when distributed.
+        cost of distributing the embedded gates, since that will be calculated
+        by calling ``hyperedge_cost`` that the embedded gates belong to.
+        However, we do guarantee that the correction gates added during the
+        embedding will not require extra ebits when distributed.
 
         :param hyperedge: The hyperedge whose cost is to be calculated.
         :type hyperedge: Hyperedge
