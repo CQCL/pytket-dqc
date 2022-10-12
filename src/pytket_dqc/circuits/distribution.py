@@ -65,7 +65,7 @@ class Distribution:
         edges in the Steiner tree connecting all required servers. Otherwise,
         the cost of implementing the hyperedge is calculated using an "as lazy
         as possible" (ALAP) algorithm which we expect not to be optimal, but
-        decent enough. In the latter acse, both reduction of ebit cost via
+        decent enough. In the latter case, both reduction of ebit cost via
         Steiner trees and embedding are considered.
 
         Note: the cost only takes into account the ebits required to
