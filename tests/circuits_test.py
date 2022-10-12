@@ -36,7 +36,7 @@ def test_failing_circuit_hyperedge_split_and_merge():
     to_merge_hyperedge_one = Hyperedge(vertices=[3, 0], weight=1)
     to_merge_hyperedge_two = Hyperedge(vertices=[0, 4], weight=1)
 
-    # This will fail as [3,0] is not a hyper edge.
+    # This will fail as [3,0] is not a hyperedge.
     # Note that [0,3] is a hyperedge
     with pytest.raises(Exception) as e_info:
         hyp_circ.merge_hyperedge(
@@ -63,7 +63,7 @@ def test_failing_circuit_hyperedge_split_and_merge():
     new_hyperedge_one = Hyperedge(vertices=[3, 0], weight=1)
     new_hyperedge_two = Hyperedge(vertices=[0, 4], weight=1)
 
-    # This will fail as [3,0] is not a valid hyper edge as 0 (the qubit)
+    # This will fail as [3,0] is not a valid hyperedge as 0 (the qubit)
     # must come first in the list.
     with pytest.raises(Exception) as e_info:
         hyp_circ.split_hyperedge(
