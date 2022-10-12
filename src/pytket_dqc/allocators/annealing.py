@@ -152,14 +152,14 @@ class Annealing(Allocator):
                     swap_vertex = random.choice(destination_server_qubit_list)
 
             # Calculate gain
-            gain = gain_manager.gain(vertex_to_move, destination_server)
+            gain = gain_manager.move_gain(vertex_to_move, destination_server)
             if swap_vertex is not None:
                 # In order to accurately calculate the gain of moving
                 # ``swap_vertex`` we need to move ``vertex_to_move``
                 gain_manager.move(
                     vertex_to_move, destination_server, recalculate_cost=False
                 )
-                gain += gain_manager.gain(swap_vertex, home_server)
+                gain += gain_manager.move_gain(swap_vertex, home_server)
                 # Restore ``vertex_to_move`` to its original placement
                 gain_manager.move(
                     vertex_to_move, home_server, recalculate_cost=False

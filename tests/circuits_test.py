@@ -52,8 +52,12 @@ def test_failing_circuit_hyperedge_split_and_merge():
     )
 
     to_merge_hyperedge_one = Hyperedge(vertices=[0, 3], weight=1)
-    hyp_circ.merge_hyperedge(to_merge_hyperedge_list=[
-                             to_merge_hyperedge_one, to_merge_hyperedge_two])
+    hyp_circ.merge_hyperedge(
+        to_merge_hyperedge_list=[
+            to_merge_hyperedge_one,
+            to_merge_hyperedge_two
+        ]
+    )
 
     old_hyperedge = Hyperedge(vertices=[0, 3, 4], weight=1)
     new_hyperedge_one = Hyperedge(vertices=[3, 0], weight=1)
@@ -73,8 +77,10 @@ def test_failing_circuit_hyperedge_split_and_merge():
         )
 
     new_hyperedge_one = Hyperedge(vertices=[0, 3], weight=1)
-    hyp_circ.split_hyperedge(old_hyperedge=old_hyperedge, new_hyperedge_list=[
-                             new_hyperedge_one, new_hyperedge_two])
+    hyp_circ.split_hyperedge(
+        old_hyperedge=old_hyperedge,
+        new_hyperedge_list=[new_hyperedge_one, new_hyperedge_two]
+    )
 
     assert hyp_circ.hyperedge_list == [
         Hyperedge(vertices=[1, 3], weight=1),

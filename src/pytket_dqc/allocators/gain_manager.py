@@ -96,7 +96,7 @@ class GainManager:
             h_embedding=self.h_embedding_required[hyperedge],
         )
 
-    def gain(self, vertex: int, new_server: int) -> int:
+    def move_gain(self, vertex: int, new_server: int) -> int:
         """Compute the gain of moving ``vertex`` to ``new_server``. Instead
         of calculating the cost of the whole hypergraph using the new
         placement, we simply compare the previous cost of all hyperedges

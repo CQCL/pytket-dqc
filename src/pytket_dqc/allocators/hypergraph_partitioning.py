@@ -185,7 +185,7 @@ class HypergraphPartitioning(Allocator):
                     # have the worst gain since they contain no neighbours
                     # of ``vertex``. As such, we  simply ignore them.
 
-                    gain = gain_manager.gain(vertex, server)
+                    gain = gain_manager.move_gain(vertex, server)
 
                     # If the move is not valid (i.e. the server is full) we
                     # find the best vertex in ``server`` to swap this one with
@@ -211,7 +211,7 @@ class HypergraphPartitioning(Allocator):
 
                         best_swap_gain = float("-inf")
                         for swap_vertex in valid_swaps:
-                            swap_gain = gain_manager.gain(
+                            swap_gain = gain_manager.move_gain(
                                 swap_vertex, current_server
                             )
 

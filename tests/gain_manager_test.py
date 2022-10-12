@@ -101,7 +101,7 @@ def test_gain_no_embeddings():
     manager = GainManager(distribution)
 
     # Moving a vertex to where it already is has no gain
-    assert manager.gain(0, 1) == 0
+    assert manager.move_gain(0, 1) == 0
 
     g = manager.server_graph
 
@@ -132,7 +132,7 @@ def test_gain_no_embeddings():
     # The gains should look like this:
     current_cost = steiner_cost_13 + steiner_cost_34
     new_cost = steiner_cost_14 + steiner_cost_4
-    assert manager.gain(12, 4) == current_cost - new_cost
+    assert manager.move_gain(12, 4) == current_cost - new_cost
     # Check that, indeed, the costs are updated accordingly
     assert (
         manager.hyperedge_cost_map[Hyperedge([0, 11, 12])] == steiner_cost_13
