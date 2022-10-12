@@ -89,12 +89,16 @@ class HypergraphCircuit(Hypergraph):
         # TODO: Do we also need to check that the numbers in the list are in
         # increasing order?
         if not self.is_qubit_vertex(vertices[0]):
-            raise Exception(f"The first element of {vertices} is required to be a qubit vertex.")
+            raise Exception(
+                f"The first element of {vertices} " +
+                "is required to be a qubit vertex."
+            )
 
         if any(self.is_qubit_vertex(vertex) for vertex in vertices[1:]):
             raise Exception("There must be only one qubit in the hyperedge")
 
-        super(HypergraphCircuit, self).add_hyperedge(vertices=vertices, weight=weight)
+        super(HypergraphCircuit, self).add_hyperedge(
+            vertices=vertices, weight=weight)
 
     def add_qubit_vertex(self, vertex: int, qubit: Qubit):
         """Add a vertex to the underlying hypergraph which corresponds to a

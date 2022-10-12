@@ -49,32 +49,54 @@ class Hypergraph:
         out_string += f"\nVertices: {self.vertex_list}"
         return out_string
 
-    def merge_hyperedge(self, to_merge_hyperedge_list:list[Hyperedge]):
+    def merge_hyperedge(self, to_merge_hyperedge_list: list[Hyperedge]):
 
-        if not all(to_merge_hyperedge in self.hyperedge_list for to_merge_hyperedge in to_merge_hyperedge_list):
-            raise Exception("At least one hyperedge in this list does not belong to this hypergraph.")
+        if not all(
+            to_merge_hyperedge in self.hyperedge_list
+            for to_merge_hyperedge in to_merge_hyperedge_list
+        ):
+            raise Exception(
+                "At least one hyperedge in this list " +
+                "does not belong to this hypergraph."
+            )
 
-        if not all(to_merge_hyperedge_list[0].weight == to_merge_hyperedge.weight for to_merge_hyperedge in to_merge_hyperedge_list):
+        if not all(
+                to_merge_hyperedge_list[0].weight == to_merge_hyperedge.weight
+                for to_merge_hyperedge in to_merge_hyperedge_list):
             raise Exception("Weights of hyperedges should be equal.")
 
         for hyperedge in to_merge_hyperedge_list:
             self.remove_hyperedge(hyperedge)
 
         weight = to_merge_hyperedge_list[0].weight
-        vertices = list(set(vertex for to_merge_hyperedge in to_merge_hyperedge_list for vertex in to_merge_hyperedge.vertices))
+        vertices = list(set(
+            vertex
+            for to_merge_hyperedge in to_merge_hyperedge_list
+            for vertex in to_merge_hyperedge.vertices
+        ))
         self.add_hyperedge(vertices=vertices, weight=weight)
 
-    def split_hyperedge(self, old_hyperedge:Hyperedge, new_hyperedge_list:list[Hyperedge]):
+    def split_hyperedge(
+        self,
+        old_hyperedge: Hyperedge,
+        new_hyperedge_list: list[Hyperedge]
+    ):
 
-        flat_edge_list = [edge for edge_list in new_hyperedge_list for edge in edge_list.vertices]
+        flat_edge_list = [
+            edge for edge_list in new_hyperedge_list
+            for edge in edge_list.vertices
+        ]
         if not (set(flat_edge_list) == set(old_hyperedge.vertices)):
-            raise Exception(f"{new_hyperedge_list} does not match the vertices in {old_hyperedge}")
+            raise Exception(
+                f"{new_hyperedge_list} does not " +
+                "match the vertices in {old_hyperedge}"
+            )
 
         for new_hyperedge in new_hyperedge_list:
             self.add_hyperedge(new_hyperedge.vertices, new_hyperedge.weight)
         self.remove_hyperedge(old_hyperedge)
 
-    def remove_hyperedge(self, old_hyperedge:Hyperedge):
+    def remove_hyperedge(self, old_hyperedge: Hyperedge):
         """Remove hypergraph. Update vertex_neighbours.
 
         :param old_hyperedge: Hyperedge to remove
@@ -82,7 +104,8 @@ class Hypergraph:
         """
 
         if old_hyperedge not in self.hyperedge_list:
-            raise Exception(f"The hyper edge {old_hyperedge} is not in this hypergraph.")
+            raise Exception(
+                f"The hyper edge {old_hyperedge} is not in this hypergraph.")
 
         self.hyperedge_list.remove(old_hyperedge)
         for vertex in old_hyperedge.vertices:
@@ -95,7 +118,6 @@ class Hypergraph:
                 if not paired_elsewhere:
                     self.vertex_neighbours[vertex].discard(old_neighbour)
                     self.vertex_neighbours[old_neighbour].discard(vertex)
-
 
     def is_placement(self, placement: Placement) -> bool:
         """Checks if a given placement is a valid placement of this hypergraph.
