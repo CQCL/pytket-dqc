@@ -20,7 +20,27 @@ from pytket.circuit import PauliExpBox  # type: ignore
 from pytket.passes import DecomposeBoxes  # type: ignore
 import numpy as np  # type: ignore
 import pytest  # type: ignore
+from pytket_dqc.utils.qasm import to_qasm_str
+from pytket.qasm import circuit_from_qasm_str
 
+
+def test_qasm():
+
+    network = NISQNetwork([[0,1], [0,2]], {0:[0], 1:[1], 2:[2]})
+
+    circ = Circuit(2)
+    circ.add_gate(OpType.CU1, 1.0, [0,1]).H(0).Rz(0.3,0).H(0).add_gate(OpType.CU1, 1.0, [0,1])
+    dist_circ = HypergraphCircuit(circ)
+
+    placement = Placement({0:1, 1:2, 2:0, 3:0})
+    assert dist_circ.is_placement(placement)
+
+    circ_with_dist = dist_circ.to_pytket_circuit(placement, network)
+    qasm_str = to_qasm_str(circ_with_dist)
+    
+    qams_circ = circuit_from_qasm_str(qasm_str)
+
+    assert qams_circ == circ_with_dist
 
 def test_rebase():
 
