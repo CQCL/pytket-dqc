@@ -85,7 +85,7 @@ class Hypergraph:
             )
         )
         self.add_hyperedge(vertices=vertices, weight=weight)
-        
+
         for hyperedge in to_merge_hyperedge_list:
             self.remove_hyperedge(hyperedge)
 
@@ -94,15 +94,25 @@ class Hypergraph:
         old_hyperedge: Hyperedge,
         new_hyperedge_list: list[Hyperedge]
     ):
+        """Split `old_hyperedge` into the hyperedges in `new_hyperedge_list`
 
-        flat_edge_list = [
-            edge for edge_list in new_hyperedge_list
-            for edge in edge_list.vertices
+        :param old_hyperedge: Hyperedge to split.
+        :type old_hyperedge: Hyperedge
+        :param new_hyperedge_list: List of hyperedges into which
+        `old_hyperedge` should be split.
+        :type new_hyperedge_list: list[Hyperedge]
+        :raises Exception: Raised if `new_hyperedge_list` is not a valid
+        split of `old_hyperedge`
+        """
+
+        flat_vertex_list = [
+            vertex for edge_list in new_hyperedge_list
+            for vertex in edge_list.vertices
         ]
-        if not (set(flat_edge_list) == set(old_hyperedge.vertices)):
+        if not (set(flat_vertex_list) == set(old_hyperedge.vertices)):
             raise Exception(
                 f"{new_hyperedge_list} does not " +
-                "match the vertices in {old_hyperedge}"
+                f"match the vertices in {old_hyperedge}"
             )
 
         for new_hyperedge in new_hyperedge_list:
