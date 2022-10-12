@@ -128,11 +128,17 @@ class Hypergraph:
 
         if old_hyperedge not in self.hyperedge_list:
             raise Exception(
-                f"The hyper edge {old_hyperedge} is not in this hypergraph.")
+                f"The hyperedge {old_hyperedge} is not in this hypergraph."
+            )
 
         self.hyperedge_list.remove(old_hyperedge)
+        # For every vertex in the hyperedge being removed, update
+        # appropriately if it is still a neighbour other vertices.
         for vertex in old_hyperedge.vertices:
             old_neighbour_list = set(old_hyperedge.vertices) - {vertex}
+            # For every old_neighbour of vertex, check if the pair both
+            # belong to another hyperedge. Update vertex_neighbours
+            # accordingly.
             for old_neighbour in old_neighbour_list:
                 paired_elsewhere = any(
                     {vertex, old_neighbour} <= set(hyperedge.vertices)
