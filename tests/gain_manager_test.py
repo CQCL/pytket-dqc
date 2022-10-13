@@ -8,6 +8,7 @@ from pytket_dqc.placement import Placement
 from pytket_dqc.allocators import GainManager
 from pytket_dqc.utils import steiner_tree
 from pytket import Circuit, OpType
+from copy import copy
 
 circ = Circuit(4)
 circ.add_gate(OpType.CU1, 0.1234, [1, 2])
@@ -206,4 +207,64 @@ def test_gain_no_embeddings():
     assert (
         manager.steiner_cache[frozenset([2, 4])].edges
         == steiner_tree(g, [2, 4]).edges
+    )
+
+
+def test_merge_gain():
+
+    circ = Circuit(3)
+    circ.add_gate(OpType.CU1, 1.0, [0, 1])
+    circ.add_gate(OpType.CU1, 1.0, [0, 2])
+    hyp_circ = HypergraphCircuit(circ)
+
+    merge_hyp_circ_hyperedge_list = copy(hyp_circ.hyperedge_list)
+
+    old_hyperedge = Hyperedge(vertices=[0, 3, 4], weight=1)
+    new_hyperedge_one = Hyperedge(vertices=[0, 3], weight=1)
+    new_hyperedge_two = Hyperedge(vertices=[0, 4], weight=1)
+
+    hyp_circ.split_hyperedge(
+        old_hyperedge=old_hyperedge,
+        new_hyperedge_list=[new_hyperedge_one, new_hyperedge_two]
+    )
+    split_hyp_circ_hyperedge_list = copy(hyp_circ.hyperedge_list)
+
+    placement = Placement({0: 1, 1: 2, 2: 3, 3: 2, 4: 3})
+    network = NISQNetwork(
+        server_coupling=[[0, 1], [0, 2], [0, 3]],
+        server_qubits={0: [0], 1: [1], 2: [2], 3: [3]}
+    )
+    distribution = Distribution(hyp_circ, placement, network)
+    gain_manager = GainManager(distribution)
+
+    to_merge_hyperedge_one = Hyperedge(vertices=[0, 3], weight=1)
+    to_merge_hyperedge_two = Hyperedge(vertices=[0, 4], weight=1)
+
+    merge_gain = gain_manager.merge_gain(
+        to_merge_hyperedge_list=[
+            to_merge_hyperedge_one,
+            to_merge_hyperedge_two
+        ]
+    )
+    assert merge_gain == 1
+    # Check that the hypergraph is not changed by this gain calculation
+    assert (
+        gain_manager.distribution.circuit.hyperedge_list ==
+        split_hyp_circ_hyperedge_list
+    )
+
+    gain_manager.merge(
+        to_merge_hyperedge_list=[
+            to_merge_hyperedge_one,
+            to_merge_hyperedge_two
+        ]
+    )
+
+    # Check that merge recovers original circuit. I assume the order of
+    # hyperedges in the hyperedge_list does not matter. This may be reckless.
+    merge_hyp_circ_hyperedge_list.sort()
+    gain_manager.distribution.circuit.hyperedge_list.sort()
+    assert (
+        merge_hyp_circ_hyperedge_list ==
+        gain_manager.distribution.circuit.hyperedge_list
     )

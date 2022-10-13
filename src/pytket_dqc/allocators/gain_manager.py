@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import networkx as nx  # type: ignore
 from pytket_dqc.utils import steiner_tree
+from pytket_dqc.circuits.hypergraph import Hyperedge
 
 from typing import TYPE_CHECKING
 
@@ -94,6 +95,41 @@ class GainManager:
             hyperedge,
             server_tree=tree,
             h_embedding=self.h_embedding_required[hyperedge],
+        )
+        
+    def merge_gain(self, to_merge_hyperedge_list: list[Hyperedge]):
+
+        # TODO: this should all be changed when the new cost calculation
+        # methods are available.
+
+        current_cost = self.distribution.cost()
+        self.distribution.circuit.merge_hyperedge(
+            to_merge_hyperedge_list=to_merge_hyperedge_list
+        )
+        new_cost = self.distribution.cost()
+        new_hyperedge = Hyperedge(
+            vertices=list(
+                set(
+                    [
+                        vertex
+                        for hyperedge in to_merge_hyperedge_list
+                        for vertex in hyperedge.vertices
+                    ]
+                )
+            ),
+            weight=to_merge_hyperedge_list[0].weight
+        )
+        self.distribution.circuit.split_hyperedge(
+            old_hyperedge=new_hyperedge,
+            new_hyperedge_list=to_merge_hyperedge_list
+        )
+
+        return current_cost - new_cost
+
+    def merge(self, to_merge_hyperedge_list: list[Hyperedge]):
+
+        self.distribution.circuit.merge_hyperedge(
+            to_merge_hyperedge_list=to_merge_hyperedge_list
         )
 
     def move_gain(self, vertex: int, new_server: int) -> int:
