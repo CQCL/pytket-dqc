@@ -2,9 +2,10 @@ from pytket_dqc.circuits import HypergraphCircuit, Hyperedge
 from pytket_dqc.placement import Placement
 from pytket_dqc.networks import NISQNetwork
 from pytket_dqc.utils import steiner_tree
-from pytket import Circuit, OpType
+from pytket import Circuit, OpType, Qubit
 import networkx as nx  # type: ignore
 from numpy import isclose  # type: ignore
+from typing import NamedTuple
 
 
 class Distribution:
@@ -44,9 +45,7 @@ class Distribution:
         # that gate nodes are not in too many packets. I think the conditions
         # that are most relevant will emerge as the to_pytket_circuit method
         # is written.
-        return self.placement.is_valid(
-            self.circuit, self.network
-        )
+        return self.placement.is_valid(self.circuit, self.network)
 
     def cost(self) -> int:
         """Return the number of ebits required for this distribution.
@@ -229,7 +228,7 @@ class Distribution:
 
         qubit_map = {}
         current_in_server = {s: 0 for s in self.network.get_server_list()}
-        for v in self.circuit.get_qubit_vertices:
+        for v in self.circuit.get_qubit_vertices():
             server = self.placement.placement[v]
             circ_qubit = self.circuit.get_qubit_of_vertex(v)
             hw_qubit = Qubit(f"Server {server}", current_in_server[server])
@@ -248,30 +247,33 @@ class Distribution:
         placement_map = self.placement.placement
         qubit_mapping = self.get_qubit_mapping()
 
-        type Server = int
-
         class EjppAction(NamedTuple):
             """Encodes the information to create Starting and EndingProcesses
             """
+
             starting: bool
             from_qubit: Qubit
             to_qubit: Qubit
 
-        class LinkManager():
+        class LinkManager:
             """An internal class dedicated to managing the hardware qubits
             that store the ebits (i.e. link qubits).
             """
 
             def __init__(self, servers: list[int]):
                 # A dictionary of serverId to list of available link qubits.
-                self.available: dict[Server, list[Qubit]] = {s: [] for s in servers}
+                self.available: dict[int, list[Qubit]] = {
+                    s: [] for s in servers
+                }
                 # A dictionary of serverId to list of occupied link qubits.
-                self.occupied: dict[Server, list[Qubit]] = {s: [] for s in servers}
+                self.occupied: dict[int, list[Qubit]] = {
+                    s: [] for s in servers
+                }
                 # A dictionary matching a currently hyperedge with a link to
                 # a specified server with the link qubit in the server.
-                self.link_qubit_dict: dict[tuple(Hyperedge, Server), Qubit] = {}
+                self.link_qubit_dict: dict[tuple[Hyperedge, int], Qubit] = {}
 
-            def next_available(self, server: Server) -> Qubit:
+            def next_available(self, server: int) -> Qubit:
                 """Returns an available link qubit in ``server``. If there are
                 none, it creates a new one.
                 """
@@ -288,7 +290,9 @@ class Distribution:
                 """
 
                 # Singleton list of servers containing ``link_qubit``
-                servers = [s for s, qs in self.occupied.items() if link_qubit in qs]
+                servers = [
+                    s for s, qs in self.occupied.items() if link_qubit in qs
+                ]
                 assert len(servers) == 1
                 its_server = servers[0]
 
@@ -296,13 +300,19 @@ class Distribution:
                 self.available[its_server].append(link_qubit)
 
                 # Remove the entry from ``self.link_qubit_dict``
-                keys = [key for key, q in self.link_qubit_dict.items() if q == link_qubit]
+                keys = [
+                    key
+                    for key, q in self.link_qubit_dict.items()
+                    if q == link_qubit
+                ]
                 assert len(keys) == 1
                 its_key = keys[0]
 
                 del self.link_qubit_dict[its_key]
 
-            def start_link(self, target: Server, hyperedge: Hyperedge) -> list[EjppAction]:
+            def start_link(
+                self, target: int, hyperedge: Hyperedge
+            ) -> list[EjppAction]:
                 """Find the sequence of StartingProcesses required to share
                 the qubit of ``hyperedge`` with the ``target`` server.
                 """
@@ -328,25 +338,37 @@ class Distribution:
                 # ``hyp_qubit`` throughout the path of servers.
                 # At the beginning, this is held by the HW qubit corresponding
                 # to the ``hyp_qubit`` vertex
-                last_link_qubit = qubit_mapping[dist_circ.get_qubit_of_vertex(hyp_qubit)]
-                # For sanity check: after first disconnected server in the path,
-                # all servers that follow should also be disconnected
+                last_link_qubit = qubit_mapping[
+                    dist_circ.get_qubit_of_vertex(hyp_qubit)
+                ]
+                # For sanity check: after first disconnected server in the
+                # path, all servers that follow should also be disconnected
                 so_far_connected = True
                 for next_server in connection_path:
                     if (hyperedge, next_server) in self.link_qubit_dict:
                         assert so_far_connected
-                        last_link_qubit = self.link_qubit_dict[(hyperedge, next_server)]
+                        last_link_qubit = self.link_qubit_dict[
+                            (hyperedge, next_server)
+                        ]
                     else:
                         so_far_connected = False
                         # Retrieve an available link qubit to populate
                         this_link_qubit = self.next_available(next_server)
                         # Add the EjppAction to create the connection
-                        starting_actions.append(EjppAction(starting=True, from_qubit=last_link_qubit, to_qubit=this_link_qubit))
+                        starting_actions.append(
+                            EjppAction(
+                                starting=True,
+                                from_qubit=last_link_qubit,
+                                to_qubit=this_link_qubit,
+                            )
+                        )
                         last_link_qubit = this_link_qubit
 
                 return starting_actions
 
-            def end_link(self, target: Server, hyperedge: Hyperedge) -> list[EjppAction]:
+            def end_link(
+                self, target: int, hyperedge: Hyperedge
+            ) -> list[EjppAction]:
                 """Find the sequence of EndingProcesses required to end the
                 connection to the ``target`` server and all of its children.
                 """
@@ -377,26 +399,44 @@ class Distribution:
                         parent_link = self.link_qubit_dict[(hyperedge, parent)]
                         child_link = self.link_qubit_dict[(hyperedge, child)]
                         # End the connection
-                        ending_actions.append(EjppAction(starting=False, from_qubit=child_link, to_qubit=parent_link))
+                        ending_actions.append(
+                            EjppAction(
+                                starting=False,
+                                from_qubit=child_link,
+                                to_qubit=parent_link,
+                            )
+                        )
                         # Release the link qubit
                         self.release(child_link)
 
                 # Don't forget that the ``target`` server itself must be
                 # disconnected as well!
                 directed_edges = nx.dfs_edges(tree, source=home_server)
-                parents = [parent for parent, child in directed_edges if child == target]
+                parents = [
+                    parent
+                    for parent, child in directed_edges
+                    if child == target
+                ]
                 assert len(parents) == 1
                 parent = parents[0]
                 # If the parent is the ``home_server``, then the ``to_qubit``
                 # of the EjppAction must be the original shared qubit
                 if parent == home_server:
-                    parent_link = qubit_mapping[dist_circ.get_qubit_of_vertex(hyp_qubit)]
+                    parent_link = qubit_mapping[
+                        dist_circ.get_qubit_of_vertex(hyp_qubit)
+                    ]
                 # Otherwise, we find the link qubit of the parent
                 else:
                     parent_link = self.link_qubit_dict[(hyperedge, parent)]
                     target_link = self.link_qubit_dict[(hyperedge, target)]
                 # Disconnect the link qubit of ``target``
-                ending_actions.append(EjppAction(starting=False, from_qubit=target_link, to_qubit=parent_link))
+                ending_actions.append(
+                    EjppAction(
+                        starting=False,
+                        from_qubit=target_link,
+                        to_qubit=parent_link,
+                    )
+                )
                 self.release(target_link)
 
                 return ending_actions
