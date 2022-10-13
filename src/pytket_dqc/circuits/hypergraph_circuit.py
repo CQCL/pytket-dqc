@@ -159,6 +159,14 @@ class HypergraphCircuit(Hypergraph):
         assert len(gate_vertex_list) == len(hyperedge.vertices) - 1
         return gate_vertex_list
 
+    def get_qubit_of_vertex(self, vertex: int) -> Qubit:
+        assert self._vertex_circuit_map[vertex]['type'] == 'qubit'
+        return self._vertex_circuit_map[vertex]['node']
+
+    def get_gate_of_vertex(self, vertex: int) -> Command:
+        assert self._vertex_circuit_map[vertex]['type'] == 'gate'
+        return self._vertex_circuit_map[vertex]['command']
+
     def get_hyperedge_subcircuit(self, hyperedge: Hyperedge) -> list[Command]:
         """Returns the list of commands between the first and last gate within
         the hyperedge. Commands that don't act on the qubit vertex are omitted
