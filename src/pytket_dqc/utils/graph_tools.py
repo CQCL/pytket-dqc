@@ -1,4 +1,5 @@
 import networkx as nx  # type: ignore
+import networkx.algorithms.approximation.steinertree as st  # type: ignore
 from typing import List, Tuple
 
 
@@ -53,3 +54,18 @@ def direct_from_origin(G: nx.Graph, origin: int) -> List[Tuple[int, int]]:
             edge_list += direct_from_origin(G_reduced.subgraph(c), n)
 
     return edge_list
+
+
+def steiner_tree(graph: nx.Graph, nodes: list[int]):
+    """Calls NetworkX's steiner_tree but manually manages the case of
+    ``nodes`` being a singleton set, so that the singleton graph is
+    returned, instead of the empty graph that NetworkX returns.
+    """
+    if len(nodes) == 0:
+        raise Exception("No nodes have been provided")
+    elif len(nodes) == 1:
+        tree = nx.Graph()
+        tree.add_nodes_from(nodes)
+        return tree
+    else:
+        return st.steiner_tree(graph, nodes)

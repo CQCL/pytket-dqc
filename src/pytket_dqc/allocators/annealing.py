@@ -156,10 +156,14 @@ class Annealing(Allocator):
             if swap_vertex is not None:
                 # In order to accurately calculate the gain of moving
                 # ``swap_vertex`` we need to move ``vertex_to_move``
-                gain_manager.move(vertex_to_move, destination_server)
+                gain_manager.move(
+                    vertex_to_move, destination_server, recalculate_cost=False
+                )
                 gain += gain_manager.gain(swap_vertex, home_server)
                 # Restore ``vertex_to_move`` to its original placement
-                gain_manager.move(vertex_to_move, home_server)
+                gain_manager.move(
+                    vertex_to_move, home_server, recalculate_cost=False
+                )
 
             acceptance_prob = acceptance_criterion(gain, i)
 

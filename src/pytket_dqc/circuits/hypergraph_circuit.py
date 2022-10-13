@@ -11,7 +11,6 @@ import random
 from pytket_dqc.utils import (
     dqc_gateset_predicate,
     DQCPass,
-    _cost_from_circuit,
 )
 from pytket_dqc.utils.gateset import start_proc, end_proc, telep_proc
 
@@ -135,6 +134,19 @@ class HypergraphCircuit(Hypergraph):
         assert len(qubit_list) == 1
         return qubit_list[0]
 
+    def get_vertex_of_qubit(self, qubit: Qubit) -> int:
+        """Returns the vertex that corresponds to ``qubit``.
+        """
+        vertex_list = [
+            vertex
+            for vertex in self.vertex_list
+            if self.is_qubit_vertex(vertex)
+            if self._vertex_circuit_map[vertex]['node'] == qubit
+        ]
+
+        assert len(vertex_list) == 1
+        return vertex_list[0]
+
     def get_gate_vertices(self, hyperedge: Hyperedge) -> list[int]:
         """Returns the list of gate vertices in ``hyperedge``.
         """
@@ -146,6 +158,66 @@ class HypergraphCircuit(Hypergraph):
 
         assert len(gate_vertex_list) == len(hyperedge.vertices) - 1
         return gate_vertex_list
+
+    def get_hyperedge_subcircuit(self, hyperedge: Hyperedge) -> list[Command]:
+        """Returns the list of commands between the first and last gate within
+        the hyperedge. Commands that don't act on the qubit vertex are omitted
+        but embedded gates within the hyperedge are included.
+        """
+        hyp_qubit = self._vertex_circuit_map[self.get_qubit_vertex(hyperedge)][
+            "node"
+        ]
+        gate_vertices = self.get_gate_vertices(hyperedge)
+        if not gate_vertices:
+            return []
+        circ_commands = self._circuit.get_commands()
+
+        # We will abuse the fact that, by construction, the gate vertices are
+        # numbered from smaller to larger integers as we read the circuit from
+        # left to right.
+        # A solution that didn't use the trick would be preferable, but that'd
+        # require changing ``vertex_circuit_map`` to point at indices in the
+        # circuit.get_commands() list. Unfortunately, comparison of bindings
+        # via the "is" keyword does not work here because "get_commands"
+        # returns a deep copy of the command list (on each call, the Command
+        # objects are different).
+        subcirc_commands = []
+        first_gate = min(gate_vertices)
+        last_gate = max(gate_vertices)
+        current_vertex_id = len(self._circuit.qubits)
+
+        first_found = False
+        for cmd in circ_commands:
+            if current_vertex_id == first_gate and cmd.op.type == OpType.CU1:
+                first_found = True
+            if first_found and hyp_qubit in cmd.qubits:
+                subcirc_commands.append(cmd)
+            if current_vertex_id == last_gate and cmd.op.type == OpType.CU1:
+                break
+            if cmd.op.type == OpType.CU1:
+                current_vertex_id += 1
+
+        assert first_found and current_vertex_id == last_gate
+        assert subcirc_commands[0].op.type == OpType.CU1
+        assert subcirc_commands[-1].op.type == OpType.CU1
+
+        return subcirc_commands
+
+    def h_embedding_required(self, hyperedge: Hyperedge) -> bool:
+        """Returns whether or not H-type embedding of CU1 gates is required
+        to implement the given hyperedge.
+        """
+        commands = self.get_hyperedge_subcircuit(hyperedge)
+
+        currently_embedding = False
+        for cmd in commands:
+
+            if cmd.op.type == OpType.H:
+                currently_embedding = not currently_embedding
+            elif currently_embedding and cmd.op.type == OpType.CU1:
+                return True
+
+        return False
 
     def from_circuit(self):
         """Method to create a hypergraph from a circuit.
@@ -654,7 +726,9 @@ class HypergraphCircuit(Hypergraph):
             else:
                 raise Exception("This role has not been defined")
 
-        assert _cost_from_circuit(circ) == placement.cost(self, network)
+        # Commenting this out since placement.cost is deprecated and so is
+        # this to_pytket method
+        # assert _cost_from_circuit(circ) == placement.cost(self, network)
 
         return circ
 
