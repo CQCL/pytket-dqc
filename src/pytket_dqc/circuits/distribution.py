@@ -139,26 +139,26 @@ class Distribution:
             assert vertices.pop(0) == shared_qubit
 
             cost = 0
-            currently_embedding = False  # Switched when finding a Hadamard
+            currently_h_embedding = False  # Switched when finding a Hadamard
             connected_servers = {home_server}  # With access to shared_qubit
             for command in commands:
 
                 if command.op.type == OpType.H:
-                    currently_embedding = not currently_embedding
+                    currently_h_embedding = not currently_h_embedding
 
                 elif command.op.type in [OpType.X, OpType.Z]:
                     pass  # These gates can always be embedded
 
                 elif command.op.type == OpType.Rz:
                     assert (
-                        not currently_embedding
+                        not currently_h_embedding
                         or isclose(command.op.params[0] % 1, 0)  # Identity
                         or isclose(command.op.params[0] % 1, 1)  # Z gate
                     )
 
                 elif command.op.type == OpType.CU1:
 
-                    if currently_embedding:  # Gate to be embedded
+                    if currently_h_embedding:  # Gate to be embedded
                         assert isclose(command.op.params[0] % 2, 1)  # CZ gate
 
                         qubits = [
