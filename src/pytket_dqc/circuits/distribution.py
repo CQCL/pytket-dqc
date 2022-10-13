@@ -221,6 +221,23 @@ class Distribution:
                             cost += len(required_connections)
             return cost
 
+    def get_qubit_mapping(self) -> dict[Qubit, Qubit]:
+        """Mapping from circuit (logical) qubits to server (hardware) qubits.
+        """
+        if self.is_valid():
+            raise Exception("The distribution of the circuit is not valid!")
+
+        qubit_map = {}
+        current_in_server = {s: 0 for s in self.network.get_server_list()}
+        for v in self.circuit.get_qubit_vertices:
+            server = self.placement.placement[v]
+            circ_qubit = self.circuit.get_qubit_of_vertex(v)
+            hw_qubit = Qubit(f"Server {server}", current_in_server[server])
+            current_in_server[server] += 1
+            qubit_map[circ_qubit] = hw_qubit
+
+        return qubit_map
+
     def to_pytket_circuit(self) -> Circuit:
         if self.is_valid():
             raise Exception("The distribution of the circuit is not valid!")
@@ -229,6 +246,7 @@ class Distribution:
         dist_circ = self.circuit
         server_graph = self.network.get_server_nx()
         placement_map = self.placement.placement
+        qubit_mapping = self.get_qubit_mapping()
 
         type Server = int
 
@@ -369,9 +387,15 @@ class Distribution:
                 parents = [parent for parent, child in directed_edges if child == target]
                 assert len(parents) == 1
                 parent = parents[0]
-                # Disconnect it
-                parent_link = self.link_qubit_dict[(hyperedge, parent)]
-                target_link = self.link_qubit_dict[(hyperedge, target)]
+                # If the parent is the ``home_server``, then the ``to_qubit``
+                # of the EjppAction must be the original shared qubit
+                if parent == home_server:
+                    parent_link = qubit_mapping[dist_circ.get_qubit_of_vertex(hyp_qubit)]
+                # Otherwise, we find the link qubit of the parent
+                else:
+                    parent_link = self.link_qubit_dict[(hyperedge, parent)]
+                    target_link = self.link_qubit_dict[(hyperedge, target)]
+                # Disconnect the link qubit of ``target``
                 ending_actions.append(EjppAction(starting=False, from_qubit=target_link, to_qubit=parent_link))
                 self.release(target_link)
 
