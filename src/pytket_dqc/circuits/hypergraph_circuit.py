@@ -160,11 +160,13 @@ class HypergraphCircuit(Hypergraph):
         return gate_vertex_list
 
     def get_qubit_of_vertex(self, vertex: int) -> Qubit:
-        assert self._vertex_circuit_map[vertex]['type'] == 'qubit'
+        if self._vertex_circuit_map[vertex]['type'] != 'qubit':
+            raise Exception("Not a qubit vertex!")
         return self._vertex_circuit_map[vertex]['node']
 
     def get_gate_of_vertex(self, vertex: int) -> Command:
-        assert self._vertex_circuit_map[vertex]['type'] == 'gate'
+        if self._vertex_circuit_map[vertex]['type'] != 'gate':
+            raise Exception("Not a gate vertex!")
         return self._vertex_circuit_map[vertex]['command']
 
     def get_hyperedge_subcircuit(self, hyperedge: Hyperedge) -> list[Command]:
