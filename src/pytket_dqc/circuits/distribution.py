@@ -1,7 +1,9 @@
 from pytket_dqc.circuits import HypergraphCircuit, Hyperedge
 from pytket_dqc.placement import Placement
 from pytket_dqc.networks import NISQNetwork
-from pytket_dqc.utils import steiner_tree
+from pytket_dqc.utils import steiner_tree, check_equivalence
+from pytket_dqc.utils.gateset import start_proc, end_proc
+from pytket_dqc.utils.circuit_analysis import _cost_from_circuit
 from pytket import Circuit, OpType, Qubit
 import networkx as nx  # type: ignore
 from numpy import isclose  # type: ignore
@@ -241,11 +243,14 @@ class Distribution:
         if self.is_valid():
             raise Exception("The distribution of the circuit is not valid!")
 
-        # Global variables accessible to the internal class below
+        # -- SCOPE VARIABLES -- #
+        # Accessible to the internal class below
         dist_circ = self.circuit
         server_graph = self.network.get_server_nx()
         placement_map = self.placement.placement
         qubit_mapping = self.get_qubit_mapping()
+
+        # -- INTERNAL CLASSES -- #
 
         class EjppAction(NamedTuple):
             """Encodes the information to create Starting and EndingProcesses
@@ -441,4 +446,20 @@ class Distribution:
 
                 return ending_actions
 
+        # -- CIRCUIT GENERATION -- #
+        circ = Circuit()
+        # Add the qubits to the circuit
+        for hw_qubit in qubit_mapping.values():
+            circ.add_qubit(hw_qubit)
+
+        # Read the original circuit from left to right and, as we go:
+        #   (1) add the required EJPP processes
+        #   (2) distribute nonlocal gates
+        #   (3) add the required correction gates for embedding
         raise NotImplementedError
+
+        assert _cost_from_circuit(circ) == self.cost()
+        assert check_equivalence(
+            self.circuit.get_circuit(), circ, qubit_mapping
+        )
+        return circ
