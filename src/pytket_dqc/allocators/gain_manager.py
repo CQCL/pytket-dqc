@@ -97,10 +97,48 @@ class GainManager:
             h_embedding=self.h_embedding_required[hyperedge],
         )
         
+    def split_gain(
+        self,
+        old_hyperedge: Hyperedge,
+        new_hyperedge_list: list[Hyperedge]
+    ):
+
+        # TODO: this should all be changed when the new cost calculation
+        # methods are available.
+
+        # TODO: It would be prefereable if this function did not actually
+        # change the distribution.
+
+        current_cost = self.distribution.cost()
+        self.distribution.circuit.split_hyperedge(
+            old_hyperedge=old_hyperedge,
+            new_hyperedge_list=new_hyperedge_list,
+        )
+        new_cost = self.distribution.cost()
+        self.distribution.circuit.merge_hyperedge(
+            to_merge_hyperedge_list=new_hyperedge_list
+        )
+
+        return current_cost - new_cost
+
+    def split(
+        self,
+        old_hyperedge: Hyperedge,
+        new_hyperedge_list: list[Hyperedge]
+    ):
+
+        self.distribution.circuit.split_hyperedge(
+            old_hyperedge=old_hyperedge,
+            new_hyperedge_list=new_hyperedge_list,
+        )
+
     def merge_gain(self, to_merge_hyperedge_list: list[Hyperedge]):
 
         # TODO: this should all be changed when the new cost calculation
         # methods are available.
+
+        # TODO: It would be prefereable if this function did not actually
+        # change the distribution.
 
         current_cost = self.distribution.cost()
         self.distribution.circuit.merge_hyperedge(

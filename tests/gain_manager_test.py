@@ -210,24 +210,18 @@ def test_gain_no_embeddings():
     )
 
 
-def test_merge_gain():
+def test_split_merge():
 
     circ = Circuit(3)
     circ.add_gate(OpType.CU1, 1.0, [0, 1])
     circ.add_gate(OpType.CU1, 1.0, [0, 2])
     hyp_circ = HypergraphCircuit(circ)
 
-    merge_hyp_circ_hyperedge_list = copy(hyp_circ.hyperedge_list)
+    merge_hyperedge_list = copy(hyp_circ.hyperedge_list)
 
     old_hyperedge = Hyperedge(vertices=[0, 3, 4], weight=1)
-    new_hyperedge_one = Hyperedge(vertices=[0, 3], weight=1)
-    new_hyperedge_two = Hyperedge(vertices=[0, 4], weight=1)
-
-    hyp_circ.split_hyperedge(
-        old_hyperedge=old_hyperedge,
-        new_hyperedge_list=[new_hyperedge_one, new_hyperedge_two]
-    )
-    split_hyp_circ_hyperedge_list = copy(hyp_circ.hyperedge_list)
+    to_merge_hyperedge_one = Hyperedge(vertices=[0, 3], weight=1)
+    to_merge_hyperedge_two = Hyperedge(vertices=[0, 4], weight=1)
 
     placement = Placement({0: 1, 1: 2, 2: 3, 3: 2, 4: 3})
     network = NISQNetwork(
@@ -236,9 +230,11 @@ def test_merge_gain():
     )
     distribution = Distribution(hyp_circ, placement, network)
     gain_manager = GainManager(distribution)
-
-    to_merge_hyperedge_one = Hyperedge(vertices=[0, 3], weight=1)
-    to_merge_hyperedge_two = Hyperedge(vertices=[0, 4], weight=1)
+    gain_manager.split(
+        old_hyperedge=old_hyperedge,
+        new_hyperedge_list=[to_merge_hyperedge_one, to_merge_hyperedge_two]
+    )
+    split_hyperedge_list = gain_manager.distribution.circuit.hyperedge_list
 
     merge_gain = gain_manager.merge_gain(
         to_merge_hyperedge_list=[
@@ -250,7 +246,7 @@ def test_merge_gain():
     # Check that the hypergraph is not changed by this gain calculation
     assert (
         gain_manager.distribution.circuit.hyperedge_list ==
-        split_hyp_circ_hyperedge_list
+        split_hyperedge_list
     )
 
     gain_manager.merge(
@@ -262,9 +258,18 @@ def test_merge_gain():
 
     # Check that merge recovers original circuit. I assume the order of
     # hyperedges in the hyperedge_list does not matter. This may be reckless.
-    merge_hyp_circ_hyperedge_list.sort()
+    merge_hyperedge_list.sort()
     gain_manager.distribution.circuit.hyperedge_list.sort()
     assert (
-        merge_hyp_circ_hyperedge_list ==
+        merge_hyperedge_list ==
         gain_manager.distribution.circuit.hyperedge_list
     )
+
+    split_gain = gain_manager.split_gain(
+        old_hyperedge=old_hyperedge,
+        new_hyperedge_list=[
+            to_merge_hyperedge_one,
+            to_merge_hyperedge_two
+        ]
+    )
+    assert split_gain == -merge_gain
