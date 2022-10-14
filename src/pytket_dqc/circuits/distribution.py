@@ -82,9 +82,6 @@ class Distribution:
             that should be used. If not provided, this function will find a
             Steiner tree.
         :type server_tree: nx.Graph
-        :key server_graph: The network's ``server_graph``. If not provided,
-            this is calculated from ``self.network``. Meant to save a call.
-        :type server_graph: nx.Graph
         :key h_embedding: Indicates whether or not the hyperedge requires
             an H-embedding to be implemented. If not provided, it is checked.
         :type h_embedding: bool
@@ -93,7 +90,6 @@ class Distribution:
         :rtype: int
         """
         tree = kwargs.get("server_tree", None)
-        server_graph = kwargs.get("server_graph", None)
         h_embedding = kwargs.get("h_embedding", None)
 
         if hyperedge.weight != 1:
@@ -109,12 +105,9 @@ class Distribution:
         shared_qubit = dist_circ.get_qubit_vertex(hyperedge)
         home_server = placement_map[shared_qubit]
         servers = [placement_map[v] for v in hyperedge.vertices]
-        # Obtain the server graph if it is not given
-        if server_graph is None:
-            server_graph = self.network.get_server_nx()
         # Obtain the Steiner tree or check that the one given is valid
         if tree is None:
-            tree = steiner_tree(server_graph, servers)
+            tree = steiner_tree(self.network.get_server_nx(), servers)
         else:
             assert all(s in tree.nodes for s in servers)
 
@@ -157,7 +150,7 @@ class Distribution:
 
                 elif command.op.type == OpType.CU1:
 
-                    if currently_h_embedding:  # Gate to be embedded
+                    if currently_h_embedding:  # Gate to be H-embedded
                         assert isclose(command.op.params[0] % 2, 1)  # CZ gate
 
                         qubits = [
@@ -169,31 +162,23 @@ class Distribution:
                         ][0]
                         remote_server = placement_map[remote_qubit]
 
-                        # Only servers in the shortest path from remote_server
-                        # to home_server are left intact. The rest of the
-                        # servers need to be disconnected since, otherwise,
-                        # extra ebits would be required to implement the new
-                        # correction gates that would be introduced.
+                        # The only two servers from ``connected_servers`` that
+                        # are left intact are the ``home_server`` and the
+                        # ``remote_server``. All other servers must be
+                        # disconnected.
                         #
-                        # Note: the shortest path is found in server_graph
-                        # instead of in the tree since that is how the
-                        # embedded hyperedge would be implemented if it were
-                        # not embedded (it only connects two servers, so its
-                        # Steiner tree is the shortest path). If we used
-                        # some other path then we would be changing the
-                        # way the embedded gates are distributed, possibly
-                        # increasing the cost of their distribution, hence,
-                        # not following Junyi's main design principle.
+                        # NOTE: Done for the sake of simplicity. If we don't,
+                        # certain correction gates wouldn't be free or be free
+                        # only if the path of the EJPP process distributing
+                        # the embedded gate could be reused to implement the
+                        # correction gates. This is not trivial and not
+                        # taken into account on Junyi's approach since it
+                        # assumes only two servers / all-to-all connectivity
                         #
-                        # Note: by the conditions of embeddability, all gates
+                        # NOTE: by the condition of H-embeddability, all gates
                         # that are being embedded simultaneously act on the
                         # same two servers.
-                        connection_path = nx.shortest_path(
-                            server_graph, home_server, remote_server
-                        )
-                        connected_servers = connected_servers.intersection(
-                            connection_path
-                        )
+                        connected_servers = {home_server, remote_server}
 
                     else:  # Gate to be distributed (or already local)
 
