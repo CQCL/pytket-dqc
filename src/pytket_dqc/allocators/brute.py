@@ -6,6 +6,7 @@ from pytket_dqc.placement import Placement
 from pytket_dqc.circuits import HypergraphCircuit, Distribution
 
 from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
     from pytket import Circuit
     from pytket_dqc.networks import NISQNetwork
@@ -20,10 +21,7 @@ class Brute(Allocator):
         pass
 
     def allocate(
-        self,
-        circ: Circuit,
-        network: NISQNetwork,
-        **kwargs
+        self, circ: Circuit, network: NISQNetwork, **kwargs
     ) -> Distribution:
         """Distribute quantum circuit by looking at all possible placements
         and returning the one with the lowest cost.
@@ -58,15 +56,16 @@ class Brute(Allocator):
         # Iterate over all placements, even those that are not valid.
         # Determin if they are valid, and add them to list if so.
         for placement_set in itertools.product(
-            server_list,
-            repeat=len(vertex_list)
+            server_list, repeat=len(vertex_list)
         ):
 
             placement_list = list(placement_set)
 
             # build placement from list of vertices and servers.
-            placement_dict = {vertex: server for vertex, server in zip(
-                vertex_list, placement_list)}
+            placement_dict = {
+                vertex: server
+                for vertex, server in zip(vertex_list, placement_list)
+            }
             placement = Placement(placement_dict)
 
             # Append to list is placement is valid.
@@ -80,21 +79,19 @@ class Brute(Allocator):
 
         # Initialise minimum placement cost to be that of the first
         # valid placement.
-        minimum_placement_cost = valid_placement_list[0].cost(
-            dist_circ, network)
-        minimum_cost_placement = valid_placement_list[0]
+        minimum_cost_distribution = Distribution(
+            dist_circ, valid_placement_list[0], network
+        )
+        minimum_distribution_cost = minimum_cost_distribution.cost()
         # Check if any of the other valid placements have smaller cost.
         for placement in valid_placement_list[1:]:
-            placement_cost = placement.cost(dist_circ, network)
-            if placement_cost < minimum_placement_cost:
-                minimum_cost_placement = placement
-                minimum_placement_cost = placement_cost
-            if placement_cost == 0:
+            distribution = Distribution(dist_circ, placement, network)
+            distribution_cost = distribution.cost()
+            if distribution_cost < minimum_distribution_cost:
+                minimum_cost_distribution = distribution
+                minimum_distribution_cost = distribution_cost
+            if distribution_cost == 0:
                 break
 
-        assert minimum_cost_placement.is_valid(dist_circ, network)
-        return Distribution(
-            dist_circ,
-            minimum_cost_placement,
-            network
-        )
+        assert minimum_cost_distribution.is_valid()
+        return minimum_cost_distribution

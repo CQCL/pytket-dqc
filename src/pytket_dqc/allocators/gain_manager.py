@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 import networkx as nx  # type: ignore
-from networkx.algorithms.approximation.steinertree import (  # type: ignore
-    steiner_tree,
-)
+from pytket_dqc.utils import steiner_tree
 
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from pytket_dqc.circuits import Distribution
+    from pytket_dqc import Distribution
+    from pytket_dqc.circuits import Hyperedge
 
 
 class GainManager:
@@ -25,9 +24,14 @@ class GainManager:
     :type server_graph: nx.Graph
     :param occupancy: Maps servers to its current number of qubit vertices
     :type occupancy: dict[int, int]
+    :param hyperedge_cost_map: Contains the current cost of each hyperedge
+    :type hyperedge_cost_map: dict[Hyperedge, int]
+    :param h_embedding_required: For each hyperedge, it indicates whether
+        an H-embedding is required to implement it
+    :type h_embedding_required: dict[Hyperedge, bool]
     :param steiner_cache: A dictionary of sets of servers to their
-        communication cost
-    :type steiner_cache: dict[frozenset[int], int]
+        steiner tree
+    :type steiner_cache: dict[frozenset[int], nx.Graph]
     :param max_key_size: The maximum size of the set of servers whose cost is
         stored in cache. If there are N servers and m = ``max_key_size`` then
         the cache will store up to N^m values. If set to 0, cache is ignored.
@@ -47,7 +51,9 @@ class GainManager:
         )
         self.server_graph: nx.Graph = self.distribution.network.get_server_nx()
         self.occupancy: dict[int, int] = dict()
-        self.steiner_cache: dict[frozenset[int], int] = dict()
+        self.hyperedge_cost_map: dict[Hyperedge, int] = dict()
+        self.h_embedding_required: dict[Hyperedge, bool] = dict()
+        self.steiner_cache: dict[frozenset[int], nx.Graph] = dict()
 
         for server in self.distribution.network.server_qubits.keys():
             self.occupancy[server] = 0
@@ -55,15 +61,47 @@ class GainManager:
             if vertex in self.qubit_vertices:
                 self.occupancy[server] += 1
 
+        for hypedge in dist_circ.hyperedge_list:
+            self.update_cost(hypedge)
+
+    def update_cost(self, hyperedge: Hyperedge):
+        """Updates ``hyperedge_cost_map`` and the caches ``steiner_cache`` and
+        ``h_embedding_required``.
+        """
+
+        # Retrieve tree from cache or calculate it
+        servers = frozenset(
+            self.distribution.placement.placement[v]
+            for v in hyperedge.vertices
+        )
+        if len(servers) <= self.max_key_size:
+            if servers not in self.steiner_cache.keys():
+                tree = steiner_tree(self.server_graph, list(servers))
+                self.steiner_cache[servers] = tree
+            else:
+                tree = self.steiner_cache[servers]
+        else:
+            tree = steiner_tree(self.server_graph, list(servers))
+
+        # Retrieve embedding information from cache or calculate it
+        if hyperedge not in self.h_embedding_required.keys():
+            self.h_embedding_required[
+                hyperedge
+            ] = self.distribution.circuit.h_embedding_required(hyperedge)
+
+        # Update the cost of the hyperedge
+        self.hyperedge_cost_map[hyperedge] = self.distribution.hyperedge_cost(
+            hyperedge,
+            server_tree=tree,
+            server_graph=self.server_graph,
+            h_embedding=self.h_embedding_required[hyperedge],
+        )
+
     def gain(self, vertex: int, new_server: int) -> int:
         """Compute the gain of moving ``vertex`` to ``new_server``. Instead
         of calculating the cost of the whole hypergraph using the new
         placement, we simply compare the previous cost of all hyperedges
-        incident to ``vertex`` and substract their new cost. Moreover, if
-        these values are available in the cache they are used; otherwise,
-        the cache is updated.
-        The costs of each hyperedge are calculated using Steiner trees over
-         ``network``.
+        incident to ``vertex`` and substract their new cost.
         Positive gains mean improvement.
 
         :param vertex: The vertex that would be moved
@@ -77,63 +115,65 @@ class GainManager:
         """
 
         # If the move is not changing servers, the gain is zero
-        current_server = self.distribution.placement.placement[vertex]
-        if current_server == new_server:
+        prev_server = self.distribution.placement.placement[vertex]
+        if prev_server == new_server:
             return 0
 
-        gain = 0
-        for hyperedge in self.distribution.circuit.hyperedge_dict[vertex]:
-            # List of servers connected by ``hyperedge - {vertex}``
-            connected_servers = [
-                self.distribution.placement.placement[v]
-                for v in hyperedge.vertices
-                if v != vertex
-            ]
+        prev_cost_map = dict()
+        prev_cost = 0
+        for hypedge in self.distribution.circuit.hyperedge_dict[vertex]:
+            prev_cost_map[hypedge] = self.hyperedge_cost_map[hypedge]
+            prev_cost += self.hyperedge_cost_map[hypedge]
 
-            current_cost = self.steiner_cost(
-                frozenset(connected_servers + [current_server])
-            )
-            new_cost = self.steiner_cost(
-                frozenset(connected_servers + [new_server])
-            )
-            gain += hyperedge.weight * (current_cost - new_cost)
+        self.move(vertex, new_server)  # This will recalculate the costs
 
-        return gain
+        new_cost = 0
+        for hypedge in self.distribution.circuit.hyperedge_dict[vertex]:
+            new_cost += self.hyperedge_cost_map[hypedge]
 
-    def steiner_cost(self, servers: frozenset[int]) -> int:
-        """Finds a Steiner tree connecting all ``servers`` and returns number
-        of edges. Makes use of the cache if the cost has already been computed
-        and otherwise updates it.
+        # Move back without recalculating costs
+        self.move(vertex, prev_server, recalculate_cost=False)
+        # Reassign previous costs
+        for hypedge, cost in prev_cost_map.items():
+            self.hyperedge_cost_map[hypedge] = cost
 
-        :param servers: The servers to be connected by the Steiner tree.
-            The set is required to be a frozenset so that it is hashable.
-        :type servers: frozenset[int]
+        return prev_cost - new_cost
 
-        :return: The cost of connecting ``servers``
-        :rtype: int
-        """
-        if len(servers) <= self.max_key_size:
-            if servers not in self.steiner_cache.keys():
-                tree = steiner_tree(self.server_graph, servers)
-                self.steiner_cache[servers] = len(tree.edges)
-            cost = self.steiner_cache[servers]
-        else:
-            tree = steiner_tree(self.server_graph, servers)
-            cost = len(tree.edges)
-
-        return cost
-
-    def move(self, vertex: int, server: int):
+    def move(self, vertex: int, server: int, recalculate_cost=True):
         """Moves ``vertex`` to ``server``, updating ``placement`` and
-        ``occupancy`` accordingly. Note: this operation is (purposefully)
-        unsafe, i.e. it is not checked whether the move is valid or not.
-        If unsure, you should call ``is_move_valid``.
+        ``occupancy`` accordingly.
+        By default it updates the cost of the hyperedge, but this can
+        be switched off via ``recalculate_cost``.
+        Note: this operation is (purposefully) unsafe, i.e. it is not
+        checked whether the move is valid or not. If unsure, you should
+        call ``is_move_valid``.
         """
-        if vertex in self.qubit_vertices:
-            self.occupancy[server] += 1
-            self.occupancy[self.distribution.placement.placement[vertex]] -= 1
 
-        self.distribution.placement.placement[vertex] = server
+        # If a hyperedge requires embedding, moving a vertex that is contained
+        # in the embedded hyperedge could cause issues: it may be that it is
+        # no longer embeddable, so the hyperedge that required embedding can
+        # no longer be implemented with the estimated cost.
+        # To avoid this, we simply forbid placement moves once a hyperedge
+        # embedded.
+        if any(b for b in self.h_embedding_required.values()):
+            raise Exception("Changing the placement after gates are embedded \
+                             is not allowed.")
+
+        placement_dict = self.distribution.placement.placement
+        dist_circ = self.distribution.circuit
+
+        # Ignore if the move would leave in the same server
+        if placement_dict[vertex] != server:
+
+            if vertex in self.qubit_vertices:
+                self.occupancy[server] += 1
+                self.occupancy[placement_dict[vertex]] -= 1
+
+            placement_dict[vertex] = server
+
+            if recalculate_cost:
+                for hypedge in dist_circ.hyperedge_dict[vertex]:
+                    self.update_cost(hypedge)
 
     def is_move_valid(self, vertex: int, server: int) -> bool:
         """ The move is only invalid when ``vertex`` is a qubit vertex and

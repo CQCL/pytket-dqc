@@ -13,7 +13,10 @@ Vertex = int
 
 class Hyperedge(NamedTuple):
     vertices: list[Vertex]
-    weight: int
+    weight: int = 1
+
+    def __hash__(self):
+        return hash((frozenset(self.vertices), self.weight))
 
 
 class Hypergraph:
