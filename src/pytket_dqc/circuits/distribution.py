@@ -44,9 +44,7 @@ class Distribution:
         # that gate nodes are not in too many packets. I think the conditions
         # that are most relevant will emerge as the to_pytket_circuit method
         # is written.
-        return self.placement.is_valid(
-            self.circuit, self.network
-        )
+        return self.placement.is_valid(self.circuit, self.network)
 
     def cost(self) -> int:
         """Return the number of ebits required for this distribution.
@@ -150,7 +148,7 @@ class Distribution:
 
                 elif command.op.type == OpType.CU1:
 
-                    if currently_h_embedding:  # Gate to be H-embedded
+                    if currently_h_embedding:  # The gate is to be H-embedded
                         assert isclose(command.op.params[0] % 2, 1)  # CZ gate
 
                         qubits = [
@@ -177,8 +175,9 @@ class Distribution:
                         #
                         # NOTE: by the condition of H-embeddability, all gates
                         # that are being embedded simultaneously act on the
-                        # same two servers.
+                        # same two distinct servers.
                         connected_servers = {home_server, remote_server}
+                        assert home_server != remote_server
 
                     else:  # Gate to be distributed (or already local)
 
@@ -194,16 +193,30 @@ class Distribution:
                         # If gate_server doesn't have access to shared_qubit
                         # update the cost, adding the necessary ebits
                         if gate_server not in connected_servers:
-                            connection_path = set(
-                                nx.shortest_path(
-                                    tree, home_server, gate_server
+                            # For each server in ``connected_servers`` find
+                            # the shortest path to ``gate_server`` and use
+                            # the one that is shortest among them
+                            best_connection_path = None
+                            for c_server in connected_servers:
+                                connection_path = nx.shortest_path(
+                                    tree, c_server, gate_server
                                 )
-                            )
-                            required_connections = connection_path.difference(
-                                connected_servers
-                            )
-                            connected_servers.update(required_connections)
-                            cost += len(required_connections)
+                                if (
+                                    len(connection_path)
+                                    < len(best_connection_path)
+                                    or best_connection_path is None
+                                ):
+                                    best_connection_path = connection_path
+                            assert best_connection_path is not None
+                            # The first element of the path is a ``c_server``
+                            # so the actual cost is the length minus one
+                            #
+                            # NOTE: the ``best_connection_path`` will only
+                            # contain server in ``connected_servers``. If
+                            # it had two, the shortest path from the second
+                            # would be shorter -> contradiction
+                            connected_servers.update(best_connection_path)
+                            cost += len(best_connection_path) - 1
             return cost
 
     def to_pytket_circuit(self) -> Circuit:
