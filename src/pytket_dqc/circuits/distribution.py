@@ -196,27 +196,26 @@ class Distribution:
                             # For each server in ``connected_servers`` find
                             # the shortest path to ``gate_server`` and use
                             # the one that is shortest among them
-                            best_connection_path = None
+                            best_path = None
                             for c_server in connected_servers:
                                 connection_path = nx.shortest_path(
                                     tree, c_server, gate_server
                                 )
                                 if (
-                                    len(connection_path)
-                                    < len(best_connection_path)
-                                    or best_connection_path is None
+                                    best_path is None
+                                    or len(connection_path) < len(best_path)
                                 ):
-                                    best_connection_path = connection_path
-                            assert best_connection_path is not None
+                                    best_path = connection_path
+                            assert best_path is not None
                             # The first element of the path is a ``c_server``
                             # so the actual cost is the length minus one
                             #
-                            # NOTE: the ``best_connection_path`` will only
+                            # NOTE: the ``best_path`` will only
                             # contain server in ``connected_servers``. If
                             # it had two, the shortest path from the second
                             # would be shorter -> contradiction
-                            connected_servers.update(best_connection_path)
-                            cost += len(best_connection_path) - 1
+                            connected_servers.update(best_path)
+                            cost += len(best_path) - 1
             return cost
 
     def to_pytket_circuit(self) -> Circuit:
