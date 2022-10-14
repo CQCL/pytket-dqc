@@ -65,7 +65,7 @@ class PacMan:
 
         self.build_vertex_to_command_index()
         self.build_packets()
-        self.identify_and_merge_neighbouring_packets()
+        self.identify_neighbouring_packets()
         self.identify_hopping_packets()
 
     def build_vertex_to_command_index(self):
@@ -263,6 +263,13 @@ class PacMan:
                 return False
 
         return True
+
+    def merge_all_neighbouring_packets(self):
+        for qubit_index in self.hypergraph_circuit.get_qubit_vertices():
+            for packet_pair in reversed(self.neighbouring_packets[qubit_index]):
+                self.merge_packets(packet_pair[0], packet_pair[1])
+                self.neighbouring_packets[qubit_index].pop()
+            assert not self.neighbouring_packets[qubit_index]
 
     def hyperedge_to_packets(
         self, hyperedge: Hyperedge, starting_index: int
@@ -585,10 +592,7 @@ class PacMan:
         bottom_packets = set()
         edges = set()
         for packet in self.get_all_packets():
-            if packet.packet_index in bottom_packets:
-                is_top_packet = False
-            else:
-                is_top_packet = True
+            is_top_packet = packet.packet_index not in bottom_packets
             for connected_packet in self.get_connected_packets(packet):
                 if is_top_packet:
                     bottom_packets.add(connected_packet.packet_index)
