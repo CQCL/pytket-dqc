@@ -24,18 +24,30 @@ class Packet:
         qubit_vertex: Vertex,
         connected_server_index: int,
         packet_gate_vertices: List[Vertex],
+        contained_embeddings: List[Tuple[Packet]] = list()
     ):
         self.packet_index: int = packet_index
         self.qubit_vertex: Vertex = qubit_vertex
         self.connected_server_index: int = connected_server_index
         self.packet_gate_vertices: List[Vertex] = packet_gate_vertices
-        self.intermediate_commands: List[Command] = []
+        self.contained_embeddings: List[Tuple[Packet]] = contained_embeddings
 
     def __str__(self):
-        return f"P{self.packet_index}"
+        return f"P{self.packet_index} Gates {self.packet_gate_vertices} Connected {self.connected_server_index}"
 
     def __repr__(self):
         return self.__str__()
+
+    def __eq__(self, o):
+        if isinstance(o, Packet):
+            return (
+                o.packet_index == self.packet_index
+                and o.qubit_vertex == self.qubit_vertex
+                and o.packet_gate_vertices == self.packet_gate_vertices
+                and o.connected_server_index == self.connected_server_index
+                and o.contained_embeddings == self.contained_embeddings
+            )
+        return False
 
 
 class PacMan:
@@ -46,9 +58,10 @@ class PacMan:
     ):
         self.hypergraph_circuit = hypergraph_circuit
         self.placement = placement
-        self.packets_by_qubit: Dict[Vertex, List[Packet]] = {}
-        self.vertex_to_command_index: Dict[Vertex, int] = {}
-        self.hopping_packets: Dict[Vertex, List[Tuple[Packet]]] = {}
+        self.vertex_to_command_index: Dict[Vertex, int] = dict()
+        self.packets_by_qubit: Dict[Vertex, List[Packet]] = dict()
+        self.hopping_packets: Dict[Vertex, List[Tuple[Packet]]] = dict()
+        self.neighbouring_packets: Dict[Vertex, List[Tuple[Packet]]] = dict()
 
         self.build_vertex_to_command_index()
         self.build_packets()
@@ -61,7 +74,7 @@ class PacMan:
         returned by Circuit.get_commands()
         """
         for command_index, command_dict in enumerate(
-            self.hypergraph_circuit.commands
+            self.hypergraph_circuit._commands  # TODO: Rewrite this the way God (Pablo) intended
         ):
             if command_dict["type"] == "distributed gate":
                 vertex = command_dict["vertex"]
@@ -81,68 +94,41 @@ class PacMan:
                 for packet in packets:
                     self.packets_by_qubit[qubit_vertex].append(packet)
 
-    def identify_and_merge_neighbouring_packets(self):
+    def identify_neighbouring_packets(self):
         for qubit_vertex in self.hypergraph_circuit.get_qubit_vertices():
-            to_be_merged: List[List[Packet]] = []
-            already_merged: List[Packet] = []
+            neighbouring_packets: List[Tuple[Packet]] = list()
             for packet in self.packets_by_qubit[qubit_vertex][:-1]:
-                if packet in already_merged:
-                    continue
-
-                next_packet = self.get_next_packet(packet)
-                mergeable: List[Packet] = [packet]
-
-                # Find all the packets that can be merged with packet_index
-                while next_packet is not None:
-                    if self.can_be_merged(packet, next_packet):
-                        mergeable.append(next_packet)
-                        next_packet = self.get_next_packet(next_packet)
-                    else:
-                        next_packet = None
-
-                to_be_merged.append(mergeable)
-                already_merged += mergeable
-
-            for packet_list in to_be_merged:
-                if len(packet_list) > 1:
-                    self.merge_packets(qubit_vertex, packet_list)
+                if are_neighbouring_packets(packet, self.get_next_packet(packet)):
+                    neighbouring_packets.append((packet, self.get_next_packet(packet)))
+            self.neighbouring_packets[qubit_vertex].extend(neighbouring_packets)
 
     def identify_hopping_packets(self):
-        # For each packet, see if we can find a
-        # subsequent packet that can be packed together via embedding
-        # once one is found then we stop and look for the next one
-
         for qubit_vertex in self.hypergraph_circuit.get_qubit_vertices():
             print(f"Checking qubit vertex {qubit_vertex}")
             self.hopping_packets[qubit_vertex] = []
-            for i, packet in enumerate(
-                self.packets_by_qubit[qubit_vertex][:-2]
-            ):
-                j = 2
-                while i + j < len(
-                    self.packets_by_qubit[qubit_vertex]
-                ) and not self.are_intermediate_commands_embeddable(
-                    packet, self.packets_by_qubit[qubit_vertex][i + j]
+            for packet in self.packets_by_qubit[qubit_vertex][:-1]:
+                next_packet = self.get_next_packet(packet)
+                while (
+                    next_packet is not None
+                    and self.get_next_packet(next_packet) is not None
                 ):
-                    j += 1
+                    next_packet = self.get_next_packet(next_packet)
+                    if self.are_intermediate_commands_embeddable(packet, next_packet):
+                        self.hopping_packets[qubit_vertex].append(
+                            (packet, next_packet)
+                        )
+                    break
 
-                if i + j < len(self.packets_by_qubit[qubit_vertex]):
-                    # Then the while loop exited because
-                    # intermediate commands were embeddable
-                    self.hopping_packets[qubit_vertex].append(
-                        (packet, self.packets_by_qubit[qubit_vertex][i + j])
-                    )
-                else:
-                    print(
-                        f"Could not find hopping partner for packet {packet}"
-                    )
+    def merge_packets(self, first_packet: Packet, second_packet: Packet):
+        assert first_packet.packet_index < second_packet.packet_index
+        assert first_packet.qubit_vertex == second_packet.qubit_vertex
+        assert first_packet.connected_server_index == second_packet.connected_server_index
 
-    def get_all_packets(self) -> List[Packet]:
-        all_packets: List[Packet] = []
-        for packets in self.packets_by_qubit.values():
-            all_packets += packets
-        all_packets.sort(key=lambda x: x.packet_index)
-        return all_packets
+        if self.are_hoppable_packets(first_packet, second_packet):
+            first_packet.contained_embeddings.extend(self.get_embedded_packets((first_packet, second_packet)))
+
+        first_packet.packet_gate_vertices.extend(second_packet.packet_gate_vertices)
+        self.erase_packet(second_packet)
 
     def erase_packet(self, packet):
         for greater_packet in self.get_all_packets()[
@@ -157,30 +143,30 @@ class PacMan:
             self.get_all_packets()
         ), "Have not properly reassigned the packed indices"
 
-    def merge_packets(self, qubit_vertex: Vertex, packets: List[Packet]):
-        # Merges all the packets in packet_index_list.
+    def get_next_packet(self, packet: Packet) -> Optional[Packet]:
+        # Find the next packet on the same qubit
+        # that has the same connected server.
+        # Returns None if no such packet exists
+        for potential_packet in self.packets_by_qubit[packet.qubit_vertex]:
+            if potential_packet.packet_index <= packet.packet_index:
+                continue
 
-        packets.sort(key=lambda x: x.packet_index)
-        first_packet = packets[0]
+            if (
+                potential_packet.connected_server_index
+                == packet.connected_server_index
+            ):
+                return potential_packet
 
-        for packet in packets[1:]:
-            # Have the first packet absorb the other packets
-            intermediate_commands = self.get_intermediate_commands(
-                first_packet, packet
-            )
+        return None
 
-            # For reasons I do not understand, the line directly below
-            # must be called after the line directly above.
-            # Else intermediate_commands becomes a blank list
-            first_packet.packet_gate_vertices.extend(
-                packet.packet_gate_vertices
-            )
-            first_packet.intermediate_commands.extend(intermediate_commands)
+    def get_all_packets(self) -> List[Packet]:
+        all_packets: List[Packet] = []
+        for packets in self.packets_by_qubit.values():
+            all_packets += packets
+        all_packets.sort(key=lambda x: x.packet_index)
+        return all_packets
 
-            # Erase the absorbed packets
-            self.erase_packet(packet)
-
-    def can_be_merged(self, first_packet: Packet, second_packet: Packet):
+    def are_neighbouring_packets(self, first_packet: Packet, second_packet: Packet):
         # Check a bunch of conditions to see if two packets can be merged
         # via neighbouring D type packing
 
@@ -200,223 +186,7 @@ class PacMan:
 
         return True
 
-    def get_next_packet(self, packet: Packet) -> Optional[Packet]:
-        # Find the next packet on the same qubit
-        # that has the same connected server.
-        # Returns None if no such packet exists
-        for potential_packet in self.packets_by_qubit[packet.qubit_vertex]:
-            if potential_packet.packet_index <= packet.packet_index:
-                continue
-
-            if (
-                potential_packet.connected_server_index
-                == packet.connected_server_index
-            ):
-                return potential_packet
-
-        return None
-
-    def hyperedge_to_packets(
-        self, hyperedge: Hyperedge, starting_index: int
-    ) -> Tuple[int, List[Packet]]:
-        # Convert a hyperedge into a packet(s)
-        # Multiple needed if the hyperedge ends up having gates
-        # distributed to multiple servers
-        hyperedge_qubit_vertex = self.hypergraph_circuit.get_qubit_vertex(
-            hyperedge
-        )
-        connected_server_to_dist_gates: Dict[
-            int, List[Vertex]
-        ] = {}  # Server number to list of distributed gates on that server.
-        packets: List[Packet] = []
-        for gate_vertex in self.hypergraph_circuit.get_gate_vertices(
-            hyperedge
-        ):
-            connected_server = self.get_connected_server(
-                hyperedge_qubit_vertex, gate_vertex
-            )
-            if connected_server in connected_server_to_dist_gates.keys():
-                connected_server_to_dist_gates[connected_server].append(
-                    gate_vertex
-                )
-            else:
-                connected_server_to_dist_gates[connected_server] = [
-                    gate_vertex
-                ]
-
-        for (
-            connected_server,
-            dist_gates,
-        ) in connected_server_to_dist_gates.items():
-            packets.append(
-                Packet(
-                    starting_index,
-                    hyperedge_qubit_vertex,
-                    connected_server,
-                    dist_gates,
-                )
-            )
-            starting_index += 1
-
-        return starting_index, packets
-
-    def get_hyperedges_ordered(self) -> Dict[Vertex, List[Hyperedge]]:
-        # Orders hyperedges into their circuit sequential order
-        hyperedges: Dict[Vertex, List[Hyperedge]] = {}
-
-        # Populate the qubit_vertex keys
-        for qubit_vertex in self.hypergraph_circuit.get_qubit_vertices():
-            hyperedges[qubit_vertex] = []
-
-        # Populate the lists with unsorted hyperedges
-        for hyperedge in self.hypergraph_circuit.hyperedge_list:
-            qubit_vertex = self.hypergraph_circuit.get_qubit_vertex(hyperedge)
-            hyperedges[qubit_vertex].append(hyperedge)
-
-        # Sort the hyperedges (probs room for optimisation here)
-        for qubit_vertex in self.hypergraph_circuit.get_qubit_vertices():
-            hyperedge_list: List[Hyperedge] = hyperedges[qubit_vertex]
-            changes = -1  # Just a temporary storage value
-            while changes != 0:
-                changes = 0
-                for i in range(len(hyperedge_list) - 1):
-                    if self.get_last_command_index(
-                        self.hypergraph_circuit.get_gate_vertices(
-                            hyperedge_list[i]
-                        )
-                    ) > self.get_first_command_index(
-                        self.hypergraph_circuit.get_gate_vertices(
-                            hyperedge_list[i + 1]
-                        )
-                    ):
-                        hyperedge_list[i], hyperedge_list[i + 1] = (
-                            hyperedge_list[i + 1],
-                            hyperedge_list[i],
-                        )
-                        changes += 1
-            hyperedges[
-                qubit_vertex
-            ] = hyperedge_list  # Might be redundant line of code here
-
-        return hyperedges
-
-    def get_connected_server(self, qubit_vertex: Vertex, gate_vertex: Vertex):
-        command_index = self.vertex_to_command_index[gate_vertex]
-        command_dict = self.hypergraph_circuit.commands[command_index]
-        qubits = command_dict["command"].qubits
-        qubit_vertex_candidates = [
-            self.qubit_vertex_from_qubit(qubit)
-            for qubit in qubits
-            if self.qubit_vertex_from_qubit(qubit) is not qubit_vertex
-        ]
-
-        assert (
-            len(qubit_vertex_candidates) == 1
-        ), "There should be 1 and only 1 other qubit vertex."
-        other_qubit_vertex = qubit_vertex_candidates[0]
-        return self.placement.placement[other_qubit_vertex]
-
-    def qubit_vertex_from_qubit(self, qubit: Qubit):
-        for (
-            vertex,
-            circuit_element,
-        ) in self.hypergraph_circuit.vertex_circuit_map.items():
-            if (
-                circuit_element["type"] == "qubit"
-                and circuit_element["node"] == qubit
-            ):
-                return vertex
-        raise Exception("Could not find a vertex corresponding to this qubit.")
-
-    def circuit_element_from_vertex(self, vertex: Vertex):
-        # This could maybe belong to HypergraphCircuit instead?
-        if (
-            self.hypergraph_circuit.vertex_circuit_map[vertex]["type"]
-            == "qubit"
-        ):
-            return self.hypergraph_circuit.vertex_circuit_map[vertex]["node"]
-        elif (
-            self.hypergraph_circuit.vertex_circuit_map[vertex]["type"]
-            == "gate"
-        ):
-            return self.hypergraph_circuit.vertex_circuit_map[vertex][
-                "command"
-            ]
-
-    def get_last_command_index(self, gate_vertex_list: List[Vertex]) -> int:
-        last_command_index: int = -1  # Placeholder value
-        for vertex in gate_vertex_list:
-            if (
-                last_command_index == -1
-                or self.vertex_to_command_index[vertex] > last_command_index
-            ):
-                last_command_index = self.vertex_to_command_index[vertex]
-
-        return last_command_index
-
-    def get_first_command_index(self, gate_vertex_list: List[Vertex]) -> int:
-        first_command_index: int = -1  # Placeholder value
-        for vertex in gate_vertex_list:
-            if (
-                first_command_index == -1
-                or self.vertex_to_command_index[vertex] < first_command_index
-            ):
-                first_command_index = self.vertex_to_command_index[vertex]
-
-        return first_command_index
-
-    def get_intermediate_commands(
-        self, first_packet: Packet, second_packet: Packet
-    ) -> List[Command]:
-        assert (
-            first_packet.qubit_vertex == second_packet.qubit_vertex
-        ), "Qubit vertices do not match."
-
-        qubit_vertex = first_packet.qubit_vertex
-        qubit = self.circuit_element_from_vertex(qubit_vertex)
-
-        last_command_index = self.get_last_command_index(
-            first_packet.packet_gate_vertices
-        )
-        first_command_index = self.get_first_command_index(
-            second_packet.packet_gate_vertices
-        )
-
-        intermediate_commands = []
-
-        for command_dict in self.hypergraph_circuit.commands[
-            last_command_index + 1: first_command_index
-        ]:
-            command = command_dict["command"]
-            if qubit in command.qubits:
-                intermediate_commands.append(command_dict["command"])
-
-        return intermediate_commands
-
-    def is_embeddable_CU1(self, command: Command, packet: Packet) -> bool:
-        # Bad function name but this checks that a CU1 itself
-        # COULD be embeddable
-        # i.e. only prove that we cannot embed but does not check the 1q
-        # gates surrounding it, hence doesn't prove it IS embeddable
-        packet_servers = {
-            self.placement.placement[packet.qubit_vertex],
-            packet.connected_server_index,
-        }
-
-        this_command_qubit_vertices = [
-            self.qubit_vertex_from_qubit(qubit) for qubit in command.qubits
-        ]
-        this_command_servers = {
-            self.placement.placement[qubit_vertex]
-            for qubit_vertex in this_command_qubit_vertices
-        }
-        if packet_servers != this_command_servers:
-            return False
-        elif not isclose(command.op.params[0], 1):
-            return False
-        return True
-
-    def are_intermediate_commands_embeddable(
+    def are_hoppable_packets(
         self, first_packet: Packet, second_packet: Packet
     ) -> bool:
         # Go through each command and
@@ -492,6 +262,209 @@ class PacMan:
                 )
                 return False
 
+        return True
+
+    def hyperedge_to_packets(
+        self, hyperedge: Hyperedge, starting_index: int
+    ) -> Tuple[int, List[Packet]]:
+        # Convert a hyperedge into a packet(s)
+        # Multiple needed if the hyperedge ends up having gates
+        # distributed to multiple servers
+        hyperedge_qubit_vertex = self.hypergraph_circuit.get_qubit_vertex(
+            hyperedge
+        )
+        connected_server_to_dist_gates: Dict[
+            int, List[Vertex]
+        ] = {}  # Server number to list of distributed gates on that server.
+        packets: List[Packet] = []
+        for gate_vertex in self.hypergraph_circuit.get_gate_vertices(
+            hyperedge
+        ):
+            connected_server = self.get_connected_server(
+                hyperedge_qubit_vertex, gate_vertex
+            )
+            if connected_server in connected_server_to_dist_gates.keys():
+                connected_server_to_dist_gates[connected_server].append(
+                    gate_vertex
+                )
+            else:
+                connected_server_to_dist_gates[connected_server] = [
+                    gate_vertex
+                ]
+
+        for (
+            connected_server,
+            dist_gates,
+        ) in connected_server_to_dist_gates.items():
+            packets.append(
+                Packet(
+                    starting_index,
+                    hyperedge_qubit_vertex,
+                    connected_server,
+                    dist_gates,
+                )
+            )
+            starting_index += 1
+
+        return starting_index, packets
+
+    def get_hyperedges_ordered(self) -> Dict[Vertex, List[Hyperedge]]:
+        # Orders hyperedges into their circuit sequential order
+        hyperedges: Dict[Vertex, List[Hyperedge]] = {}
+
+        # Populate the qubit_vertex keys
+        for qubit_vertex in self.hypergraph_circuit.get_qubit_vertices():
+            hyperedges[qubit_vertex] = []
+
+        # Populate the lists with unsorted hyperedges
+        for hyperedge in self.hypergraph_circuit.hyperedge_list:
+            qubit_vertex = self.hypergraph_circuit.get_qubit_vertex(hyperedge)
+            hyperedges[qubit_vertex].append(hyperedge)
+
+        # Sort the hyperedges using bubble sort
+        # TODO: Do it more efficiently
+        for qubit_vertex in self.hypergraph_circuit.get_qubit_vertices():
+            hyperedge_list: List[Hyperedge] = hyperedges[qubit_vertex]
+            changes = -1  # Just a temporary storage value
+            while changes != 0:
+                changes = 0
+                for i in range(len(hyperedge_list) - 1):
+                    if self.get_last_command_index(
+                        self.hypergraph_circuit.get_gate_vertices(
+                            hyperedge_list[i]
+                        )
+                    ) > self.get_first_command_index(
+                        self.hypergraph_circuit.get_gate_vertices(
+                            hyperedge_list[i + 1]
+                        )
+                    ):
+                        hyperedge_list[i], hyperedge_list[i + 1] = (
+                            hyperedge_list[i + 1],
+                            hyperedge_list[i],
+                        )
+                        changes += 1
+
+            # Might be redundant line of code here
+            hyperedges[qubit_vertex] = hyperedge_list
+
+        return hyperedges
+
+    def get_connected_server(self, qubit_vertex: Vertex, gate_vertex: Vertex):
+        command_index = self.vertex_to_command_index[gate_vertex]
+        command_dict = self.hypergraph_circuit._commands[command_index]  # TODO: Rewrite this as God (Pablo) intended
+        qubits = command_dict["command"].qubits
+        qubit_vertex_candidates = [
+            self.qubit_vertex_from_qubit(qubit)
+            for qubit in qubits
+            if self.qubit_vertex_from_qubit(qubit) is not qubit_vertex
+        ]
+
+        assert (
+            len(qubit_vertex_candidates) == 1
+        ), "There should be 1 and only 1 other qubit vertex."
+        other_qubit_vertex = qubit_vertex_candidates[0]
+        return self.placement.placement[other_qubit_vertex]
+
+    def qubit_vertex_from_qubit(self, qubit: Qubit):
+        # TODO: Maybe not needed anymore
+        for (
+            vertex,
+            circuit_element,
+        ) in self.hypergraph_circuit._vertex_circuit_map.items():  # TODO: Don't access hidden stuff
+            if (
+                circuit_element["type"] == "qubit"
+                and circuit_element["node"] == qubit
+            ):
+                return vertex
+        raise Exception("Could not find a vertex corresponding to this qubit.")
+
+    def circuit_element_from_vertex(self, vertex: Vertex):
+        # This could maybe belong to HypergraphCircuit instead?
+        # TODO: Don't access hidden stuff
+        if (
+            self.hypergraph_circuit._vertex_circuit_map[vertex]["type"]
+            == "qubit"
+        ):
+            return self.hypergraph_circuit._vertex_circuit_map[vertex]["node"]
+        elif (
+            self.hypergraph_circuit._vertex_circuit_map[vertex]["type"]
+            == "gate"
+        ):
+            return self.hypergraph_circuit._vertex_circuit_map[vertex][
+                "command"
+            ]
+
+    def get_last_command_index(self, gate_vertex_list: List[Vertex]) -> int:
+        last_command_index: int = -1  # Placeholder value
+        for vertex in gate_vertex_list:
+            if (
+                last_command_index == -1
+                or self.vertex_to_command_index[vertex] > last_command_index
+            ):
+                last_command_index = self.vertex_to_command_index[vertex]
+
+        return last_command_index
+
+    def get_first_command_index(self, gate_vertex_list: List[Vertex]) -> int:
+        first_command_index: int = -1  # Placeholder value
+        for vertex in gate_vertex_list:
+            if (
+                first_command_index == -1
+                or self.vertex_to_command_index[vertex] < first_command_index
+            ):
+                first_command_index = self.vertex_to_command_index[vertex]
+
+        return first_command_index
+
+    def get_intermediate_commands(
+        self, first_packet: Packet, second_packet: Packet
+    ) -> List[Command]:
+        assert (
+            first_packet.qubit_vertex == second_packet.qubit_vertex
+        ), "Qubit vertices do not match."
+
+        qubit_vertex = first_packet.qubit_vertex
+        qubit = self.circuit_element_from_vertex(qubit_vertex)
+
+        last_command_index = self.get_last_command_index(
+            first_packet.packet_gate_vertices
+        )
+        first_command_index = self.get_first_command_index(
+            second_packet.packet_gate_vertices
+        )
+
+        intermediate_commands = []
+
+        for command_dict in self.hypergraph_circuit._commands[ # TODO: Hidden stuff
+            last_command_index + 1: first_command_index
+        ]:
+            command = command_dict["command"]
+            if qubit in command.qubits:
+                intermediate_commands.append(command_dict["command"])
+
+        return intermediate_commands
+
+    def is_embeddable_CU1(self, command: Command, packet: Packet) -> bool:
+        # Bad function name but this checks that a CU1 itself
+        # COULD be embeddable
+        # i.e. only prove that we cannot embed but does not check the 1q
+        # gates surrounding it, hence doesn't prove it IS embeddable
+        packet_servers = {
+            self.placement.placement[packet.qubit_vertex],
+            packet.connected_server_index,
+        }
+
+        this_command_qubit_vertices = [
+            self.qubit_vertex_from_qubit(qubit) for qubit in command.qubits
+        ]
+        this_command_servers = {
+            self.placement.placement[qubit_vertex]
+            for qubit_vertex in this_command_qubit_vertices
+        }
+        if packet_servers != this_command_servers:
+            return False
+        elif not isclose(command.op.params[0], 1):
+            return False
         return True
 
     def convert_1q_ops(self, ops: List[Op]) -> List[Op]:
