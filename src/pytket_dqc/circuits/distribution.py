@@ -245,7 +245,7 @@ class Distribution:
 
         # -- SCOPE VARIABLES -- #
         # Accessible to the internal class below
-        dist_circ = self.circuit
+        hyp_circ = self.circuit
         server_graph = self.network.get_server_nx()
         placement_map = self.placement.placement
         qubit_mapping = self.get_qubit_mapping()
@@ -323,7 +323,7 @@ class Distribution:
                 """
 
                 # Extract hyperedge data
-                hyp_qubit = dist_circ.get_qubit_vertex(hyperedge)
+                hyp_qubit = hyp_circ.get_qubit_vertex(hyperedge)
                 home_server = placement_map[hyp_qubit]
                 hyp_servers = [placement_map[v] for v in hyperedge.vertices]
                 tree = steiner_tree(server_graph, hyp_servers)
@@ -344,7 +344,7 @@ class Distribution:
                 # At the beginning, this is held by the HW qubit corresponding
                 # to the ``hyp_qubit`` vertex
                 last_link_qubit = qubit_mapping[
-                    dist_circ.get_qubit_of_vertex(hyp_qubit)
+                    hyp_circ.get_qubit_of_vertex(hyp_qubit)
                 ]
                 # For sanity check: after first disconnected server in the
                 # path, all servers that follow should also be disconnected
@@ -379,7 +379,7 @@ class Distribution:
                 """
 
                 # Extract hyperedge data
-                hyp_qubit = dist_circ.get_qubit_vertex(hyperedge)
+                hyp_qubit = hyp_circ.get_qubit_vertex(hyperedge)
                 home_server = placement_map[hyp_qubit]
                 hyp_servers = [placement_map[v] for v in hyperedge.vertices]
                 tree = steiner_tree(server_graph, hyp_servers)
@@ -428,7 +428,7 @@ class Distribution:
                 # of the EjppAction must be the original shared qubit
                 if parent == home_server:
                     parent_link = qubit_mapping[
-                        dist_circ.get_qubit_of_vertex(hyp_qubit)
+                        hyp_circ.get_qubit_of_vertex(hyp_qubit)
                     ]
                 # Otherwise, we find the link qubit of the parent
                 else:
@@ -447,16 +447,40 @@ class Distribution:
                 return ending_actions
 
         # -- CIRCUIT GENERATION -- #
-        circ = Circuit()
+        new_circ = Circuit()
         # Add the qubits to the circuit
         for hw_qubit in qubit_mapping.values():
-            circ.add_qubit(hw_qubit)
+            new_circ.add_qubit(hw_qubit)
 
         # Read the original circuit from left to right and, as we go:
         #   (1) add the required EJPP processes
         #   (2) distribute nonlocal gates
         #   (3) add the required correction gates for embedding
-        raise NotImplementedError
+        # Some data to keep around:
+        #
+        # Map from qubits (of the original circuit) to a boolean flag that
+        #   indicates whether we currently are within an H-embedding unit
+        currently_h_embedding = {q: False for q in qubit_mapping.keys()}
+        # Map from qubits (of the original circuit) to a list of servers
+        #   that currently hold a "copy" of it
+        connected_to = {q: [] for q in qubit_mapping.keys()}
+        # The LinkManager that will deal with the link qubits
+        linkman = LinkManager(self.network.get_server_list())
+
+        # Iterate over the commands of the original circuit
+        for cmd in hyp_circ._circuit.get_commands():
+
+            if cmd.op.type == OpType.H:
+                q = cmd.qubits[0]
+                currently_h_embedding[q] = not currently_h_embedding[q]
+                # Add the gate to the new circuit
+                new_circ.H(qubit_mapping[q])
+                # Hadamards are copied to every link qubit connected to q
+                for server in connected_to[q]:
+                    link_qubit = #TODO: Problem! It's unclear how to get it right now. I probably need to change link_qubit_dict to be in terms of server and shared qubit.
+
+
+
 
         assert _cost_from_circuit(circ) == self.cost()
         assert check_equivalence(
