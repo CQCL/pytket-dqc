@@ -210,10 +210,10 @@ class Distribution:
                             # The first element of the path is a ``c_server``
                             # so the actual cost is the length minus one
                             #
-                            # NOTE: the ``best_path`` will only
-                            # contain server in ``connected_servers``. If
+                            # NOTE: the ``best_path`` will only contain
+                            # one server from ``connected_servers``. If
                             # it had two, the shortest path from the second
-                            # would be shorter -> contradiction
+                            # would be shorter => contradiction
                             connected_servers.update(best_path)
                             cost += len(best_path) - 1
             return cost
