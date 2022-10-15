@@ -152,8 +152,9 @@ class Distribution:
                 elif command.op.type == OpType.Rz:
                     assert (
                         not currently_h_embedding
-                        or isclose(command.op.params[0] % 1, 0)  # Identity
-                        or isclose(command.op.params[0] % 1, 1)  # Z gate
+                        # Gate has a phase multiple of pi (i.e. I or Z)
+                        or isclose(command.op.params[0] % 1, 0)
+                        or isclose(command.op.params[0] % 1, 1)
                     )
 
                 elif command.op.type == OpType.CU1:
@@ -274,9 +275,10 @@ class Distribution:
                 self.occupied: dict[int, list[Qubit]] = {
                     s: [] for s in servers
                 }
-                # A dictionary matching a currently hyperedge with a link to
-                # a specified server with the link qubit in the server.
-                self.link_qubit_dict: dict[tuple[Hyperedge, int], Qubit] = {}
+                # A dictionary matching a (qubit, server) pair with the qubit
+                # in ``server`` that has a "copy" of the data in ``qubit``,
+                # where ``qubit`` is a Qubit in the original circuit.
+                self.link_qubit_dict: dict[tuple[Qubit, int], Qubit] = {}
 
             def next_available(self, server: int) -> Qubit:
                 """Returns an available link qubit in ``server``. If there are
@@ -304,59 +306,72 @@ class Distribution:
                 self.occupied[its_server].remove(link_qubit)
                 self.available[its_server].append(link_qubit)
 
-                # Remove the entry from ``self.link_qubit_dict``
-                keys = [
-                    key
-                    for key, q in self.link_qubit_dict.items()
-                    if q == link_qubit
-                ]
-                assert len(keys) == 1
-                its_key = keys[0]
+            def connected_servers(self, circ_qubit: Qubit) -> list[int]:
+                """Return the list of servers currently holding a copy
+                of ``circ_qubit``.
+                """
+                return [s for q, s in self.link_qubit_dict.keys() if q == circ_qubit]
 
-                del self.link_qubit_dict[its_key]
+            def get_link_qubit(self, circ_qubit: Qubit, server: int) -> Qubit
+                """If ``server`` is the home server of ``circ_qubit``, the HW qubit
+                corresponding to ``circ_qubit`` is returned. Otherwise, we query
+                ``link_qubit_dict`` to retrieve the appropriate link qubit.
+                """
+                q_vertex = hyp_circ.get_vertex_of_qubit(circ_qubit)
+                if placement_map[q_vertex] == server:
+                    return qubit_mapping[circ_qubit]
+                else:
+                    return self.link_qubit_dict[(circ_qubit, server)]
 
             def start_link(
-                self, target: int, hyperedge: Hyperedge
+                self, hyperedge: Hyperedge, targets: list[int]
             ) -> list[EjppAction]:
-                """Find the sequence of StartingProcesses required to share
-                the qubit of ``hyperedge`` with the ``target`` server.
+                """Find sequence of StartingProcesses required to share the
+                qubit of ``hyperedge`` with all of the servers in ``targets``.
                 """
 
                 # Extract hyperedge data
-                hyp_qubit = hyp_circ.get_qubit_vertex(hyperedge)
-                home_server = placement_map[hyp_qubit]
+                q_vertex = hyp_circ.get_qubit_vertex(hyperedge)
+                circ_qubit = hyp_circ.get_qubit_of_vertex(q_vertex)
+                home_server = placement_map[q_vertex]
                 hyp_servers = [placement_map[v] for v in hyperedge.vertices]
                 tree = steiner_tree(server_graph, hyp_servers)
-                assert target in hyp_servers
+                assert all(target in hyp_servers for target in targets)
 
-                # Find the path from the home_server to the target
-                # NOTE: there is only one path because we search in a tree
-                connection_path = nx.shortest_path(tree, home_server, target)
-                # Remove the ``home_server`` from the connection path
-                hs = connection_path.pop(0)
-                assert hs == home_server
+                # Obtain the servers currently connected to ``circ_qubit``
+                connected_servers = self.connected_servers(circ_qubit)
+                # Connect the target servers one by one.
+                #
+                # NOTE: If all of the ``hyp_servers`` are to be connected,
+                # then the routine below will "grow" the tree branch by
+                # branch. Since EJPP starting processes commute with each
+                # other, the ordering of how it is "grown" does not matter.
+                for target in targets:
+                    # For each server connected to ``circ_qubit``, find the
+                    # shortest path to the target server and use the one that
+                    # is shortest among them
+                    best_path = None
+                    for c_server in connected_servers:
+                        connection_path = nx.shortest_path(
+                            tree, c_server, target
+                        )
+                        if (
+                            best_path is None
+                            or len(connection_path) < len(best_path)
+                        ):
+                            best_path = connection_path
+                    assert best_path is not None
+                    # NOTE: the ``best_path`` will only contain
+                    # one server from ``connected_servers``. Proof: if
+                    # it had two, the shortest path from the second
+                    # would be shorter => contradiction
 
-                # Go over the connection_path step by step adding the required
-                # starting EjppActions
-                starting_actions = []
-                # We will keep track of the qubit that holds the copy of
-                # ``hyp_qubit`` throughout the path of servers.
-                # At the beginning, this is held by the HW qubit corresponding
-                # to the ``hyp_qubit`` vertex
-                last_link_qubit = qubit_mapping[
-                    hyp_circ.get_qubit_of_vertex(hyp_qubit)
-                ]
-                # For sanity check: after first disconnected server in the
-                # path, all servers that follow should also be disconnected
-                so_far_connected = True
-                for next_server in connection_path:
-                    if (hyperedge, next_server) in self.link_qubit_dict:
-                        assert so_far_connected
-                        last_link_qubit = self.link_qubit_dict[
-                            (hyperedge, next_server)
-                        ]
-                    else:
-                        so_far_connected = False
+                    # Go over ``best_path`` step by step adding the required
+                    # starting EjppActions
+                    starting_actions = []
+                    source = best_path.pop(0)
+                    last_link_qubit = self.get_link_qubit(circ_qubit, source)
+                    for next_server in best_path:
                         # Retrieve an available link qubit to populate
                         this_link_qubit = self.next_available(next_server)
                         # Add the EjppAction to create the connection
@@ -367,82 +382,40 @@ class Distribution:
                                 to_qubit=this_link_qubit,
                             )
                         )
+                        # Add the link qubit to the dictionary
+                        self.link_qubit_dict[(circ_qubit, next_server)] = this_link_qubit
                         last_link_qubit = this_link_qubit
+                        # Add this server to the list of connected servers
+                        connected_servers.append(next_server)
 
                 return starting_actions
 
-            def end_link(
-                self, target: int, hyperedge: Hyperedge
+            def end_links(
+                self, circ_qubit: Qubit, targets: list[int]
             ) -> list[EjppAction]:
                 """Find the sequence of EndingProcesses required to end the
-                connection to the ``target`` server and all of its children.
+                connection of ``circ_qubit`` to each server in ``targets``.
                 """
 
-                # Extract hyperedge data
-                hyp_qubit = hyp_circ.get_qubit_vertex(hyperedge)
-                home_server = placement_map[hyp_qubit]
-                hyp_servers = [placement_map[v] for v in hyperedge.vertices]
-                tree = steiner_tree(server_graph, hyp_servers)
-                assert target in hyp_servers
-                assert target != home_server
+                # Find the HW qubit holding ``circ_qubit``
+                home_link = qubit_mapping[circ_qubit]
 
-                # Find the children of ``target``, these also need to be
-                # disconnected
-                children_edges = nx.dfs_edges(tree, source=target)
-                # The above produces a list of edges (parent, child).
-                # Since the ``children_edges`` were generated via a DFS strat
-                # (depth-first-search), if we reverse it we'll iterate from
-                # the leave edges to the root edges.
-                # Servers at the leaves of the tree must be disconnected first
-                ending_actions = []
-                for parent, child in reversed(children_edges):
-                    # Sanity check
-                    if (hyperedge, parent) not in self.link_qubit_dict:
-                        assert (hyperedge, child) not in self.link_qubit_dict
-                    # If the child is currently connected, disconnect it
-                    elif (hyperedge, child) in self.link_qubit_dict:
-                        parent_link = self.link_qubit_dict[(hyperedge, parent)]
-                        child_link = self.link_qubit_dict[(hyperedge, child)]
-                        # End the connection
-                        ending_actions.append(
-                            EjppAction(
-                                starting=False,
-                                from_qubit=child_link,
-                                to_qubit=parent_link,
-                            )
+                # Disconnect each server in ``targets``
+                for target in targets:
+                    # Find the corresponding HW qubit
+                    target_link = self.get_link_qubit(circ_qubit, target)
+                    # Disconnect ``target_link``
+                    ending_actions.append(
+                        EjppAction(
+                            starting=False,
+                            from_qubit=target_link,
+                            to_qubit=home_link,
                         )
-                        # Release the link qubit
-                        self.release(child_link)
-
-                # Don't forget that the ``target`` server itself must be
-                # disconnected as well!
-                directed_edges = nx.dfs_edges(tree, source=home_server)
-                parents = [
-                    parent
-                    for parent, child in directed_edges
-                    if child == target
-                ]
-                assert len(parents) == 1
-                parent = parents[0]
-                # If the parent is the ``home_server``, then the ``to_qubit``
-                # of the EjppAction must be the original shared qubit
-                if parent == home_server:
-                    parent_link = qubit_mapping[
-                        hyp_circ.get_qubit_of_vertex(hyp_qubit)
-                    ]
-                # Otherwise, we find the link qubit of the parent
-                else:
-                    parent_link = self.link_qubit_dict[(hyperedge, parent)]
-                    target_link = self.link_qubit_dict[(hyperedge, target)]
-                # Disconnect the link qubit of ``target``
-                ending_actions.append(
-                    EjppAction(
-                        starting=False,
-                        from_qubit=target_link,
-                        to_qubit=parent_link,
                     )
-                )
-                self.release(target_link)
+                    # Release the HW qubit acting as ``target_link``
+                    self.release(target_link)
+                    # Delete its entry from the dictionary
+                    del self.link_qubit_dict[(circ_qubit, target)]
 
                 return ending_actions
 
@@ -455,14 +428,19 @@ class Distribution:
         # Read the original circuit from left to right and, as we go:
         #   (1) add the required EJPP processes
         #   (2) distribute nonlocal gates
-        #   (3) add the required correction gates for embedding
+        #   (3) add the correction gates required for embedding
         # Some data to keep around:
         #
         # Map from qubits (of the original circuit) to a boolean flag that
         #   indicates whether we currently are within an H-embedding unit
         currently_h_embedding = {q: False for q in qubit_mapping.keys()}
+        # The keys of the following map will contain qubits (from the
+        # original circuit) on which ``currently_h_embedding`` is True.
+        # The values will contain the corresponding link qubit (on the
+        # remote server) that is kept alive by the embedding
+        embedding_on: dict[Qubit, Qubit] = {}
         # Map from qubits (of the original circuit) to a list of servers
-        #   that currently hold a "copy" of it
+        # that currently hold a "copy" of it
         connected_to = {q: [] for q in qubit_mapping.keys()}
         # The LinkManager that will deal with the link qubits
         linkman = LinkManager(self.network.get_server_list())
@@ -472,18 +450,69 @@ class Distribution:
 
             if cmd.op.type == OpType.H:
                 q = cmd.qubits[0]
-                currently_h_embedding[q] = not currently_h_embedding[q]
-                # Add the gate to the new circuit
+                # Add in the gate to ``new_circ``
                 new_circ.H(qubit_mapping[q])
-                # Hadamards are copied to every link qubit connected to q
-                for server in connected_to[q]:
-                    link_qubit = #TODO: Problem! It's unclear how to get it right now. I probably need to change link_qubit_dict to be in terms of server and shared qubit.
+                # The presence of an H gate indicates the beginning or end
+                # of an H-embedding on the qubit
+                currently_h_embedding[q] = not currently_h_embedding[q]
+                # NOTE: We do not close connections just yet, we close them
+                # when we find a CZ gate on q. This is because if the
+                # H-embedding happens to have not CZ gates on q, we will not
+                # need to close them.
+                #
+                # NOTE: Similarly, we don't yet know which is the link qubit
+                # that should survive the embedding.
+                raise Exception("Problem! We are not adding the H gates to the connected servers")
 
+            elif cmd.op.type == OpType.Rz:
+                q = cmd.qubits[0]
+                phase = cmd.op.params
+                # Add in the gate to ``new_circ``
+                new_circ.Rz(phase, qubit_mapping[q])
 
+                # If not H-embedding, nothing needs to be done; otherwise:
+                if currently_h_embedding[q]:
+                    # The phase must be multiple of pi (either I or Z gate)
+                    assert isclose(phase % 1, 0) or isclose(phase % 1, 1)
+                    # If Z gate, apply it to all connected servers
+                    if isclose(phase % 2, 1): # Z gate
+                        c_servers = linkman.connected_servers(q)
+                        for server in c_servers:
+                            link_qubit = linkman.link_qubit_dict[(q, server)]
+                            new_circ.Z(link_qubit)
+                    # Otherwise, it is an identity gate and we do nothing
 
+            elif cmd.op.type == OpType.Z:
+                q = cmd.qubits[0]
+                # Add in the gate to ``new_circ``
+                new_circ.Z(qubit_mapping[q])
+
+                # If not H-embedding, nothing needs to be done; otherwise:
+                if currently_h_embedding[q]:
+                    # Apply the gate to all connected servers
+                    c_servers = linkman.connected_servers(q)
+                    for server in c_servers:
+                        link_qubit = linkman.link_qubit_dict[(q, server)]
+                        new_circ.Z(link_qubit)
+
+            elif cmd.op.type == OpType.X:
+                q = cmd.qubits[0]
+                # Add in the gate to ``new_circ``
+                new_circ.X(qubit_mapping[q])
+
+                # If H-embedding, nothing needs to be done; otherwise:
+                if not currently_h_embedding[q]:
+                    # Apply the gate to all connected servers
+                    c_servers = linkman.connected_servers(q)
+                    for server in c_servers:
+                        link_qubit = linkman.link_qubit_dict[(q, server)]
+                        new_circ.X(link_qubit)
+
+            elif cmd.op.type == OpType.CU1:
+                raise Exception("Not yet implemented")
 
         assert _cost_from_circuit(circ) == self.cost()
         assert check_equivalence(
-            self.circuit.get_circuit(), circ, qubit_mapping
+            self.circuit.get_circuit(), new_circ, qubit_mapping
         )
-        return circ
+        return new_circ
