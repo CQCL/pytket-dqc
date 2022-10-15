@@ -169,7 +169,8 @@ class Distribution:
                         remote_qubit = [
                             q for q in qubits if q != shared_qubit
                         ][0]
-                        remote_server = placement_map[remote_qubit]
+                        remote_vertex = hyp_circ.get_vertex_of_qubit(remote_qubit)
+                        remote_server = placement_map[remote_vertex]
 
                         # Only servers in the shortest path from remote_server
                         # to home_server are left intact. The rest of the
@@ -429,16 +430,13 @@ class Distribution:
         #   (1) add the required EJPP processes
         #   (2) distribute nonlocal gates
         #   (3) add the correction gates required for embedding
-        # Some data to keep around:
+        # Some data to keep around while iterating over the commands:
         #
-        # Map from qubits (of the original circuit) to a boolean flag that
-        #   indicates whether we currently are within an H-embedding unit
-        currently_h_embedding = {q: False for q in qubit_mapping.keys()}
-        # The keys of the following map will contain qubits (from the
-        # original circuit) on which ``currently_h_embedding`` is True.
+        # The keys of the following map contain qubits (from the original
+        # circuit) currently with an H-embedding unit acting on it
         # The values will contain the corresponding link qubit (on the
-        # remote server) that is kept alive by the embedding
-        embedding_on: dict[Qubit, Qubit] = {}
+        # remote server) that is kept alive thanks to the embedding
+        embedding: dict[Qubit, Qubit] = {}
         # Map from qubits (of the original circuit) to a list of servers
         # that currently hold a "copy" of it
         connected_to = {q: [] for q in qubit_mapping.keys()}
@@ -446,28 +444,67 @@ class Distribution:
         linkman = LinkManager(self.network.get_server_list())
 
         # Iterate over the commands of the original circuit
-        for cmd in hyp_circ._circuit.get_commands():
+        commands = hyp_circ._circuit.get_commands()
+        for i, cmd in enumerate(commands):
 
             if cmd.op.type == OpType.H:
                 q = cmd.qubits[0]
-                # Add in the gate to ``new_circ``
+                # Append the gate to ``new_circ``
                 new_circ.H(qubit_mapping[q])
                 # The presence of an H gate indicates the beginning or end
                 # of an H-embedding on the qubit
-                currently_h_embedding[q] = not currently_h_embedding[q]
-                # NOTE: We do not close connections just yet, we close them
-                # when we find a CZ gate on q. This is because if the
-                # H-embedding happens to have not CZ gates on q, we will not
-                # need to close them.
-                #
-                # NOTE: Similarly, we don't yet know which is the link qubit
-                # that should survive the embedding.
-                raise Exception("Problem! We are not adding the H gates to the connected servers")
+                if q not in embbedding.keys():  # Start an embedding unit
+                    # Look through the rest of the circuit and figure out
+                    # if there is a CU1 gate in this unit
+                    found_CU1_gate = None
+                    for gate in commands[i+1:]:
+                        if gate.op.type == OpType.CU1 and q in gate.qubits:
+                            found_CU1_gate = gate
+                            break
+                        # Otherwise, stop when finding an H gate on q
+                        elif gate.op.type == OpType.H and q in gate.qubits:
+                            break
+
+                    if found_CU1_gate is not None:  # We must close links
+                        # All connections to servers must be closed, except
+                        # that of the remote server the CU1 gate acts on
+                        #
+                        # NOTE: According to the conditions of embeddability,
+                        # the embedded CU1 gates all act on the same servers
+                        remote_qubit = [rq for rq in found_CU1_gate.qubits if rq != q][0]
+                        remote_vertex = hyp_circ.get_vertex_of_qubit(remote_qubit)
+                        remote_server = placement_map[remote_vertex]
+                        servers = [s for s in linkman.connected_servers() if s != remote_server]
+
+                        # Close the connections
+                        linkman.end_links(q, servers)
+                        # Retrieve the link on the remote server
+                        remote_link = linkman.get_link_qubit(q, remote_server)
+                        # Remove it from the dictionary so that it is not
+                        # mistaken with a link qubit used to distribute the
+                        # embedded gates
+                        del linkman.link_qubit_dict[(q, remote_server)]
+                        # Save the link qubit on the embedding dictionary for
+                        # later reference
+                        embedding[q] = remote_link
+                        # Append the correction Hadamard to the circuit
+                        new_circ.H(remote_link)
+                    # Otherwise, we do not need to close connections but we
+                    # must place an H gate on each link qubit
+                    else:
+                        for server in linkman.connected_servers(q):
+                            # Append the correction Hadamard to the circuit
+                            new_circ.H(linkman.get_link_qubit(q, server))
+
+                # Otherwise, the qubit ``q`` is in ``embedding.keys()``, which
+                # means that this Hadamard is the end of the H-embedding unit.
+                else:
+                    raise Exception("Not implemented yet")
 
             elif cmd.op.type == OpType.Rz:
                 q = cmd.qubits[0]
                 phase = cmd.op.params
-                # Add in the gate to ``new_circ``
+                # Append the gate to ``new_circ``
                 new_circ.Rz(phase, qubit_mapping[q])
 
                 # If not H-embedding, nothing needs to be done; otherwise:
@@ -484,7 +521,7 @@ class Distribution:
 
             elif cmd.op.type == OpType.Z:
                 q = cmd.qubits[0]
-                # Add in the gate to ``new_circ``
+                # Append the gate to ``new_circ``
                 new_circ.Z(qubit_mapping[q])
 
                 # If not H-embedding, nothing needs to be done; otherwise:
@@ -497,7 +534,7 @@ class Distribution:
 
             elif cmd.op.type == OpType.X:
                 q = cmd.qubits[0]
-                # Add in the gate to ``new_circ``
+                # Append the gate to ``new_circ``
                 new_circ.X(qubit_mapping[q])
 
                 # If H-embedding, nothing needs to be done; otherwise:
@@ -510,6 +547,9 @@ class Distribution:
 
             elif cmd.op.type == OpType.CU1:
                 raise Exception("Not yet implemented")
+
+        # Finally, close all remaining embeddings and connections
+        raise Exception("Not yet implemented")
 
         assert _cost_from_circuit(circ) == self.cost()
         assert check_equivalence(
