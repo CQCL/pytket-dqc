@@ -1,28 +1,16 @@
 from pytket import Circuit, OpType  # type: ignore
 
 
-# This function is for sanity checking and should not make it into production
-# (whatever that means for this project). In particular it is not
-# documented or tested.
-def _cost_from_circuit(circ: Circuit) -> int:
-
-    starting_count = 0
-    ending_count = 0
-    telep_count = 0
-
-    for command in circ.get_commands():
-
-        if command.op.get_name() == "StartingProcess":
-            starting_count += 1
-        elif command.op.get_name() == "EndingProcess":
-            ending_count += 1
-        elif command.op.get_name() == "Teleportation":
-            telep_count += 1
-
-    assert starting_count == ending_count
-
-    return starting_count + telep_count
-
+def all_cu1_local(circ: Circuit) -> bool:
+    """Checks that all of the CU1 gates in the circuit are local.
+    """
+    cu1_gates = [gate for gate in circ.get_commands() if gate.op.type == OpType.CU1]
+    for gate in cu1_gates:
+        q0 = gate.qubits[0]
+        q1 = gate.qubits[1]
+        if get_server_id(q0) != get_server_id(q1):
+            return False
+    return True
 
 def ebit_memory_required(circ: Circuit) -> dict[int, int]:
     """Scan the circuit and find, for each server, the maximum number of
@@ -99,7 +87,7 @@ def is_link_qubit(qubit) -> bool:
     qubit_name = str(qubit).split()
     # ``qubit_name`` follows either of these patterns:
     #     Workspace qubit: ['Server', server_id+'['+qubit_id+']']
-    #     Link qubit: ['Server', server_id, 'Link', 'Edge', edge_id+'[0]']
+    #     Link qubit: ['Server', server_id, 'Link', 'Register['+qubit_id+']']
     return len(qubit_name) > 2
 
 
@@ -109,7 +97,7 @@ def get_server_id(qubit) -> int:
     qubit_name = str(qubit).split()
     # ``qubit_name`` follows either of these patterns:
     #     Workspace qubit: ['Server', server_id+'['+qubit_id+']']
-    #     Link qubit: ['Server', server_id, 'Link', 'Edge', edge_id+'[0]']
+    #     Link qubit: ['Server', server_id, 'Link', 'Register['+qubit_id+']']
     # Sanity check
     assert qubit_name[0] == "Server"
 
@@ -117,3 +105,26 @@ def get_server_id(qubit) -> int:
         return int(qubit_name[1])
     else:
         return int(qubit_name[1].split("[")[0])
+
+
+# This function is for sanity checking and should not make it into production
+# (whatever that means for this project). In particular it is not
+# documented or tested.
+def _cost_from_circuit(circ: Circuit) -> int:
+
+    starting_count = 0
+    ending_count = 0
+    telep_count = 0
+
+    for command in circ.get_commands():
+
+        if command.op.get_name() == "StartingProcess":
+            starting_count += 1
+        elif command.op.get_name() == "EndingProcess":
+            ending_count += 1
+        elif command.op.get_name() == "Teleportation":
+            telep_count += 1
+
+    assert starting_count == ending_count
+
+    return starting_count + telep_count

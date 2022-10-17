@@ -3,7 +3,7 @@ from pytket_dqc.placement import Placement
 from pytket_dqc.networks import NISQNetwork
 from pytket_dqc.utils import steiner_tree, check_equivalence
 from pytket_dqc.utils.gateset import start_proc, end_proc
-from pytket_dqc.utils.circuit_analysis import _cost_from_circuit
+from pytket_dqc.utils.circuit_analysis import all_cu1_local, _cost_from_circuit
 from pytket import Circuit, OpType, Qubit
 import networkx as nx  # type: ignore
 from numpy import isclose  # type: ignore
