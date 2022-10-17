@@ -76,9 +76,8 @@ class Distribution:
         :param hyperedge: The hyperedge whose cost is to be calculated.
         :type hyperedge: Hyperedge
 
-        :key server_tree: The connectivity tree (subgraph of ``server_graph``)
-            that should be used. If not provided, this function will find a
-            Steiner tree.
+        :key server_tree: The connectivity tree that should be used.
+            If not provided, this function will find a Steiner tree.
         :type server_tree: nx.Graph
         :key h_embedding: Indicates whether or not the hyperedge requires
             an H-embedding to be implemented. If not provided, it is checked.
