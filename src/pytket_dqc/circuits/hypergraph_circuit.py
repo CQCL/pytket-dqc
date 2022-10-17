@@ -169,6 +169,15 @@ class HypergraphCircuit(Hypergraph):
             raise Exception("Not a gate vertex!")
         return self._vertex_circuit_map[vertex]['command']
 
+    def get_hyperedges_containing(
+        self, vertices: list[int]
+    ) -> list[Hyperedge]:
+        return [
+            hedge
+            for hedge in self.hyperedge_list
+            if all(v in hedge.vertices for v in vertices)
+        ]
+
     def get_hyperedge_subcircuit(self, hyperedge: Hyperedge) -> list[Command]:
         """Returns the list of commands between the first and last gate within
         the hyperedge. Commands that don't act on the qubit vertex are omitted

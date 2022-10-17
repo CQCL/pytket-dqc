@@ -4,13 +4,16 @@ from pytket import Circuit, OpType  # type: ignore
 def all_cu1_local(circ: Circuit) -> bool:
     """Checks that all of the CU1 gates in the circuit are local.
     """
-    cu1_gates = [gate for gate in circ.get_commands() if gate.op.type == OpType.CU1]
+    cu1_gates = [
+        gate for gate in circ.get_commands() if gate.op.type == OpType.CU1
+    ]
     for gate in cu1_gates:
         q0 = gate.qubits[0]
         q1 = gate.qubits[1]
         if get_server_id(q0) != get_server_id(q1):
             return False
     return True
+
 
 def ebit_memory_required(circ: Circuit) -> dict[int, int]:
     """Scan the circuit and find, for each server, the maximum number of
