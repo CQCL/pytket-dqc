@@ -628,7 +628,7 @@ class Distribution:
 
                 # Append the gate to the circuit
                 new_circ.add_gate(
-                    OpType.CU1, phase, [qubit_mapping[q0], qubit_mapping[q1]]
+                    OpType.CU1, phase, [linkman.get_link_qubit(q0, target_server), linkman.get_link_qubit(q1, target_server)]
                 )
                 # Append correction gates if within an H-embedding unit
                 if currently_h_embedding[q0]:
