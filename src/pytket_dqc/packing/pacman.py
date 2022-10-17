@@ -1,3 +1,4 @@
+from __future__ import annotations  # May be redundant in future (PEP 649)
 from numpy import isclose, bool_
 import networkx as nx
 
@@ -24,13 +25,13 @@ class Packet:
         qubit_vertex: Vertex,
         connected_server_index: int,
         packet_gate_vertices: List[Vertex],
-        contained_embeddings: List[Tuple[Packet]] = list()
+        contained_embeddings: List[Tuple["Packet"]] = list()
     ):
         self.packet_index: int = packet_index
         self.qubit_vertex: Vertex = qubit_vertex
         self.connected_server_index: int = connected_server_index
         self.packet_gate_vertices: List[Vertex] = packet_gate_vertices
-        self.contained_embeddings: List[Tuple[Packet]] = contained_embeddings
+        self.contained_embeddings: List[Tuple["Packet"]] = contained_embeddings
 
     def __str__(self):
         return f"P{self.packet_index} Gates {self.packet_gate_vertices} Connected {self.connected_server_index}"
@@ -72,17 +73,23 @@ class PacMan:
         """For each vertex in the hypergraph,
         find its corresponding index in the list
         returned by Circuit.get_commands()
+
+        QUESTION: Can I make this a `HypergraphCircuit` method instead?
         """
         for command_index, command_dict in enumerate(
-            self.hypergraph_circuit._commands  # TODO: Rewrite this the way God (Pablo) intended
+            self.hypergraph_circuit._commands  # TODO: Rewrite this the way Pablo intended
         ):
             if command_dict["type"] == "distributed gate":
                 vertex = command_dict["vertex"]
                 self.vertex_to_command_index[vertex] = command_index
 
     def build_packets(self):
-        # By ordering the hyperedges, their respective packets get put
-        # into order by packet_index, up to commutativity of CU1 gates
+        """Build packets from `Hyperedges`
+        Essentially split them up if they go to different servers
+
+        QUESTION: Would it be better to have each CU1 actually be its
+        own packet (I think this is what Junyi explicitly asks for)?
+        """
         hyperedges_ordered = self.get_hyperedges_ordered()
         starting_index = 0
         for qubit_vertex in self.hypergraph_circuit.get_qubit_vertices():
@@ -98,9 +105,12 @@ class PacMan:
         for qubit_vertex in self.hypergraph_circuit.get_qubit_vertices():
             neighbouring_packets: List[Tuple[Packet]] = list()
             for packet in self.packets_by_qubit[qubit_vertex][:-1]:
-                if are_neighbouring_packets(packet, self.get_next_packet(packet)):
+                if (
+                    self.get_next_packet(packet) is not None
+                    and self.are_neighbouring_packets(packet, self.get_next_packet(packet))
+                ):
                     neighbouring_packets.append((packet, self.get_next_packet(packet)))
-            self.neighbouring_packets[qubit_vertex].extend(neighbouring_packets)
+            self.neighbouring_packets[qubit_vertex] = neighbouring_packets
 
     def identify_hopping_packets(self):
         for qubit_vertex in self.hypergraph_circuit.get_qubit_vertices():
@@ -113,13 +123,15 @@ class PacMan:
                     and self.get_next_packet(next_packet) is not None
                 ):
                     next_packet = self.get_next_packet(next_packet)
-                    if self.are_intermediate_commands_embeddable(packet, next_packet):
+                    if self.are_hoppable_packets(packet, next_packet):
                         self.hopping_packets[qubit_vertex].append(
                             (packet, next_packet)
                         )
                     break
 
     def merge_packets(self, first_packet: Packet, second_packet: Packet):
+        """Given two packets, merge them.
+        """
         assert first_packet.packet_index < second_packet.packet_index
         assert first_packet.qubit_vertex == second_packet.qubit_vertex
         assert first_packet.connected_server_index == second_packet.connected_server_index
@@ -144,9 +156,10 @@ class PacMan:
         ), "Have not properly reassigned the packed indices"
 
     def get_next_packet(self, packet: Packet) -> Optional[Packet]:
-        # Find the next packet on the same qubit
-        # that has the same connected server.
-        # Returns None if no such packet exists
+        """Find the next packet on the qubit of the given packet that
+        is connected to the same server as the given packet.
+        Returns None if no such packet exists
+        """
         for potential_packet in self.packets_by_qubit[packet.qubit_vertex]:
             if potential_packet.packet_index <= packet.packet_index:
                 continue
@@ -160,6 +173,7 @@ class PacMan:
         return None
 
     def get_all_packets(self) -> List[Packet]:
+        """Return a list of all packets on the entire circuit"""
         all_packets: List[Packet] = []
         for packets in self.packets_by_qubit.values():
             all_packets += packets
@@ -167,8 +181,7 @@ class PacMan:
         return all_packets
 
     def are_neighbouring_packets(self, first_packet: Packet, second_packet: Packet):
-        # Check a bunch of conditions to see if two packets can be merged
-        # via neighbouring D type packing
+        """Check if two given packets are neighbouring packets"""
 
         if (
             first_packet.qubit_vertex != second_packet.qubit_vertex
@@ -189,9 +202,7 @@ class PacMan:
     def are_hoppable_packets(
         self, first_packet: Packet, second_packet: Packet
     ) -> bool:
-        # Go through each command and
-        # create Hadamard sandwiches around the CU1s that appear
-        # Whilst doing so, verify that these sandwiches are embeddable
+        """Check if two given packets are hopping packets""" 
 
         print(
             f"Are packets {first_packet} and "
@@ -274,9 +285,10 @@ class PacMan:
     def hyperedge_to_packets(
         self, hyperedge: Hyperedge, starting_index: int
     ) -> Tuple[int, List[Packet]]:
-        # Convert a hyperedge into a packet(s)
-        # Multiple needed if the hyperedge ends up having gates
-        # distributed to multiple servers
+        """Convert a hyperedge into a packet(s)
+        Multiple needed if the hyperedge ends up having gates
+        distributed to multiple servers
+        """
         hyperedge_qubit_vertex = self.hypergraph_circuit.get_qubit_vertex(
             hyperedge
         )
@@ -316,7 +328,8 @@ class PacMan:
         return starting_index, packets
 
     def get_hyperedges_ordered(self) -> Dict[Vertex, List[Hyperedge]]:
-        # Orders hyperedges into their circuit sequential order
+        """Orders hyperedges into their circuit sequential order
+        """
         hyperedges: Dict[Vertex, List[Hyperedge]] = {}
 
         # Populate the qubit_vertex keys
@@ -358,7 +371,7 @@ class PacMan:
 
     def get_connected_server(self, qubit_vertex: Vertex, gate_vertex: Vertex):
         command_index = self.vertex_to_command_index[gate_vertex]
-        command_dict = self.hypergraph_circuit._commands[command_index]  # TODO: Rewrite this as God (Pablo) intended
+        command_dict = self.hypergraph_circuit._commands[command_index]  # TODO: Rewrite this as Pablo intended
         qubits = command_dict["command"].qubits
         qubit_vertex_candidates = [
             self.qubit_vertex_from_qubit(qubit)
@@ -373,6 +386,9 @@ class PacMan:
         return self.placement.placement[other_qubit_vertex]
 
     def qubit_vertex_from_qubit(self, qubit: Qubit):
+        """Given Qubit, find it's vertex on the hypergraph
+        Question: Should be `HypergraphCircuit` method?
+        """
         # TODO: Maybe not needed anymore
         for (
             vertex,
@@ -386,7 +402,9 @@ class PacMan:
         raise Exception("Could not find a vertex corresponding to this qubit.")
 
     def circuit_element_from_vertex(self, vertex: Vertex):
-        # This could maybe belong to HypergraphCircuit instead?
+        """Given a vertex, return the circuit element (Qubit or Command)
+        Question: Should be `HypergraphCircuit` method?
+        """
         # TODO: Don't access hidden stuff
         if (
             self.hypergraph_circuit._vertex_circuit_map[vertex]["type"]
@@ -402,6 +420,10 @@ class PacMan:
             ]
 
     def get_last_command_index(self, gate_vertex_list: List[Vertex]) -> int:
+        """Given a list of gate vertices, return the vertex that
+        corresponds to the last gate in the circuit.
+        Question: Should be `HypergraphCircuit` method?
+        """
         last_command_index: int = -1  # Placeholder value
         for vertex in gate_vertex_list:
             if (
@@ -413,6 +435,10 @@ class PacMan:
         return last_command_index
 
     def get_first_command_index(self, gate_vertex_list: List[Vertex]) -> int:
+        """Given a list of gate vertices, return the vertex that
+        corresponds to the last gate in the circuit.
+        Question: Should be `HypergraphCircuit` method?
+        """
         first_command_index: int = -1  # Placeholder value
         for vertex in gate_vertex_list:
             if (
@@ -452,10 +478,11 @@ class PacMan:
         return intermediate_commands
 
     def is_embeddable_CU1(self, command: Command, packet: Packet) -> bool:
-        # Bad function name but this checks that a CU1 itself
-        # COULD be embeddable
-        # i.e. only prove that we cannot embed but does not check the 1q
-        # gates surrounding it, hence doesn't prove it IS embeddable
+        """Bad function name but this checks that a CU1 itself
+        COULD be embeddable
+        i.e. only prove that we cannot embed but does not check the 1q
+        gates surrounding it, hence doesn't prove it IS embeddable
+        """
         packet_servers = {
             self.placement.placement[packet.qubit_vertex],
             packet.connected_server_index,
@@ -475,12 +502,12 @@ class PacMan:
         return True
 
     def convert_1q_ops(self, ops: List[Op]) -> List[Op]:
-        # Converts a set of 1q ops
-        # in the gateset of Rz, Z, X, H
-        # with 1 Hadamard
-        # so that it is in the same gateset
-        # but has 2 Hadamards in the list.
-        # BREAKS IF Z or X or Rz
+        """Converts a set of 1q ops
+        in the gateset of Rz, Z, X, H
+        with 1 Hadamard
+        so that it is in the same gateset
+        but has 2 Hadamards in the list.
+        """
 
         hadamard_indices = [
             i for i, op in enumerate(ops) if op.type == OpType.H
@@ -544,10 +571,13 @@ class PacMan:
     def are_1q_op_phases_npi(
         self, prior_1q_ops: List[Op], post_1q_ops: List[Op]
     ) -> bool_:
-        # Check if the sum of the params of the
-        # U1 gates that sandwich a CU1 are
-        # equal to n
-        # (i.e. the actual phases are equal to n * pi)
+        """Check if the sum of the params of the
+        U1 gates that sandwich a CU1 are
+        equal to n
+        (i.e. the actual phases are equal to n * pi)
+
+        QUESTION: Move to utils? It's a bit specific I suppose though
+        """
 
         if len(prior_1q_ops) == 0 or prior_1q_ops[-1].type == OpType.H or all(
             [op.type in distributable_1q_op_types for op in prior_1q_ops]
@@ -670,6 +700,9 @@ class PacMan:
         return graph, top_nodes
     
     def get_hopping_packet_from_embedded_packet(self, embedded_packet: Packet):
+        """Given a packet that can be embedded,
+        return the hopping packet in which it is embedded
+        """
         for hopping_packet in self.hopping_packets[embedded_packet.qubit_vertex]:
             if (
                 hopping_packet[0].packet_index < embedded_packet.packet_index
