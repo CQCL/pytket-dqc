@@ -221,19 +221,19 @@ def test_distribution_cost_with_embedding():
 
     distribution = Distribution(dist_circ, placement, network)
 
-    assert not dist_circ.h_embedding_required(new_hyperedges[0])
+    assert not dist_circ.requires_h_embedded_cu1(new_hyperedges[0])
     assert distribution.hyperedge_cost(new_hyperedges[0]) == 3
-    assert not dist_circ.h_embedding_required(new_hyperedges[1])
+    assert not dist_circ.requires_h_embedded_cu1(new_hyperedges[1])
     assert distribution.hyperedge_cost(new_hyperedges[1]) == 4
-    assert not dist_circ.h_embedding_required(new_hyperedges[2])
+    assert not dist_circ.requires_h_embedded_cu1(new_hyperedges[2])
     assert distribution.hyperedge_cost(new_hyperedges[2]) == 4
-    assert not dist_circ.h_embedding_required(new_hyperedges[3])
+    assert not dist_circ.requires_h_embedded_cu1(new_hyperedges[3])
     assert distribution.hyperedge_cost(new_hyperedges[3]) == 2
-    assert dist_circ.h_embedding_required(new_hyperedges[4])
+    assert dist_circ.requires_h_embedded_cu1(new_hyperedges[4])
     assert distribution.hyperedge_cost(new_hyperedges[4]) == 5
-    assert not dist_circ.h_embedding_required(new_hyperedges[5])
+    assert not dist_circ.requires_h_embedded_cu1(new_hyperedges[5])
     assert distribution.hyperedge_cost(new_hyperedges[5]) == 1
-    assert not dist_circ.h_embedding_required(new_hyperedges[6])
+    assert not dist_circ.requires_h_embedded_cu1(new_hyperedges[6])
     assert distribution.hyperedge_cost(new_hyperedges[6]) == 0
 
     assert distribution.cost() == 3 + 4 + 4 + 2 + 5 + 1 + 0

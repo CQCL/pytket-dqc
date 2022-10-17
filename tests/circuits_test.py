@@ -690,7 +690,7 @@ def test_get_hyperedge_subcircuit():
     assert test_c.get_commands() == hyp_circ.get_hyperedge_subcircuit(hyp_2)
 
 
-def test_h_embedding_required():
+def test_requires_h_embedded_cu1():
 
     circ = Circuit(4)
     circ.add_gate(OpType.CU1, 0.1234, [1, 2])
@@ -709,12 +709,12 @@ def test_h_embedding_required():
     # The initial hyperedges do not have embeddings
     hyp_circ = HypergraphCircuit(circ)
     for hyperedge in hyp_circ.hyperedge_list:
-        assert not hyp_circ.h_embedding_required(hyperedge)
+        assert not hyp_circ.requires_h_embedded_cu1(hyperedge)
 
     # Consider some merged hyperedges
     hyp_0 = Hyperedge([0, 5, 7, 11, 12])
     hyp_2 = Hyperedge([2, 4, 5, 6, 13])
     hyp_3 = Hyperedge([3, 6, 7, 9, 12])
-    assert hyp_circ.h_embedding_required(hyp_0)
-    assert hyp_circ.h_embedding_required(hyp_2)
-    assert not hyp_circ.h_embedding_required(hyp_3)
+    assert hyp_circ.requires_h_embedded_cu1(hyp_0)
+    assert hyp_circ.requires_h_embedded_cu1(hyp_2)
+    assert not hyp_circ.requires_h_embedded_cu1(hyp_3)
