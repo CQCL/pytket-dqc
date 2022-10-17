@@ -222,7 +222,7 @@ class HypergraphCircuit(Hypergraph):
 
         return subcirc_commands
 
-    def h_embedding_required(self, hyperedge: Hyperedge) -> bool:
+    def requires_h_embedded_cu1(self, hyperedge: Hyperedge) -> bool:
         """Returns whether or not H-type embedding of CU1 gates is required
         to implement the given hyperedge.
         """
