@@ -43,10 +43,7 @@ class Distribution:
         """
 
         # TODO: There may be some other checks that we want to do here to check
-        # that the packets hypergraph is not totally nonsensical. For example
-        # that gate nodes are not in too many packets. I think the conditions
-        # that are most relevant will emerge as the to_pytket_circuit method
-        # is written.
+        # that the phypergraph is not totally nonsensical.
         return self.placement.is_valid(self.circuit, self.network)
 
     def cost(self) -> int:
@@ -226,7 +223,7 @@ class Distribution:
     def get_qubit_mapping(self) -> dict[Qubit, Qubit]:
         """Mapping from circuit (logical) qubits to server (hardware) qubits.
         """
-        if self.is_valid():
+        if not self.is_valid():
             raise Exception("The distribution of the circuit is not valid!")
 
         qubit_map = {}
@@ -241,7 +238,7 @@ class Distribution:
         return qubit_map
 
     def to_pytket_circuit(self) -> Circuit:
-        if self.is_valid():
+        if not self.is_valid():
             raise Exception("The distribution of the circuit is not valid!")
 
         # -- SCOPE VARIABLES -- #
@@ -279,7 +276,7 @@ class Distribution:
                 # where ``qubit`` is a Qubit in the original circuit.
                 self.link_qubit_dict: dict[tuple[Qubit, int], Qubit] = {}
 
-            def next_available(self, server: int) -> Qubit:
+            def request_link_qubit(self, server: int) -> Qubit:
                 """Returns an available link qubit in ``server``. If there are
                 none, it creates a new one.
                 """
@@ -289,9 +286,10 @@ class Distribution:
                 else:
                     qubit = self.available[server].pop()
 
+                self.occupied[server].append(qubit)
                 return qubit
 
-            def release(self, link_qubit: Qubit):
+            def release_link_qubit(self, link_qubit: Qubit):
                 """Releases ``link_qubit``, making it again available.
                 """
 
@@ -371,7 +369,7 @@ class Distribution:
                 last_link_qubit = self.get_link_qubit(circ_qubit, source)
                 for next_server in best_path:
                     # Retrieve an available link qubit to populate
-                    this_link_qubit = self.next_available(next_server)
+                    this_link_qubit = self.request_link_qubit(next_server)
                     # Add the EjppAction to create the connection
                     starting_actions.append(
                         EjppAction(
@@ -411,7 +409,7 @@ class Distribution:
                         EjppAction(from_qubit=target_link, to_qubit=home_link,)
                     )
                     # Release the HW qubit acting as ``target_link``
-                    self.release(target_link)
+                    self.release_link_qubit(target_link)
                     # Delete its entry from the dictionary
                     del self.link_qubit_dict[(circ_qubit, target)]
 
@@ -488,8 +486,9 @@ class Distribution:
                         servers = [
                             s
                             for s in linkman.connected_servers(q)
-                            if s != remote_server
                         ]
+                        assert remote_server in servers
+                        servers.remove(remote_server)
 
                         # Close the connections
                         for ejpp_end in linkman.end_links(q, servers):
