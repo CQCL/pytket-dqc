@@ -409,7 +409,7 @@ class Distribution:
                     target_link = self.get_link_qubit(circ_qubit, target)
                     # Disconnect ``target_link``
                     ending_actions.append(
-                        EjppAction(from_qubit=target_link, to_qubit=home_link,)
+                        EjppAction(from_qubit=target_link, to_qubit=home_link)
                     )
                     # Release the HW qubit acting as ``target_link``
                     self.release_link_qubit(target_link)
@@ -520,7 +520,6 @@ class Distribution:
                                 [],
                                 [ejpp_end.from_qubit, ejpp_end.to_qubit],
                             )
-                            linkman.release_link_qubit(ejpp_end.from_qubit)
 
                         # Retrieve the link on the remote server
                         remote_link = linkman.get_link_qubit(q, remote_server)
@@ -645,18 +644,22 @@ class Distribution:
                 # If this gate is the last gate in the hyperedge, end links
                 if v_gate >= max(hyp0.vertices):
                     # End connections and release the link qubits
-                    for c_server in linkman.connected_servers(q0):
-                        link_qubit = linkman.link_qubit_dict[(q0, c_server)]
-                        new_circ.add_custom_gate(end_proc, [], [link_qubit, qubit_mapping[q0]])
-                        linkman.release_link_qubit(link_qubit)
+                    for ejpp_end in linkman.end_links(q0, linkman.connected_servers(q0)):
+                        new_circ.add_custom_gate(
+                            end_proc,
+                            [],
+                            [ejpp_end.from_qubit, ejpp_end.to_qubit],
+                        )
                     # This hyperedge has been fully implemented
                     current_hyperedges[q0].remove(hyp0)
                 if v_gate >= max(hyp1.vertices):
                     # End connections and release the link qubits
-                    for c_server in linkman.connected_servers(q1):
-                        link_qubit = linkman.link_qubit_dict[(q1, c_server)]
-                        new_circ.add_custom_gate(end_proc, [], [link_qubit, qubit_mapping[q1]])
-                        linkman.release_link_qubit(link_qubit)
+                    for ejpp_end in linkman.end_links(q1, linkman.connected_servers(q1)):
+                        new_circ.add_custom_gate(
+                            end_proc,
+                            [],
+                            [ejpp_end.from_qubit, ejpp_end.to_qubit],
+                        )
                     # This hyperedge has been fully implemented
                     current_hyperedges[q1].remove(hyp1)
 
@@ -672,11 +675,12 @@ class Distribution:
         assert not embedding
         # Finally, close all remaining connections
         for q in qubit_mapping.keys():
-            src_qubit = qubit_mapping[q]
-            for c_server in linkman.connected_servers(q):
-                link_qubit = linkman.link_qubit_dict[(q, c_server)]
-                new_circ.add_custom_gate(end_proc, [], [link_qubit, src_qubit])
-                linkman.release_link_qubit(link_qubit)
+            for ejpp_end in linkman.end_links(q, linkman.connected_servers(q)):
+                new_circ.add_custom_gate(
+                    end_proc,
+                    [],
+                    [ejpp_end.from_qubit, ejpp_end.to_qubit],
+                )
 
         # Final sanity checks
         assert all_cu1_local(new_circ)
