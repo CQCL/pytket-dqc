@@ -16,6 +16,7 @@ from pytket_dqc.utils.gateset import (
     end_proc,
     telep_proc,
 )
+from pytket_dqc.utils import check_equivalence
 from pytket_dqc.allocators import Brute, Random
 from pytket_dqc.networks import NISQNetwork
 from pytket.circuit import QControlBox, Op, OpType  # type: ignore
@@ -627,17 +628,19 @@ def test_from_placed_circuit():
             "rb",
         ) as f:
             rebased_circuit = pickle.load(f)
-        with open(
-            "tests/test_circuits/packing/"
-            + f"packed_circuits/packed_circuit{i}.pickle",
-            "rb",
-        ) as f:
-            packed_circuit = pickle.load(f)
         network = NISQNetwork(network_tuple[0], network_tuple[1])
-
         distribution = allocator.allocate(rebased_circuit, network, seed=seed)
         bp_circuit = BipartiteCircuit(rebased_circuit, distribution.placement)
-        assert packed_circuit == bp_circuit.packed_circuit
+        orig_qubits = rebased_circuit.qubits
+        new_qubits = bp_circuit.packed_circuit.qubits
+        
+        with open(
+            "tests/test_circuits/packing/"
+            + f"qubit_mappings/qubit_mapping{i}.pickle",
+            "rb",
+        ) as f:
+            mapping = pickle.load(f)
+        assert check_equivalence(rebased_circuit, bp_circuit.packed_circuit, mapping)
 
 
 def test_distribution_initialisation():
