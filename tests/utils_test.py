@@ -39,9 +39,9 @@ def test_qasm():
     circ_with_dist = dist_circ.to_pytket_circuit(placement, network)
     qasm_str = to_qasm_str(circ_with_dist)
 
-    qams_circ = circuit_from_qasm_str(qasm_str)
+    qasm_circ = circuit_from_qasm_str(qasm_str)
 
-    assert qams_circ == circ_with_dist
+    assert qasm_circ == circ_with_dist
 
 
 def test_rebase():
