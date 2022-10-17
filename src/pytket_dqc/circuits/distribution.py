@@ -594,9 +594,10 @@ class Distribution:
                 hyp1 = hyp_circ.get_hyperedges_of([v_gate, v_q1])
 
                 # Add the required starting processes (if any)
-                for ejpp_start in linkman.start_link(hyp0, target_server):
-                    new_circ.add_custom_gate(start_proc, [], [ejpp_start.from_qubit, ejpp_start.to_qubit])
-                for ejpp_start in linkman.start_link(hyp1, target_server):
+                start_actions = linkman.start_link(hyp0, target_server) + linkman.start_link(hyp1, target_server)
+                for ejpp_start in start_actions:
+                    if ejpp_start.to_qubit not in new_circ.qubits:
+                        new_circ.add_qubit(ejpp_start.to_qubit)
                     new_circ.add_custom_gate(start_proc, [], [ejpp_start.from_qubit, ejpp_start.to_qubit])
 
                 # Append the gate to the circuit
@@ -627,9 +628,10 @@ class Distribution:
                 new_circ.add_custom_gate(end_proc, [], [link_qubit, src_qubit])
 
         # Final sanity checks
-        assert _cost_from_circuit(circ) == self.cost()
-        assert valid_distributed_circuit(new_circ)
+        assert all_cu1_local(new_circ)
         assert check_equivalence(
             self.circuit.get_circuit(), new_circ, qubit_mapping
         )
+        assert _cost_from_circuit(circ) == self.cost()
+
         return new_circ
