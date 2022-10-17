@@ -247,24 +247,24 @@ def test_to_pytket_circ_CRz():
         start_proc, [], [server_1[0], server_0_link[0]]
     )
     test_circ.add_custom_gate(
-        start_proc, [], [server_2[0], server_0_link[2]]
+        start_proc, [], [server_2[0], server_0_link[1]]
     )
     test_circ.add_gate(
-        OpType.CU1, 0.3, [server_0_link[0], server_0_link[2]]
+        OpType.CU1, 0.3, [server_0_link[0], server_0_link[1]]
     )
     test_circ.add_custom_gate(end_proc, [], [server_0_link[0], server_1[0]])
     test_circ.H(server_1[0])
     test_circ.add_custom_gate(
-        start_proc, [], [server_1[0], server_0_link[1]]
+        start_proc, [], [server_1[0], server_0_link[0]]
     )
     test_circ.add_gate(
-        OpType.CU1, 1.0, [server_0_link[1], server_0_link[2]]
+        OpType.CU1, 1.0, [server_0_link[0], server_0_link[1]]
     )
     test_circ.add_gate(
-        OpType.CU1, 0.3, [server_0_link[2], server_0_link[1]]
+        OpType.CU1, 0.3, [server_0_link[1], server_0_link[0]]
     )
-    test_circ.add_custom_gate(end_proc, [], [server_0_link[1], server_1[0]])
-    test_circ.add_custom_gate(end_proc, [], [server_0_link[2], server_2[0]])
+    test_circ.add_custom_gate(end_proc, [], [server_0_link[0], server_1[0]])
+    test_circ.add_custom_gate(end_proc, [], [server_0_link[1], server_2[0]])
 
     test_circ_command_names = [
         command.op.get_name() for command in test_circ.get_commands()
@@ -282,6 +282,8 @@ def test_to_pytket_circ_CRz():
         command.qubits for command in circ_with_dist.get_commands()
     ]
 
+    print(test_circ.get_commands())
+    print(circ_with_dist.get_commands())
     assert test_circ_command_qubits == circ_with_dist_command_qubits
 
 
