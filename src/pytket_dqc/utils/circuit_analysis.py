@@ -12,11 +12,11 @@ def _cost_from_circuit(circ: Circuit) -> int:
 
     for command in circ.get_commands():
 
-        if command.op.get_name() == "StartingProcess":
+        if command.op.get_name() == "starting_process":
             starting_count += 1
-        elif command.op.get_name() == "EndingProcess":
+        elif command.op.get_name() == "ending_process":
             ending_count += 1
-        elif command.op.get_name() == "Teleportation":
+        elif command.op.get_name() == "teleportation":
             telep_count += 1
 
     assert starting_count == ending_count
@@ -51,7 +51,7 @@ def ebit_memory_required(circ: Circuit) -> dict[int, int]:
     for command in circ.get_commands():
 
         # Increase the current memory if an EJPP process starts
-        if command.op.get_name() == "StartingProcess":
+        if command.op.get_name() == "starting_process":
             link_qubit = command.qubits[1]
             assert is_link_qubit(link_qubit)
             server_id = get_server_id(link_qubit)
@@ -62,7 +62,7 @@ def ebit_memory_required(circ: Circuit) -> dict[int, int]:
                 ebit_memory_required[server_id] += 1
 
         # Decrease the current memory if an EJPP process ends
-        elif command.op.get_name() == "EndingProcess":
+        elif command.op.get_name() == "ending_process":
             link_qubit = command.qubits[0]
             assert is_link_qubit(link_qubit)
             server_id = get_server_id(link_qubit)
@@ -96,22 +96,22 @@ def evicted_gate_count(circ: Circuit) -> int:
 # TODO: This is checked by parsing the name of the qubit.
 # Is there a better way to do this?
 def is_link_qubit(qubit) -> bool:
-    qubit_name = str(qubit).split()
+    qubit_name = str(qubit).split("_")
     # ``qubit_name`` follows either of these patterns:
-    #     Workspace qubit: ['Server', server_id+'['+qubit_id+']']
-    #     Link qubit: ['Server', server_id, 'Link', 'Edge', edge_id+'[0]']
+    #     Workspace qubit: ['server', server_id+'['+qubit_id+']']
+    #     Link qubit: ['server', server_id, 'link', 'edge', edge_id+'[0]']
     return len(qubit_name) > 2
 
 
 # TODO: The way the server ID is obtained is by parsing the name of
 # the qubit. Is there a better way to access this information?
 def get_server_id(qubit) -> int:
-    qubit_name = str(qubit).split()
+    qubit_name = str(qubit).split("_")
     # ``qubit_name`` follows either of these patterns:
-    #     Workspace qubit: ['Server', server_id+'['+qubit_id+']']
-    #     Link qubit: ['Server', server_id, 'Link', 'Edge', edge_id+'[0]']
+    #     Workspace qubit: ['server', server_id+'['+qubit_id+']']
+    #     Link qubit: ['server', server_id, 'link', 'edge', edge_id+'[0]']
     # Sanity check
-    assert qubit_name[0] == "Server"
+    assert qubit_name[0] == "server"
 
     if is_link_qubit(qubit):
         return int(qubit_name[1])
