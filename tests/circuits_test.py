@@ -1,4 +1,5 @@
-import pickle
+import pickle  # type: ignore
+import json  # type: ignore
 import pytest
 from pytket import Circuit
 from pytket_dqc.placement import Placement
@@ -16,7 +17,7 @@ from pytket_dqc.utils.gateset import (
     end_proc,
     telep_proc,
 )
-from pytket_dqc.allocators import Brute, Random
+from pytket_dqc.allocators import Brute, Random, HypergraphPartitioning
 from pytket_dqc.networks import NISQNetwork
 from pytket_dqc.utils import check_equivalence
 from pytket.circuit import QControlBox, Op, OpType  # type: ignore
@@ -244,26 +245,14 @@ def test_to_pytket_circ_CRz():
 
     server_0_link = test_circ.add_q_register("Server 0 Link Register", 2)
 
-    test_circ.add_custom_gate(
-        start_proc, [], [server_1[0], server_0_link[0]]
-    )
-    test_circ.add_custom_gate(
-        start_proc, [], [server_2[0], server_0_link[1]]
-    )
-    test_circ.add_gate(
-        OpType.CU1, 0.3, [server_0_link[0], server_0_link[1]]
-    )
+    test_circ.add_custom_gate(start_proc, [], [server_1[0], server_0_link[0]])
+    test_circ.add_custom_gate(start_proc, [], [server_2[0], server_0_link[1]])
+    test_circ.add_gate(OpType.CU1, 0.3, [server_0_link[0], server_0_link[1]])
     test_circ.add_custom_gate(end_proc, [], [server_0_link[0], server_1[0]])
     test_circ.H(server_1[0])
-    test_circ.add_custom_gate(
-        start_proc, [], [server_1[0], server_0_link[0]]
-    )
-    test_circ.add_gate(
-        OpType.CU1, 1.0, [server_0_link[0], server_0_link[1]]
-    )
-    test_circ.add_gate(
-        OpType.CU1, 0.3, [server_0_link[1], server_0_link[0]]
-    )
+    test_circ.add_custom_gate(start_proc, [], [server_1[0], server_0_link[0]])
+    test_circ.add_gate(OpType.CU1, 1.0, [server_0_link[0], server_0_link[1]])
+    test_circ.add_gate(OpType.CU1, 0.3, [server_0_link[1], server_0_link[0]])
     test_circ.add_custom_gate(end_proc, [], [server_0_link[0], server_1[0]])
     test_circ.add_custom_gate(end_proc, [], [server_0_link[1], server_2[0]])
 
@@ -317,31 +306,19 @@ def test_to_pytket_circuit_detached_gate():
     server_0_link = test_circ.add_q_register("Server 0 Link Register", 2)
     server_1_link = test_circ.add_q_register("Server 1 Link Register", 1)
 
-    test_circ.add_custom_gate(
-        start_proc, [], [server_1[0], server_0_link[0]]
-    )
-    test_circ.add_custom_gate(
-        start_proc, [], [server_2[0], server_1_link[0]]
-    )
+    test_circ.add_custom_gate(start_proc, [], [server_1[0], server_0_link[0]])
+    test_circ.add_custom_gate(start_proc, [], [server_2[0], server_1_link[0]])
     test_circ.add_custom_gate(
         start_proc, [], [server_1_link[0], server_0_link[1]]
     )
-    test_circ.add_gate(
-        OpType.CU1, 1.0, [server_0_link[0], server_0_link[1]]
-    )
+    test_circ.add_gate(OpType.CU1, 1.0, [server_0_link[0], server_0_link[1]])
     test_circ.add_custom_gate(end_proc, [], [server_0_link[0], server_1[0]])
     test_circ.add_custom_gate(end_proc, [], [server_1_link[0], server_2[0]])
     test_circ.H(server_1[0])
-    test_circ.add_custom_gate(
-        start_proc, [], [server_1[0], server_0_link[0]]
-    )
-    test_circ.add_gate(
-        OpType.CU1, 1.0, [server_0_link[0], server_0_link[1]]
-    )
+    test_circ.add_custom_gate(start_proc, [], [server_1[0], server_0_link[0]])
+    test_circ.add_gate(OpType.CU1, 1.0, [server_0_link[0], server_0_link[1]])
     test_circ.add_custom_gate(end_proc, [], [server_0_link[0], server_1[0]])
-    test_circ.add_custom_gate(
-        end_proc, [], [server_0_link[1], server_2[0]]
-    )
+    test_circ.add_custom_gate(end_proc, [], [server_0_link[1], server_2[0]])
 
     # TODO: Ideally we would compare the circuits directly here, rather than
     # checking the command names. This is prevented by a feature of TKET
@@ -399,27 +376,17 @@ def test_to_pytket_circuit_gates_on_different_servers():
     server_0_link = test_circ.add_q_register("Server 0 Link Register", 2)
     server_1_link = test_circ.add_q_register("Server 1 Link Register", 1)
 
-    test_circ.add_custom_gate(
-        start_proc, [], [server_1[0], server_0_link[0]]
-    )
-    test_circ.add_custom_gate(
-        start_proc, [], [server_2[0], server_1_link[0]]
-    )
+    test_circ.add_custom_gate(start_proc, [], [server_1[0], server_0_link[0]])
+    test_circ.add_custom_gate(start_proc, [], [server_2[0], server_1_link[0]])
     test_circ.add_custom_gate(
         start_proc, [], [server_1_link[0], server_0_link[1]]
     )
-    test_circ.add_gate(
-        OpType.CU1, 1.0, [server_0_link[0], server_0_link[1]]
-    )
+    test_circ.add_gate(OpType.CU1, 1.0, [server_0_link[0], server_0_link[1]])
     test_circ.add_custom_gate(end_proc, [], [server_1_link[0], server_2[0]])
     test_circ.add_custom_gate(end_proc, [], [server_0_link[1], server_2[0]])
     test_circ.H(server_2[0])
-    test_circ.add_custom_gate(
-        start_proc, [], [server_2[0], server_1_link[0]]
-    )
-    test_circ.add_gate(
-        OpType.CU1, 1.0, [server_1[0], server_1_link[0]]
-    )
+    test_circ.add_custom_gate(start_proc, [], [server_2[0], server_1_link[0]])
+    test_circ.add_gate(OpType.CU1, 1.0, [server_1[0], server_1_link[0]])
     test_circ.add_custom_gate(end_proc, [], [server_0_link[0], server_1[0]])
     test_circ.add_custom_gate(end_proc, [], [server_1_link[0], server_2[0]])
 
@@ -478,9 +445,7 @@ def test_to_pytket_circuit_with_branching_distribution_tree():
     server_2_link = test_circ.add_q_register("Server 2 Link Register", 1)
     server_3_link = test_circ.add_q_register("Server 3 Link Register", 1)
 
-    test_circ.add_custom_gate(
-        start_proc, [], [server_0[0], server_1_link[0]]
-    )
+    test_circ.add_custom_gate(start_proc, [], [server_0[0], server_1_link[0]])
     test_circ.add_custom_gate(
         start_proc, [], [server_1_link[0], server_2_link[0]]
     )
@@ -490,12 +455,8 @@ def test_to_pytket_circuit_with_branching_distribution_tree():
     test_circ.add_gate(OpType.CU1, 1.0, [server_2_link[0], server_2[0]])
     test_circ.add_custom_gate(end_proc, [], [server_1_link[0], server_0[0]])
     test_circ.add_gate(OpType.CU1, 1.0, [server_3_link[0], server_3[0]])
-    test_circ.add_custom_gate(
-        end_proc, [], [server_2_link[0], server_0[0]]
-    )
-    test_circ.add_custom_gate(
-        end_proc, [], [server_3_link[0], server_0[0]]
-    )
+    test_circ.add_custom_gate(end_proc, [], [server_2_link[0], server_0[0]])
+    test_circ.add_custom_gate(end_proc, [], [server_3_link[0], server_0[0]])
 
     test_circ_command_names = [
         command.op.get_name() for command in test_circ.get_commands()
@@ -521,6 +482,72 @@ def test_to_pytket_circuit_with_branching_distribution_tree():
 
     assert check_equivalence(
         circ, circ_with_dist, distribution.get_qubit_mapping()
+    )
+
+
+def test_to_pytket_circuit_with_pauli_circ():
+    # Randomly generated circuit of type pauli, depth 10 and 10 qubits
+    with open(
+        "tests/test_circuits/to_pytket_circuit/pauli_10.json", "r"
+    ) as fp:
+        circ = Circuit().from_dict(json.load(fp))
+
+    network = NISQNetwork(
+        [[2, 1], [1, 0], [1, 3], [0, 4]],
+        {0: [0, 1, 2], 1: [3, 4], 2: [5, 6, 7], 3: [8], 4: [9]},
+    )
+
+    allocator = HypergraphPartitioning()
+    distribution = allocator.allocate(circ, network, num_rounds=0)
+
+    assert check_equivalence(
+        circ,
+        distribution.to_pytket_circuit(),
+        distribution.get_qubit_mapping(),
+    )
+
+
+def test_to_pytket_circuit_with_random_circ():
+    # Randomly generated circuit of type random, depth 6 and 6 qubits
+    with open(
+        "tests/test_circuits/to_pytket_circuit/random_6.json", "r"
+    ) as fp:
+        circ = Circuit().from_dict(json.load(fp))
+
+    network = NISQNetwork(
+        [[2, 1], [1, 0], [1, 3], [0, 4]],
+        {0: [0, 1, 2], 1: [3, 4], 2: [5, 6, 7], 3: [8], 4: [9]},
+    )
+
+    allocator = HypergraphPartitioning()
+    distribution = allocator.allocate(circ, network, num_rounds=0)
+
+    assert check_equivalence(
+        circ,
+        distribution.to_pytket_circuit(),
+        distribution.get_qubit_mapping(),
+    )
+
+
+def test_to_pytket_circuit_with_frac_cz_circ():
+    # Randomly generated circuit of type frac_CZ, depth 10 and 10 qubits
+    with open(
+        "tests/test_circuits/to_pytket_circuit/frac_CZ_10.json", "r"
+    ) as fp:
+        circ = Circuit().from_dict(json.load(fp))
+
+    network = NISQNetwork(
+        [[2, 1], [1, 0], [1, 3], [0, 4]],
+        {0: [0, 1, 2], 1: [3, 4], 2: [5, 6, 7], 3: [8], 4: [9]},
+    )
+
+    allocator = HypergraphPartitioning()
+    distribution = allocator.allocate(circ, network, num_rounds=0)
+
+    assert check_equivalence(
+        circ,
+        distribution.to_pytket_circuit(),
+        distribution.get_qubit_mapping(),
     )
 
 
