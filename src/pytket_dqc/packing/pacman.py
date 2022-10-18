@@ -66,7 +66,9 @@ class PacMan:
         self.vertex_to_command_index: Dict[Vertex, int] = dict()
         self.packets_by_qubit: Dict[Vertex, List[Packet]] = dict()
         self.hopping_packets: Dict[Vertex, List[Tuple[Packet, ...]]] = dict()
-        self.neighbouring_packets: Dict[Vertex, List[Tuple[Packet, ...]]] = dict()
+        self.neighbouring_packets: Dict[
+            Vertex, List[Tuple[Packet, ...]]
+        ] = dict()
         self.merged_packets: Dict[Vertex, List[Tuple[Packet, ...]]] = dict()
 
         self.build_vertex_to_command_index()
@@ -464,7 +466,9 @@ class PacMan:
             command_index
         ]  # TODO: Rewrite this as Pablo intended
         command = command_dict["command"]
-        assert type(command) == Command  # This is for mypy check - is there a better way?
+        assert (
+            type(command) == Command
+        )  # This is for mypy check - is there a better way?
         qubits = command.qubits
         qubit_vertex_candidates = [
             self.qubit_vertex_from_qubit(qubit)
@@ -803,7 +807,9 @@ class PacMan:
 
         return true_conflicts
 
-    def get_embedded_packets(self, hopping_packet: Tuple[Packet, ...]):
+    def get_embedded_packets(
+        self, hopping_packet: Tuple[Packet, ...]
+    ) -> List[Packet]:
         initial_index = hopping_packet[0].packet_index
         final_index = hopping_packet[1].packet_index
         embedded_packets: List[Packet] = []
@@ -816,16 +822,14 @@ class PacMan:
 
         return embedded_packets
 
-    def get_all_embedded_packets_for_qubit_vertex(self, qubit_vertex):
+    def get_all_embedded_packets_for_qubit_vertex(
+        self, qubit_vertex
+    ) -> Dict[Tuple[Packet, ...], List[Packet]]:
         embedded_packets = {}
         for hopping_packet in self.hopping_packets[qubit_vertex]:
-            embedded_packets_for_hopping_packet = self.get_embedded_packets(
+            embedded_packets[hopping_packet] = self.get_embedded_packets(
                 hopping_packet
             )
-            if len(embedded_packets_for_hopping_packet) > 0:
-                embedded_packets[
-                    (packet.packet_index for packet in hopping_packet)
-                ] = embedded_packets_for_hopping_packet
         return embedded_packets
 
     def get_all_embedded_packets(self):
@@ -834,7 +838,7 @@ class PacMan:
             embedded_packets_for_qubit_vertex = (
                 self.get_all_embedded_packets_for_qubit_vertex(qubit_vertex)
             )
-            if len(embedded_packets_for_qubit_vertex.keys()) > 0:
+            if embedded_packets_for_qubit_vertex:
                 embedded_packets[
                     qubit_vertex
                 ] = embedded_packets_for_qubit_vertex
@@ -842,7 +846,6 @@ class PacMan:
 
     def get_nx_graph_conflict(self):
         graph = nx.Graph()
-        all_embedded_packets = self.get_all_embedded_packets()
         conflict_edges = []
         checked_hopping_packets = []
         bipartitions = {
@@ -868,61 +871,17 @@ class PacMan:
                             continue
 
                         # Only care if the connected packet is also embedded
-                        # First see if the qubit vertex of connected packet is
-                        # has any embedded packets
-                        # Then see if the connected packet is
-                        # One such embedded packet
-                        if (
-                            connected_packet.qubit_vertex
-                            in all_embedded_packets.keys()
-                            and connected_packet
-                            in [
-                                inner
-                                for outer in all_embedded_packets[
-                                    connected_packet.qubit_vertex
-                                ].values()
-                                for inner in outer
-                            ]
-                        ):
+                        if self.is_packet_embedded(connected_packet):
                             conflict_edges.append(
-                                (
-                                    self.get_hopping_packet_from_embedded_packet(
-                                        embedded_packet
-                                    ),
-                                    self.get_hopping_packet_from_embedded_packet(
-                                        connected_packet
-                                    ),
+                                self.get_conflict_edge(
+                                    embedded_packet, connected_packet
                                 )
                             )
 
-                            # Figure out which partition to put each packet in
-                            if (
-                                self.get_hopping_packet_from_embedded_packet(
-                                    embedded_packet
-                                )
-                                in bipartitions[0]
-                            ):
-                                is_top_half = False
-                            elif (
-                                self.get_hopping_packet_from_embedded_packet(
-                                    embedded_packet
-                                )
-                                in bipartitions[1]
-                            ):
-                                is_top_half = True
-                            else:
-                                is_top_half = True
-                                bipartitions[is_top_half].append(
-                                    self.get_hopping_packet_from_embedded_packet(
-                                        connected_packet
-                                    )
-                                )
-
-                            bipartitions[not is_top_half].append(
-                                self.get_hopping_packet_from_embedded_packet(
-                                    connected_packet
-                                )
+                            bipartitions = self.assign_to_bipartitions(
+                                embedded_packet, connected_packet, bipartitions
                             )
+
                         checked_hopping_packets.append(embedded_packet)
         logging.debug(f"Conflict edges: {conflict_edges}")
         graph.add_edges_from(conflict_edges)
@@ -941,3 +900,55 @@ class PacMan:
                 > embedded_packet.packet_index
             ):
                 return hopping_packet
+
+    def is_packet_embedded(self, packet: Packet) -> bool:
+        return (
+            packet.qubit_vertex in self.get_all_embedded_packets().keys()
+            and any(
+                packet in value
+                for value in self.get_all_embedded_packets_for_qubit_vertex(
+                    packet.qubit_vertex
+                ).values()
+            )
+        )
+
+    def get_conflict_edge(
+        self, embedded_packet1: Packet, embedded_packet2: Packet
+    ) -> Tuple[Tuple[Packet, ...], Tuple[Packet, ...]]:
+        """This is a very specific function to replace
+        long lines of code in `get_nx_graph_conflict()`
+        """
+        return (
+            self.get_hopping_packet_from_embedded_packet(embedded_packet1),
+            self.get_hopping_packet_from_embedded_packet(embedded_packet2),
+        )
+
+    def assign_to_bipartitions(
+        self,
+        embedded_packet: Packet,
+        connected_packet: Packet,
+        bipartitions: Dict[int, List[Tuple[Packet, ...]]],
+    ) -> Dict[int, List[Tuple[Packet, ...]]]:
+        """This is a very specific function to replace
+        long lines of code in `get_nx_graph_conflict()`
+        """
+        if (
+            self.get_hopping_packet_from_embedded_packet(embedded_packet)
+            in bipartitions[0]
+        ):
+            is_top_half = False
+        elif (
+            self.get_hopping_packet_from_embedded_packet(embedded_packet)
+            in bipartitions[1]
+        ):
+            is_top_half = True
+        else:
+            is_top_half = True
+            bipartitions[is_top_half].append(
+                self.get_hopping_packet_from_embedded_packet(connected_packet)
+            )
+
+        bipartitions[not is_top_half].append(
+            self.get_hopping_packet_from_embedded_packet(connected_packet)
+        )
+        return bipartitions
