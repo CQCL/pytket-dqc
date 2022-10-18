@@ -1,8 +1,8 @@
 from __future__ import annotations  # May be redundant in future (PEP 649)
 import logging
 from numpy import isclose, bool_
-import networkx as nx
-from networkx.algorithms import bipartite
+import networkx as nx  # type: ignore
+from networkx.algorithms import bipartite  # type: ignore
 from typing import List, Dict, Tuple, Optional
 
 from pytket_dqc.circuits import HypergraphCircuit, Hyperedge, Vertex
