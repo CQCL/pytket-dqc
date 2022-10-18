@@ -5,11 +5,6 @@ from .packing import (  # noqa:F401
     LinkQubit,
 )
 
-# from .pacman import (  # noqa:F401
-#     PacMan,
-# )
-
-
 from .pacman import (  # noqa:F401
     PacMan,
     Packet
