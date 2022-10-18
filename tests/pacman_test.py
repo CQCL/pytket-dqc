@@ -47,6 +47,12 @@ test_circuit.add_gate(cz, [0,4]) # 3rd party CU1
 test_circuit.H(0)
 test_circuit.add_gate(cz, [0,2]) # NOT mergeable
 
+# Test that conflicts are identified correctly
+test_circuit.H(0).H(2)
+test_circuit.add_gate(cz, [0,2])
+test_circuit.H(0).H(2)
+test_circuit.add_gate(cz, [0,2])
+
 placement_dict = {
     0: 0, 1: 0, 2: 1, 3: 1, 4: 2, 5: 2,
 }
@@ -59,12 +65,12 @@ hypergraph_circuit = HypergraphCircuit(test_circuit)
 
 def test_build_vertex_to_command_index():
     pacman = PacMan(hypergraph_circuit, placement)
-    command_indices = [
-        0,1,4,5,8,10,12,17,19,21,23,25,27
-    ]
-    vertex_to_command_index_reference = dict()
-    for i in range(6, 19):
-        vertex_to_command_index_reference[i] = command_indices[i - 6]
+    commands = test_circuit.get_commands()
+    cu1_command_indices = [i for i, command in enumerate(commands) if command.op.type == OpType.CU1]
+    vertex_to_command_index_reference = {
+        i + len(test_circuit.qubits): cu1_command_indices[i]
+        for i in range(len(cu1_command_indices))
+    }
     assert pacman.vertex_to_command_index == vertex_to_command_index_reference
 
 def test_build_packets():
@@ -83,26 +89,30 @@ def test_build_packets():
         Packet(10, 0, 1, [16]),
         Packet(11, 0, 2, [17]),
         Packet(12, 0, 1, [18]),
+        Packet(13, 0, 1, [19]),
+        Packet(14, 0, 1, [20])
     ]
 
     q1_packets = [
-        Packet(13, 1, 0, [15])
+        Packet(15, 1, 0, [15])
     ]
 
     q2_packets = [
-        Packet(14, 2, 0, [6,10,12,13,16,18])
+        Packet(16, 2, 0, [6,10,12,13,16,18]),
+        Packet(17, 2, 0, [19]),
+        Packet(18, 2, 0, [20])
     ]
 
     q3_packets = [
-        Packet(15, 3, 0, [9,11,14])
+        Packet(19, 3, 0, [9,11,14])
     ]
 
     q4_packets = [
-        Packet(16, 4, 0, [7,17])
+        Packet(20, 4, 0, [7,17])
     ]
 
     q5_packets = [
-        Packet(17, 5, 0, [8])
+        Packet(21, 5, 0, [8])
     ]
 
     packets_by_qubit_reference[0] = q0_packets
@@ -117,48 +127,54 @@ def test_build_packets():
     pacman.build_packets()  # Rebuild prior to merging
     assert pacman.packets_by_qubit == packets_by_qubit_reference
 
-def test_identify_and_merge_neighbouring_packets():
-    packets_by_qubit_reference = dict()
-    q0_packets = [
-        Packet(0, 0, 1, [6,9]),
-        Packet(1, 0, 2, [7,8]),
-        Packet(2, 0, 1, [10,11]),
-        Packet(3, 0, 1, [12]),
-        Packet(4, 0, 1, [13]),
-        Packet(5, 0, 1, [14]),
-        Packet(6, 0, 0, [15]),
-        Packet(7, 0, 1, [16]),
-        Packet(8, 0, 2, [17]),
-        Packet(9, 0, 1, [18]),
-    ]
+def test_identify_neighbouring_packets():
+    neighbouring_packets_reference = {
+        0: [
+            (Packet(0, 0, 1, [6]), Packet(3, 0, 1, [9])),
+            (Packet(1, 0, 2, [7]), Packet(2, 0, 2, [8])),
+            (Packet(4, 0, 1, [10]), Packet(5, 0, 1, [11]))
+        ],
+        1: [], 2:[], 3:[], 4:[], 5: []
+    }
 
-    q1_packets = [
-        Packet(10, 1, 0, [15])
-    ]
+    assert PacMan(hypergraph_circuit, placement).neighbouring_packets == neighbouring_packets_reference
 
-    q2_packets = [
-        Packet(11, 2, 0, [6,10,12,13,16,18])
-    ]
+def test_identify_hopping_packets():
+    hopping_packets_reference = {
+        0: [
+            (Packet(3, 0, 1, [9]), Packet(8, 0, 1, [14])),
+            (Packet(12, 0, 1, [18]), Packet(14, 0, 1, [20]))
+        ],
+        1:[],
+        2: [
+            (Packet(16, 2, 0, [6,10,12,13,16,18]), Packet(18, 2, 0, [20]))
+        ],
+        3:[], 4:[], 5: []
+    }
 
-    q3_packets = [
-        Packet(12, 3, 0, [9,11,14])
-    ]
+    assert PacMan(hypergraph_circuit, placement).hopping_packets == hopping_packets_reference
 
-    q4_packets = [
-        Packet(13, 4, 0, [7,17])
-    ]
-
-    q5_packets = [
-        Packet(14, 5, 0, [8])
-    ]
-
-    packets_by_qubit_reference[0] = q0_packets
-    packets_by_qubit_reference[1] = q1_packets
-    packets_by_qubit_reference[2] = q2_packets
-    packets_by_qubit_reference[3] = q3_packets
-    packets_by_qubit_reference[4] = q4_packets
-    packets_by_qubit_reference[5] = q5_packets
-
-    pacman = PacMan(hypergraph_circuit, placement)
-    for key, value in packets_by_qubit_reference.items():
-        assert value == pacman.packets_by_qubit[key]
+def test_merge_packets():
+    merged_packets_reference = {
+        0: [
+            (Packet(0, 0, 1, [6]), Packet(3, 0, 1, [9]), Packet(8, 0, 1, [14]),),
+            (Packet(1, 0, 2, [7]), Packet(2, 0, 2, [8])),
+            (Packet(4, 0, 1, [10]), Packet(5, 0, 1, [11])),
+            (Packet(6, 0, 1, [12]),),
+            (Packet(7, 0, 1, [13]),),
+            (Packet(9, 0, 0, [15]),),
+            (Packet(10, 0, 1, [16]),),
+            (Packet(11, 0, 2, [17]),),
+            (Packet(12, 0, 1, [18]), Packet(14, 0, 1, [20])),
+            (Packet(13, 0, 1, [19]),)
+        ],
+        1: [(Packet(15, 1, 0, [15]),)],
+        2: [
+            (Packet(16, 2, 0, [6,10,12,13,16,18]), Packet(18, 2, 0, [20])),
+            (Packet(17, 2, 0, [19]),)
+        ],
+        3: [(Packet(19, 3, 0, [9,11,14]),)],
+        4: [(Packet(20, 4, 0, [7,17]),)],
+        5: [(Packet(21, 5, 0, [8]),)]
+    }
+    assert PacMan(hypergraph_circuit, placement).merged_packets == merged_packets_reference
