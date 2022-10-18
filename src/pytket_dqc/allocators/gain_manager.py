@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from pytket_dqc import Distribution
-    from pytket_dqc.circuits import Hyperedge
 
 
 class GainManager:
@@ -96,7 +95,7 @@ class GainManager:
             server_tree=tree,
             h_embedding=self.h_embedding_required[hyperedge],
         )
-        
+
     def split_gain(
         self,
         old_hyperedge: Hyperedge,

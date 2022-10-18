@@ -155,7 +155,7 @@ def test_gain_no_embeddings():
     # The gains should look like this:
     current_cost = steiner_cost_1 + steiner_cost_13 + steiner_cost_124
     new_cost = steiner_cost_12 + steiner_cost_123 + steiner_cost_24
-    assert manager.gain(0, 2) == current_cost - new_cost
+    assert manager.move_gain(0, 2) == current_cost - new_cost
     # Check that, indeed, the costs are updated accordingly
     assert manager.hyperedge_cost_map[Hyperedge([0, 5, 7])] == steiner_cost_1
     assert (
