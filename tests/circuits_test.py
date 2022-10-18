@@ -447,10 +447,13 @@ def test_to_pytket_circuit_with_branching_distribution_tree():
         .add_gate(OpType.CU1, 1.0, [0, 1])
         .add_gate(OpType.CU1, 1.0, [0, 2])
     )
-    dist_two_CZ_circ = HypergraphCircuit(two_CZ_circ)
+    dist_circ = HypergraphCircuit(two_CZ_circ)
 
-    placement_two = Placement({0: 0, 1: 2, 2: 3, 3: 2, 4: 3})
-    circ_with_dist = dist_two_CZ_circ.to_pytket_circuit(placement_two, network)
+    placement = Placement({0: 0, 1: 2, 2: 3, 3: 2, 4: 3})
+    distribution = Distribution(dist_circ, placement, network)
+    assert distribution.is_valid()
+
+    circ_with_dist = distribution.to_pytket_circuit()
 
     test_circ = Circuit()
 
@@ -458,30 +461,28 @@ def test_to_pytket_circuit_with_branching_distribution_tree():
     server_2 = test_circ.add_q_register("Server 2", 1)
     server_3 = test_circ.add_q_register("Server 3", 1)
 
-    server_1_link_0 = test_circ.add_q_register("Server 1 Link Edge 0", 1)
-    server_2_link_0 = test_circ.add_q_register("Server 2 Link Edge 0", 1)
-    server_3_link_0 = test_circ.add_q_register("Server 3 Link Edge 0", 1)
+    server_1_link = test_circ.add_q_register("Server 1 Link Register", 1)
+    server_2_link = test_circ.add_q_register("Server 2 Link Register", 1)
+    server_3_link = test_circ.add_q_register("Server 3 Link Register", 1)
 
     test_circ.add_custom_gate(
-        start_proc, [], [server_0[0], server_1_link_0[0]]
+        start_proc, [], [server_0[0], server_1_link[0]]
     )
     test_circ.add_custom_gate(
-        start_proc, [], [server_1_link_0[0], server_2_link_0[0]]
+        start_proc, [], [server_1_link[0], server_2_link[0]]
     )
     test_circ.add_custom_gate(
-        start_proc, [], [server_1_link_0[0], server_3_link_0[0]]
+        start_proc, [], [server_1_link[0], server_3_link[0]]
     )
-
-    test_circ.add_gate(OpType.CU1, 1.0, [server_2_link_0[0], server_2[0]])
-    test_circ.add_gate(OpType.CU1, 1.0, [server_3_link_0[0], server_3[0]])
-
+    test_circ.add_gate(OpType.CU1, 1.0, [server_2_link[0], server_2[0]])
+    test_circ.add_custom_gate(end_proc, [], [server_1_link[0], server_0[0]])
+    test_circ.add_gate(OpType.CU1, 1.0, [server_3_link[0], server_3[0]])
     test_circ.add_custom_gate(
-        end_proc, [], [server_3_link_0[0], server_1_link_0[0]]
+        end_proc, [], [server_2_link[0], server_0[0]]
     )
     test_circ.add_custom_gate(
-        end_proc, [], [server_2_link_0[0], server_1_link_0[0]]
+        end_proc, [], [server_3_link[0], server_0[0]]
     )
-    test_circ.add_custom_gate(end_proc, [], [server_1_link_0[0], server_0[0]])
 
     test_circ_command_names = [
         command.op.get_name() for command in test_circ.get_commands()
@@ -489,6 +490,8 @@ def test_to_pytket_circuit_with_branching_distribution_tree():
     circ_with_dist_command_names = [
         command.op.get_name() for command in circ_with_dist.get_commands()
     ]
+
+    print(circ_with_dist.get_commands())
 
     assert test_circ_command_names == circ_with_dist_command_names
 
@@ -515,9 +518,10 @@ def test_to_pytket_circuit_with_teleportation():
     dist_circ = HypergraphCircuit(circ)
 
     placement = Placement({0: 1, 1: 2, 2: 0, 3: 2})
-    assert dist_circ.is_placement(placement)
+    distribution = Distribution(dist_circ, placement, network)
+    assert distribution.is_valid()
 
-    circ_with_dist = dist_circ.to_pytket_circuit(placement, network)
+    circ_with_dist = distribution.to_pytket_circuit()
 
     test_circ = Circuit()
 
@@ -576,6 +580,7 @@ def test_to_pytket_circuit_with_teleportation():
     assert test_circ.q_registers == circ_with_dist.q_registers
 
 
+@pytest.mark.skip(reason="Tests a function that has been removed")
 def test_to_relabeled_registers():
 
     circ = Circuit(3)
