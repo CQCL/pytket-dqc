@@ -63,7 +63,7 @@ jobs:
         run: pip install -r tests/test_requirements.txt
 
       - name: Tests
-        run: pytest tests/
+        run: pytest --cov-report term-missing:skip-covered --cov=src/pytket_dqc tests/
 
       - name: Type check
         run: mypy src/pytket_dqc tests
