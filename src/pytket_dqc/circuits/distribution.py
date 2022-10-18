@@ -230,7 +230,7 @@ class Distribution:
         for v in self.circuit.get_qubit_vertices():
             server = self.placement.placement[v]
             circ_qubit = self.circuit.get_qubit_of_vertex(v)
-            hw_qubit = Qubit(f"Server {server}", current_in_server[server])
+            hw_qubit = Qubit(f"server_{server}", current_in_server[server])
             current_in_server[server] += 1
             qubit_map[circ_qubit] = hw_qubit
 
@@ -281,7 +281,7 @@ class Distribution:
                 """
                 if not self.available[server]:
                     next_id = len(self.occupied[server])
-                    qubit = Qubit(f"Server {server} Link Register", next_id)
+                    qubit = Qubit(f"server_{server}_link_register", next_id)
                 else:
                     qubit = self.available[server].pop()
 

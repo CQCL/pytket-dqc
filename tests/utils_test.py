@@ -8,6 +8,7 @@ from pytket_dqc.utils import (
 )
 from pytket import Circuit, OpType  # type: ignore
 from pytket.pauli import Pauli  # type: ignore
+from pytket_dqc import Distribution
 from pytket_dqc.circuits import HypergraphCircuit
 from pytket_dqc.networks import NISQNetwork
 from pytket_dqc.allocators import Brute
@@ -20,6 +21,28 @@ from pytket.circuit import PauliExpBox  # type: ignore
 from pytket.passes import DecomposeBoxes  # type: ignore
 import numpy as np  # type: ignore
 import pytest  # type: ignore
+from pytket_dqc.utils.qasm import to_qasm_str
+from pytket.qasm import circuit_from_qasm_str
+
+
+def test_qasm():
+
+    network = NISQNetwork([[0, 1], [0, 2]], {0: [0], 1: [1], 2: [2]})
+
+    circ = Circuit(2)
+    circ.add_gate(OpType.CU1, 1.0, [0, 1]).H(0).Rz(
+        0.3, 0).H(0).add_gate(OpType.CU1, 1.0, [0, 1])
+
+    placement = Placement({0: 1, 1: 2, 2: 0, 3: 0})
+    distribution = Distribution(HypergraphCircuit(circ), placement, network)
+    assert distribution.is_valid()
+
+    circ_with_dist = distribution.to_pytket_circuit()
+    qasm_str = to_qasm_str(circ_with_dist)
+
+    qasm_circ = circuit_from_qasm_str(qasm_str)
+
+    assert qasm_circ == circ_with_dist
 
 
 def test_rebase():

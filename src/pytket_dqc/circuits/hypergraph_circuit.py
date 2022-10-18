@@ -428,7 +428,7 @@ class HypergraphCircuit(Hypergraph):
         # Add registers to new circuit.
         for server, vertex_list in server_to_vertex_dict.items():
             server_to_register[server] = circ.add_q_register(
-                f"Server {server}", len(vertex_list)
+                f'server_{server}', len(vertex_list)
             )
 
         # Build map from circuit qubits to server registers
