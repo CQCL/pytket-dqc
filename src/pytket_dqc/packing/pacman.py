@@ -2,6 +2,7 @@ from __future__ import annotations  # May be redundant in future (PEP 649)
 import logging
 from numpy import isclose, bool_
 import networkx as nx
+from networkx.algorithms import bipartite
 from typing import List, Dict, Tuple, Optional
 
 from pytket_dqc.circuits import HypergraphCircuit, Hyperedge, Vertex
@@ -676,22 +677,19 @@ class PacMan:
         edges = set()
         for qubit_vertex in self.hypergraph_circuit.get_qubit_vertices():
             for merged_packet in self.merged_packets[qubit_vertex]:
-                for packet in merged_packet:
-                    connected_packets = self.get_connected_packets(packet)
-                    for connected_packet in connected_packets:
-                        connected_merged_packet = self.get_containing_merged_packet(connected_packet)
-                        if tuple([merged_packet, connected_merged_packet]) not in edges:
-                            if connected_merged_packet in top_packets:
-                                assert merged_packet not in top_packets
-                                bottom_packets.add(merged_packet)
-                            elif connected_merged_packet in bottom_packets:
-                                assert merged_packet not in bottom_packets
-                                top_packets.add(merged_packet)
-                            else:
-                                top_packets.add(merged_packet)
-                                bottom_packets.add(connected_merged_packet)
-                            edges.add(tuple([merged_packet, connected_merged_packet]))
-        
+                for connected_merged_packet in self.get_connected_merged_packets(merged_packet):
+                    if tuple([merged_packet, connected_merged_packet]) not in edges:
+                        if connected_merged_packet in top_packets:
+                            assert merged_packet not in top_packets
+                            bottom_packets.add(merged_packet)
+                        elif connected_merged_packet in bottom_packets:
+                            assert merged_packet not in bottom_packets
+                            top_packets.add(merged_packet)
+                        else:
+                            top_packets.add(merged_packet)
+                            bottom_packets.add(connected_merged_packet)
+                        edges.add(tuple([merged_packet, connected_merged_packet]))
+    
         graph.add_nodes_from(top_packets, bipartite = 0)
         graph.add_nodes_from(bottom_packets, bipartite = 1)
         graph.add_edges_from(edges)
@@ -702,6 +700,32 @@ class PacMan:
         for merged_packet in self.merged_packets[packet.qubit_vertex]:
             if packet in merged_packet:
                 return merged_packet
+
+    def get_connected_merged_packets(self, merged_packet: Tuple[Packet]) -> List[Tuple[Packet]]:
+        connected_merged_packets: List[Tuple[Packet]] = list()
+        for packet in merged_packet:
+            connected_packets = self.get_connected_packets(packet)
+            for connected_packet in connected_packets:
+                connected_merged_packets.append(self.get_containing_merged_packet(connected_packet))
+        
+        return connected_merged_packets
+
+
+    def get_mvc_merged_graph(self):
+        g, topnodes = self.get_nx_graph_merged()
+        matching = bipartite.maximum_matching(g, top_nodes = topnodes)
+        return (bipartite.to_vertex_cover(g, matching, top_nodes=topnodes))
+
+    def get_true_conflict_edges(self) -> List[Tuple[Packet]]:
+        cg, topnodes = self.get_nx_graph_conflict()
+        mvc = self.get_mvc_merged_graph()
+        true_conflicts = list()
+        for u,v in cg.edges():
+            if u in mvc and v in mvc:
+                true_conflicts.append(tuple([u,v]))
+        
+        return true_conflicts
+
 
     def get_embedded_packets(self, hopping_packet: Tuple[Packet]):
         initial_index = hopping_packet[0].packet_index
