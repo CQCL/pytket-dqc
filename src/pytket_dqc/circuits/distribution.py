@@ -488,7 +488,7 @@ class Distribution:
                     for server in linkman.connected_servers(q):
                         new_circ.H(linkman.get_link_qubit(q, server))
 
-                # Case 2: action depends on whether we were embedding or not
+                # Case 2: action depends on whether we are embedding or not
                 else:
                     if not currently_h_embedding[q]:  # Starts embedding unit
                         currently_h_embedding[q] = True
@@ -499,8 +499,7 @@ class Distribution:
                         # NOTE: According to the conditions of embeddability,
                         # the embedded CU1 gates all act on the same servers
 
-                        # Look through the rest of the circuit and figure out
-                        # if we are in case 1 or case 2
+                        # Find the CU1 gate
                         found_CU1_gate = None
                         for g in commands[(cmd_idx + 1) :]:  # noqa: E203
                             if g.op.type == OpType.CU1 and q in g.qubits:
