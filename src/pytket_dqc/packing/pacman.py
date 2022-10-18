@@ -15,6 +15,7 @@ from pytket_dqc.utils import (
 
 logging.basicConfig(level=logging.INFO)
 
+
 class Packet:
     """The basic structure of a collection of
     distributable gates.
@@ -32,7 +33,6 @@ class Packet:
         self.qubit_vertex: Vertex = qubit_vertex
         self.connected_server_index: int = connected_server_index
         self.gate_vertices: List[Vertex] = gate_vertices
-        self.contained_embeddings: List[Tuple["Packet"]] = contained_embeddings
 
     def __str__(self):
         return f"P{self.packet_index}"
@@ -47,7 +47,6 @@ class Packet:
                 and o.qubit_vertex == self.qubit_vertex
                 and o.gate_vertices == self.gate_vertices
                 and o.connected_server_index == self.connected_server_index
-                and o.contained_embeddings == self.contained_embeddings
             )
         return False
     
@@ -109,6 +108,7 @@ class PacMan:
 
     def identify_neighbouring_packets(self):
         for qubit_vertex in self.hypergraph_circuit.get_qubit_vertices():
+            logging.debug(f"Checking qubit vertex {qubit_vertex} for neighbouring packets.")
             neighbouring_packets: List[Tuple[Packet]] = list()
             considered_packet_list = []
             for packet in self.packets_by_qubit[qubit_vertex][:-1]:
@@ -128,7 +128,7 @@ class PacMan:
 
     def identify_hopping_packets(self):
         for qubit_vertex in self.hypergraph_circuit.get_qubit_vertices():
-            logging.debug(f"Checking qubit vertex {qubit_vertex}")
+            logging.debug(f"Checking qubit vertex {qubit_vertex} for hopping packets.")
             self.hopping_packets[qubit_vertex] = []
             for packet in self.packets_by_qubit[qubit_vertex][:-1]:
                 next_packet = self.get_next_packet(packet)
@@ -137,36 +137,45 @@ class PacMan:
                     and self.get_next_packet(next_packet) is not None
                 ):
                     next_packet = self.get_next_packet(next_packet)
+                    logging.debug(f"Comparing {packet} and {next_packet}")
                     if self.are_hoppable_packets(packet, next_packet):
                         self.hopping_packets[qubit_vertex].append(
                             (packet, next_packet)
                         )
-                    break
+                        break
 
     def merge_all_packets(self):
         """Using the identified neighbouring and hopping
-        embeddings, create tuples merging them together
+        packets, create tuples merging them together
         """
+        logging.debug("Merging packets")
         for qubit_vertex in self.hypergraph_circuit.get_qubit_vertices():
             self.merged_packets[qubit_vertex] = []
             considered_packets = []
             for packet in self.packets_by_qubit[qubit_vertex]:
+                logging.debug(f"Checking packet {packet}")
                 if packet in considered_packets:
+                    logging.debug("Already checked")
                     continue
                 mergeable_packets = [packet]
                 continue_merging = True
                 while continue_merging:
+                    logging.debug(f"Start of checks {mergeable_packets}")
+                    logging.debug(f"Packet of interest is {packet}")
                     if self.get_subsequent_neighbouring_packet(packet) is not None:
                         packet = self.get_subsequent_neighbouring_packet(packet)
+                        logging.debug(f"Adding {packet} to mergeable packets (neighbouring)")
                         mergeable_packets.append(packet)
                         considered_packets.append(packet)
-                    elif self.get_subsequent_hopping_packet(packet):
+                    elif self.get_subsequent_hopping_packet(packet) is not None:
                         packet = self.get_subsequent_hopping_packet(packet)
+                        logging.debug(f"Adding {packet} to mergeable packets (hopping) {mergeable_packets}")
                         mergeable_packets.append(packet)
                         considered_packets.append(packet)
                     else:
                         continue_merging = False 
-                print(mergeable_packets)
+                    logging.debug(f"End of checks {mergeable_packets}")
+
                 self.merged_packets[qubit_vertex].append(tuple(mergeable_packets))
                 
                     
@@ -196,7 +205,6 @@ class PacMan:
         if len(potential_hopping_packets) == 0:
             return None
         else:
-            print("Hopping")
             return potential_hopping_packets[0][1]
 
     def get_next_packet(self, packet: Packet) -> Optional[Packet]:
@@ -258,6 +266,7 @@ class PacMan:
         intermediate_commands = self.get_intermediate_commands(
             first_packet, second_packet
         )
+        logging.debug(f"Intermediate ops {[command.op for command in intermediate_commands]}")
         cu1_indices = []
         for i, command in enumerate(intermediate_commands):
             if command.op.type not in allowed_op_types:
@@ -276,7 +285,7 @@ class PacMan:
         first_ops = [command.op for command in first_commands]
         ops_1q_list.append(first_ops)
         for i, cu1_index in enumerate(cu1_indices):
-            if i in [0, len(cu1_indices) - 1]:
+            if cu1_index == cu1_indices[0]:
                 continue
             commands = intermediate_commands[cu1_indices[i - 1] + 1: cu1_index]
             ops = [command.op for command in commands]
@@ -288,13 +297,14 @@ class PacMan:
         last_commands = intermediate_commands[cu1_indices[-1] + 1:]
         last_ops = [command.op for command in last_commands]
         ops_1q_list.append(last_ops)
+        logging.debug(f"ops_1q_list {ops_1q_list}")
 
         for i, ops_1q in enumerate(ops_1q_list[:-1]):
             if i == 0:
                 n_hadamards = len([op for op in ops_1q if op.type == OpType.H])
-                if n_hadamards > 1:
+                if n_hadamards != 1:
                     logging.debug(
-                        "No, there are too many Hadamards at "
+                        "No, there can only be 1 Hadamard "
                         + "the start of the Hadamard sandwich."
                     )
                     return False
@@ -303,9 +313,9 @@ class PacMan:
                 n_hadamards = len(
                     [op for op in ops_1q_list[-1] if op.type == OpType.H]
                 )
-                if n_hadamards > 1:
+                if n_hadamards != 1:
                     logging.debug(
-                        "No, there are too many Hadamards "
+                        "No, there can only be 1 Hadamard "
                         + "at the end of the Hadamard sandwich."
                     )
                     return False
@@ -318,13 +328,6 @@ class PacMan:
                 return False
 
         return True
-
-    def merge_all_neighbouring_packets(self):
-        for qubit_index in self.hypergraph_circuit.get_qubit_vertices():
-            for packet_pair in reversed(self.neighbouring_packets[qubit_index]):
-                self.merge_packets(packet_pair[0], packet_pair[1])
-                self.neighbouring_packets[qubit_index].pop()
-            assert not self.neighbouring_packets[qubit_index]
 
     def hyperedge_to_packets(
         self, hyperedge: Hyperedge, starting_index: int
@@ -373,6 +376,8 @@ class PacMan:
 
     def get_hyperedges_ordered(self) -> Dict[Vertex, List[Hyperedge]]:
         """Orders hyperedges into their circuit sequential order
+
+        QUESTION: Move to `HypergraphCircuit`?
         """
         hyperedges: Dict[Vertex, List[Hyperedge]] = {}
 
@@ -548,7 +553,7 @@ class PacMan:
     def convert_1q_ops(self, ops: List[Op]) -> List[Op]:
         """Converts a set of 1q ops
         in the gateset of Rz, Z, X, H
-        with 1 Hadamard
+        with up to 1 Hadamard
         so that it is in the same gateset
         but has 2 Hadamards in the list.
         """
@@ -556,20 +561,22 @@ class PacMan:
         hadamard_indices = [
             i for i, op in enumerate(ops) if op.type == OpType.H
         ]
-
+        hadamard = Op.create(OpType.H)
         hadamard_count = len(hadamard_indices)
 
         assert (
             hadamard_count <= 2
         ), f"There should not be more than 2 Hadamards. {ops}"
 
-        hadamard = Op.create(OpType.H)
         if hadamard_count == 2:
+            logging.debug(f"Returning {ops} unchanged.")
             return ops
 
         elif hadamard_count == 0:
-            ops.insert(0, hadamard)
+            logging.debug(f"Appending 2 Hadamards to {ops}")
             ops.append(hadamard)
+            ops.append(hadamard)
+            logging.debug(f"Appending 2 Hadamards to {ops}")
             return ops
 
         else:
@@ -609,7 +616,7 @@ class PacMan:
                     hadamard,
                     second_new_phase_op,
                 ]
-
+            logging.debug(f"Converted {ops} for {new_ops}")
             return new_ops
 
     def are_1q_op_phases_npi(
@@ -625,7 +632,7 @@ class PacMan:
 
         if len(prior_1q_ops) == 0 or prior_1q_ops[-1].type == OpType.H or all(
             [op.type in distributable_1q_op_types for op in prior_1q_ops]
-        ):
+        ) and prior_1q_ops[-1].type != OpType.Rz:
             prior_phase = 0
 
         else:
@@ -634,7 +641,7 @@ class PacMan:
 
         if len(post_1q_ops) == 0 or post_1q_ops[0].type == OpType.H or all(
             [op.type in distributable_1q_op_types for op in post_1q_ops]
-        ):
+        ) and post_1q_ops[0].type != OpType.Rz:
             post_phase = 0
 
         else:
