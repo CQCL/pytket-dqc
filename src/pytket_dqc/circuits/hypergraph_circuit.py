@@ -88,8 +88,6 @@ class HypergraphCircuit(Hypergraph):
             vertex in the list of vertices.
         """
 
-        # TODO: Do we also need to check that the numbers in the list are in
-        # increasing order?
         if not self.is_qubit_vertex(vertices[0]):
             raise Exception(
                 f"The first element of {vertices} " +
@@ -97,7 +95,15 @@ class HypergraphCircuit(Hypergraph):
             )
 
         if any(self.is_qubit_vertex(vertex) for vertex in vertices[1:]):
-            raise Exception("There must be only one qubit in the hyperedge")
+            raise Exception("There must be only one qubit in the hyperedge.")
+
+        # I believe this is assumed when distribution costs are calculated.
+        # Please correct me if this is unnecessary.
+        if any(
+            vertex >= next_vertex
+            for vertex, next_vertex in zip(vertices[:-1], vertices[1:])
+        ):
+            raise Exception("Vertex indices must be in increasing order.")
 
         super(HypergraphCircuit, self).add_hyperedge(
             vertices=vertices, weight=weight)
