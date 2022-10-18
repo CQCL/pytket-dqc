@@ -149,7 +149,7 @@ def test_alap():
     # The examples attempted are meant to be interesting cases but this
     # is not in any way exhaustive.
     assert distribution.hyperedge_cost(hyp_0) == 4
-    assert distribution.hyperedge_cost(hyp_2) == 5
+    assert distribution.hyperedge_cost(hyp_2) == 6
 
     distribution.placement.placement[2] = 0
     assert distribution.hyperedge_cost(hyp_2) == 3
@@ -230,10 +230,10 @@ def test_distribution_cost_with_embedding():
     assert not dist_circ.requires_h_embedded_cu1(new_hyperedges[3])
     assert distribution.hyperedge_cost(new_hyperedges[3]) == 2
     assert dist_circ.requires_h_embedded_cu1(new_hyperedges[4])
-    assert distribution.hyperedge_cost(new_hyperedges[4]) == 5
+    assert distribution.hyperedge_cost(new_hyperedges[4]) == 6
     assert not dist_circ.requires_h_embedded_cu1(new_hyperedges[5])
     assert distribution.hyperedge_cost(new_hyperedges[5]) == 1
     assert not dist_circ.requires_h_embedded_cu1(new_hyperedges[6])
     assert distribution.hyperedge_cost(new_hyperedges[6]) == 0
 
-    assert distribution.cost() == 3 + 4 + 4 + 2 + 5 + 1 + 0
+    assert distribution.cost() == 3 + 4 + 4 + 2 + 6 + 1 + 0

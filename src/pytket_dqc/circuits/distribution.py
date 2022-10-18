@@ -43,7 +43,7 @@ class Distribution:
         """
 
         # TODO: There may be some other checks that we want to do here to check
-        # that the phypergraph is not totally nonsensical.
+        # that the hypergraph is not totally nonsensical.
         return self.placement.is_valid(self.circuit, self.network)
 
     def cost(self) -> int:
@@ -76,13 +76,9 @@ class Distribution:
         :param hyperedge: The hyperedge whose cost is to be calculated.
         :type hyperedge: Hyperedge
 
-        :key server_tree: The connectivity tree (subgraph of ``server_graph``)
-            that should be used. If not provided, this function will find a
-            Steiner tree.
+        :key server_tree: The connectivity tree that should be used.
+            If not provided, this function will find a Steiner tree.
         :type server_tree: nx.Graph
-        :key server_graph: The network's ``server_graph``. If not provided,
-            this is calculated from ``self.network``. Meant to save a call.
-        :type server_graph: nx.Graph
         :key requires_h_embedded_cu1: If not provided, it is checked.
         :type requires_h_embedded_cu1: bool
 
@@ -90,7 +86,6 @@ class Distribution:
         :rtype: int
         """
         tree = kwargs.get("server_tree", None)
-        server_graph = kwargs.get("server_graph", None)
         requires_h_embedded_cu1 = kwargs.get("requires_h_embedded_cu1", None)
 
         if hyperedge.weight != 1:
@@ -106,12 +101,9 @@ class Distribution:
         shared_qubit = dist_circ.get_qubit_vertex(hyperedge)
         home_server = placement_map[shared_qubit]
         servers = [placement_map[v] for v in hyperedge.vertices]
-        # Obtain the server graph if it is not given
-        if server_graph is None:
-            server_graph = self.network.get_server_nx()
         # Obtain the Steiner tree or check that the one given is valid
         if tree is None:
-            tree = steiner_tree(server_graph, servers)
+            tree = steiner_tree(self.network.get_server_nx(), servers)
         else:
             assert all(s in tree.nodes for s in servers)
 
@@ -157,7 +149,7 @@ class Distribution:
 
                 elif command.op.type == OpType.CU1:
 
-                    if currently_h_embedding:  # Gate to be embedded
+                    if currently_h_embedding:  # The gate is to be H-embedded
                         assert isclose(command.op.params[0] % 2, 1)  # CZ gate
 
                         q_vertices = [
@@ -169,31 +161,24 @@ class Distribution:
                         ][0]
                         remote_server = placement_map[remote_vertex]
 
-                        # Only servers in the shortest path from remote_server
-                        # to home_server are left intact. The rest of the
-                        # servers need to be disconnected since, otherwise,
-                        # extra ebits would be required to implement the new
-                        # correction gates that would be introduced.
+                        # The only two servers from ``connected_servers`` that
+                        # are left intact are the ``home_server`` and the
+                        # ``remote_server``. All other servers must be
+                        # disconnected.
                         #
-                        # Note: the shortest path is found in server_graph
-                        # instead of in the tree since that is how the
-                        # embedded hyperedge would be implemented if it were
-                        # not embedded (it only connects two servers, so its
-                        # Steiner tree is the shortest path). If we used
-                        # some other path then we would be changing the
-                        # way the embedded gates are distributed, possibly
-                        # increasing the cost of their distribution, hence,
-                        # not following Junyi's main design principle.
+                        # NOTE: Done for the sake of simplicity. If we don't,
+                        # certain correction gates wouldn't be free or be free
+                        # only if the path of the EJPP process distributing
+                        # the embedded gate could be reused to implement the
+                        # correction gates. This is not trivial and not
+                        # taken into account on Junyi's approach since it
+                        # assumes only two servers / all-to-all connectivity
                         #
-                        # Note: by the conditions of embeddability, all gates
+                        # NOTE: by the condition of H-embeddability, all gates
                         # that are being embedded simultaneously act on the
-                        # same two servers.
-                        connection_path = nx.shortest_path(
-                            server_graph, home_server, remote_server
-                        )
-                        connected_servers = connected_servers.intersection(
-                            connection_path
-                        )
+                        # same two distinct servers.
+                        connected_servers = {home_server, remote_server}
+                        assert home_server != remote_server
 
                     else:  # Gate to be distributed (or already local)
 
@@ -209,16 +194,29 @@ class Distribution:
                         # If gate_server doesn't have access to shared_qubit
                         # update the cost, adding the necessary ebits
                         if gate_server not in connected_servers:
-                            connection_path = set(
-                                nx.shortest_path(
-                                    tree, home_server, gate_server
+                            # For each server in ``connected_servers`` find
+                            # the shortest path to ``gate_server`` and use
+                            # the one that is shortest among them
+                            best_path = None
+                            for c_server in connected_servers:
+                                connection_path = nx.shortest_path(
+                                    tree, c_server, gate_server
                                 )
-                            )
-                            required_connections = connection_path.difference(
-                                connected_servers
-                            )
-                            connected_servers.update(required_connections)
-                            cost += len(required_connections)
+                                if (
+                                    best_path is None
+                                    or len(connection_path) < len(best_path)
+                                ):
+                                    best_path = connection_path
+                            assert best_path is not None
+                            # The first element of the path is a ``c_server``
+                            # so the actual cost is the length minus one
+                            #
+                            # NOTE: the ``best_path`` will only contain
+                            # one server from ``connected_servers``. If
+                            # it had two, the shortest path from the second
+                            # would be shorter => contradiction
+                            connected_servers.update(best_path)
+                            cost += len(best_path) - 1
             return cost
 
     def get_qubit_mapping(self) -> dict[Qubit, Qubit]:

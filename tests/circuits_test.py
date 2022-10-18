@@ -18,8 +18,8 @@ from pytket_dqc.utils.gateset import (
     telep_proc,
 )
 from pytket_dqc.allocators import Brute, Random, HypergraphPartitioning
-from pytket_dqc.networks import NISQNetwork
 from pytket_dqc.utils import check_equivalence
+from pytket_dqc.networks import NISQNetwork
 from pytket.circuit import QControlBox, Op, OpType  # type: ignore
 
 # TODO: Test new circuit classes
@@ -673,17 +673,19 @@ def test_from_placed_circuit():
             "rb",
         ) as f:
             rebased_circuit = pickle.load(f)
-        with open(
-            "tests/test_circuits/packing/"
-            + f"packed_circuits/packed_circuit{i}.pickle",
-            "rb",
-        ) as f:
-            packed_circuit = pickle.load(f)
         network = NISQNetwork(network_tuple[0], network_tuple[1])
-
         distribution = allocator.allocate(rebased_circuit, network, seed=seed)
         bp_circuit = BipartiteCircuit(rebased_circuit, distribution.placement)
-        assert packed_circuit == bp_circuit.packed_circuit
+
+        with open(
+            "tests/test_circuits/packing/"
+            + f"qubit_mappings/qubit_mapping{i}.pickle",
+            "rb",
+        ) as f:
+            mapping = pickle.load(f)
+        assert check_equivalence(
+            rebased_circuit, bp_circuit.packed_circuit, mapping
+        )
 
 
 def test_distribution_initialisation():
@@ -695,7 +697,8 @@ def test_distribution_initialisation():
     placement = Placement({0: 1, 1: 2, 2: 2, 3: 0, 4: 1})
 
     network = NISQNetwork(
-        [[0, 1], [1, 2]], {0: [0, 1, 2], 1: [3, 4, 5], 2: [6, 7, 8]},
+        [[0, 1], [1, 2]],
+        {0: [0, 1, 2], 1: [3, 4, 5], 2: [6, 7, 8]},
     )
 
     Distribution(dist_circ, placement, network)
