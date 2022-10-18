@@ -617,7 +617,7 @@ def test_from_placed_circuit():
     seed = 27
     allocator = Random()
 
-    for i in range(5,6):
+    for i in range(6):
         with open(
             f"tests/test_circuits/packing/networks/network{i}.pickle", "rb"
         ) as f:
