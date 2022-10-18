@@ -28,7 +28,7 @@ class Packet:
         qubit_vertex: Vertex,
         connected_server_index: int,
         gate_vertices: List[Vertex],
-        contained_embeddings: List[Tuple[Packet]] = list()
+        contained_embeddings: List[Tuple[Packet]] = list(),
     ):
         self.packet_index: int = packet_index
         self.qubit_vertex: Vertex = qubit_vertex
@@ -50,7 +50,7 @@ class Packet:
                 and o.connected_server_index == self.connected_server_index
             )
         return False
-    
+
     def __hash__(self):
         return hash(repr(self))
 
@@ -65,9 +65,9 @@ class PacMan:
         self.placement = placement
         self.vertex_to_command_index: Dict[Vertex, int] = dict()
         self.packets_by_qubit: Dict[Vertex, List[Packet]] = dict()
-        self.hopping_packets: Dict[Vertex, List[Tuple[Packet]]] = dict()
-        self.neighbouring_packets: Dict[Vertex, List[Tuple[Packet]]] = dict()
-        self.merged_packets: Dict[Vertex, List[Tuple[Packet]]] = dict()
+        self.hopping_packets: Dict[Vertex, List[Tuple[Packet, ...]]] = dict()
+        self.neighbouring_packets: Dict[Vertex, List[Tuple[Packet, ...]]] = dict()
+        self.merged_packets: Dict[Vertex, List[Tuple[Packet, ...]]] = dict()
 
         self.build_vertex_to_command_index()
         self.build_packets()
@@ -82,8 +82,9 @@ class PacMan:
 
         QUESTION: Can/should I make this a `HypergraphCircuit` method instead?
         """
+        # TODO: Rewrite this the way Pablo intended
         for command_index, command_dict in enumerate(
-            self.hypergraph_circuit._commands  # TODO: Rewrite this the way Pablo intended
+            self.hypergraph_circuit._commands
         ):
             if command_dict["type"] == "distributed gate":
                 vertex = command_dict["vertex"]
@@ -109,7 +110,10 @@ class PacMan:
 
     def identify_neighbouring_packets(self):
         for qubit_vertex in self.hypergraph_circuit.get_qubit_vertices():
-            logging.debug(f"Checking qubit vertex {qubit_vertex} for neighbouring packets.")
+            logging.debug(
+                f"Checking qubit vertex {qubit_vertex} \
+                    for neighbouring packets."
+            )
             neighbouring_packets: List[Tuple[Packet]] = list()
             considered_packet_list = []
             for packet in self.packets_by_qubit[qubit_vertex][:-1]:
@@ -129,7 +133,9 @@ class PacMan:
 
     def identify_hopping_packets(self):
         for qubit_vertex in self.hypergraph_circuit.get_qubit_vertices():
-            logging.debug(f"Checking qubit vertex {qubit_vertex} for hopping packets.")
+            logging.debug(
+                f"Checking qubit vertex {qubit_vertex} for hopping packets."
+            )
             self.hopping_packets[qubit_vertex] = []
             for packet in self.packets_by_qubit[qubit_vertex][:-1]:
                 next_packet = self.get_next_packet(packet)
@@ -163,45 +169,70 @@ class PacMan:
                 while continue_merging:
                     logging.debug(f"Start of checks {mergeable_packets}")
                     logging.debug(f"Packet of interest is {packet}")
-                    if self.get_subsequent_neighbouring_packet(packet) is not None:
-                        packet = self.get_subsequent_neighbouring_packet(packet)
-                        logging.debug(f"Adding {packet} to mergeable packets (neighbouring)")
+                    if (
+                        self.get_subsequent_neighbouring_packet(packet)
+                        is not None
+                    ):
+                        packet = self.get_subsequent_neighbouring_packet(
+                            packet
+                        )
+                        logging.debug(
+                            f"Adding {packet} to mergeable \
+                                packets (neighbouring)"
+                        )
                         mergeable_packets.append(packet)
                         considered_packets.append(packet)
-                    elif self.get_subsequent_hopping_packet(packet) is not None:
+                    elif (
+                        self.get_subsequent_hopping_packet(packet) is not None
+                    ):
                         packet = self.get_subsequent_hopping_packet(packet)
-                        logging.debug(f"Adding {packet} to mergeable packets (hopping) {mergeable_packets}")
+                        logging.debug(
+                            f"Adding {packet} to mergeable packets (hopping) \
+                                {mergeable_packets}"
+                        )
                         mergeable_packets.append(packet)
                         considered_packets.append(packet)
                     else:
-                        continue_merging = False 
+                        continue_merging = False
                     logging.debug(f"End of checks {mergeable_packets}")
 
-                self.merged_packets[qubit_vertex].append(tuple(mergeable_packets))
-                   
-    def get_subsequent_neighbouring_packet(self, packet: Packet) -> Optional[Packet]:
+                self.merged_packets[qubit_vertex].append(
+                    tuple(mergeable_packets)
+                )
+
+    def get_subsequent_neighbouring_packet(
+        self, packet: Packet
+    ) -> Optional[Packet]:
         potential_neighbouring_packets = [
             neighbouring_packets
-            for neighbouring_packets in self.neighbouring_packets[packet.qubit_vertex]
+            for neighbouring_packets in self.neighbouring_packets[
+                packet.qubit_vertex
+            ]
             if neighbouring_packets[0] == packet
         ]
-        assert len(potential_neighbouring_packets) <= 1,\
-            "There should only be up to 1 neighbouring packet containing this packet."
-        
+        assert (
+            len(potential_neighbouring_packets) <= 1
+        ), "There should only be up to 1 neighbouring packet \
+            containing this packet."
+
         if len(potential_neighbouring_packets) == 0:
             return None
         else:
             return potential_neighbouring_packets[0][1]
 
-    def get_subsequent_hopping_packet(self, packet: Packet) -> Optional[Packet]:
+    def get_subsequent_hopping_packet(
+        self, packet: Packet
+    ) -> Optional[Packet]:
         potential_hopping_packets = [
             hopping_packet
             for hopping_packet in self.hopping_packets[packet.qubit_vertex]
             if hopping_packet[0] == packet
         ]
-        assert len(potential_hopping_packets) <= 1,\
-            "There should only be up to 1 hopping packet containing this packet."
-        
+        assert (
+            len(potential_hopping_packets) <= 1
+        ), "There should only be up to 1 hopping packet \
+            containing this packet."
+
         if len(potential_hopping_packets) == 0:
             return None
         else:
@@ -232,7 +263,9 @@ class PacMan:
         all_packets.sort(key=lambda x: x.packet_index)
         return all_packets
 
-    def are_neighbouring_packets(self, first_packet: Packet, second_packet: Packet):
+    def are_neighbouring_packets(
+        self, first_packet: Packet, second_packet: Packet
+    ):
         """Check if two given packets are neighbouring packets"""
 
         if (
@@ -254,7 +287,7 @@ class PacMan:
     def are_hoppable_packets(
         self, first_packet: Packet, second_packet: Packet
     ) -> bool:
-        """Check if two given packets are hopping packets""" 
+        """Check if two given packets are hopping packets"""
 
         logging.debug(
             f"Are packets {first_packet} and "
@@ -266,7 +299,10 @@ class PacMan:
         intermediate_commands = self.get_intermediate_commands(
             first_packet, second_packet
         )
-        logging.debug(f"Intermediate ops {[command.op for command in intermediate_commands]}")
+        logging.debug(
+            f"Intermediate ops \
+                {[command.op for command in intermediate_commands]}"
+        )
         cu1_indices = []
         for i, command in enumerate(intermediate_commands):
             if command.op.type not in allowed_op_types:
@@ -274,7 +310,9 @@ class PacMan:
                 return False
             if command.op.type == OpType.CU1:
                 if not self.is_embeddable_CU1(command, first_packet):
-                    logging.debug(f"No, CU1 command {command} is not embeddable.")
+                    logging.debug(
+                        f"No, CU1 command {command} is not embeddable."
+                    )
                     return False
                 cu1_indices.append(i)
 
@@ -287,7 +325,9 @@ class PacMan:
         for i, cu1_index in enumerate(cu1_indices):
             if cu1_index == cu1_indices[0]:
                 continue
-            commands = intermediate_commands[cu1_indices[i - 1] + 1: cu1_index]
+            commands = intermediate_commands[
+                cu1_indices[i - 1] + 1: cu1_index
+            ]
             ops = [command.op for command in commands]
             if OpType.H in [op.type for op in ops]:
                 ops_1q_list.append(self.convert_1q_ops(ops))
@@ -420,8 +460,12 @@ class PacMan:
 
     def get_connected_server(self, qubit_vertex: Vertex, gate_vertex: Vertex):
         command_index = self.vertex_to_command_index[gate_vertex]
-        command_dict = self.hypergraph_circuit._commands[command_index]  # TODO: Rewrite this as Pablo intended
-        qubits = command_dict["command"].qubits
+        command_dict = self.hypergraph_circuit._commands[
+            command_index
+        ]  # TODO: Rewrite this as Pablo intended
+        command = command_dict["command"]
+        assert type(command) == Command  # This is for mypy check - is there a better way?
+        qubits = command.qubits
         qubit_vertex_candidates = [
             self.qubit_vertex_from_qubit(qubit)
             for qubit in qubits
@@ -442,7 +486,9 @@ class PacMan:
         for (
             vertex,
             circuit_element,
-        ) in self.hypergraph_circuit._vertex_circuit_map.items():  # TODO: Don't access hidden stuff
+        ) in (
+            self.hypergraph_circuit._vertex_circuit_map.items()
+        ):  # TODO: Don't access hidden stuff
             if (
                 circuit_element["type"] == "qubit"
                 and circuit_element["node"] == qubit
@@ -517,10 +563,13 @@ class PacMan:
 
         intermediate_commands = []
 
-        for command_dict in self.hypergraph_circuit._commands[ # TODO: Hidden stuff
+        for (
+            command_dict
+        ) in self.hypergraph_circuit._commands[  # TODO: Hidden stuff
             last_command_index + 1: first_command_index
         ]:
             command = command_dict["command"]
+            assert type(command) == Command
             if qubit in command.qubits:
                 intermediate_commands.append(command_dict["command"])
 
@@ -630,18 +679,28 @@ class PacMan:
         QUESTION: Move to utils? It's a bit specific I suppose though
         """
 
-        if len(prior_1q_ops) == 0 or prior_1q_ops[-1].type == OpType.H or all(
-            [op.type in distributable_1q_op_types for op in prior_1q_ops]
-        ) and prior_1q_ops[-1].type != OpType.Rz:
+        if (
+            len(prior_1q_ops) == 0
+            or prior_1q_ops[-1].type == OpType.H
+            or all(
+                [op.type in distributable_1q_op_types for op in prior_1q_ops]
+            )
+            and prior_1q_ops[-1].type != OpType.Rz
+        ):
             prior_phase = 0
 
         else:
             prior_op = prior_1q_ops[-1]
             prior_phase = prior_op.params[0]
 
-        if len(post_1q_ops) == 0 or post_1q_ops[0].type == OpType.H or all(
-            [op.type in distributable_1q_op_types for op in post_1q_ops]
-        ) and post_1q_ops[0].type != OpType.Rz:
+        if (
+            len(post_1q_ops) == 0
+            or post_1q_ops[0].type == OpType.H
+            or all(
+                [op.type in distributable_1q_op_types for op in post_1q_ops]
+            )
+            and post_1q_ops[0].type != OpType.Rz
+        ):
             post_phase = 0
 
         else:
@@ -656,10 +715,18 @@ class PacMan:
         connected_packets = []
         for gate_vertex in packet.gate_vertices:
             gate_qubits = self.circuit_element_from_vertex(gate_vertex).qubits
-            other_qubit_candidates = [qubit for qubit in gate_qubits if self.qubit_vertex_from_qubit(qubit) != packet.qubit_vertex]
-            assert len(other_qubit_candidates) == 1,\
-                "There should only be one other qubit candidate for this gate vertex."
-            other_qubit_vertex = self.qubit_vertex_from_qubit(other_qubit_candidates[0])
+            other_qubit_candidates = [
+                qubit
+                for qubit in gate_qubits
+                if self.qubit_vertex_from_qubit(qubit) != packet.qubit_vertex
+            ]
+            assert (
+                len(other_qubit_candidates) == 1
+            ), "There should only be one other qubit candidate \
+                for this gate vertex."
+            other_qubit_vertex = self.qubit_vertex_from_qubit(
+                other_qubit_candidates[0]
+            )
             for potential_packet in self.packets_by_qubit[other_qubit_vertex]:
                 if gate_vertex in potential_packet.gate_vertices:
                     if potential_packet not in connected_packets:
@@ -677,8 +744,13 @@ class PacMan:
         edges = set()
         for qubit_vertex in self.hypergraph_circuit.get_qubit_vertices():
             for merged_packet in self.merged_packets[qubit_vertex]:
-                for connected_merged_packet in self.get_connected_merged_packets(merged_packet):
-                    if tuple([merged_packet, connected_merged_packet]) not in edges:
+                for (
+                    connected_merged_packet
+                ) in self.get_connected_merged_packets(merged_packet):
+                    if (
+                        tuple([merged_packet, connected_merged_packet])
+                        not in edges
+                    ):
                         if connected_merged_packet in top_packets:
                             assert merged_packet not in top_packets
                             bottom_packets.add(merged_packet)
@@ -688,10 +760,12 @@ class PacMan:
                         else:
                             top_packets.add(merged_packet)
                             bottom_packets.add(connected_merged_packet)
-                        edges.add(tuple([merged_packet, connected_merged_packet]))
-    
-        graph.add_nodes_from(top_packets, bipartite = 0)
-        graph.add_nodes_from(bottom_packets, bipartite = 1)
+                        edges.add(
+                            tuple([merged_packet, connected_merged_packet])
+                        )
+
+        graph.add_nodes_from(top_packets, bipartite=0)
+        graph.add_nodes_from(bottom_packets, bipartite=1)
         graph.add_edges_from(edges)
         assert nx.is_bipartite(graph), "The graph must be bipartite."
         return graph, top_packets
@@ -701,56 +775,69 @@ class PacMan:
             if packet in merged_packet:
                 return merged_packet
 
-    def get_connected_merged_packets(self, merged_packet: Tuple[Packet]) -> List[Tuple[Packet]]:
+    def get_connected_merged_packets(
+        self, merged_packet: Tuple[Packet]
+    ) -> List[Tuple[Packet]]:
         connected_merged_packets: List[Tuple[Packet]] = list()
         for packet in merged_packet:
             connected_packets = self.get_connected_packets(packet)
             for connected_packet in connected_packets:
-                connected_merged_packets.append(self.get_containing_merged_packet(connected_packet))
-        
-        return connected_merged_packets
+                connected_merged_packets.append(
+                    self.get_containing_merged_packet(connected_packet)
+                )
 
+        return connected_merged_packets
 
     def get_mvc_merged_graph(self):
         g, topnodes = self.get_nx_graph_merged()
-        matching = bipartite.maximum_matching(g, top_nodes = topnodes)
-        return (bipartite.to_vertex_cover(g, matching, top_nodes=topnodes))
+        matching = bipartite.maximum_matching(g, top_nodes=topnodes)
+        return bipartite.to_vertex_cover(g, matching, top_nodes=topnodes)
 
-    def get_true_conflict_edges(self) -> List[Tuple[Packet]]:
+    def get_true_conflict_edges(self) -> List[Tuple[Packet, ...]]:
         cg, topnodes = self.get_nx_graph_conflict()
         mvc = self.get_mvc_merged_graph()
         true_conflicts = list()
-        for u,v in cg.edges():
+        for u, v in cg.edges():
             if u in mvc and v in mvc:
-                true_conflicts.append(tuple([u,v]))
-        
+                true_conflicts.append(tuple([u, v]))
+
         return true_conflicts
 
-
-    def get_embedded_packets(self, hopping_packet: Tuple[Packet]):
+    def get_embedded_packets(self, hopping_packet: Tuple[Packet, ...]):
         initial_index = hopping_packet[0].packet_index
         final_index = hopping_packet[1].packet_index
         embedded_packets: List[Packet] = []
         for packet in self.packets_by_qubit[hopping_packet[0].qubit_vertex]:
-            if packet.packet_index > initial_index and packet.packet_index < final_index:
+            if (
+                packet.packet_index > initial_index
+                and packet.packet_index < final_index
+            ):
                 embedded_packets.append(packet)
-        
+
         return embedded_packets
-    
+
     def get_all_embedded_packets_for_qubit_vertex(self, qubit_vertex):
         embedded_packets = {}
         for hopping_packet in self.hopping_packets[qubit_vertex]:
-            embedded_packets_for_hopping_packet = self.get_embedded_packets(hopping_packet)
+            embedded_packets_for_hopping_packet = self.get_embedded_packets(
+                hopping_packet
+            )
             if len(embedded_packets_for_hopping_packet) > 0:
-                embedded_packets[(packet.packet_index for packet in hopping_packet)] = embedded_packets_for_hopping_packet
+                embedded_packets[
+                    (packet.packet_index for packet in hopping_packet)
+                ] = embedded_packets_for_hopping_packet
         return embedded_packets
 
     def get_all_embedded_packets(self):
         embedded_packets = {}
         for qubit_vertex in self.hypergraph_circuit.get_qubit_vertices():
-            embedded_packets_for_qubit_vertex = self.get_all_embedded_packets_for_qubit_vertex(qubit_vertex)
+            embedded_packets_for_qubit_vertex = (
+                self.get_all_embedded_packets_for_qubit_vertex(qubit_vertex)
+            )
             if len(embedded_packets_for_qubit_vertex.keys()) > 0:
-                embedded_packets[qubit_vertex] = embedded_packets_for_qubit_vertex
+                embedded_packets[
+                    qubit_vertex
+                ] = embedded_packets_for_qubit_vertex
         return embedded_packets
 
     def get_nx_graph_conflict(self):
@@ -764,59 +851,93 @@ class PacMan:
         }
         # Iterate through each packet that can be embedded in a hopping packet
         for qubit_vertex in self.hypergraph_circuit.get_qubit_vertices():
-            for embedded_packets in self.get_all_embedded_packets_for_qubit_vertex(qubit_vertex).values():
+            for (
+                embedded_packets
+            ) in self.get_all_embedded_packets_for_qubit_vertex(
+                qubit_vertex
+            ).values():
                 for embedded_packet in embedded_packets:
                     # Find the connected packet(s) to the embedded packet
-                    connected_packets = self.get_connected_packets(embedded_packet)
+                    connected_packets = self.get_connected_packets(
+                        embedded_packet
+                    )
                     for connected_packet in connected_packets:
-                        # If this connected packet has already been dealt with we can skip it
+                        # If this connected packet has already
+                        # been dealt with we can skip it
                         if connected_packet in checked_hopping_packets:
                             continue
-                        
+
                         # Only care if the connected packet is also embedded
                         # First see if the qubit vertex of connected packet is
                         # has any embedded packets
                         # Then see if the connected packet is
                         # One such embedded packet
                         if (
-                            connected_packet.qubit_vertex in all_embedded_packets.keys()
-                            and connected_packet in [
+                            connected_packet.qubit_vertex
+                            in all_embedded_packets.keys()
+                            and connected_packet
+                            in [
                                 inner
-                                for outer in all_embedded_packets[connected_packet.qubit_vertex].values()
-                                    for inner in outer
-                                ]
+                                for outer in all_embedded_packets[
+                                    connected_packet.qubit_vertex
+                                ].values()
+                                for inner in outer
+                            ]
                         ):
-                            conflict_edges.append((
-                                self.get_hopping_packet_from_embedded_packet(embedded_packet),
-                                self.get_hopping_packet_from_embedded_packet(connected_packet)
-                            ))
+                            conflict_edges.append(
+                                (
+                                    self.get_hopping_packet_from_embedded_packet(
+                                        embedded_packet
+                                    ),
+                                    self.get_hopping_packet_from_embedded_packet(
+                                        connected_packet
+                                    ),
+                                )
+                            )
 
                             # Figure out which partition to put each packet in
                             if (
-                                self.get_hopping_packet_from_embedded_packet(embedded_packet) in bipartitions[0]
+                                self.get_hopping_packet_from_embedded_packet(
+                                    embedded_packet
+                                )
+                                in bipartitions[0]
                             ):
                                 is_top_half = False
                             elif (
-                                self.get_hopping_packet_from_embedded_packet(embedded_packet) in bipartitions[1]
+                                self.get_hopping_packet_from_embedded_packet(
+                                    embedded_packet
+                                )
+                                in bipartitions[1]
                             ):
                                 is_top_half = True
                             else:
                                 is_top_half = True
-                                bipartitions[is_top_half].append(self.get_hopping_packet_from_embedded_packet(connected_packet))
+                                bipartitions[is_top_half].append(
+                                    self.get_hopping_packet_from_embedded_packet(
+                                        connected_packet
+                                    )
+                                )
 
-                            bipartitions[not is_top_half].append(self.get_hopping_packet_from_embedded_packet(connected_packet))
+                            bipartitions[not is_top_half].append(
+                                self.get_hopping_packet_from_embedded_packet(
+                                    connected_packet
+                                )
+                            )
                         checked_hopping_packets.append(embedded_packet)
         logging.debug(f"Conflict edges: {conflict_edges}")
         graph.add_edges_from(conflict_edges)
         return graph, bipartitions[1]
-    
+
     def get_hopping_packet_from_embedded_packet(self, embedded_packet: Packet):
         """Given a packet that can be embedded,
         return the hopping packet in which it is embedded
         """
-        for hopping_packet in self.hopping_packets[embedded_packet.qubit_vertex]:
+        for hopping_packet in self.hopping_packets[
+            embedded_packet.qubit_vertex
+        ]:
             if (
                 hopping_packet[0].packet_index < embedded_packet.packet_index
-                and hopping_packet[1].packet_index > embedded_packet.packet_index
+                and hopping_packet[1].packet_index
+                > embedded_packet.packet_index
             ):
                 return hopping_packet
