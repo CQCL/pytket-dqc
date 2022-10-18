@@ -177,8 +177,7 @@ class PacMan:
                     logging.debug(f"End of checks {mergeable_packets}")
 
                 self.merged_packets[qubit_vertex].append(tuple(mergeable_packets))
-                
-                    
+                   
     def get_subsequent_neighbouring_packet(self, packet: Packet) -> Optional[Packet]:
         potential_neighbouring_packets = [
             neighbouring_packets
@@ -667,26 +666,42 @@ class PacMan:
                     break
         return connected_packets
 
-    def get_nx_graph_neighbouring(self):
+    def get_nx_graph_merged(self):
+        """Get the NetworkX graph representing the circuit.
+        Nodes are merged packets.
+        """
         graph = nx.Graph()
         top_packets = set()
         bottom_packets = set()
         edges = set()
-        for packet in self.get_all_packets():
-            is_top_packet = packet not in bottom_packets
-            for connected_packet in self.get_connected_packets(packet):
-                if is_top_packet:
-                    bottom_packets.add(connected_packet)
-                else:
-                    top_packets.add(connected_packet)
-                edges.add((packet, connected_packet))
+        for qubit_vertex in self.hypergraph_circuit.get_qubit_vertices():
+            for merged_packet in self.merged_packets[qubit_vertex]:
+                for packet in merged_packet:
+                    connected_packets = self.get_connected_packets(packet)
+                    for connected_packet in connected_packets:
+                        connected_merged_packet = self.get_containing_merged_packet(connected_packet)
+                        if tuple([merged_packet, connected_merged_packet]) not in edges:
+                            if connected_merged_packet in top_packets:
+                                assert merged_packet not in top_packets
+                                bottom_packets.add(merged_packet)
+                            elif connected_merged_packet in bottom_packets:
+                                assert merged_packet not in bottom_packets
+                                top_packets.add(merged_packet)
+                            else:
+                                top_packets.add(merged_packet)
+                                bottom_packets.add(connected_merged_packet)
+                            edges.add(tuple([merged_packet, connected_merged_packet]))
         
         graph.add_nodes_from(top_packets, bipartite = 0)
         graph.add_nodes_from(bottom_packets, bipartite = 1)
         graph.add_edges_from(edges)
-        assert nx.is_bipartite(graph),\
-            "The graph must be bipartite"
+        assert nx.is_bipartite(graph), "The graph must be bipartite."
         return graph, top_packets
+
+    def get_containing_merged_packet(self, packet: Packet):
+        for merged_packet in self.merged_packets[packet.qubit_vertex]:
+            if packet in merged_packet:
+                return merged_packet
 
     def get_embedded_packets(self, hopping_packet: Tuple[Packet]):
         initial_index = hopping_packet[0].packet_index
