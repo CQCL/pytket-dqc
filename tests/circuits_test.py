@@ -76,6 +76,21 @@ def test_failing_circuit_hyperedge_split_and_merge():
             "The first element of [3, 0] is required to be a qubit vertex."
         )
 
+    new_hyperedge_one = Hyperedge(vertices=[0, 2, 3], weight=1)
+
+    with pytest.raises(Exception) as e_info:
+        hyp_circ.split_hyperedge(
+            old_hyperedge=old_hyperedge,
+            new_hyperedge_list=[new_hyperedge_one, new_hyperedge_two]
+        )
+
+    assert str(
+        e_info.value) == (
+            "[Hyperedge(vertices=[0, 2, 3], weight=1), " +
+            "Hyperedge(vertices=[0, 4], weight=1)] does not match " +
+            "the vertices in Hyperedge(vertices=[0, 3, 4], weight=1)"
+        )
+
     new_hyperedge_one = Hyperedge(vertices=[0, 3], weight=1)
     hyp_circ.split_hyperedge(
         old_hyperedge=old_hyperedge,

@@ -53,7 +53,7 @@ class Hypergraph:
         """Merge vertices of each of the hyperedges in to_merge_hyperedge_list
         into a single hyperedge.
 
-        :param to_merge_hyperedge_list: List ove hyperedges to merge.
+        :param to_merge_hyperedge_list: List of hyperedges to merge.
         :type to_merge_hyperedge_list: list[Hyperedge]
         :raises Exception: Raised if any of the hyperedges in
         to_merge_hyperedge_list are not in this hypergraph.
@@ -74,9 +74,9 @@ class Hypergraph:
             to_merge_hyperedge_list[0].weight == to_merge_hyperedge.weight
             for to_merge_hyperedge in to_merge_hyperedge_list
         ):
-            raise Exception("Weights of hyperedges should be equal.")
+            raise Exception("Weights of hyperedges to merge should be equal.")
 
-        weight = to_merge_hyperedge_list[0].weight
+        # Gather list of all vertices in hyperedges to be merged.
         vertices = list(
             set(
                 vertex
@@ -84,6 +84,7 @@ class Hypergraph:
                 for vertex in to_merge_hyperedge.vertices
             )
         )
+        weight = to_merge_hyperedge_list[0].weight
         self.add_hyperedge(vertices=vertices, weight=weight)
 
         for hyperedge in to_merge_hyperedge_list:
@@ -106,8 +107,8 @@ class Hypergraph:
         """
 
         flat_vertex_list = [
-            vertex for edge_list in new_hyperedge_list
-            for vertex in edge_list.vertices
+            vertex for hypergraph in new_hyperedge_list
+            for vertex in hypergraph.vertices
         ]
         if not (set(flat_vertex_list) == set(old_hyperedge.vertices)):
             raise Exception(
