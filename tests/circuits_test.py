@@ -18,6 +18,7 @@ from pytket_dqc.utils.gateset import (
 )
 from pytket_dqc.allocators import Brute, Random
 from pytket_dqc.networks import NISQNetwork
+from pytket_dqc.utils import check_equivalence
 from pytket.circuit import QControlBox, Op, OpType  # type: ignore
 
 # TODO: Test new circuit classes
@@ -284,6 +285,10 @@ def test_to_pytket_circ_CRz():
 
     assert test_circ_command_qubits == circ_with_dist_command_qubits
 
+    assert check_equivalence(
+        circ, circ_with_dist, distribution.get_qubit_mapping()
+    )
+
 
 def test_to_pytket_circuit_detached_gate():
     # This test tests the case where the gate is acted on a server to which
@@ -363,6 +368,10 @@ def test_to_pytket_circuit_detached_gate():
 
     assert test_circ.q_registers == circ_with_dist.q_registers
 
+    assert check_equivalence(
+        circ, circ_with_dist, distribution.get_qubit_mapping()
+    )
+
 
 def test_to_pytket_circuit_gates_on_different_servers():
 
@@ -434,6 +443,10 @@ def test_to_pytket_circuit_gates_on_different_servers():
 
     assert test_circ.q_registers == circ_with_dist.q_registers
 
+    assert check_equivalence(
+        circ, circ_with_dist, distribution.get_qubit_mapping()
+    )
+
 
 def test_to_pytket_circuit_with_branching_distribution_tree():
 
@@ -442,12 +455,12 @@ def test_to_pytket_circuit_with_branching_distribution_tree():
         {0: [0], 1: [1], 2: [2], 3: [3], 4: [4]},
     )
 
-    two_CZ_circ = (
+    circ = (
         Circuit(3)
         .add_gate(OpType.CU1, 1.0, [0, 1])
         .add_gate(OpType.CU1, 1.0, [0, 2])
     )
-    dist_circ = HypergraphCircuit(two_CZ_circ)
+    dist_circ = HypergraphCircuit(circ)
 
     placement = Placement({0: 0, 1: 2, 2: 3, 3: 2, 4: 3})
     distribution = Distribution(dist_circ, placement, network)
@@ -505,6 +518,10 @@ def test_to_pytket_circuit_with_branching_distribution_tree():
     assert test_circ_command_qubits == circ_with_dist_command_qubits
 
     assert test_circ.q_registers == circ_with_dist.q_registers
+
+    assert check_equivalence(
+        circ, circ_with_dist, distribution.get_qubit_mapping()
+    )
 
 
 @pytest.mark.skip(reason="Support for teleportation has been disabled")
@@ -578,6 +595,10 @@ def test_to_pytket_circuit_with_teleportation():
     assert test_circ_command_qubits == circ_with_dist_command_qubits
 
     assert test_circ.q_registers == circ_with_dist.q_registers
+
+    assert check_equivalence(
+        circ, circ_with_dist, distribution.get_qubit_mapping()
+    )
 
 
 @pytest.mark.skip(reason="Tests a function that has been removed")
