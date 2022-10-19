@@ -102,20 +102,10 @@ class GainManager:
         new_hyperedge_list: list[Hyperedge]
     ):
 
-        # TODO: this should all be changed when the new cost calculation
-        # methods are available.
-
-        # TODO: It would be prefereable if this function did not actually
-        # change the distribution.
-
-        current_cost = self.distribution.cost()
-        self.distribution.circuit.split_hyperedge(
-            old_hyperedge=old_hyperedge,
-            new_hyperedge_list=new_hyperedge_list,
-        )
-        new_cost = self.distribution.cost()
-        self.distribution.circuit.merge_hyperedge(
-            to_merge_hyperedge_list=new_hyperedge_list
+        current_cost = self.distribution.hyperedge_cost(old_hyperedge)
+        new_cost = sum(
+            self.distribution.hyperedge_cost(hyperedge)
+            for hyperedge in new_hyperedge_list
         )
 
         return current_cost - new_cost
@@ -133,17 +123,11 @@ class GainManager:
 
     def merge_gain(self, to_merge_hyperedge_list: list[Hyperedge]):
 
-        # TODO: this should all be changed when the new cost calculation
-        # methods are available.
-
-        # TODO: It would be prefereable if this function did not actually
-        # change the distribution.
-
-        current_cost = self.distribution.cost()
-        self.distribution.circuit.merge_hyperedge(
-            to_merge_hyperedge_list=to_merge_hyperedge_list
+        current_cost = sum(
+            self.distribution.hyperedge_cost(hyperedge)
+            for hyperedge in to_merge_hyperedge_list
         )
-        new_cost = self.distribution.cost()
+
         new_hyperedge = Hyperedge(
             vertices=list(
                 set(
@@ -156,10 +140,8 @@ class GainManager:
             ),
             weight=to_merge_hyperedge_list[0].weight
         )
-        self.distribution.circuit.split_hyperedge(
-            old_hyperedge=new_hyperedge,
-            new_hyperedge_list=to_merge_hyperedge_list
-        )
+
+        new_cost = self.distribution.hyperedge_cost(new_hyperedge)
 
         return current_cost - new_cost
 
