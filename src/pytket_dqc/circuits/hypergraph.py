@@ -54,7 +54,9 @@ class Hypergraph:
         to_merge_hyperedge_list: list[Hyperedge]
     ) -> Hyperedge:
         """Merge vertices of each of the hyperedges in to_merge_hyperedge_list
-        into a single hyperedge.
+        into a single hyperedge. The new hyperedge will appear in
+        `hyperedge_list` at the lowest index of the hyperedges in
+        `to_merge_hyperedge_list`.
 
         :param to_merge_hyperedge_list: List of hyperedges to merge.
         :type to_merge_hyperedge_list: list[Hyperedge]
@@ -115,7 +117,10 @@ class Hypergraph:
         old_hyperedge: Hyperedge,
         new_hyperedge_list: list[Hyperedge]
     ):
-        """Split `old_hyperedge` into the hyperedges in `new_hyperedge_list`
+        """Split `old_hyperedge` into the hyperedges in `new_hyperedge_list`.
+        The new hyperedges will appear in `hyperedge_list` at the
+        same location as the `old_hyperedge` in the same order as they
+        appear in `new_hyperedge_list`.
 
         :param old_hyperedge: Hyperedge to split.
         :type old_hyperedge: Hyperedge
