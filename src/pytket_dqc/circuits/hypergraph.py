@@ -49,7 +49,10 @@ class Hypergraph:
         out_string += f"\nVertices: {self.vertex_list}"
         return out_string
 
-    def merge_hyperedge(self, to_merge_hyperedge_list: list[Hyperedge]) -> Hyperedge:
+    def merge_hyperedge(
+        self,
+        to_merge_hyperedge_list: list[Hyperedge]
+    ) -> Hyperedge:
         """Merge vertices of each of the hyperedges in to_merge_hyperedge_list
         into a single hyperedge.
 
@@ -85,10 +88,25 @@ class Hypergraph:
             )
         )
         weight = to_merge_hyperedge_list[0].weight
-        self.add_hyperedge(vertices=vertices, weight=weight)
+        index = min(self.hyperedge_list.index(hyperedge)
+                    for hyperedge in to_merge_hyperedge_list)
+        new_hyperedge = Hyperedge(vertices=vertices, weight=weight)
+        self.add_hyperedge(vertices=new_hyperedge.vertices,
+                           weight=new_hyperedge.weight, index=index)
 
+        removed_hyperedge_list = []
         for hyperedge in to_merge_hyperedge_list:
-            self.remove_hyperedge(hyperedge)
+            try:
+                self.remove_hyperedge(hyperedge)
+            except Exception:
+                for removed_hyperedge in removed_hyperedge_list:
+                    self.add_hyperedge(
+                        vertices=removed_hyperedge.vertices,
+                        weight=removed_hyperedge.weight
+                    )
+                self.remove_hyperedge(new_hyperedge)
+                raise
+            removed_hyperedge_list.append(hyperedge)
 
         return Hyperedge(vertices=vertices, weight=weight)
 
@@ -118,8 +136,17 @@ class Hypergraph:
                 f"match the vertices in {old_hyperedge}"
             )
 
-        for new_hyperedge in new_hyperedge_list:
-            self.add_hyperedge(new_hyperedge.vertices, new_hyperedge.weight)
+        index = self.hyperedge_list.index(old_hyperedge)
+        added_hyperedge_list = []
+        for new_hyperedge in reversed(new_hyperedge_list):
+            try:
+                self.add_hyperedge(new_hyperedge.vertices,
+                                   new_hyperedge.weight, index=index)
+            except Exception:
+                for hyperedge in added_hyperedge_list:
+                    self.remove_hyperedge(hyperedge)
+                raise
+            added_hyperedge_list.append(new_hyperedge)
         self.remove_hyperedge(old_hyperedge)
 
     def remove_hyperedge(self, old_hyperedge: Hyperedge):
@@ -240,7 +267,12 @@ class Hypergraph:
         for vertex in vertices:
             self.add_vertex(vertex)
 
-    def add_hyperedge(self, vertices: list[Vertex], weight: int = 1):
+    def add_hyperedge(
+        self,
+        vertices: list[Vertex],
+        weight: int = 1,
+        index: int = None
+    ):
         """Add hyperedge to hypergraph. Update vertex_neighbours.
 
         :param vertices: List of vertices in hyperedge
@@ -274,7 +306,10 @@ class Hypergraph:
             self.vertex_neighbours[vertex].update(vertices)
             self.vertex_neighbours[vertex].remove(vertex)
 
-        self.hyperedge_list.append(hyperedge)
+        if index is None:
+            self.hyperedge_list.append(hyperedge)
+        else:
+            self.hyperedge_list.insert(index, hyperedge)
 
     def kahypar_hyperedges(self) -> Tuple[list[int], list[int]]:
         """Return hypergraph in format used by kahypar package. In particular
@@ -312,7 +347,7 @@ class Hypergraph:
         in their boundaries. A boundary vertex is a vertex in some block B1
         that has a neighbour in another block B2.
 
-        :param placement: An assignemnt of vertices to blocks
+        :param placement: An assignment of vertices to blocks
         :type placement: Placement
 
         :return: The list of boundary vertices

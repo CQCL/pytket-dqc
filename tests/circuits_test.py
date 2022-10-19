@@ -59,6 +59,12 @@ def test_failing_circuit_hyperedge_split_and_merge():
         ]
     )
 
+    assert hyp_circ.hyperedge_list == [
+        Hyperedge(vertices=[0, 3, 4], weight=1),
+        Hyperedge(vertices=[1, 3], weight=1),
+        Hyperedge(vertices=[2, 4], weight=1),
+    ]
+
     old_hyperedge = Hyperedge(vertices=[0, 3, 4], weight=1)
     new_hyperedge_one = Hyperedge(vertices=[3, 0], weight=1)
     new_hyperedge_two = Hyperedge(vertices=[0, 4], weight=1)
@@ -76,6 +82,14 @@ def test_failing_circuit_hyperedge_split_and_merge():
             "The first element of [3, 0] is required to be a qubit vertex."
         )
 
+    # This has been added to ensure that when an error occurs when adding
+    # the hypergraph has not been changed.
+    assert hyp_circ.hyperedge_list == [
+        Hyperedge(vertices=[0, 3, 4], weight=1),
+        Hyperedge(vertices=[1, 3], weight=1),
+        Hyperedge(vertices=[2, 4], weight=1),
+    ]
+
     new_hyperedge_one = Hyperedge(vertices=[0, 2, 3], weight=1)
 
     with pytest.raises(Exception) as e_info:
@@ -91,6 +105,12 @@ def test_failing_circuit_hyperedge_split_and_merge():
             "the vertices in Hyperedge(vertices=[0, 3, 4], weight=1)"
         )
 
+    assert hyp_circ.hyperedge_list == [
+        Hyperedge(vertices=[0, 3, 4], weight=1),
+        Hyperedge(vertices=[1, 3], weight=1),
+        Hyperedge(vertices=[2, 4], weight=1),
+    ]
+
     new_hyperedge_one = Hyperedge(vertices=[0, 3], weight=1)
     hyp_circ.split_hyperedge(
         old_hyperedge=old_hyperedge,
@@ -98,10 +118,10 @@ def test_failing_circuit_hyperedge_split_and_merge():
     )
 
     assert hyp_circ.hyperedge_list == [
+        Hyperedge(vertices=[0, 3], weight=1),
+        Hyperedge(vertices=[0, 4], weight=1),
         Hyperedge(vertices=[1, 3], weight=1),
         Hyperedge(vertices=[2, 4], weight=1),
-        Hyperedge(vertices=[0, 3], weight=1),
-        Hyperedge(vertices=[0, 4], weight=1)
     ]
 
 

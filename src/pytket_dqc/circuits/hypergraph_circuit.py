@@ -74,7 +74,12 @@ class HypergraphCircuit(Hypergraph):
     def get_circuit(self):
         return self._circuit.copy()
 
-    def add_hyperedge(self, vertices: list[Vertex], weight: int = 1):
+    def add_hyperedge(
+        self,
+        vertices: list[Vertex],
+        weight: int = 1,
+        index: int = None
+    ):
         """Add hyperedge to hypergraph of circuit. Adds some checks on top
         of add_hypergraph in `Hypergraph` in order to ensure that the
         first vertex is a qubit, and that there is only one qubit vertex.
@@ -106,7 +111,7 @@ class HypergraphCircuit(Hypergraph):
             raise Exception("Vertex indices must be in increasing order.")
 
         super(HypergraphCircuit, self).add_hyperedge(
-            vertices=vertices, weight=weight)
+            vertices=vertices, weight=weight, index=index)
 
     def add_qubit_vertex(self, vertex: int, qubit: Qubit):
         """Add a vertex to the underlying hypergraph which corresponds to a

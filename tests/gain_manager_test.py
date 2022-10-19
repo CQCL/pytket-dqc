@@ -303,7 +303,9 @@ def test_merge_with_embedding():
 
     gain_mgr = GainManager(initial_distribution=distribution)
 
-    # Here we are merging either side of the CX to embed it.
+    # Here we are merging either side of the 'CX' to embed it.
+    # Note that we can make use of the connection that remains after
+    # embedding to implement the last CZ
     to_merge_hyperedge_list = [
         Hyperedge(vertices=[0, 3, 4], weight=1),
         Hyperedge(vertices=[0, 6], weight=1)
