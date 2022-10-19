@@ -284,6 +284,9 @@ class Hypergraph:
         :type vertices: list[Vertex]
         :param weight: Hyperedge weight
         :type weight: int
+        :param index: index in `hyperedge_list` at which the new
+        hyperedge will be added.
+        :type index: int
         :raises Exception: Raised if hyperedge does not contain at least
             2 vertices
         :raises Exception: Raised if vertices in hyperedge are not in

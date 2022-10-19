@@ -88,6 +88,9 @@ class HypergraphCircuit(Hypergraph):
         :type vertices: list[Vertex]
         :param weight: Hyperedge weight
         :type weight: int
+        :param index: index in `hyperedge_list` at which the new
+        hyperedge will be added.
+        :type index: int
         :raises Exception: Raised if first vertex in hyperedge is not a qubit
         :raised Exception: Raised if there is more than one qubit
             vertex in the list of vertices.
