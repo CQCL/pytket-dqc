@@ -273,3 +273,43 @@ def test_split_merge():
         ]
     )
     assert split_gain == -merge_gain
+
+
+def test_merge_with_embedding():
+
+    network = NISQNetwork(
+        server_coupling=[[0, 1], [0, 2], [0, 3]],
+        server_qubits={0: [0], 1: [1], 2: [2], 3: [3]}
+    )
+
+    circ = Circuit(3)
+    circ.add_gate(OpType.CU1, 1.0, [0, 2])
+    circ.add_gate(OpType.CU1, 1.0, [0, 1])
+    circ.H(0)
+    circ.add_gate(OpType.CU1, 1.0, [0, 2])
+    circ.H(0)
+    circ.add_gate(OpType.CU1, 1.0, [0, 2])
+
+    hyp_circ = HypergraphCircuit(circ)
+
+    placement = Placement({0: 1, 1: 2, 2: 3, 3: 3, 4: 2, 5: 3, 6: 3})
+
+    distribution = Distribution(
+        circuit=hyp_circ,
+        placement=placement,
+        network=network
+    )
+    assert distribution.cost() == 7
+
+    gain_mgr = GainManager(initial_distribution=distribution)
+
+    # Here we are merging either side of the CX to embed it.
+    to_merge_hyperedge_list = [
+        Hyperedge(vertices=[0, 3, 4], weight=1),
+        Hyperedge(vertices=[0, 6], weight=1)
+    ]
+    assert gain_mgr.merge_gain(
+        to_merge_hyperedge_list=to_merge_hyperedge_list
+    ) == 2
+    gain_mgr.merge(to_merge_hyperedge_list=to_merge_hyperedge_list)
+    assert gain_mgr.distribution.cost() == 5
