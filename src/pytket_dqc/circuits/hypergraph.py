@@ -49,7 +49,7 @@ class Hypergraph:
         out_string += f"\nVertices: {self.vertex_list}"
         return out_string
 
-    def merge_hyperedge(self, to_merge_hyperedge_list: list[Hyperedge]):
+    def merge_hyperedge(self, to_merge_hyperedge_list: list[Hyperedge]) -> Hyperedge:
         """Merge vertices of each of the hyperedges in to_merge_hyperedge_list
         into a single hyperedge.
 
@@ -90,6 +90,8 @@ class Hypergraph:
         for hyperedge in to_merge_hyperedge_list:
             self.remove_hyperedge(hyperedge)
 
+        return Hyperedge(vertices=vertices, weight=weight)
+
     def split_hyperedge(
         self,
         old_hyperedge: Hyperedge,
@@ -125,8 +127,13 @@ class Hypergraph:
 
         :param old_hyperedge: Hyperedge to remove
         :type vertices: Hyperedge
+        :raises Exception: Raised if `old_hyperedge` is not in hypergraph.
         """
 
+        # This might be a bit server is general, as we could just
+        # ignore it if the hyperedge to remove is not present.
+        # As the developers are the only users we might prefer to
+        # know about this though.
         if old_hyperedge not in self.hyperedge_list:
             raise Exception(
                 f"The hyperedge {old_hyperedge} is not in this hypergraph."
@@ -134,7 +141,7 @@ class Hypergraph:
 
         self.hyperedge_list.remove(old_hyperedge)
         # For every vertex in the hyperedge being removed, update
-        # appropriately if it is still a neighbour other vertices.
+        # appropriately if it is still a neighbour to other vertices.
         for vertex in old_hyperedge.vertices:
             old_neighbour_list = set(old_hyperedge.vertices) - {vertex}
             # For every old_neighbour of vertex, check if the pair both

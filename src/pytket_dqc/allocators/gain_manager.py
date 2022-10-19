@@ -102,18 +102,26 @@ class GainManager:
         new_hyperedge_list: list[Hyperedge]
     ):
 
-        current_cost = self.distribution.hyperedge_cost(old_hyperedge)
-        new_cost = sum(
-            self.distribution.hyperedge_cost(hyperedge)
-            for hyperedge in new_hyperedge_list
-        )
+        # TODO: Here and in other split ang merge related functions,
+        # I'm using that we can store the cost of hyperedges that
+        # might not be in the hypergraph any more. Are we okay with that.
+        # In the case of steiner trees we have capped the size of the
+        # tree which can be stored. We might wish to do something similar here?
+        current_cost = self.hyperedge_cost_map[old_hyperedge]
+        new_cost = 0
+        for hyperedge in new_hyperedge_list:
+            if hyperedge in self.hyperedge_cost_map.keys():
+                new_cost += self.hyperedge_cost_map[hyperedge]
+            else:
+                new_cost += self.distribution.hyperedge_cost(hyperedge)
 
         return current_cost - new_cost
 
     def split(
         self,
         old_hyperedge: Hyperedge,
-        new_hyperedge_list: list[Hyperedge]
+        new_hyperedge_list: list[Hyperedge],
+        recalculate_cost=True
     ):
 
         self.distribution.circuit.split_hyperedge(
@@ -121,10 +129,14 @@ class GainManager:
             new_hyperedge_list=new_hyperedge_list,
         )
 
+        if recalculate_cost:
+            for hypedge in new_hyperedge_list:
+                self.update_cost(hypedge)
+
     def merge_gain(self, to_merge_hyperedge_list: list[Hyperedge]):
 
         current_cost = sum(
-            self.distribution.hyperedge_cost(hyperedge)
+            self.hyperedge_cost_map[hyperedge]
             for hyperedge in to_merge_hyperedge_list
         )
 
@@ -141,15 +153,25 @@ class GainManager:
             weight=to_merge_hyperedge_list[0].weight
         )
 
-        new_cost = self.distribution.hyperedge_cost(new_hyperedge)
+        if new_hyperedge in self.hyperedge_cost_map.keys():
+            new_cost = self.hyperedge_cost_map[new_hyperedge]
+        else:
+            new_cost = self.distribution.hyperedge_cost(new_hyperedge)
 
         return current_cost - new_cost
 
-    def merge(self, to_merge_hyperedge_list: list[Hyperedge]):
+    def merge(
+        self,
+        to_merge_hyperedge_list: list[Hyperedge],
+        recalculate_cost=True
+    ):
 
-        self.distribution.circuit.merge_hyperedge(
+        new_hyperedge = self.distribution.circuit.merge_hyperedge(
             to_merge_hyperedge_list=to_merge_hyperedge_list
         )
+
+        if recalculate_cost:
+            self.update_cost(new_hyperedge)
 
     def move_gain(self, vertex: int, new_server: int) -> int:
         """Compute the gain of moving ``vertex`` to ``new_server``. Instead
