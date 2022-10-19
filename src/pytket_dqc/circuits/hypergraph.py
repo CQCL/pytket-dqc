@@ -96,7 +96,7 @@ class Hypergraph:
         self.add_hyperedge(vertices=new_hyperedge.vertices,
                            weight=new_hyperedge.weight, index=index)
 
-        removed_hyperedge_list = []
+        removed_hyperedge_list: list[Hyperedge] = []
         for hyperedge in to_merge_hyperedge_list:
             try:
                 self.remove_hyperedge(hyperedge)
@@ -142,7 +142,7 @@ class Hypergraph:
             )
 
         index = self.hyperedge_list.index(old_hyperedge)
-        added_hyperedge_list = []
+        added_hyperedge_list: list[Hyperedge] = []
         for new_hyperedge in reversed(new_hyperedge_list):
             try:
                 self.add_hyperedge(new_hyperedge.vertices,
