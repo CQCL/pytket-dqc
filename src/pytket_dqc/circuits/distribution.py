@@ -464,7 +464,7 @@ class Distribution:
                 # of an H-embedding on the qubit
                 #
                 # Whether this H is the beginning or end of an H-embedding
-                # unit, there are two cases to consider:
+                # unit, there are three cases to consider:
                 #
                 # (Case 0) There are no hyperedges currently being implemented
                 # on this qubit.
