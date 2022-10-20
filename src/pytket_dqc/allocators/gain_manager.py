@@ -100,9 +100,22 @@ class GainManager:
         self,
         old_hyperedge: Hyperedge,
         new_hyperedge_list: list[Hyperedge]
-    ):
+    ) -> int:
+        """Calculate the cost gain from splitting a hyperedge.
+        This uses `hyperedge_cost_map`, a stored hyperedge cost
+        dictionary to reduce cost recalculation. The cost may be
+        negative, indicating an increase in the cost caused by splitting.
 
-        # TODO: Here and in other split ang merge related functions,
+        :param old_hyperedge: Hyperedge to be split.
+        :type old_hyperedge: Hyperedge
+        :param new_hyperedge_list: List of hyperedges into which
+        `old_hyperedge` should be split.
+        :type new_hyperedge_list: list[Hyperedge]
+        :return: Cost of splitting hyperedge as specified.
+        :rtype: int
+        """
+
+        # TODO: Here and in other split and merge related functions,
         # I'm using that we can store the cost of hyperedges that
         # might not be in the hypergraph any more. Are we okay with that.
         # In the case of steiner trees we have capped the size of the
@@ -123,6 +136,19 @@ class GainManager:
         new_hyperedge_list: list[Hyperedge],
         recalculate_cost=True
     ):
+        """Split hyperedge `old_hyperedge` into hyperedges in
+        `new_hyperedge_list`. This method utilises the
+        `Hypergraph.split_hyperedge` method.
+
+        :param old_hyperedge: Hyperedge to be split
+        :type old_hyperedge: Hyperedge
+        :param new_hyperedge_list: List of hyperedges into which
+        `old_hyperedge` should be split.
+        :type new_hyperedge_list: list[Hyperedge]
+        :param recalculate_cost: Update dictionary of hyperedge costs,
+        defaults to True
+        :type recalculate_cost: bool, optional
+        """
 
         self.distribution.circuit.split_hyperedge(
             old_hyperedge=old_hyperedge,
@@ -133,13 +159,24 @@ class GainManager:
             for hypedge in new_hyperedge_list:
                 self.update_cost(hypedge)
 
-    def merge_gain(self, to_merge_hyperedge_list: list[Hyperedge]):
+    def merge_gain(self, to_merge_hyperedge_list: list[Hyperedge]) -> int:
+        """Calculate the gain from merging a list of hyperedges.
+        This uses `hyperedge_cost_map`, a stored hyperedge cost
+        dictionary to reduce cost recalculation. The cost may be
+        negative, indicating an increase in the cost caused by merging.
+
+        :param to_merge_hyperedge_list: List of hyperedges to be merged.
+        :type to_merge_hyperedge_list: list[Hyperedge]
+        :return: Gain from merging hyperedges. This may be negative.
+        :rtype: int
+        """
 
         current_cost = sum(
             self.hyperedge_cost_map[hyperedge]
             for hyperedge in to_merge_hyperedge_list
         )
 
+        # Create new hyperedge by merging given list.
         new_hyperedge = Hyperedge(
             vertices=list(
                 set(
@@ -153,6 +190,8 @@ class GainManager:
             weight=to_merge_hyperedge_list[0].weight
         )
 
+        # Take cost f hyperedge from hyperedge_cost_map if it exists there,
+        # else calculate it.
         if new_hyperedge in self.hyperedge_cost_map.keys():
             new_cost = self.hyperedge_cost_map[new_hyperedge]
         else:
@@ -165,6 +204,16 @@ class GainManager:
         to_merge_hyperedge_list: list[Hyperedge],
         recalculate_cost=True
     ):
+        """Merge `to_merge_hyperedge_list`, a list of given hyperedges
+        and update `hyperedge_cost_map`, a stored hyperedge cost
+        dictionary. This uses the `Hyperedge.merge_hyperedges` method.
+
+        :param to_merge_hyperedge_list: List of hyperedges to merge.
+        :type to_merge_hyperedge_list: list[Hyperedge]
+        :param recalculate_cost: Determines if the hyperedge cost dictionary
+        should be updated, defaults to True
+        :type recalculate_cost: bool, optional
+        """
 
         new_hyperedge = self.distribution.circuit.merge_hyperedge(
             to_merge_hyperedge_list=to_merge_hyperedge_list
