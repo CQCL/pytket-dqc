@@ -54,7 +54,7 @@ def test_placement_move_occupancy():
 
     assert manager.occupancy[4] == 1
     assert manager.is_move_valid(2, 4)
-    manager.move(2, 4)
+    manager.move_vertex(2, 4)
     # Server 4 is now full!
     assert manager.occupancy[4] == 2
     assert not manager.is_move_valid(1, 4)
@@ -63,17 +63,17 @@ def test_placement_move_occupancy():
     # Moreover, gate vertices can always be moved around
     assert manager.is_move_valid(8, 4)
     # Restore original placement
-    manager.move(2, 2)
+    manager.move_vertex(2, 2)
 
     # Server 1 is full
     assert manager.occupancy[1] == len(network.server_qubits[1])
     assert not manager.is_move_valid(3, 1)
     # Let's make some spare space in server 1
-    manager.move(0, 0)
+    manager.move_vertex(0, 0)
     assert manager.occupancy[1] < len(network.server_qubits[1])
     # Now the move should be valid
     assert manager.is_move_valid(3, 1)
-    manager.move(3, 1)
+    manager.move_vertex(3, 1)
     assert manager.occupancy[0] == 1
     assert manager.occupancy[1] == 2
     assert manager.occupancy[4] == 0
@@ -102,7 +102,7 @@ def test_gain_no_embeddings():
     manager = GainManager(distribution)
 
     # Moving a vertex to where it already is has no gain
-    assert manager.move_gain(0, 1) == 0
+    assert manager.move_vertex_gain(0, 1) == 0
 
     g = manager.server_graph
 
@@ -133,19 +133,19 @@ def test_gain_no_embeddings():
     # The gains should look like this:
     current_cost = steiner_cost_13 + steiner_cost_34
     new_cost = steiner_cost_14 + steiner_cost_4
-    assert manager.move_gain(12, 4) == current_cost - new_cost
+    assert manager.move_vertex_gain(12, 4) == current_cost - new_cost
     # Check that, indeed, the costs are updated accordingly
     assert (
         manager.hyperedge_cost_map[Hyperedge([0, 11, 12])] == steiner_cost_13
     )
     assert manager.hyperedge_cost_map[Hyperedge([3, 9, 12])] == steiner_cost_34
-    manager.move(12, 4)
+    manager.move_vertex(12, 4)
     assert (
         manager.hyperedge_cost_map[Hyperedge([0, 11, 12])] == steiner_cost_14
     )
     assert manager.hyperedge_cost_map[Hyperedge([3, 9, 12])] == steiner_cost_4
     # Move back
-    manager.move(12, 3)
+    manager.move_vertex(12, 3)
 
     # The hyperedges incident to vertex 0 are [0,5,7], [0,11,12] and [0,8,9]
     # which are allocated to servers:         [1,1,1], [1, 1, 3] and [1,2,4].
@@ -155,21 +155,21 @@ def test_gain_no_embeddings():
     # The gains should look like this:
     current_cost = steiner_cost_1 + steiner_cost_13 + steiner_cost_124
     new_cost = steiner_cost_12 + steiner_cost_123 + steiner_cost_24
-    assert manager.move_gain(0, 2) == current_cost - new_cost
+    assert manager.move_vertex_gain(0, 2) == current_cost - new_cost
     # Check that, indeed, the costs are updated accordingly
     assert manager.hyperedge_cost_map[Hyperedge([0, 5, 7])] == steiner_cost_1
     assert (
         manager.hyperedge_cost_map[Hyperedge([0, 11, 12])] == steiner_cost_13
     )
     assert manager.hyperedge_cost_map[Hyperedge([0, 8, 9])] == steiner_cost_124
-    manager.move(0, 2)
+    manager.move_vertex(0, 2)
     assert manager.hyperedge_cost_map[Hyperedge([0, 5, 7])] == steiner_cost_12
     assert (
         manager.hyperedge_cost_map[Hyperedge([0, 11, 12])] == steiner_cost_123
     )
     assert manager.hyperedge_cost_map[Hyperedge([0, 8, 9])] == steiner_cost_24
     # Move back
-    manager.move(0, 1)
+    manager.move_vertex(0, 1)
 
     # Check that the cache is correct
     assert (

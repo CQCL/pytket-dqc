@@ -225,7 +225,7 @@ class GainManager:
         if recalculate_cost:
             self.update_cost(new_hyperedge)
 
-    def move_gain(self, vertex: int, new_server: int) -> int:
+    def move_vertex_gain(self, vertex: int, new_server: int) -> int:
         """Compute the gain of moving ``vertex`` to ``new_server``. Instead
         of calculating the cost of the whole hypergraph using the new
         placement, we simply compare the previous cost of all hyperedges
@@ -253,21 +253,21 @@ class GainManager:
             prev_cost_map[hypedge] = self.hyperedge_cost_map[hypedge]
             prev_cost += self.hyperedge_cost_map[hypedge]
 
-        self.move(vertex, new_server)  # This will recalculate the costs
+        self.move_vertex(vertex, new_server)  # This will recalculate the costs
 
         new_cost = 0
         for hypedge in self.distribution.circuit.hyperedge_dict[vertex]:
             new_cost += self.hyperedge_cost_map[hypedge]
 
         # Move back without recalculating costs
-        self.move(vertex, prev_server, recalculate_cost=False)
+        self.move_vertex(vertex, prev_server, recalculate_cost=False)
         # Reassign previous costs
         for hypedge, cost in prev_cost_map.items():
             self.hyperedge_cost_map[hypedge] = cost
 
         return prev_cost - new_cost
 
-    def move(self, vertex: int, server: int, recalculate_cost=True):
+    def move_vertex(self, vertex: int, server: int, recalculate_cost=True):
         """Moves ``vertex`` to ``server``, updating ``placement`` and
         ``occupancy`` accordingly.
         By default it updates the cost of the hyperedge, but this can
