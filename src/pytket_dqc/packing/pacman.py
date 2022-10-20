@@ -657,7 +657,7 @@ class PacMan:
     def add_all_connected_nodes_to_bipartition(
         self,
         packet: Union[Packet, Tuple[Packet, ...]],
-        edges: FrozenSet[Union[Packet, Tuple[Packet, ...]], Union[Packet, Tuple[Packet, ...]]],
+        edges: Set[FrozenSet[Union[Packet, Tuple[Packet, ...]]]],
         bipartitions: Dict[int, Set[Union[Packet, Tuple[Packet, ...]]]],
         added_nodes: Set[Union[Packet, Tuple[Packet, ...]]],
     ):
@@ -682,11 +682,15 @@ class PacMan:
                 added_nodes.add(other_packet)
 
         for node in nodes_to_check:
-            self.add_all_connected_nodes_to_bipartition(node, edges, bipartitions, added_nodes)
+            self.add_all_connected_nodes_to_bipartition(
+                node, edges, bipartitions, added_nodes
+            )
 
         return
 
-    def get_connected_neighbouring_packets(self, neighbouring_packet: Tuple[Packet, ...]) -> List[Tuple[Packet, ...]]:
+    def get_connected_neighbouring_packets(
+        self, neighbouring_packet: Tuple[Packet, ...]
+    ) -> List[Tuple[Packet, ...]]:
         """Given a connected neighbouring packet,
         find connected ones.
         """
@@ -696,7 +700,10 @@ class PacMan:
             for connected_packet in self.get_connected_packets(packet):
                 connected_neighbouring += [
                     connected_neighbouring_packet
-                    for connected_neighbouring_packet in self.neighbouring_packets[connected_packet.qubit_vertex]
+                    for connected_neighbouring_packet
+                    in self.neighbouring_packets[
+                        connected_packet.qubit_vertex
+                    ]
                     if connected_packet in connected_neighbouring_packet
                 ]
         return connected_neighbouring
@@ -804,8 +811,9 @@ class PacMan:
                         not in edges
                     ):
                         self.assign_to_bipartition(
-                            merged_packet, connected_merged_packet,
-                            bipartitions
+                            merged_packet,
+                            connected_merged_packet,
+                            bipartitions,
                         )
                         edges.add(
                             frozenset([merged_packet, connected_merged_packet])
@@ -840,15 +848,19 @@ class PacMan:
                     relevant_edges = [edge for edge in edges if packet in edge]
                     for edge in relevant_edges:
                         assert len(edge - frozenset([packet])) == 1
-                        other_node, = edge - frozenset([packet])
+                        (other_node,) = edge - frozenset([packet])
                         edges.remove(edge)
                         edges.add(frozenset([neighbouring_packet, other_node]))
         added_nodes = set()
 
         for edge in edges:
             (u, v) = edge
-            self.add_all_connected_nodes_to_bipartition(u, edges, bipartitions, added_nodes)
-            self.add_all_connected_nodes_to_bipartition(v, edges, bipartitions, added_nodes)
+            self.add_all_connected_nodes_to_bipartition(
+                u, edges, bipartitions, added_nodes
+            )
+            self.add_all_connected_nodes_to_bipartition(
+                v, edges, bipartitions, added_nodes
+            )
 
         graph.add_nodes_from(bipartitions[0], bipartite=0)
         graph.add_nodes_from(bipartitions[1], bipartite=1)
@@ -857,9 +869,8 @@ class PacMan:
 
         for edge in edges:
             (u, v) = edge
-            assert (
-                (u in bipartitions[0] and v in bipartitions[1])
-                or (v in bipartitions[0] and u in bipartitions[1])
+            assert (u in bipartitions[0] and v in bipartitions[1]) or (
+                v in bipartitions[0] and u in bipartitions[1]
             ), f"{edge} has two nodes in the same partition"
 
         return graph, bipartitions[1]
@@ -905,7 +916,7 @@ class PacMan:
                                 self.get_hopping_packet_from_embedded_packet(
                                     connected_packet
                                 ),
-                                bipartitions
+                                bipartitions,
                             )
 
                         checked_hopping_packets.append(embedded_packet)
@@ -935,20 +946,22 @@ class PacMan:
 
     def get_conflict_edge(
         self, embedded_packet1: Packet, embedded_packet2: Packet
-    ) -> FrozenSet[Tuple[Packet, ...], Tuple[Packet, ...]]:
+    ) -> FrozenSet[Tuple[Packet, ...]]:
         """This is a very specific function to replace
         long lines of code in `get_nx_graph_conflict()`
         """
-        return frozenset([
-            self.get_hopping_packet_from_embedded_packet(embedded_packet1),
-            self.get_hopping_packet_from_embedded_packet(embedded_packet2),
-        ])
+        return frozenset(
+            [
+                self.get_hopping_packet_from_embedded_packet(embedded_packet1),
+                self.get_hopping_packet_from_embedded_packet(embedded_packet2),
+            ]
+        )
 
     def assign_to_bipartition(
         self,
         first_packet: Union[Packet, Tuple[Packet, ...]],
         second_packet: Union[Packet, Tuple[Packet, ...]],
-        bipartitions: Dict[int, Set[Tuple[Packet, ...]]],
+        bipartitions: Dict[int, Set[Union[Packet, Tuple[Packet, ...]]]],
     ):
         """Given two packets (can be normal or merged or hopping)
         that (should) form an edge and a bipartitioning,
