@@ -96,7 +96,7 @@ class GainManager:
             h_embedding=self.h_embedding_required[hyperedge],
         )
 
-    def split_gain(
+    def split_hyperedge_gain(
         self,
         old_hyperedge: Hyperedge,
         new_hyperedge_list: list[Hyperedge]
@@ -130,7 +130,7 @@ class GainManager:
 
         return current_cost - new_cost
 
-    def split(
+    def split_hyperedge(
         self,
         old_hyperedge: Hyperedge,
         new_hyperedge_list: list[Hyperedge],
@@ -159,7 +159,10 @@ class GainManager:
             for hypedge in new_hyperedge_list:
                 self.update_cost(hypedge)
 
-    def merge_gain(self, to_merge_hyperedge_list: list[Hyperedge]) -> int:
+    def merge_hyperedge_gain(
+        self,
+        to_merge_hyperedge_list: list[Hyperedge]
+    ) -> int:
         """Calculate the gain from merging a list of hyperedges.
         This uses `hyperedge_cost_map`, a stored hyperedge cost
         dictionary to reduce cost recalculation. The cost may be
@@ -199,7 +202,7 @@ class GainManager:
 
         return current_cost - new_cost
 
-    def merge(
+    def merge_hyperedge(
         self,
         to_merge_hyperedge_list: list[Hyperedge],
         recalculate_cost=True

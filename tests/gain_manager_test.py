@@ -230,13 +230,13 @@ def test_split_merge():
     )
     distribution = Distribution(hyp_circ, placement, network)
     gain_manager = GainManager(distribution)
-    gain_manager.split(
+    gain_manager.split_hyperedge(
         old_hyperedge=old_hyperedge,
         new_hyperedge_list=[to_merge_hyperedge_one, to_merge_hyperedge_two]
     )
     split_hyperedge_list = gain_manager.distribution.circuit.hyperedge_list
 
-    merge_gain = gain_manager.merge_gain(
+    merge_gain = gain_manager.merge_hyperedge_gain(
         to_merge_hyperedge_list=[
             to_merge_hyperedge_one,
             to_merge_hyperedge_two
@@ -249,7 +249,7 @@ def test_split_merge():
         split_hyperedge_list
     )
 
-    gain_manager.merge(
+    gain_manager.merge_hyperedge(
         to_merge_hyperedge_list=[
             to_merge_hyperedge_one,
             to_merge_hyperedge_two
@@ -265,7 +265,7 @@ def test_split_merge():
         gain_manager.distribution.circuit.hyperedge_list
     )
 
-    split_gain = gain_manager.split_gain(
+    split_gain = gain_manager.split_hyperedge_gain(
         old_hyperedge=old_hyperedge,
         new_hyperedge_list=[
             to_merge_hyperedge_one,
@@ -310,8 +310,8 @@ def test_merge_with_embedding():
         Hyperedge(vertices=[0, 3, 4], weight=1),
         Hyperedge(vertices=[0, 6], weight=1)
     ]
-    assert gain_mgr.merge_gain(
+    assert gain_mgr.merge_hyperedge_gain(
         to_merge_hyperedge_list=to_merge_hyperedge_list
     ) == 2
-    gain_mgr.merge(to_merge_hyperedge_list=to_merge_hyperedge_list)
+    gain_mgr.merge_hyperedge(to_merge_hyperedge_list=to_merge_hyperedge_list)
     assert gain_mgr.distribution.cost() == 5
