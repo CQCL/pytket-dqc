@@ -3,7 +3,7 @@ import logging
 from numpy import isclose, bool_
 import networkx as nx  # type: ignore
 from networkx.algorithms import bipartite  # type: ignore
-from typing import List, Dict, Tuple, Optional
+from typing import List, Dict, Tuple, Optional, Set, FrozenSet, Union
 
 from pytket_dqc.circuits import HypergraphCircuit, Hyperedge, Vertex
 from pytket_dqc.placement import Placement
@@ -130,6 +130,7 @@ class PacMan:
                     neighbouring_packet.append(next_packet)
                     considered_packet_list.append(next_packet)
                     next_packet = self.get_next_packet(next_packet)
+                if len(neighbouring_packet) > 1:
                     neighbouring_packets.append(tuple(neighbouring_packet))
             self.neighbouring_packets[qubit_vertex] = neighbouring_packets
 
@@ -214,8 +215,9 @@ class PacMan:
         ]
         assert (
             len(potential_neighbouring_packets) <= 1
-        ), "There should only be up to 1 neighbouring packet \
-            containing this packet."
+        ), f"There should only be up to 1 neighbouring packet \
+            for which the given packet is the earlier packet.\
+            Got {potential_neighbouring_packets}."
 
         if len(potential_neighbouring_packets) == 0:
             return None
@@ -740,11 +742,13 @@ class PacMan:
 
     def get_nx_graph_merged(self):
         """Get the NetworkX graph representing the circuit.
-        Nodes are merged packets.
+        Nodes are merged packets (neighbouring + hopping).
         """
         graph = nx.Graph()
-        top_packets = set()
-        bottom_packets = set()
+        bipartitions = {
+            0: set(),  # Bottom packets
+            1: set(),  # Top packets
+        }
         edges = set()
         for qubit_vertex in self.hypergraph_circuit.get_qubit_vertices():
             for merged_packet in self.merged_packets[qubit_vertex]:
@@ -752,27 +756,116 @@ class PacMan:
                     connected_merged_packet
                 ) in self.get_connected_merged_packets(merged_packet):
                     if (
-                        tuple([merged_packet, connected_merged_packet])
+                        frozenset([merged_packet, connected_merged_packet])
                         not in edges
                     ):
-                        if connected_merged_packet in top_packets:
-                            assert merged_packet not in top_packets
-                            bottom_packets.add(merged_packet)
-                        elif connected_merged_packet in bottom_packets:
-                            assert merged_packet not in bottom_packets
-                            top_packets.add(merged_packet)
-                        else:
-                            top_packets.add(merged_packet)
-                            bottom_packets.add(connected_merged_packet)
+                        self.assign_to_bipartition(
+                            merged_packet, connected_merged_packet,
+                            bipartitions
+                        )
                         edges.add(
-                            tuple([merged_packet, connected_merged_packet])
+                            frozenset([merged_packet, connected_merged_packet])
                         )
 
-        graph.add_nodes_from(top_packets, bipartite=0)
-        graph.add_nodes_from(bottom_packets, bipartite=1)
+        graph.add_nodes_from(bipartitions[0], bipartite=0)
+        graph.add_nodes_from(bipartitions[1], bipartite=1)
         graph.add_edges_from(edges)
         assert nx.is_bipartite(graph), "The graph must be bipartite."
-        return graph, top_packets
+        return graph, bipartitions[1]
+
+    def get_nx_graph_neighbouring(self):
+        """Strategy is to add every edge between packets
+        then merge nodes together where the packets
+        can be merged by neighbouring packing
+        """
+        graph = nx.Graph()
+        bipartitions = {
+            0: set(),  # Bottom packets
+            1: set(),  # Top packets
+        }
+        edges = set()
+
+        for packet in self.get_all_packets():
+            for connected_packet in self.get_connected_packets(packet):
+                if frozenset([packet, connected_packet]) not in edges:
+                    edges.add(frozenset([packet, connected_packet]))
+
+        for qubit_vertex in self.hypergraph_circuit.get_qubit_vertices():
+            for neighbouring_packet in self.neighbouring_packets[qubit_vertex]:
+                for packet in neighbouring_packet:
+                    relevant_edges = [edge for edge in edges if packet in edge]
+                    for edge in relevant_edges:
+                        assert len(edge - frozenset([packet])) == 1
+                        other_node, = edge - frozenset([packet])
+                        edges.remove(edge)
+                        edges.add(frozenset([neighbouring_packet, other_node]))
+        added_nodes = set()
+
+        for edge in edges:
+            (u, v) = edge
+            self.add_all_connected_nodes_to_bipartition(u, edges, bipartitions, added_nodes)
+            self.add_all_connected_nodes_to_bipartition(v, edges, bipartitions, added_nodes)
+
+        graph.add_nodes_from(bipartitions[0], bipartite=0)
+        graph.add_nodes_from(bipartitions[1], bipartite=1)
+        graph.add_edges_from(edges)
+        assert nx.is_bipartite(graph), "The graph must be bipartite."
+
+        for edge in edges:
+            (u, v) = edge
+            assert (
+                (u in bipartitions[0] and v in bipartitions[1])
+                or (v in bipartitions[0] and u in bipartitions[1])
+            ), f"{edge} has two nodes in the same partition"
+
+        return graph, bipartitions[1]
+
+    def add_all_connected_nodes_to_bipartition(
+        self,
+        packet: Union[Packet, Tuple[Packet, ...]],
+        edges: FrozenSet[Union[Packet, Tuple[Packet, ...]], Union[Packet, Tuple[Packet, ...]]],
+        bipartitions: Dict[int, Set[Union[Packet, Tuple[Packet, ...]]]],
+        added_nodes: Set[Union[Packet, Tuple[Packet, ...]]],
+    ):
+        """And for my next attempt to properly
+        assign packets (normal or neighbouring)
+        a correct bipartition, I will take
+        a given node, assign all nodes connected to
+        it, then assign all the nodes connected
+        to those nodes, and so on
+        """
+        relevant_edges = [edge for edge in edges if packet in edge]
+        nodes_to_check = set()
+        for relevant_edge in relevant_edges:
+            (u, v) = relevant_edge
+            if packet == u:
+                other_packet = v
+            else:
+                other_packet = u
+            self.assign_to_bipartition(packet, other_packet, bipartitions)
+            if other_packet not in added_nodes:
+                nodes_to_check.add(other_packet)
+                added_nodes.add(other_packet)
+
+        for node in nodes_to_check:
+            self.add_all_connected_nodes_to_bipartition(node, edges, bipartitions, added_nodes)
+
+        return
+
+    def get_connected_neighbouring_packets(self, neighbouring_packet: Tuple[Packet, ...]) -> List[Tuple[Packet, ...]]:
+        """Given a connected neighbouring packet,
+        find connected ones.
+        """
+        connected_neighbouring = []
+
+        for packet in neighbouring_packet:
+            for connected_packet in self.get_connected_packets(packet):
+                connected_neighbouring += [
+                    connected_neighbouring_packet
+                    for connected_neighbouring_packet in self.neighbouring_packets[connected_packet.qubit_vertex]
+                    if connected_packet in connected_neighbouring_packet
+                ]
+        return connected_neighbouring
 
     def get_containing_merged_packet(self, packet: Packet):
         for merged_packet in self.merged_packets[packet.qubit_vertex]:
@@ -782,6 +875,7 @@ class PacMan:
     def get_connected_merged_packets(
         self, merged_packet: Tuple[Packet]
     ) -> List[Tuple[Packet]]:
+        """Also works for neighbouring packets"""
         connected_merged_packets: List[Tuple[Packet]] = list()
         for packet in merged_packet:
             connected_packets = self.get_connected_packets(packet)
@@ -794,6 +888,11 @@ class PacMan:
 
     def get_mvc_merged_graph(self):
         g, topnodes = self.get_nx_graph_merged()
+        matching = bipartite.maximum_matching(g, top_nodes=topnodes)
+        return bipartite.to_vertex_cover(g, matching, top_nodes=topnodes)
+
+    def get_mvc_neighbouring_graph(self):
+        g, topnodes = self.get_nx_graph_neighbouring()
         matching = bipartite.maximum_matching(g, top_nodes=topnodes)
         return bipartite.to_vertex_cover(g, matching, top_nodes=topnodes)
 
@@ -846,11 +945,11 @@ class PacMan:
 
     def get_nx_graph_conflict(self):
         graph = nx.Graph()
-        conflict_edges = []
+        conflict_edges = set()
         checked_hopping_packets = []
         bipartitions = {
-            0: [],  # Bottom half
-            1: [],  # Top half
+            0: set(),  # Bottom half
+            1: set(),  # Top half
         }
         # Iterate through each packet that can be embedded in a hopping packet
         for qubit_vertex in self.hypergraph_circuit.get_qubit_vertices():
@@ -872,14 +971,20 @@ class PacMan:
 
                         # Only care if the connected packet is also embedded
                         if self.is_packet_embedded(connected_packet):
-                            conflict_edges.append(
+                            conflict_edges.add(
                                 self.get_conflict_edge(
                                     embedded_packet, connected_packet
                                 )
                             )
 
-                            bipartitions = self.assign_to_bipartitions(
-                                embedded_packet, connected_packet, bipartitions
+                            self.assign_to_bipartition(
+                                self.get_hopping_packet_from_embedded_packet(
+                                    embedded_packet
+                                ),
+                                self.get_hopping_packet_from_embedded_packet(
+                                    connected_packet
+                                ),
+                                bipartitions
                             )
 
                         checked_hopping_packets.append(embedded_packet)
@@ -914,41 +1019,35 @@ class PacMan:
 
     def get_conflict_edge(
         self, embedded_packet1: Packet, embedded_packet2: Packet
-    ) -> Tuple[Tuple[Packet, ...], Tuple[Packet, ...]]:
+    ) -> FrozenSet[Tuple[Packet, ...], Tuple[Packet, ...]]:
         """This is a very specific function to replace
         long lines of code in `get_nx_graph_conflict()`
         """
-        return (
+        return frozenset([
             self.get_hopping_packet_from_embedded_packet(embedded_packet1),
             self.get_hopping_packet_from_embedded_packet(embedded_packet2),
-        )
+        ])
 
-    def assign_to_bipartitions(
+    def assign_to_bipartition(
         self,
-        embedded_packet: Packet,
-        connected_packet: Packet,
-        bipartitions: Dict[int, List[Tuple[Packet, ...]]],
-    ) -> Dict[int, List[Tuple[Packet, ...]]]:
-        """This is a very specific function to replace
-        long lines of code in `get_nx_graph_conflict()`
+        first_packet: Union[Packet, Tuple[Packet, ...]],
+        second_packet: Union[Packet, Tuple[Packet, ...]],
+        bipartitions: Dict[int, Set[Tuple[Packet, ...]]],
+    ):
+        """Given two packets (can be normal or merged or hopping)
+        that (should) form an edge and a bipartitioning,
+        decide where the given packets should/must go.
         """
-        if (
-            self.get_hopping_packet_from_embedded_packet(embedded_packet)
-            in bipartitions[0]
-        ):
-            is_top_half = False
-        elif (
-            self.get_hopping_packet_from_embedded_packet(embedded_packet)
-            in bipartitions[1]
-        ):
-            is_top_half = True
-        else:
-            is_top_half = True
-            bipartitions[is_top_half].append(
-                self.get_hopping_packet_from_embedded_packet(connected_packet)
-            )
 
-        bipartitions[not is_top_half].append(
-            self.get_hopping_packet_from_embedded_packet(connected_packet)
+        # Refers to first_packet
+        is_first_in_top_half = (
+            first_packet not in bipartitions[0]
+            and second_packet not in bipartitions[1]
         )
-        return bipartitions
+
+        if all(first_packet not in bipartitions[i] for i in [0, 1]):
+            bipartitions[is_first_in_top_half].add(first_packet)
+
+        if all(second_packet not in bipartitions[i] for i in [0, 1]):
+            bipartitions[not is_first_in_top_half].add(second_packet)
+        return
