@@ -293,7 +293,7 @@ class Distribution:
                 """Releases ``link_qubit``, making it available again.
                 """
 
-                # Retrieve the server and ``link_qubit`` is in, along with
+                # Retrieve the server ``link_qubit`` is in, along with
                 # the ``circ_qubit`` it is copying
                 keys = [
                     key
