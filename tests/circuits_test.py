@@ -485,6 +485,62 @@ def test_to_pytket_circuit_with_branching_distribution_tree():
     )
 
 
+def test_to_pytket_circuit_with_embedding_1q():
+
+    network = NISQNetwork(
+        [[2, 1], [1, 0], [1, 3], [0, 4]],
+        {0: [0], 1: [1], 2: [2], 3: [3], 4: [4, 5]},
+    )
+
+    circ = (
+        Circuit(3)
+        .add_gate(OpType.CU1, 0.3, [0, 1])
+        .H(0)
+        .Rz(1.0, 0)  # To be embedded
+        .H(0)
+        .add_gate(OpType.CU1, 0.8, [0, 2])
+    )
+    dist_circ = HypergraphCircuit(circ)
+
+    placement = Placement({0: 0, 1: 4, 2: 4, 3: 4, 4: 4})
+    distribution = Distribution(dist_circ, placement, network)
+    assert distribution.is_valid()
+
+    circ_with_dist = distribution.to_pytket_circuit()
+
+    assert check_equivalence(
+        circ, circ_with_dist, distribution.get_qubit_mapping()
+    )
+
+
+def test_to_pytket_circuit_with_embedding_2q():
+
+    network = NISQNetwork(
+        [[2, 1], [1, 0], [1, 3], [0, 4]],
+        {0: [0], 1: [1], 2: [2], 3: [3], 4: [4, 5]},
+    )
+
+    circ = (
+        Circuit(4)
+        .add_gate(OpType.CU1, 0.3, [0, 1])
+        .H(0)
+        .add_gate(OpType.CU1, 1.0, [0, 3])  # To be embedded
+        .H(0)
+        .add_gate(OpType.CU1, 0.8, [0, 2])
+    )
+    dist_circ = HypergraphCircuit(circ)
+
+    placement = Placement({0: 0, 1: 4, 2: 4, 3: 3, 4: 4, 5: 3, 6: 4})
+    distribution = Distribution(dist_circ, placement, network)
+    assert distribution.is_valid()
+
+    circ_with_dist = distribution.to_pytket_circuit()
+
+    assert check_equivalence(
+        circ, circ_with_dist, distribution.get_qubit_mapping()
+    )
+
+
 def test_to_pytket_circuit_with_pauli_circ():
     # Randomly generated circuit of type pauli, depth 10 and 10 qubits
     with open(
