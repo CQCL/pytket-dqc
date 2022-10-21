@@ -293,7 +293,7 @@ class Distribution:
                 """Releases ``link_qubit``, making it available again.
                 """
 
-                # Retrieve the server and ``link_qubit`` is in, along with
+                # Retrieve the server ``link_qubit`` is in, along with
                 # the ``circ_qubit`` it is copying
                 keys = [
                     key
@@ -464,7 +464,7 @@ class Distribution:
                 # of an H-embedding on the qubit
                 #
                 # Whether this H is the beginning or end of an H-embedding
-                # unit, there are two cases to consider:
+                # unit, there are three cases to consider:
                 #
                 # (Case 0) There are no hyperedges currently being implemented
                 # on this qubit.
