@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from .hypergraph import Hypergraph, Hyperedge
+from .hypergraph import Hypergraph, Hyperedge, Vertex
 from pytket import OpType, Circuit, Qubit
 from pytket.circuit import Command, Unitary2qBox  # type: ignore
 from scipy.stats import unitary_group  # type: ignore
@@ -43,6 +43,7 @@ class HypergraphCircuit(Hypergraph):
 
         self.reset(circuit)
         assert self._vertex_id_predicate()
+        assert self._sorted_hedges_predicate()
 
     def __str__(self):
         out_string = super().__str__()
@@ -362,6 +363,27 @@ class HypergraphCircuit(Hypergraph):
         # There should be no more vertices left
         return not vertices
 
+    def _sorted_hedges_predicate(self) -> bool:
+        """Tests that the hyperedges are in circuit sequential order
+        in `self.hyperedge_list`.
+        """
+
+        for qubit_vertex in self.get_qubit_vertices():
+            hedge_list = [
+                hedge for hedge in self.hyperedge_list
+                if self.get_qubit_vertex(hedge) == qubit_vertex
+            ]
+            if hedge_list != sorted(
+                hedge_list,
+                key= lambda hedge: min([
+                    v for v in hedge.vertices
+                    if v != qubit_vertex
+                ])
+            ):
+                return False
+
+        return True
+
     def _get_server_to_qubit_vertex(
         self, placement: Placement
     ) -> dict[int, list[int]]:
@@ -389,6 +411,42 @@ class HypergraphCircuit(Hypergraph):
             ]
             for server in set(placement.placement.values())
         }
+
+    def get_vertex_to_command_index_map(self) -> dict[Vertex, int]:
+        """Get a mapping from each gate `Vertex` in the `Hypergraph`, to its
+        corresponding index in the list returned by `Circuit.get_commands()`.
+        """
+
+        vertex_to_command_index_map: dict[Vertex, int] = dict()
+        for command_index, command_dict in enumerate(
+            self._commands
+        ):
+            if command_dict["type"] == "distributed gate":
+                vertex = command_dict["vertex"]
+                assert type(vertex) == Vertex
+                vertex_to_command_index_map[vertex] = command_index
+        return vertex_to_command_index_map
+
+    def get_last_command_index(self, gate_vertex_list: list[Vertex]) -> int:
+        """Given a list of gate vertices,
+        return the index in `Circuit.get_commands()`
+        that corresponds to the last gate in the circuit.
+        """
+
+        return max(gate_vertex_list)
+
+    def get_first_command_index(self, gate_vertex_list: list[Vertex]) -> int:
+        """Given a list of gate vertices,
+        return the index in `Circuit.get_commands()`
+        that corresponds to the first gate in the circuit.
+        """
+
+        assert all([
+            v >= len(self.get_qubit_vertices())
+            for v in gate_vertex_list
+        ])
+
+        return min(gate_vertex_list)
 
     def to_relabeled_registers(self, placement: Placement) -> Circuit:
         """Relabel qubits to match their placement.
