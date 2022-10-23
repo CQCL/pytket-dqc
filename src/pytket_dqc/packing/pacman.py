@@ -3,7 +3,7 @@ import logging
 from numpy import isclose, bool_
 import networkx as nx  # type: ignore
 from networkx.algorithms import bipartite  # type: ignore
-from typing import List, Dict, Tuple, Optional, Set, FrozenSet, Union
+from typing import List, Dict, Tuple, Optional, Set, FrozenSet, Union, NamedTuple
 
 from pytket_dqc.circuits import HypergraphCircuit, Hyperedge, Vertex
 from pytket_dqc.placement import Placement
@@ -17,7 +17,7 @@ from pytket_dqc.utils import (
 logging.basicConfig(level=logging.INFO)
 
 
-class Packet:
+class Packet(NamedTuple):
     """The basic structure of a collection of
     distributable gates.
     """
@@ -28,7 +28,6 @@ class Packet:
         qubit_vertex: Vertex,
         connected_server_index: int,
         gate_vertices: List[Vertex],
-        contained_embeddings: List[Tuple[Packet]] = list(),
     ):
         self.packet_index: int = packet_index
         self.qubit_vertex: Vertex = qubit_vertex
@@ -49,7 +48,7 @@ class Packet:
                 and o.gate_vertices == self.gate_vertices
                 and o.connected_server_index == self.connected_server_index
             )
-        return False
+        raise Exception(f"Invalid comparison between Packet and {type(o)}.")
 
     def __hash__(self):
         return hash(repr(self))
@@ -102,12 +101,12 @@ class PacMan:
         own packet (I think this is what Junyi explicitly asks for)?
         """
         hyperedges_ordered = self.get_hyperedges_ordered()
-        starting_index = 0
+        current_index = 0
         for qubit_vertex in self.hypergraph_circuit.get_qubit_vertices():
             self.packets_by_qubit[qubit_vertex] = []
             for hyperedge in hyperedges_ordered[qubit_vertex]:
-                starting_index, packets = self.hyperedge_to_packets(
-                    hyperedge, starting_index
+                current_index, packets = self.hyperedge_to_packets(
+                    hyperedge, current_index
                 )
                 for packet in packets:
                     self.packets_by_qubit[qubit_vertex].append(packet)
@@ -118,7 +117,7 @@ class PacMan:
                 f"Checking qubit vertex {qubit_vertex} \
                     for neighbouring packets."
             )
-            neighbouring_packets: List[Tuple[Packet]] = list()
+            neighbouring_packets: List[Tuple[Packet, ...]] = list()
             considered_packet_list = []
             for packet in self.packets_by_qubit[qubit_vertex][:-1]:
                 if packet in considered_packet_list:
@@ -154,7 +153,6 @@ class PacMan:
                         self.hopping_packets[qubit_vertex].append(
                             (packet, next_packet)
                         )
-                        break
 
     def merge_all_packets(self):
         """Using the identified neighbouring and hopping
@@ -282,9 +280,10 @@ class PacMan:
         )  # This is for mypy check - is there a better way?
         qubits = command.qubits
         qubit_vertex_candidates = [
-            self.qubit_vertex_from_qubit(qubit)
+            self.hypergraph_circuit.get_vertex_of_qubit(qubit)
             for qubit in qubits
-            if self.qubit_vertex_from_qubit(qubit) is not qubit_vertex
+            if self.hypergraph_circuit.get_vertex_of_qubit(qubit)
+            is not qubit_vertex
         ]
 
         assert (
@@ -339,7 +338,7 @@ class PacMan:
                 logging.debug(f"No, {command} is not embeddable.")
                 return False
             if command.op.type == OpType.CU1:
-                if not self.is_embeddable_CU1(command, first_packet):
+                if not self.is_h_embeddable_CU1(command, first_packet):
                     logging.debug(
                         f"No, CU1 command {command} is not embeddable."
                     )
@@ -446,24 +445,6 @@ class PacMan:
 
         return starting_index, packets
 
-    def circuit_element_from_vertex(self, vertex: Vertex):
-        """Given a vertex, return the circuit element (Qubit or Command)
-        Question: Should be `HypergraphCircuit` method?
-        """
-        # TODO: Don't access hidden stuff
-        if (
-            self.hypergraph_circuit._vertex_circuit_map[vertex]["type"]
-            == "qubit"
-        ):
-            return self.hypergraph_circuit._vertex_circuit_map[vertex]["node"]
-        elif (
-            self.hypergraph_circuit._vertex_circuit_map[vertex]["type"]
-            == "gate"
-        ):
-            return self.hypergraph_circuit._vertex_circuit_map[vertex][
-                "command"
-            ]
-
     def get_intermediate_commands(
         self, first_packet: Packet, second_packet: Packet
     ) -> List[Command]:
@@ -495,9 +476,9 @@ class PacMan:
 
         return intermediate_commands
 
-    def is_embeddable_CU1(self, command: Command, packet: Packet) -> bool:
-        """Bad function name but this checks that a CU1 itself
-        COULD be embeddable
+    def is_h_embeddable_CU1(self, command: Command, packet: Packet) -> bool:
+        """Check that a CU1 itself
+        COULD be embeddable in a H embedding unit
         i.e. only prove that we cannot embed but does not check the 1q
         gates surrounding it, hence doesn't prove it IS embeddable
         """
@@ -507,7 +488,8 @@ class PacMan:
         }
 
         this_command_qubit_vertices = [
-            self.qubit_vertex_from_qubit(qubit) for qubit in command.qubits
+            self.hypergraph_circuit.get_vertex_of_qubit(qubit)
+            for qubit in command.qubits
         ]
         this_command_servers = {
             self.placement.placement[qubit_vertex]
@@ -515,9 +497,11 @@ class PacMan:
         }
         if packet_servers != this_command_servers:
             return False
-        elif not isclose(command.op.params[0], 1):
-            return False
-        return True
+
+        return (
+            isclose(command.op.params[0] % 1, 0) 
+            or isclose(command.op.params[0] % 1, 1)
+        )
 
     def convert_1q_ops(self, ops: List[Op]) -> List[Op]:
         """Converts a set of 1q ops
@@ -629,7 +613,7 @@ class PacMan:
 
         phase_sum = prior_phase + post_phase
 
-        return isclose(phase_sum % 1, 0)
+        return isclose(phase_sum % 1, 0) or isclose(phase_sum % 1, 1)
 
     def get_connected_packets(self, packet: Packet):
         connected_packets = []
@@ -638,13 +622,14 @@ class PacMan:
             other_qubit_candidates = [
                 qubit
                 for qubit in gate_qubits
-                if self.qubit_vertex_from_qubit(qubit) != packet.qubit_vertex
+                if self.hypergraph_circuit.get_vertex_of_qubit(qubit)
+                != packet.qubit_vertex
             ]
             assert (
                 len(other_qubit_candidates) == 1
             ), "There should only be one other qubit candidate \
                 for this gate vertex."
-            other_qubit_vertex = self.qubit_vertex_from_qubit(
+            other_qubit_vertex = self.hypergraph_circuit.get_vertex_of_qubit(
                 other_qubit_candidates[0]
             )
             for potential_packet in self.packets_by_qubit[other_qubit_vertex]:
@@ -1028,8 +1013,9 @@ class PacMan:
         return hyperedges
 
     def get_last_command_index(self, gate_vertex_list: List[Vertex]) -> int:
-        """Given a list of gate vertices, return the vertex that
-        corresponds to the last gate in the circuit.
+        """Given a list of gate vertices,
+        return the index in `Circuit.get_commands()`
+        that corresponds to the last gate in the circuit.
         Question: Should be `HypergraphCircuit` method?
         """
         last_command_index: int = -1  # Placeholder value
@@ -1057,20 +1043,20 @@ class PacMan:
 
         return first_command_index
 
-    def qubit_vertex_from_qubit(self, qubit: Qubit):
-        """Given Qubit, find it's vertex on the hypergraph
+    def circuit_element_from_vertex(self, vertex: Vertex):
+        """Given a vertex, return the circuit element (Qubit or Command)
         Question: Should be `HypergraphCircuit` method?
         """
-        # TODO: Maybe not needed anymore
-        for (
-            vertex,
-            circuit_element,
-        ) in (
-            self.hypergraph_circuit._vertex_circuit_map.items()
-        ):  # TODO: Don't access hidden stuff
-            if (
-                circuit_element["type"] == "qubit"
-                and circuit_element["node"] == qubit
-            ):
-                return vertex
-        raise Exception("Could not find a vertex corresponding to this qubit.")
+        # TODO: Don't access hidden stuff
+        if (
+            self.hypergraph_circuit._vertex_circuit_map[vertex]["type"]
+            == "qubit"
+        ):
+            return self.hypergraph_circuit._vertex_circuit_map[vertex]["node"]
+        elif (
+            self.hypergraph_circuit._vertex_circuit_map[vertex]["type"]
+            == "gate"
+        ):
+            return self.hypergraph_circuit._vertex_circuit_map[vertex][
+                "command"
+            ]
