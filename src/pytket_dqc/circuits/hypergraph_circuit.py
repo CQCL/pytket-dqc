@@ -389,6 +389,8 @@ class HypergraphCircuit(Hypergraph):
                 hedge for hedge in self.hyperedge_list
                 if self.get_qubit_vertex(hedge) == qubit_vertex
             ]
+            if len(hedge_list) <= 1:
+                continue
             if hedge_list != sorted(
                 hedge_list,
                 key=lambda hedge: min([
