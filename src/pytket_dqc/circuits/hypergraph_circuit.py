@@ -391,7 +391,7 @@ class HypergraphCircuit(Hypergraph):
             ]
             if hedge_list != sorted(
                 hedge_list,
-                key= lambda hedge: min([
+                key=lambda hedge: min([
                     v for v in hedge.vertices
                     if v != qubit_vertex
                 ])
