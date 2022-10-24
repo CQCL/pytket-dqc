@@ -121,6 +121,7 @@ def tk1_to_euler(a, b, c) -> Circuit:
         hadamard_indices = [
             i for i, op in enumerate(ops) if op.type == OpType.H
         ]
+        id_rz = Op.create(OpType.Rz, [0])
         hadamard = Op.create(OpType.H)
         hadamard_count = len(hadamard_indices)
 
@@ -129,16 +130,26 @@ def tk1_to_euler(a, b, c) -> Circuit:
             hadamard_count <= 2
         ), f"There should not be more than 2 Hadamards. {ops}"
 
-        # Don't need to do anything
+        # Insert I as appropriate
         if hadamard_count == 2:
             logging.debug(f"Returning {ops} unchanged.")
+            if ops[0].type == OpType.H:
+                ops.insert(0, id_rz)
+            if ops[-1].type == OpType.H:
+                ops.append(id_rz)
+            assert len(ops) == 5
             return ops
 
         # Can just stick two at the ends
         elif hadamard_count == 0:
             logging.debug(f"Appending 2 Hadamards to {ops}")
+            if len(ops) == 0:
+                ops.append(id_rz)
             ops.append(hadamard)
+            ops.append(id_rz)
             ops.append(hadamard)
+            ops.append(id_rz)
+            assert len(ops) == 5
             return ops
 
         else:
@@ -166,7 +177,7 @@ def tk1_to_euler(a, b, c) -> Circuit:
                 if phase_op_index:
                     new_ops.reverse()
 
-            # List is [H, Op, H]
+            # List is [Op, H, Op]
             else:
                 first_phase = ops[0].params[0]
                 second_phase = ops[2].params[0]
@@ -182,6 +193,7 @@ def tk1_to_euler(a, b, c) -> Circuit:
                     second_new_phase_op,
                 ]
             logging.debug(f"Converted {ops} for {new_ops}")
+            assert len(new_ops) == 5
             return new_ops
 
 
