@@ -106,6 +106,7 @@ def tk1_to_euler(a, b, c) -> Circuit:
 
     return circ
 
+
 def to_euler_with_two_hadamards(ops: list[Op]) -> list[Op]:
     """Take a list of single qubit gates and substitute
     it with an equivalent list (up to global phase)
