@@ -131,33 +131,32 @@ def to_euler_with_two_hadamards(ops: list[Op]) -> list[Op]:
         hadamard_count <= 2
     ), f"There should not be more than 2 Hadamards. {ops}"
 
+    new_ops: list[Op] = []
+
     # Insert I as appropriate
     if hadamard_count == 2:
-        logging.debug(f"Returning {ops} unchanged.")
         if ops[0].type == OpType.H:
-            ops.insert(0, id_rz)
+            new_ops.append(id_rz)
+
+        new_ops.extend(ops)
+
         if ops[-1].type == OpType.H:
-            ops.append(id_rz)
-        assert len(ops) == 5
-        return ops
+            new_ops.append(id_rz)
 
     # Can just stick two at the ends
     elif hadamard_count == 0:
-        logging.debug(f"Appending 2 Hadamards to {ops}")
         if len(ops) == 0:
-            ops.append(id_rz)
-        ops.append(hadamard)
-        ops.append(id_rz)
-        ops.append(hadamard)
-        ops.append(id_rz)
-        assert len(ops) == 5
-        return ops
+            new_ops.append(id_rz)
+        new_ops.extend(ops)
+        new_ops.append(hadamard)
+        new_ops.append(id_rz)
+        new_ops.append(hadamard)
+        new_ops.append(id_rz)
 
     else:
         assert (
             len(ops) <= 3
         ), "There can only be up to 3 ops in this decomposition."
-        new_ops: list[Op] = []
         s_op = Op.create(OpType.Rz, [0.5])
 
         # The list is just [H]
@@ -193,9 +192,18 @@ def to_euler_with_two_hadamards(ops: list[Op]) -> list[Op]:
                 hadamard,
                 second_new_phase_op,
             ]
-        logging.debug(f"Converted {ops} for {new_ops}")
-        assert len(new_ops) == 5
-        return new_ops
+
+    logging.debug(f"Converted {ops} for {new_ops}")
+
+    assert len(new_ops) == 5
+    assert all([
+            new_ops[0].type == OpType.Rz,
+            new_ops[1].type == OpType.H,
+            new_ops[2].type == OpType.Rz,
+            new_ops[3].type == OpType.H,
+            new_ops[4].type == OpType.Rz,
+        ])
+    return new_ops
 
 
 #: Pass rebasing gates to those valid within pytket-dqc
