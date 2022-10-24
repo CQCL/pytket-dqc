@@ -463,6 +463,13 @@ class HypergraphCircuit(Hypergraph):
     def get_intermediate_commands(
         self, first_vertex: Vertex, second_vertex: Vertex, qubit_vertex: Vertex
     ) -> list[Command]:
+        """Given two gate vertices and a qubit vertex, return all commands
+        in the circuit after the gate corresponding to ``first_vertex`` and up
+        until the gate corresponding to ``second_vertex``.
+        
+        NOTE: the ``first_vertex`` and ``second_vertex`` gates aren't included
+        NOTE: only the commands acting on ``qubit_vertex`` are included.
+        """
 
         assert self.is_qubit_vertex(qubit_vertex)
         assert first_vertex in self.vertex_list and not self.is_qubit_vertex(
