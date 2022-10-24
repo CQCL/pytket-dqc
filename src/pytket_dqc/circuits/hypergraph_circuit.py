@@ -163,43 +163,27 @@ class HypergraphCircuit(Hypergraph):
         """Returns the list of commands between the first and last gate within
         the hyperedge. Commands that don't act on the qubit vertex are omitted
         but embedded gates within the hyperedge are included.
+
+        NOTE: The gates in between CU1 gates are all standardised to the Euler
+        decomposition with two Hadamards.
         """
         hyp_qubit = self._vertex_circuit_map[self.get_qubit_vertex(hyperedge)][
             "node"
         ]
-        gate_vertices = self.get_gate_vertices(hyperedge)
+        gate_vertices = sorted(self.get_gate_vertices(hyperedge))
         if not gate_vertices:
             return []
-        circ_commands = self._circuit.get_commands()
+        # Ignore commands not acting on ``hyp_qubit``
+        intermediate_commands = [cmd for cmd in self.get_intermediate_commands(gate_vertices[0], gate_vertices[-1]) if hyp_qubit in cmd.qubits]
 
-        # We will abuse the fact that, by construction, the gate vertices are
-        # numbered from smaller to larger integers as we read the circuit from
-        # left to right.
-        # A solution that didn't use the trick would be preferable, but that'd
-        # require changing ``vertex_circuit_map`` to point at indices in the
-        # circuit.get_commands() list. Unfortunately, comparison of bindings
-        # via the "is" keyword does not work here because "get_commands"
-        # returns a deep copy of the command list (on each call, the Command
-        # objects are different).
+        # Build the command list
         subcirc_commands = []
-        first_gate = min(gate_vertices)
-        last_gate = max(gate_vertices)
-        current_vertex_id = len(self._circuit.qubits)
-
-        first_found = False
-        for cmd in circ_commands:
-            if current_vertex_id == first_gate and cmd.op.type == OpType.CU1:
-                first_found = True
-            if first_found and hyp_qubit in cmd.qubits:
-                subcirc_commands.append(cmd)
-            if current_vertex_id == last_gate and cmd.op.type == OpType.CU1:
-                break
-            if cmd.op.type == OpType.CU1:
-                current_vertex_id += 1
-
-        assert first_found and current_vertex_id == last_gate
-        assert subcirc_commands[0].op.type == OpType.CU1
-        assert subcirc_commands[-1].op.type == OpType.CU1
+        this_gate_vertex = gate_vertices[0]
+        subcirc_commands.append(self.get_gate_of_vertex(this_gate_vertex))
+        for next_gate_vertex in gate_vertices[1:]:
+            subcirc_commands += self.to_euler_with_two_hadamards_cmds(self.get_intermediate_commands(this_gate_vertex, next_gate_vertex))
+            subcirc_commands.append(self.get_gate_of_vertex(next_gate_vertex))
+            this_gate_vertex = next_gate_vertex
 
         return subcirc_commands
 
