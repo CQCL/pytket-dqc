@@ -440,7 +440,7 @@ class HypergraphCircuit(Hypergraph):
                 vertex_to_command_index_map[vertex] = command_index
         return vertex_to_command_index_map
 
-    def get_last_command_vertex(self, gate_vertex_list: list[Vertex]) -> int:
+    def get_last_gate_vertex(self, gate_vertex_list: list[Vertex]) -> Vertex:
         """Given a list of gate vertices,
         return the vertex in `Circuit.get_commands()`
         that corresponds to the last gate in the circuit.
@@ -448,7 +448,7 @@ class HypergraphCircuit(Hypergraph):
 
         return max(gate_vertex_list)
 
-    def get_first_command_vertex(self, gate_vertex_list: list[Vertex]) -> int:
+    def get_first_gate_vertex(self, gate_vertex_list: list[Vertex]) -> Vertex:
         """Given a list of gate vertices,
         return the vertex in `Circuit.get_commands()`
         that corresponds to the first gate in the circuit.
