@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from .hypergraph import Hypergraph, Hyperedge
 from pytket import OpType, Circuit, Qubit
-from pytket.circuit import Command, Unitary2qBox  # type: ignore
+from pytket.circuit import Command, Op, Unitary2qBox  # type: ignore
 from scipy.stats import unitary_group  # type: ignore
 import numpy as np
 from pytket.passes import DecomposeBoxes  # type: ignore
@@ -164,26 +164,79 @@ class HypergraphCircuit(Hypergraph):
         the hyperedge. Commands that don't act on the qubit vertex are omitted
         but embedded gates within the hyperedge are included.
 
-        NOTE: The gates in between CU1 gates are all standardised to the Euler
-        decomposition with two Hadamards.
+        NOTE: The single qubit gates on the hyperedge's qubit are replaced by
+        their Euler decomposition using ``to_euler_with_two_hadamards`` when
+        necessary to satisfy the embedding requirements.
+        NOTE: Rz gates at either side of an embedded CU1 gate are squashed
+        together.
         """
-        hyp_qubit = self._vertex_circuit_map[self.get_qubit_vertex(hyperedge)][
-            "node"
-        ]
+        hyp_q_vertex = self.get_qubit_vertex(hyperedge)
+        hyp_qubit = self.get_qubit_of_vertex(hyp_q_vertex)
         gate_vertices = sorted(self.get_gate_vertices(hyperedge))
         if not gate_vertices:
             return []
-        # Ignore commands not acting on ``hyp_qubit``
-        intermediate_commands = [cmd for cmd in self.get_intermediate_commands(gate_vertices[0], gate_vertices[-1]) if hyp_qubit in cmd.qubits]
 
-        # Build the command list
         subcirc_commands = []
-        this_gate_vertex = gate_vertices[0]
-        subcirc_commands.append(self.get_gate_of_vertex(this_gate_vertex))
-        for next_gate_vertex in gate_vertices[1:]:
-            subcirc_commands += self.to_euler_with_two_hadamards_cmds(self.get_intermediate_commands(this_gate_vertex, next_gate_vertex))
-            subcirc_commands.append(self.get_gate_of_vertex(next_gate_vertex))
-            this_gate_vertex = next_gate_vertex
+        subcirc_commands.append(self.get_gate_of_vertex(gate_vertices[0]))
+        prev_hyp_gate_vertex = gate_vertices[0]
+
+        for next_hyp_gate_vertex in gate_vertices[1:]:
+            # Get all embedded gates between the previous and next distributed
+            # gates. Omit any commands that do not act on ``hyp_qubit``.
+            embedded_commands = self.get_intermediate_commands(prev_hyp_gate_vertex, next_hyp_gate_vertex, hyp_q_vertex)
+            cu1_indices = [i for i, cmd in enumerate(embedded_commands) if cmd.op.type == OpType.CU1]
+
+            # Include the first batch of embedded 1-qubit gates, make sure
+            # that the final gate is a Hadamard
+            subcirc_commands += embedded_commands[:cu1_indices[0]]
+            # Remove the last Rz and remember its phase so that it may be
+            # squashed with the Rz after the embedded CU1 gate
+            prev_phase = 0
+            if subcirc_commands[-1].op.type == OpType.Rz:
+                prev_phase = subcirc_commands[-1].op.params[0]
+                subcirc_commands.pop()  # Remove the Rz gate
+            assert subcirc_commands[-1].op.type == OpType.H
+            # Append the first embedded CU1 gate
+            subcirc_commands.append(embedded_commands[cu1_indices[0]])
+
+            # Append all gates from here until the last embedded CU1 gate.
+            # Any batch of 1-qubit gates between CU1 gates needs to be
+            # converted to an explicit Euler form [Rz,H,Rz,H] where the
+            # missing Rz gate at the end has been squashed with that of
+            # the next batch.
+            prev_cu1_idx = cu1_indices[0]
+            for next_cu1_idx in cu1_indices[1:]:
+                # Get the current batch of embedded 1-qubit gates, make
+                # sure they are of the form [Rz,H,Rz,H,Rz] and squash
+                # ``prev_phase`` into the first Rz gate.
+                current_1q_cmds = self.to_euler_and_squash(embedded_commands[prev_cu1_idx+1 : next_cu1_idx], prev_phase)
+                # Remove the last Rz and store its phase for later squashing
+                rz = current_1q_cmds.pop()
+                assert rz.op.type == OpType.Rz
+                prev_phase = rz.op.params[0]
+                # Append the batch of embedded 1-qubit gates [Rz,H,Rz,H]
+                subcirc_commands += current_1q_cmds
+                # Append the next embedded CU1 gate
+                subcirc_commands.append(embedded_commands[next_cu1_idx])
+                prev_cu1_index = next_cu1_idx
+
+            # Include the last batch of embedded 1-qubit gates, make sure
+            # that the first gate is an Rz and that ``prev_phase`` is
+            # squashed into it
+            last_1q_cmds = embedded_commands[prev_cu1_index+1:]
+            if last_1q_cmds[0].op.type == OpType.Rz:
+                rz = last_1q_cmds.pop(0)  # Remove it
+                prev_phase += rz.op.params[0]  # Squash phases together
+            # Append the Rz gate with the squashed phase
+            rz = Command(Op.create(OpType.Rz, prev_phase), [hyp_qubit])
+            subcirc_commands.append(rz)
+            # Append the rest of the embedded commands
+            subcirc_commands += last_1q_cmds
+
+            # Now that all embedded gates have been added, append the next
+            # distributed gate and continue with the loop
+            subcirc_commands.append(self.get_gate_of_vertex(next_hyp_gate_vertex))
+            prev_hyp_gate_vertex = next_hyp_gate_vertex
 
         return subcirc_commands
 
