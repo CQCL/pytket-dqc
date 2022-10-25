@@ -5,6 +5,7 @@ from pytket_dqc.utils import steiner_tree, check_equivalence
 from pytket_dqc.utils.gateset import start_proc, end_proc
 from pytket_dqc.utils.circuit_analysis import all_cu1_local, _cost_from_circuit
 from pytket import Circuit, OpType, Qubit
+from pytket.passes import RemoveRedundancies  # type: ignore
 import networkx as nx  # type: ignore
 from numpy import isclose  # type: ignore
 from typing import NamedTuple
@@ -428,7 +429,109 @@ class Distribution:
 
                 return ending_actions
 
+        #
+        # -- CIRCUIT PREPARATION -- #
+        #
+        def update_hyperedge_subcircuit(orig_circ: Circuit, hedge: Hyperedge) -> Circuit:
+            """Return a circuit equivalent to ``orig_circ`` that replaces the
+            1-qubit gates embedded within ``hedge`` with the necessary ones
+            to satisfy embeddability.
+
+            NOTE: ``orig_circ`` is equivalent to ``hyp_circ._circuit``, but
+            not necessarily the same circuit; it may have been altered already
+            """
+            qubit_vertex = hyp_circ.get_qubit_vertex(hedge)
+            hyp_qubit = hyp_circ.get_qubit_of_vertex(qubit_vertex)
+            gate_vertices = hyp_circ.get_gate_vertices(hedge)
+            first_gate_vertex = hyp_circ.get_first_gate_vertex(gate_vertices)
+            last_gate_vertex = hyp_circ.get_last_gate_vertex(gate_vertices)
+
+            orig_circ_cmds = orig_circ.get_commands()
+            # Find the indices in ``orig_circ_cmds`` corresponding to the
+            # first and last gate vertices in ``hedge``
+            first_gate_idx = None
+            last_gate_idx = None
+            # Do so using the guarantee given by the ``_vertex_id_predicate``
+            assert hyp_circ._vertex_id_predicate()
+            next_gate_vertex = len(orig_circ.qubits)
+            for idx, cmd in enumerate(orig_circ_cmds):
+                if cmd.op.type == OpType.CU1:
+                    if next_gate_vertex == first_gate_vertex:
+                        first_gate_idx = idx
+                    if next_gate_vertex == last_gate_vertex:
+                        last_gate_idx = idx
+                    next_gate_vertex += 1
+            # Sanity check: the indices where found
+            assert first_gate_idx is not None
+            assert last_gate_idx is not None
+
+            # Split the list of commands in ``orig_circ`` into three segments:
+            cmds_before_hedge = orig_circ_cmds[: first_gate_idx]
+            cmds_during_hedge = orig_circ_cmds[first_gate_idx : last_gate_idx + 1]
+            cmds_after_hedge = orig_circ_cmds[last_gate_idx + 1 :]
+            # Get the subcircuit commands with the updated 1-qubit gates
+            hedge_commands = hyp_circ.get_hyperedge_subcircuit(hedge)
+
+            # Build the circuit
+            altered_circ = Circuit()
+            # Add the qubits to the circuit
+            for q in orig_circ.qubits:
+                altered_circ.add_qubit(q)
+            # Append all commands before the hyperedge without change
+            for cmd in cmds_before_hedge:
+                altered_circ.add_gate(cmd.op, cmd.qubits)
+
+            # Weave the commands in ``cmds_during_hedge`` and those
+            # in ``hedge_commands`` together
+            for hedge_cmd in hedge_commands:
+                # If ``hedge_cmd`` is a 1-qubit gate, we append it to the
+                # ``altered_circ`` since these are the commands that we
+                # want to replace.
+                if len(hedge_cmd.qubits) == 1:
+                    assert hedge_cmd.qubits == [hyp_qubit]
+                    altered_circ.add_gate(hedge_cmd.op, hedge_cmd.qubits)
+
+                # If ``hedge_cmd`` is a 2-qubit gate, add in all commands
+                # from ``cmds_during_hedge`` until reaching a gate acting
+                # on the same qubits (which will be ``hedge_cmd``)
+                elif hedge_cmd.op.type == OpType.CU1:
+                    next_cmd = cmds_during_hedge.pop(0)
+                    while next_cmd.qubits != hedge_cmd.qubits:
+                        # Append if it is not a 1-qubit gate on ``hyp_qubit``
+                        # and, if it is, ignore it since its equivalent has
+                        # already been appended as a ``hedge_cmd``.
+                        if next_cmd.qubits != [hyp_qubit]:
+                            altered_circ.add_gate(next_cmd.op, next_cmd.qubits)
+                        next_cmd = cmds_during_hedge.pop(0)
+                    # And add the ``hedge_cmd`` itself
+                    assert next_cmd.op == hedge_cmd.op
+                    altered_circ.add_gate(hedge_cmd.op, hedge_cmd.qubits)
+
+                # Command not recognised
+                else:
+                    raise Exception(f"Command {hedge_cmd} not supported.")
+            # Sanity check: the whole ``cmds_during_hedge`` has been exhausted
+            assert not cmds_during_hedge
+
+            # Append all commands after the hyperedge without change
+            for cmd in cmds_after_hedge:
+                altered_circ.add_gate(cmd.op, cmd.qubits)
+
+            # Remove consecutive Hadamards and Rz gates with phase 0
+            RemoveRedundancies().apply(altered_circ)
+            return altered_circ
+
+        # For each hyperedge of the circuit that requires a CU1 to be
+        # H-embedded, some of its embedded Hadamards may need to be
+        # decomposed into Euler form and its embedded Rz gates squashed.
+        prep_circ = hyp_circ.get_circuit()
+        hedges_to_update = [hedge for hedge in hyp_circ.hyperedge_list if hyp_circ.requires_h_embedded_cu1(hedge)]
+        for hedge in hedges_to_update:
+            prep_circ = update_hyperedge_subcircuit(prep_circ, hedge)
+
+        #
         # -- CIRCUIT GENERATION -- #
+        #
         new_circ = Circuit()
         # Add the qubits to the circuit
         for hw_qubit in qubit_mapping.values():
@@ -456,8 +559,8 @@ class Distribution:
         # The LinkManager that will deal with the link qubits
         linkman = LinkManager(self.network.get_server_list())
 
-        # Iterate over the commands of the original circuit
-        commands = hyp_circ._circuit.get_commands()
+        # Iterate over the commands of the prepared circuit
+        commands = prep_circ.get_commands()
         orig_cu1_count = 0
         for cmd_idx, cmd in enumerate(commands):
 
