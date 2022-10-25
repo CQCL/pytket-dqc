@@ -5,6 +5,7 @@ from .gateset import (  # noqa:F401
     start_proc,
     end_proc,
     telep_proc,
+    to_euler_with_two_hadamards
 )
 
 from .op_analysis import (  # noqa:F401

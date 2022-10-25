@@ -5,8 +5,10 @@ from pytket_dqc.utils import (
     ebit_memory_required,
     evicted_gate_count,
     check_equivalence,
+    to_euler_with_two_hadamards,
 )
 from pytket import Circuit, OpType  # type: ignore
+from pytket.circuit import Op  # type: ignore
 from pytket.pauli import Pauli  # type: ignore
 from pytket_dqc.circuits import HypergraphCircuit
 from pytket_dqc.networks import NISQNetwork
@@ -29,8 +31,9 @@ def test_qasm():
     network = NISQNetwork([[0, 1], [0, 2]], {0: [0], 1: [1], 2: [2]})
 
     circ = Circuit(2)
-    circ.add_gate(OpType.CU1, 1.0, [0, 1]).H(0).Rz(
-        0.3, 0).H(0).add_gate(OpType.CU1, 1.0, [0, 1])
+    circ.add_gate(OpType.CU1, 1.0, [0, 1]).H(0).Rz(0.3, 0).H(0).add_gate(
+        OpType.CU1, 1.0, [0, 1]
+    )
     dist_circ = HypergraphCircuit(circ)
 
     placement = Placement({0: 1, 1: 2, 2: 0, 3: 0})
@@ -291,3 +294,54 @@ def test_verify_non_equal():
     assert not check_equivalence(
         ab_circ, ba_circ, {q: q for q in ab_circ.qubits}
     )
+
+
+def test_to_euler_with_two_hadamards():
+    test_gatesets = [
+        [],
+        [Op.create(OpType.Rz, [0.1])],
+        [Op.create(OpType.H)],
+        [Op.create(OpType.Rz, [0.2]), Op.create(OpType.H)],
+        [Op.create(OpType.H), Op.create(OpType.Rz, [0.3])],
+        [
+            Op.create(OpType.H),
+            Op.create(OpType.Rz, [0.4]),
+            Op.create(OpType.H),
+        ],
+        [
+            Op.create(OpType.H),
+            Op.create(OpType.Rz, [0.5]),
+            Op.create(OpType.H),
+            Op.create(OpType.Rz, [0.6]),
+        ],
+        [
+            Op.create(OpType.Rz, [0.7]),
+            Op.create(OpType.H),
+            Op.create(OpType.Rz, [0.8]),
+            Op.create(OpType.H),
+        ],
+        [
+            Op.create(OpType.Rz, [0.9]),
+            Op.create(OpType.H),
+            Op.create(OpType.Rz, [1.0]),
+            Op.create(OpType.H),
+            Op.create(OpType.Rz, [1.1]),
+        ],
+    ]
+
+    for test_gateset in test_gatesets:
+        orig_circ = Circuit(1)
+        for op in test_gateset:
+            orig_circ.add_gate(op, [0])
+
+        new_circ = Circuit(1)
+        for op in to_euler_with_two_hadamards(test_gateset):
+            new_circ.add_gate(op, [0])
+
+        identity_up_to_global_phase = (
+            orig_circ.get_unitary() @ new_circ.get_unitary().conj().T
+        )
+        assert np.allclose(
+            np.identity(2),
+            identity_up_to_global_phase / identity_up_to_global_phase[0][0],
+        )

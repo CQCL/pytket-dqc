@@ -1,4 +1,6 @@
 import numpy as np  # type: ignore
+import logging
+
 from pytket.predicates import (  # type: ignore
     GateSetPredicate,
     NoSymbolsPredicate,
@@ -14,7 +16,9 @@ from pytket.passes import (  # type: ignore
     SequencePass,
     BasePass,
 )
-from pytket.circuit import CustomGateDef  # type: ignore
+from pytket.circuit import CustomGateDef, Op  # type: ignore
+
+logging.basicConfig(level=logging.INFO)
 
 #: Allowed gateset for distributors in pytket-dqc
 dqc_1_qubit = {
@@ -91,21 +95,115 @@ def tk1_to_euler(a, b, c) -> Circuit:
         circ.Rz(c + a, 0)
         if np.isclose(b % 4, 2):
             circ.add_phase(1.0)
-    # Case 2: the Rx gate corresponds to a Pauli gate
-    elif np.isclose(b % 2, 1):
-        circ.Rz(c, 0).X(0).Rz(a, 0).add_phase(-0.5)
-        if np.isclose(b % 4, 3):
-            circ.add_phase(1.0)
-    # Case 3: the Rx gate has a multiple of pi/2 phase
+    # Case 2: the Rx gate has a multiple of pi/2 phase
     elif np.isclose(b % 2, 0.5) or np.isclose(b % 2, 1.5):
         circ.Rz(c - b, 0).H(0).Rz(a - b, 0).add_phase(-0.5)
         if b % 4 > 2:
             circ.add_phase(1.0)
-    # Case 4: for any other case, use Euler decomposition
+    # Case 3: for any other case, use Euler decomposition
     else:
         circ.Rz(c, 0).H(0).Rz(b, 0).H(0).Rz(a, 0)
 
     return circ
+
+
+def to_euler_with_two_hadamards(ops: list[Op]) -> list[Op]:
+    """Take a list of single qubit gates and substitute
+    it with an equivalent list (up to global phase)
+    that is of the form [Rz, H, Rz, H, Rz].
+
+    Warnings:
+    - Global Phases are not preserved
+    - If the input list contains two Hs already
+    then the list is returned as is.
+
+    """
+
+    hadamard_indices = [
+        i for i, op in enumerate(ops) if op.type == OpType.H
+    ]
+    id_rz = Op.create(OpType.Rz, [0])
+    hadamard = Op.create(OpType.H)
+    hadamard_count = len(hadamard_indices)
+
+    # The following should be guranteed by DQCPass()
+    assert (
+        hadamard_count <= 2
+    ), f"There should not be more than 2 Hadamards. {ops}"
+
+    new_ops: list[Op] = []
+
+    # Insert I as appropriate
+    if hadamard_count == 2:
+        if ops[0].type == OpType.H:
+            new_ops.append(id_rz)
+
+        new_ops.extend(ops)
+
+        if ops[-1].type == OpType.H:
+            new_ops.append(id_rz)
+
+    # Can just stick two at the ends
+    elif hadamard_count == 0:
+        if len(ops) == 0:
+            new_ops.append(id_rz)
+        new_ops.extend(ops)
+        new_ops.append(hadamard)
+        new_ops.append(id_rz)
+        new_ops.append(hadamard)
+        new_ops.append(id_rz)
+
+    else:
+        assert (
+            len(ops) <= 3
+        ), "There can only be up to 3 ops in this decomposition."
+        s_op = Op.create(OpType.Rz, [0.5])
+
+        # The list is just [H]
+        if len(ops) == 1:
+            new_ops += [s_op, hadamard, s_op, hadamard, s_op]
+
+        # The list is [H, Op] or [Op, H]
+        elif len(ops) == 2:
+            phase_op_index = int(
+                not hadamard_indices[0]
+            )  # only takes value of 1 or 0
+            phase_op = ops[phase_op_index]
+            phase = phase_op.params[0]  # phase in turns of pi
+            new_phase_op = Op.create(
+                OpType.Rz, [phase + 1 / 2]
+            )  # need to add another half phase
+            new_ops += [new_phase_op, hadamard, s_op, hadamard, s_op]
+            if phase_op_index:
+                new_ops.reverse()
+
+        # List is [Op, H, Op]
+        else:
+            first_phase = ops[0].params[0]
+            second_phase = ops[2].params[0]
+            first_new_phase_op = Op.create(OpType.Rz, [first_phase + 0.5])
+            second_new_phase_op = Op.create(
+                OpType.Rz, [second_phase + 0.5]
+            )
+            new_ops += [
+                first_new_phase_op,
+                hadamard,
+                s_op,
+                hadamard,
+                second_new_phase_op,
+            ]
+
+    logging.debug(f"Converted {ops} for {new_ops}")
+
+    assert len(new_ops) == 5
+    assert all([
+            new_ops[0].type == OpType.Rz,
+            new_ops[1].type == OpType.H,
+            new_ops[2].type == OpType.Rz,
+            new_ops[3].type == OpType.H,
+            new_ops[4].type == OpType.Rz,
+        ])
+    return new_ops
 
 
 #: Pass rebasing gates to those valid within pytket-dqc
