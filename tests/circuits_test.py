@@ -625,6 +625,7 @@ def test_to_pytket_circuit_with_hyperedge_requiring_euler():
     # and squash the Rz(0.5) accordingly.
 
     circ = Circuit(5)
+    circ.H(0)
     circ.add_gate(OpType.CU1, [0.3], [0, 1])
     circ.H(0)
     circ.Rz(0.5, 0)
@@ -634,6 +635,8 @@ def test_to_pytket_circuit_with_hyperedge_requiring_euler():
     circ.Rz(0.5, 0)
     circ.H(0)
     circ.add_gate(OpType.CU1, [0.8], [0, 2])
+    circ.Rz(0.3, 0)
+    circ.H(0)
 
     network = NISQNetwork([[0, 1]], {0: [0], 1: [1, 2, 3, 4]},)
 
