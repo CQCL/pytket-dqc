@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from .hypergraph import Hypergraph, Hyperedge
+from .hypergraph import Hypergraph, Hyperedge, Vertex
 from pytket import OpType, Circuit, Qubit
 from pytket.circuit import Command, Op, Unitary2qBox  # type: ignore
 from scipy.stats import unitary_group  # type: ignore
@@ -35,7 +35,7 @@ class HypergraphCircuit(Hypergraph):
     """
 
     def __init__(self, circuit: Circuit):
-        """ Initialisation function
+        """Initialisation function
 
         :param circuit: Circuit to be distributed.
         :type circuit: Circuit
@@ -43,6 +43,7 @@ class HypergraphCircuit(Hypergraph):
 
         self.reset(circuit)
         assert self._vertex_id_predicate()
+        assert self._sorted_hedges_predicate()
 
     def __str__(self):
         out_string = super().__str__()
@@ -123,8 +124,7 @@ class HypergraphCircuit(Hypergraph):
         return self._vertex_circuit_map[vertex]["type"] == "qubit"
 
     def get_qubit_vertex(self, hyperedge: Hyperedge) -> int:
-        """Returns the qubit vertex in ``hyperedge``.
-        """
+        """Returns the qubit vertex in ``hyperedge``."""
         qubit_list = [
             vertex
             for vertex in hyperedge.vertices
@@ -135,21 +135,19 @@ class HypergraphCircuit(Hypergraph):
         return qubit_list[0]
 
     def get_vertex_of_qubit(self, qubit: Qubit) -> int:
-        """Returns the vertex that corresponds to ``qubit``.
-        """
+        """Returns the vertex that corresponds to ``qubit``."""
         vertex_list = [
             vertex
             for vertex in self.vertex_list
             if self.is_qubit_vertex(vertex)
-            if self._vertex_circuit_map[vertex]['node'] == qubit
+            if self._vertex_circuit_map[vertex]["node"] == qubit
         ]
 
         assert len(vertex_list) == 1
         return vertex_list[0]
 
     def get_gate_vertices(self, hyperedge: Hyperedge) -> list[int]:
-        """Returns the list of gate vertices in ``hyperedge``.
-        """
+        """Returns the list of gate vertices in ``hyperedge``."""
         gate_vertex_list = [
             vertex
             for vertex in hyperedge.vertices
@@ -158,6 +156,22 @@ class HypergraphCircuit(Hypergraph):
 
         assert len(gate_vertex_list) == len(hyperedge.vertices) - 1
         return gate_vertex_list
+
+    def get_qubit_of_vertex(self, vertex: int) -> Qubit:
+        """Returns the qubit the hypergraph's vertex corresponds to.
+        If the vertex is not a qubit vertex, an exception is raised.
+        """
+        if self._vertex_circuit_map[vertex]["type"] != "qubit":
+            raise Exception("Not a qubit vertex!")
+        return self._vertex_circuit_map[vertex]["node"]
+
+    def get_gate_of_vertex(self, vertex: int) -> Command:
+        """Returns the gate the hypergraph's vertex corresponds to.
+        If the vertex is not a gate vertex, an exception is raised.
+        """
+        if self._vertex_circuit_map[vertex]["type"] != "gate":
+            raise Exception("Not a gate vertex!")
+        return self._vertex_circuit_map[vertex]["command"]
 
     def get_hyperedge_subcircuit(self, hyperedge: Hyperedge) -> list[Command]:
         """Returns the list of commands between the first and last gate within
@@ -399,6 +413,29 @@ class HypergraphCircuit(Hypergraph):
         # There should be no more vertices left
         return not vertices
 
+    def _sorted_hedges_predicate(self) -> bool:
+        """Tests that the hyperedges are in circuit sequential order
+        in `self.hyperedge_list`.
+        """
+
+        for qubit_vertex in self.get_qubit_vertices():
+            hedge_list = [
+                hedge
+                for hedge in self.hyperedge_list
+                if self.get_qubit_vertex(hedge) == qubit_vertex
+            ]
+            if len(hedge_list) <= 1:
+                continue
+            if hedge_list != sorted(
+                hedge_list,
+                key=lambda hedge: min(
+                    [v for v in hedge.vertices if v != qubit_vertex]
+                ),
+            ):
+                return False
+
+        return True
+
     def _get_server_to_qubit_vertex(
         self, placement: Placement
     ) -> dict[int, list[int]]:
@@ -427,6 +464,76 @@ class HypergraphCircuit(Hypergraph):
             for server in set(placement.placement.values())
         }
 
+    def get_vertex_to_command_index_map(self) -> dict[Vertex, int]:
+        """Get a mapping from each gate `Vertex` in the `Hypergraph`, to its
+        corresponding index in the list returned by `Circuit.get_commands()`.
+        """
+
+        vertex_to_command_index_map: dict[Vertex, int] = dict()
+        for command_index, command_dict in enumerate(self._commands):
+            if command_dict["type"] == "distributed gate":
+                vertex = command_dict["vertex"]
+                assert type(vertex) == Vertex
+                vertex_to_command_index_map[vertex] = command_index
+        return vertex_to_command_index_map
+
+    def get_last_gate_vertex(self, gate_vertex_list: list[Vertex]) -> Vertex:
+        """Given a list of gate vertices,
+        return the vertex in `Circuit.get_commands()`
+        that corresponds to the last gate in the circuit.
+        """
+
+        return max(gate_vertex_list)
+
+    def get_first_gate_vertex(self, gate_vertex_list: list[Vertex]) -> Vertex:
+        """Given a list of gate vertices,
+        return the vertex in `Circuit.get_commands()`
+        that corresponds to the first gate in the circuit.
+        """
+
+        assert all(
+            [v >= len(self.get_qubit_vertices()) for v in gate_vertex_list]
+        )
+
+        return min(gate_vertex_list)
+
+    def get_intermediate_commands(
+        self, first_vertex: Vertex, second_vertex: Vertex, qubit_vertex: Vertex
+    ) -> list[Command]:
+        """Given two gate vertices and a qubit vertex, return all commands
+        in the circuit after the gate corresponding to ``first_vertex`` and up
+        until the gate corresponding to ``second_vertex``.
+
+        NOTE: the ``first_vertex`` and ``second_vertex`` gates aren't included
+        NOTE: only the commands acting on ``qubit_vertex`` are included.
+        """
+
+        assert self.is_qubit_vertex(qubit_vertex)
+        assert first_vertex in self.vertex_list and not self.is_qubit_vertex(
+            first_vertex
+        )
+        assert second_vertex in self.vertex_list and not self.is_qubit_vertex(
+            second_vertex
+        )
+
+        qubit = self.get_qubit_of_vertex(qubit_vertex)
+
+        vertex_to_command_index_map = self.get_vertex_to_command_index_map()
+        first_command_index = vertex_to_command_index_map[first_vertex]
+        second_command_index = vertex_to_command_index_map[second_vertex]
+
+        intermediate_commands = []
+
+        for command_dict in self._commands[
+            first_command_index + 1: second_command_index
+        ]:
+            command = command_dict["command"]
+            assert type(command) == Command
+            if qubit in command.qubits:
+                intermediate_commands.append(command_dict["command"])
+
+        return intermediate_commands
+
     def to_relabeled_registers(self, placement: Placement) -> Circuit:
         """Relabel qubits to match their placement.
 
@@ -448,7 +555,7 @@ class HypergraphCircuit(Hypergraph):
         # Add registers to new circuit.
         for server, vertex_list in server_to_vertex_dict.items():
             server_to_register[server] = circ.add_q_register(
-                f'server_{server}', len(vertex_list)
+                f"server_{server}", len(vertex_list)
             )
 
         # Build map from circuit qubits to server registers
@@ -470,7 +577,9 @@ class HypergraphCircuit(Hypergraph):
         return circ
 
     def to_pytket_circuit(
-        self, placement: Placement, network: NISQNetwork,
+        self,
+        placement: Placement,
+        network: NISQNetwork,
     ) -> Circuit:
         """Convert circuit to one including required distributed gates.
 
@@ -521,7 +630,7 @@ class HypergraphCircuit(Hypergraph):
 
             # Add a register for all of the qubits assigned to this server.
             server_to_register[server] = circ.add_q_register(
-                f'server_{server}', len(qubit_vertex_list)
+                f"server_{server}", len(qubit_vertex_list)
             )
 
             server_to_link_register[server] = {}
@@ -549,7 +658,7 @@ class HypergraphCircuit(Hypergraph):
 
                     if server in unique_server_used:
                         register = circ.add_q_register(
-                            f'server_{server}_link_edge_{index}', 1
+                            f"server_{server}_link_edge_{index}", 1
                         )
                         server_to_link_register[server][index] = register[0]
 
@@ -840,7 +949,11 @@ class RegularGraphHypergraphCircuit(HypergraphCircuit):
     """
 
     def __init__(
-        self, n_qubits: int, degree: int, n_layers: int, seed: int = None,
+        self,
+        n_qubits: int,
+        degree: int,
+        n_layers: int,
+        seed: int = None,
     ):
         """Initialisation function
 
