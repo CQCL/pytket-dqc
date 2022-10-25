@@ -618,6 +618,52 @@ def test_to_pytket_circuit_circ_with_embeddings():
     )
 
 
+def test_to_pytket_circuit_with_hyperedge_requiring_euler():
+    # The circuit given below has a hyperedge between the first and last
+    # CU1 gates. The gates in between can all be embedded but, to do so,
+    # it is required to decompose the middle Hadamard to its Euler form
+    # and squash the Rz(0.5) accordingly.
+
+    circ = Circuit(5)
+    circ.add_gate(OpType.CU1, [0.3], [0, 1])
+    circ.H(0)
+    circ.Rz(0.5, 0)
+    circ.add_gate(OpType.CU1, [1.0], [0, 3])
+    circ.H(0)
+    circ.add_gate(OpType.CU1, [1.0], [0, 4])
+    circ.Rz(0.5, 0)
+    circ.H(0)
+    circ.add_gate(OpType.CU1, [0.8], [0, 2])
+
+    network = NISQNetwork([[0, 1]], {0: [0], 1: [1, 2, 3, 4]},)
+
+    placement = Placement(
+        {0: 0, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1}
+    )
+
+    hyp_circ = HypergraphCircuit(circ)
+    hyp_circ.hyperedge_list = []
+    hyp_circ.hyperedge_dict = {v: [] for v in hyp_circ.vertex_list}
+    hyp_circ.vertex_neighbours = {v: set() for v in hyp_circ.vertex_list}
+
+    hyp_circ.add_hyperedge([0, 5, 8])  # Merged hyperedge
+    hyp_circ.add_hyperedge([0, 6])
+    hyp_circ.add_hyperedge([0, 7])
+    hyp_circ.add_hyperedge([1, 5])
+    hyp_circ.add_hyperedge([2, 8])
+    hyp_circ.add_hyperedge([3, 6])
+    hyp_circ.add_hyperedge([4, 7])
+
+    distribution = Distribution(hyp_circ, placement, network)
+    assert distribution.is_valid()
+
+    assert check_equivalence(
+        circ,
+        distribution.to_pytket_circuit(),
+        distribution.get_qubit_mapping(),
+    )
+
+
 def test_to_pytket_circuit_with_pauli_circ():
     # Randomly generated circuit of type pauli, depth 10 and 10 qubits
     with open(
