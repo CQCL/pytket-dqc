@@ -208,11 +208,13 @@ class Distribution:
                                 connection_path = nx.shortest_path(
                                     tree, c_server, gate_server
                                 )
+                                # fmt: off
                                 if (
                                     best_path is None
                                     or len(connection_path) < len(best_path)
                                 ):
                                     best_path = connection_path
+                                # fmt: on
                             assert best_path is not None
                             # The first element of the path is a ``c_server``
                             # so the actual cost is the length minus one
@@ -432,7 +434,9 @@ class Distribution:
         #
         # -- CIRCUIT PREPARATION -- #
         #
-        def update_hyperedge_subcircuit(orig_circ: Circuit, hedge: Hyperedge) -> Circuit:
+        def update_hyperedge_subcircuit(
+            orig_circ: Circuit, hedge: Hyperedge
+        ) -> Circuit:
             """Return a circuit equivalent to ``orig_circ`` that replaces the
             1-qubit gates embedded within ``hedge`` with the necessary ones
             to satisfy embeddability.
@@ -466,9 +470,13 @@ class Distribution:
             assert last_gate_idx is not None
 
             # Split the list of commands in ``orig_circ`` into three segments:
-            cmds_before_hedge = orig_circ_cmds[: first_gate_idx]
-            cmds_during_hedge = orig_circ_cmds[first_gate_idx : last_gate_idx + 1]
-            cmds_after_hedge = orig_circ_cmds[last_gate_idx + 1 :]
+            cmds_before_hedge = orig_circ_cmds[:first_gate_idx]
+            cmds_during_hedge = orig_circ_cmds[
+                first_gate_idx : last_gate_idx + 1  # noqa: E203
+            ]
+            cmds_after_hedge = orig_circ_cmds[
+                last_gate_idx + 1 :  # noqa: E203
+            ]
             # Get the subcircuit commands with the updated 1-qubit gates
             hedge_commands = hyp_circ.get_hyperedge_subcircuit(hedge)
 
@@ -525,7 +533,11 @@ class Distribution:
         # H-embedded, some of its embedded Hadamards may need to be
         # decomposed into Euler form and its embedded Rz gates squashed.
         prep_circ = hyp_circ.get_circuit()
-        hedges_to_update = [hedge for hedge in hyp_circ.hyperedge_list if hyp_circ.requires_h_embedded_cu1(hedge)]
+        hedges_to_update = [
+            hedge
+            for hedge in hyp_circ.hyperedge_list
+            if hyp_circ.requires_h_embedded_cu1(hedge)
+        ]
         for hedge in hedges_to_update:
             prep_circ = update_hyperedge_subcircuit(prep_circ, hedge)
 
