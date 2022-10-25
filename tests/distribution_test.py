@@ -171,8 +171,8 @@ def test_alap_on_hyperedge_requiring_euler():
     circ.Rz(0.5, 0)
     circ.add_gate(OpType.CU1, [1.0], [0, 3])
     circ.H(0)
-    circ.Rz(0.5, 0)
     circ.add_gate(OpType.CU1, [1.0], [0, 4])
+    circ.Rz(0.5, 0)
     circ.H(0)
     circ.add_gate(OpType.CU1, [0.8], [0, 2])
 
