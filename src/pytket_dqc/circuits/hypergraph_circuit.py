@@ -260,13 +260,13 @@ class HypergraphCircuit(Hypergraph):
                     subcirc_commands += current_1q_cmds
                     # Append the next embedded CU1 gate
                     subcirc_commands.append(embedded_commands[next_cu1_idx])
-                    prev_cu1_index = next_cu1_idx
+                    prev_cu1_idx = next_cu1_idx
 
                 # Include the last batch of embedded 1-qubit gates, make sure
                 # that the first gate is an Rz and that ``prev_phase`` is
                 # squashed into it
                 last_1q_cmds = embedded_commands[
-                    prev_cu1_index + 1 :  # noqa: E203
+                    prev_cu1_idx + 1 :  # noqa: E203
                 ]
                 if last_1q_cmds[0].op.type == OpType.Rz:
                     rz = last_1q_cmds.pop(0)  # Remove it
