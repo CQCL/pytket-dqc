@@ -497,6 +497,36 @@ class HypergraphCircuit(Hypergraph):
 
         return intermediate_commands
 
+    def is_h_embeddable_CU1(
+        self, command: Command, servers: set[int], placement: Placement
+    ) -> bool:
+        """Check that a CU1 could be embeddable in a H embedding unit.
+
+        A return value of ``False`` only proves it cannot be embedded.
+        Since we do not check the 1q gates surrounding it,
+        a return value of ``True`` does not gurantee it is embeddable in
+        a H embedding unit.
+        """
+        assert command.op.type == OpType.CU1
+
+        this_command_qubit_vertices = [
+            self.get_vertex_of_qubit(qubit)
+            for qubit in command.qubits
+        ]
+
+        this_command_servers = {
+            placement.placement[qubit_vertex]
+            for qubit_vertex in this_command_qubit_vertices
+        }
+
+        if servers != this_command_servers:
+            return False
+
+        return (
+            np.isclose(command.op.params[0] % 1, 0)
+            or np.isclose(command.op.params[0] % 1, 1)
+        )
+
     def to_relabeled_registers(self, placement: Placement) -> Circuit:
         """Relabel qubits to match their placement.
 
