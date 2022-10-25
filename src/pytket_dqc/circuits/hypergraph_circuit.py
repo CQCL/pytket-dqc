@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from .hypergraph import Hypergraph, Hyperedge
+from .hypergraph import Hypergraph, Hyperedge, Vertex
 from pytket import OpType, Circuit, Qubit
-from pytket.circuit import Command, Unitary2qBox  # type: ignore
+from pytket.circuit import Command, Op, Unitary2qBox  # type: ignore
 from scipy.stats import unitary_group  # type: ignore
 import numpy as np
 from pytket.passes import DecomposeBoxes  # type: ignore
@@ -11,6 +11,9 @@ import random
 from pytket_dqc.utils import (
     dqc_gateset_predicate,
     DQCPass,
+)
+from pytket_dqc.utils.gateset import (
+    to_euler_with_two_hadamards,
 )
 
 from typing import TYPE_CHECKING, Union
@@ -33,7 +36,7 @@ class HypergraphCircuit(Hypergraph):
     """
 
     def __init__(self, circuit: Circuit):
-        """ Initialisation function
+        """Initialisation function
 
         :param circuit: Circuit to be distributed.
         :type circuit: Circuit
@@ -41,6 +44,7 @@ class HypergraphCircuit(Hypergraph):
 
         self.reset(circuit)
         assert self._vertex_id_predicate()
+        assert self._sorted_hedges_predicate()
 
     def __str__(self):
         out_string = super().__str__()
@@ -121,8 +125,7 @@ class HypergraphCircuit(Hypergraph):
         return self._vertex_circuit_map[vertex]["type"] == "qubit"
 
     def get_qubit_vertex(self, hyperedge: Hyperedge) -> int:
-        """Returns the qubit vertex in ``hyperedge``.
-        """
+        """Returns the qubit vertex in ``hyperedge``."""
         qubit_list = [
             vertex
             for vertex in hyperedge.vertices
@@ -133,21 +136,19 @@ class HypergraphCircuit(Hypergraph):
         return qubit_list[0]
 
     def get_vertex_of_qubit(self, qubit: Qubit) -> int:
-        """Returns the vertex that corresponds to ``qubit``.
-        """
+        """Returns the vertex that corresponds to ``qubit``."""
         vertex_list = [
             vertex
             for vertex in self.vertex_list
             if self.is_qubit_vertex(vertex)
-            if self._vertex_circuit_map[vertex]['node'] == qubit
+            if self._vertex_circuit_map[vertex]["node"] == qubit
         ]
 
         assert len(vertex_list) == 1
         return vertex_list[0]
 
     def get_gate_vertices(self, hyperedge: Hyperedge) -> list[int]:
-        """Returns the list of gate vertices in ``hyperedge``.
-        """
+        """Returns the list of gate vertices in ``hyperedge``."""
         gate_vertex_list = [
             vertex
             for vertex in hyperedge.vertices
@@ -189,43 +190,107 @@ class HypergraphCircuit(Hypergraph):
         """Returns the list of commands between the first and last gate within
         the hyperedge. Commands that don't act on the qubit vertex are omitted
         but embedded gates within the hyperedge are included.
+
+        NOTE: The single qubit gates on the hyperedge's qubit are replaced by
+        their Euler decomposition using ``to_euler_with_two_hadamards`` when
+        necessary to satisfy the embedding requirements.
+        NOTE: Rz gates at either side of an embedded CU1 gate are squashed
+        together.
         """
-        hyp_qubit = self._vertex_circuit_map[self.get_qubit_vertex(hyperedge)][
-            "node"
-        ]
-        gate_vertices = self.get_gate_vertices(hyperedge)
+        hyp_q_vertex = self.get_qubit_vertex(hyperedge)
+        hyp_qubit = self.get_qubit_of_vertex(hyp_q_vertex)
+        gate_vertices = sorted(self.get_gate_vertices(hyperedge))
         if not gate_vertices:
             return []
-        circ_commands = self._circuit.get_commands()
 
-        # We will abuse the fact that, by construction, the gate vertices are
-        # numbered from smaller to larger integers as we read the circuit from
-        # left to right.
-        # A solution that didn't use the trick would be preferable, but that'd
-        # require changing ``vertex_circuit_map`` to point at indices in the
-        # circuit.get_commands() list. Unfortunately, comparison of bindings
-        # via the "is" keyword does not work here because "get_commands"
-        # returns a deep copy of the command list (on each call, the Command
-        # objects are different).
         subcirc_commands = []
-        first_gate = min(gate_vertices)
-        last_gate = max(gate_vertices)
-        current_vertex_id = len(self._circuit.qubits)
+        subcirc_commands.append(self.get_gate_of_vertex(gate_vertices[0]))
+        prev_hyp_gate_vertex = gate_vertices[0]
 
-        first_found = False
-        for cmd in circ_commands:
-            if current_vertex_id == first_gate and cmd.op.type == OpType.CU1:
-                first_found = True
-            if first_found and hyp_qubit in cmd.qubits:
-                subcirc_commands.append(cmd)
-            if current_vertex_id == last_gate and cmd.op.type == OpType.CU1:
-                break
-            if cmd.op.type == OpType.CU1:
-                current_vertex_id += 1
+        for next_hyp_gate_vertex in gate_vertices[1:]:
+            # Get all embedded gates between the previous and next distributed
+            # gates. Omit any commands that do not act on ``hyp_qubit``.
+            embedded_commands = self.get_intermediate_commands(
+                prev_hyp_gate_vertex, next_hyp_gate_vertex, hyp_q_vertex
+            )
+            cu1_indices = [
+                i
+                for i, cmd in enumerate(embedded_commands)
+                if cmd.op.type == OpType.CU1
+            ]
 
-        assert first_found and current_vertex_id == last_gate
-        assert subcirc_commands[0].op.type == OpType.CU1
-        assert subcirc_commands[-1].op.type == OpType.CU1
+            # If there are no CU1 gates, no change is required
+            if not cu1_indices:
+                subcirc_commands += embedded_commands
+            else:
+                # Include the first batch of embedded 1-qubit gates, make sure
+                # that the final gate is a Hadamard
+                subcirc_commands += embedded_commands[: cu1_indices[0]]
+                # Remove the last Rz and remember its phase so that it may be
+                # squashed with the Rz after the embedded CU1 gate
+                prev_phase = 0
+                if subcirc_commands[-1].op.type == OpType.Rz:
+                    prev_phase = subcirc_commands[-1].op.params[0]
+                    subcirc_commands.pop()  # Remove the Rz gate
+                assert subcirc_commands[-1].op.type == OpType.H
+                # Append the first embedded CU1 gate
+                subcirc_commands.append(embedded_commands[cu1_indices[0]])
+
+                # Append all gates from here until the last embedded CU1 gate.
+                # Any batch of 1-qubit gates between CU1 gates needs to be
+                # converted to an explicit Euler form [Rz,H,Rz,H] where the
+                # missing Rz gate at the end has been squashed with that of
+                # the next batch.
+                prev_cu1_idx = cu1_indices[0]
+                for next_cu1_idx in cu1_indices[1:]:
+                    # Get the current batch of embedded 1-qubit gates, make
+                    # sure they are of the form [Rz,H,Rz,H,Rz] and squash
+                    # ``prev_phase`` into the first Rz gate.
+                    current_1q_ops = [
+                        cmd.op
+                        for cmd in embedded_commands[
+                            prev_cu1_idx + 1 : next_cu1_idx  # noqa: E203
+                        ]
+                    ]
+                    new_ops = to_euler_with_two_hadamards(current_1q_ops)
+                    first_rz = new_ops[0]
+                    assert first_rz.type == OpType.Rz
+                    squashed_phase = prev_phase + first_rz.params[0]
+                    new_ops[0] = Op.create(OpType.Rz, squashed_phase)
+                    current_1q_cmds = [
+                        Command(op, [hyp_qubit]) for op in new_ops
+                    ]
+                    # Remove the last Rz and store its phase for squashing
+                    rz = current_1q_cmds.pop()
+                    assert rz.op.type == OpType.Rz
+                    prev_phase = rz.op.params[0]
+                    # Append the batch of embedded 1-qubit gates [Rz,H,Rz,H]
+                    subcirc_commands += current_1q_cmds
+                    # Append the next embedded CU1 gate
+                    subcirc_commands.append(embedded_commands[next_cu1_idx])
+                    prev_cu1_idx = next_cu1_idx
+
+                # Include the last batch of embedded 1-qubit gates, make sure
+                # that the first gate is an Rz and that ``prev_phase`` is
+                # squashed into it
+                last_1q_cmds = embedded_commands[
+                    prev_cu1_idx + 1 :  # noqa: E203
+                ]
+                if last_1q_cmds[0].op.type == OpType.Rz:
+                    rz = last_1q_cmds.pop(0)  # Remove it
+                    prev_phase += rz.op.params[0]  # Squash phases together
+                # Append the Rz gate with the squashed phase
+                rz = Command(Op.create(OpType.Rz, prev_phase), [hyp_qubit])
+                subcirc_commands.append(rz)
+                # Append the rest of the embedded commands
+                subcirc_commands += last_1q_cmds
+
+            # Now that all embedded gates have been added, append the next
+            # distributed gate and continue with the loop
+            subcirc_commands.append(
+                self.get_gate_of_vertex(next_hyp_gate_vertex)
+            )
+            prev_hyp_gate_vertex = next_hyp_gate_vertex
 
         return subcirc_commands
 
@@ -388,6 +453,29 @@ class HypergraphCircuit(Hypergraph):
         # There should be no more vertices left
         return not vertices
 
+    def _sorted_hedges_predicate(self) -> bool:
+        """Tests that the hyperedges are in circuit sequential order
+        in `self.hyperedge_list`.
+        """
+
+        for qubit_vertex in self.get_qubit_vertices():
+            hedge_list = [
+                hedge
+                for hedge in self.hyperedge_list
+                if self.get_qubit_vertex(hedge) == qubit_vertex
+            ]
+            if len(hedge_list) <= 1:
+                continue
+            if hedge_list != sorted(
+                hedge_list,
+                key=lambda hedge: min(
+                    [v for v in hedge.vertices if v != qubit_vertex]
+                ),
+            ):
+                return False
+
+        return True
+
     def _get_server_to_qubit_vertex(
         self, placement: Placement
     ) -> dict[int, list[int]]:
@@ -416,6 +504,76 @@ class HypergraphCircuit(Hypergraph):
             for server in set(placement.placement.values())
         }
 
+    def get_vertex_to_command_index_map(self) -> dict[Vertex, int]:
+        """Get a mapping from each gate `Vertex` in the `Hypergraph`, to its
+        corresponding index in the list returned by `Circuit.get_commands()`.
+        """
+
+        vertex_to_command_index_map: dict[Vertex, int] = dict()
+        for command_index, command_dict in enumerate(self._commands):
+            if command_dict["type"] == "distributed gate":
+                vertex = command_dict["vertex"]
+                assert type(vertex) == Vertex
+                vertex_to_command_index_map[vertex] = command_index
+        return vertex_to_command_index_map
+
+    def get_last_gate_vertex(self, gate_vertex_list: list[Vertex]) -> Vertex:
+        """Given a list of gate vertices,
+        return the vertex in `Circuit.get_commands()`
+        that corresponds to the last gate in the circuit.
+        """
+
+        return max(gate_vertex_list)
+
+    def get_first_gate_vertex(self, gate_vertex_list: list[Vertex]) -> Vertex:
+        """Given a list of gate vertices,
+        return the vertex in `Circuit.get_commands()`
+        that corresponds to the first gate in the circuit.
+        """
+
+        assert all(
+            [v >= len(self.get_qubit_vertices()) for v in gate_vertex_list]
+        )
+
+        return min(gate_vertex_list)
+
+    def get_intermediate_commands(
+        self, first_vertex: Vertex, second_vertex: Vertex, qubit_vertex: Vertex
+    ) -> list[Command]:
+        """Given two gate vertices and a qubit vertex, return all commands
+        in the circuit after the gate corresponding to ``first_vertex`` and up
+        until the gate corresponding to ``second_vertex``.
+
+        NOTE: the ``first_vertex`` and ``second_vertex`` gates aren't included
+        NOTE: only the commands acting on ``qubit_vertex`` are included.
+        """
+
+        assert self.is_qubit_vertex(qubit_vertex)
+        assert first_vertex in self.vertex_list and not self.is_qubit_vertex(
+            first_vertex
+        )
+        assert second_vertex in self.vertex_list and not self.is_qubit_vertex(
+            second_vertex
+        )
+
+        qubit = self.get_qubit_of_vertex(qubit_vertex)
+
+        vertex_to_command_index_map = self.get_vertex_to_command_index_map()
+        first_command_index = vertex_to_command_index_map[first_vertex]
+        second_command_index = vertex_to_command_index_map[second_vertex]
+
+        intermediate_commands = []
+
+        for command_dict in self._commands[
+            first_command_index + 1 : second_command_index  # noqa: E203
+        ]:
+            command = command_dict["command"]
+            assert type(command) == Command
+            if qubit in command.qubits:
+                intermediate_commands.append(command_dict["command"])
+
+        return intermediate_commands
+
     def to_relabeled_registers(self, placement: Placement) -> Circuit:
         """Relabel qubits to match their placement.
 
@@ -437,7 +595,7 @@ class HypergraphCircuit(Hypergraph):
         # Add registers to new circuit.
         for server, vertex_list in server_to_vertex_dict.items():
             server_to_register[server] = circ.add_q_register(
-                f'server_{server}', len(vertex_list)
+                f"server_{server}", len(vertex_list)
             )
 
         # Build map from circuit qubits to server registers

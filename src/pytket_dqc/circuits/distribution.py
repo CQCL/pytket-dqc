@@ -120,7 +120,12 @@ class Distribution:
         # Otherwise, we need to run ALAP
         else:
             # Collect all of the commands between the first and last gates in
-            # the hyperedge. Ignore those do not act on the shared qubit.
+            # the hyperedge. Ignore those that do not act on the shared qubit.
+            # The gates in between embedded CU1 gates are guaranteed to be of
+            # the form [Rz, H, Rz, H]; i.e. an explicit Euler decomposition.
+            # Furthermore, the Rz gates at either side of an embedded CU1 gate
+            # are squashed together (that's why there's no Rz at the end of
+            # the Euler decomposition).
             commands = dist_circ.get_hyperedge_subcircuit(hyperedge)
 
             # We will use the fact that, by construction, the index of the
