@@ -13,9 +13,17 @@ Circuits
 
     .. automethod:: Hypergraph.add_hyperedge
 
+    .. automethod:: Hypergraph.merge_hyperedge
+    
+    .. automethod:: Hypergraph.split_hyperedge
+
+    .. automethod:: Hypergraph.remove_hyperedge
+
 .. autoclass:: pytket_dqc.circuits.hypergraph_circuit.HypergraphCircuit
     
     .. automethod:: HypergraphCircuit.__init__
+
+    .. automethod:: HypergraphCircuit.add_hyperedge
 
 .. autoclass:: pytket_dqc.circuits.distribution.Distribution
     

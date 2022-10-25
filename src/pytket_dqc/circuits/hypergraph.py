@@ -61,9 +61,9 @@ class Hypergraph:
         :param to_merge_hyperedge_list: List of hyperedges to merge.
         :type to_merge_hyperedge_list: list[Hyperedge]
         :raises Exception: Raised if any of the hyperedges in
-        to_merge_hyperedge_list are not in this hypergraph.
+            to_merge_hyperedge_list are not in this hypergraph.
         :raises Exception: Raised if the weights of the hyperedges to merge
-        do not match.
+            do not match.
         """
 
         if not all(
@@ -127,10 +127,10 @@ class Hypergraph:
         :param old_hyperedge: Hyperedge to split.
         :type old_hyperedge: Hyperedge
         :param new_hyperedge_list: List of hyperedges into which
-        `old_hyperedge` should be split.
+            `old_hyperedge` should be split.
         :type new_hyperedge_list: list[Hyperedge]
         :raises Exception: Raised if `new_hyperedge_list` is not a valid
-        split of `old_hyperedge`
+            split of `old_hyperedge`
         """
 
         flat_vertex_list = [
@@ -289,7 +289,7 @@ class Hypergraph:
         :param weight: Hyperedge weight
         :type weight: int
         :param index: index in `hyperedge_list` at which the new
-        hyperedge will be added.
+            hyperedge will be added.
         :type index: int
         :raises Exception: Raised if hyperedge does not contain at least
             2 vertices

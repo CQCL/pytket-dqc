@@ -134,7 +134,7 @@ class GainManager:
         self,
         old_hyperedge: Hyperedge,
         new_hyperedge_list: list[Hyperedge],
-        recalculate_cost=True
+        recalculate_cost: bool = True
     ):
         """Split hyperedge `old_hyperedge` into hyperedges in
         `new_hyperedge_list`. This method utilises the
@@ -205,7 +205,7 @@ class GainManager:
     def merge_hyperedge(
         self,
         to_merge_hyperedge_list: list[Hyperedge],
-        recalculate_cost=True
+        recalculate_cost: bool = True
     ):
         """Merge `to_merge_hyperedge_list`, a list of given hyperedges
         and update `hyperedge_cost_map`, a stored hyperedge cost
@@ -267,7 +267,12 @@ class GainManager:
 
         return prev_cost - new_cost
 
-    def move_vertex(self, vertex: int, server: int, recalculate_cost=True):
+    def move_vertex(
+        self,
+        vertex: int,
+        server: int,
+        recalculate_cost: bool = True
+    ):
         """Moves ``vertex`` to ``server``, updating ``placement`` and
         ``occupancy`` accordingly.
         By default it updates the cost of the hyperedge, but this can
