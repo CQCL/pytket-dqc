@@ -824,4 +824,5 @@ class Distribution:
         )
         assert _cost_from_circuit(new_circ) == self.cost()
 
+        RemoveRedundancies().apply(new_circ)
         return new_circ
