@@ -241,7 +241,7 @@ class HypergraphCircuit(Hypergraph):
                     current_1q_ops = [
                         cmd.op
                         for cmd in embedded_commands[
-                            prev_cu1_idx + 1 : next_cu1_idx
+                            prev_cu1_idx + 1 : next_cu1_idx  # noqa: E203
                         ]
                     ]
                     new_ops = to_euler_with_two_hadamards(current_1q_ops)
@@ -265,7 +265,9 @@ class HypergraphCircuit(Hypergraph):
                 # Include the last batch of embedded 1-qubit gates, make sure
                 # that the first gate is an Rz and that ``prev_phase`` is
                 # squashed into it
-                last_1q_cmds = embedded_commands[prev_cu1_index + 1 :]
+                last_1q_cmds = embedded_commands[
+                    prev_cu1_index + 1 :  # noqa: E203
+                ]
                 if last_1q_cmds[0].op.type == OpType.Rz:
                     rz = last_1q_cmds.pop(0)  # Remove it
                     prev_phase += rz.op.params[0]  # Squash phases together
@@ -555,7 +557,7 @@ class HypergraphCircuit(Hypergraph):
         intermediate_commands = []
 
         for command_dict in self._commands[
-            first_command_index + 1 : second_command_index
+            first_command_index + 1 : second_command_index  # noqa: E203
         ]:
             command = command_dict["command"]
             assert type(command) == Command
