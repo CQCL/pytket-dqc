@@ -466,7 +466,7 @@ class HypergraphCircuit(Hypergraph):
         """Given two gate vertices and a qubit vertex, return all commands
         in the circuit after the gate corresponding to ``first_vertex`` and up
         until the gate corresponding to ``second_vertex``.
-        
+
         NOTE: the ``first_vertex`` and ``second_vertex`` gates aren't included
         NOTE: only the commands acting on ``qubit_vertex`` are included.
         """
