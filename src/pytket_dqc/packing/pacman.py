@@ -3,7 +3,7 @@ import logging
 from numpy import isclose, bool_
 import networkx as nx  # type: ignore
 from networkx.algorithms import bipartite  # type: ignore
-from typing import List, Dict, Tuple, Optional, Set, FrozenSet, Union, NamedTuple
+from typing import List, Dict, Tuple, Optional, Set, FrozenSet, Union, NamedTuple, cast
 
 from pytket_dqc.circuits import HypergraphCircuit, Hyperedge, Vertex
 from pytket_dqc.placement import Placement
@@ -12,43 +12,27 @@ from pytket_dqc.utils import (
     is_distributable,
     distributable_1q_op_types,
     distributable_op_types,
+    to_euler_with_two_hadamards
 )
 
-logging.basicConfig(level=logging.INFO)
-
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 class Packet(NamedTuple):
     """The basic structure of a collection of
     distributable gates.
     """
 
-    def __init__(
-        self,
-        packet_index: int,
-        qubit_vertex: Vertex,
-        connected_server_index: int,
-        gate_vertices: List[Vertex],
-    ):
-        self.packet_index: int = packet_index
-        self.qubit_vertex: Vertex = qubit_vertex
-        self.connected_server_index: int = connected_server_index
-        self.gate_vertices: List[Vertex] = gate_vertices
+    packet_index: int
+    qubit_vertex: Vertex
+    connected_server_index: int
+    gate_vertices: list[Vertex]
 
     def __str__(self):
         return f"P{self.packet_index}"
 
     def __repr__(self):
         return self.__str__()
-
-    def __eq__(self, o):
-        if isinstance(o, Packet):
-            return (
-                o.packet_index == self.packet_index
-                and o.qubit_vertex == self.qubit_vertex
-                and o.gate_vertices == self.gate_vertices
-                and o.connected_server_index == self.connected_server_index
-            )
-        raise Exception(f"Invalid comparison between Packet and {type(o)}.")
 
     def __hash__(self):
         return hash(repr(self))
@@ -62,15 +46,12 @@ class PacMan:
     ):
         self.hypergraph_circuit = hypergraph_circuit
         self.placement = placement
-        self.vertex_to_command_index: Dict[Vertex, int] = dict()
         self.packets_by_qubit: Dict[Vertex, List[Packet]] = dict()
         self.hopping_packets: Dict[Vertex, List[Tuple[Packet, ...]]] = dict()
         self.neighbouring_packets: Dict[
             Vertex, List[Tuple[Packet, ...]]
         ] = dict()
         self.merged_packets: Dict[Vertex, List[Tuple[Packet, ...]]] = dict()
-
-        self.build_vertex_to_command_index()
         self.build_packets()
         self.identify_neighbouring_packets()
         self.identify_hopping_packets()
@@ -78,27 +59,9 @@ class PacMan:
 
     # The basic methods that are called in __init__()
 
-    def build_vertex_to_command_index(self):
-        """For each vertex in the hypergraph,
-        find its corresponding index in the list
-        returned by Circuit.get_commands()
-
-        QUESTION: Can/should I make this a `HypergraphCircuit` method instead?
-        """
-        # TODO: Rewrite this the way Pablo intended
-        for command_index, command_dict in enumerate(
-            self.hypergraph_circuit._commands
-        ):
-            if command_dict["type"] == "distributed gate":
-                vertex = command_dict["vertex"]
-                self.vertex_to_command_index[vertex] = command_index
-
     def build_packets(self):
         """Build packets from `Hyperedges`
         Essentially split them up if they go to different servers
-
-        QUESTION: Would it be better to have each CU1 actually be its
-        own packet (I think this is what Junyi explicitly asks for)?
         """
         hyperedges_ordered = self.get_hyperedges_ordered()
         current_index = 0
@@ -112,10 +75,11 @@ class PacMan:
                     self.packets_by_qubit[qubit_vertex].append(packet)
 
     def identify_neighbouring_packets(self):
+        logger.debug("------------------------------")
+        logger.debug("Identifying neighbouring packets.")
         for qubit_vertex in self.hypergraph_circuit.get_qubit_vertices():
-            logging.debug(
-                f"Checking qubit vertex {qubit_vertex} \
-                    for neighbouring packets."
+            logger.debug(
+                f"Checking qubit vertex {qubit_vertex} for neighbouring packets."
             )
             neighbouring_packets: List[Tuple[Packet, ...]] = list()
             considered_packet_list = []
@@ -136,42 +100,44 @@ class PacMan:
             self.neighbouring_packets[qubit_vertex] = neighbouring_packets
 
     def identify_hopping_packets(self):
+        logger.debug("------------------------------")
+        logger.debug("Identifying hopping packets.")
         for qubit_vertex in self.hypergraph_circuit.get_qubit_vertices():
-            logging.debug(
+            logger.debug(
                 f"Checking qubit vertex {qubit_vertex} for hopping packets."
             )
             self.hopping_packets[qubit_vertex] = []
             for packet in self.packets_by_qubit[qubit_vertex][:-1]:
-                next_packet = self.get_next_packet(packet)
+                packet_to_compare = self.get_next_packet(self.get_next_packet(packet))
                 while (
-                    next_packet is not None
-                    and self.get_next_packet(next_packet) is not None
+                    packet_to_compare is not None
                 ):
-                    next_packet = self.get_next_packet(next_packet)
-                    logging.debug(f"Comparing {packet} and {next_packet}")
-                    if self.are_hoppable_packets(packet, next_packet):
+                    logger.debug(f"Comparing {packet} and {packet_to_compare}")
+                    if self.are_hoppable_packets(packet, packet_to_compare):
                         self.hopping_packets[qubit_vertex].append(
-                            (packet, next_packet)
+                            (packet, packet_to_compare)
                         )
+                    packet_to_compare = self.get_next_packet(packet_to_compare)
 
     def merge_all_packets(self):
         """Using the identified neighbouring and hopping
         packets, create tuples merging them together
         """
-        logging.debug("Merging packets")
+        logger.debug("------------------------------")
+        logger.debug("Merging packets")
         for qubit_vertex in self.hypergraph_circuit.get_qubit_vertices():
             self.merged_packets[qubit_vertex] = []
             considered_packets = []
             for packet in self.packets_by_qubit[qubit_vertex]:
-                logging.debug(f"Checking packet {packet}")
+                logger.debug(f"Checking packet {packet}")
                 if packet in considered_packets:
-                    logging.debug("Already checked")
+                    logger.debug("Already checked")
                     continue
                 mergeable_packets = [packet]
                 continue_merging = True
                 while continue_merging:
-                    logging.debug(f"Start of checks {mergeable_packets}")
-                    logging.debug(f"Packet of interest is {packet}")
+                    logger.debug(f"Start of checks {mergeable_packets}")
+                    logger.debug(f"Packet of interest is {packet}")
                     if (
                         self.get_subsequent_neighbouring_packet(packet)
                         is not None
@@ -179,9 +145,8 @@ class PacMan:
                         packet = self.get_subsequent_neighbouring_packet(
                             packet
                         )
-                        logging.debug(
-                            f"Adding {packet} to mergeable \
-                                packets (neighbouring)"
+                        logger.debug(
+                            f"Adding {packet} to mergeable packets (neighbouring) {mergeable_packets}"
                         )
                         mergeable_packets.append(packet)
                         considered_packets.append(packet)
@@ -189,15 +154,14 @@ class PacMan:
                         self.get_subsequent_hopping_packet(packet) is not None
                     ):
                         packet = self.get_subsequent_hopping_packet(packet)
-                        logging.debug(
-                            f"Adding {packet} to mergeable packets (hopping) \
-                                {mergeable_packets}"
+                        logger.debug(
+                            f"Adding {packet} to mergeable packets (hopping) {mergeable_packets}"
                         )
                         mergeable_packets.append(packet)
                         considered_packets.append(packet)
                     else:
                         continue_merging = False
-                    logging.debug(f"End of checks {mergeable_packets}")
+                    logger.debug(f"End of checks {mergeable_packets}")
 
                 self.merged_packets[qubit_vertex].append(
                     tuple(mergeable_packets)
@@ -244,11 +208,16 @@ class PacMan:
         else:
             return potential_hopping_packets[0][1]
 
-    def get_next_packet(self, packet: Packet) -> Optional[Packet]:
+    def get_next_packet(self, packet: Optional[Packet]) -> Optional[Packet]:
         """Find the next packet on the qubit of the given packet that
         is connected to the same server as the given packet.
         Returns None if no such packet exists
+
+        NOTE: None is also returned if None is passed in
         """
+        if packet is None:
+            return None
+
         for potential_packet in self.packets_by_qubit[packet.qubit_vertex]:
             if potential_packet.packet_index <= packet.packet_index:
                 continue
@@ -270,7 +239,7 @@ class PacMan:
         return all_packets
 
     def get_connected_server(self, qubit_vertex: Vertex, gate_vertex: Vertex):
-        command_index = self.vertex_to_command_index[gate_vertex]
+        command_index = self.hypergraph_circuit.get_vertex_to_command_index_map()[gate_vertex]
         command_dict = self.hypergraph_circuit._commands[
             command_index
         ]  # TODO: Rewrite this as Pablo intended
@@ -317,8 +286,9 @@ class PacMan:
         self, first_packet: Packet, second_packet: Packet
     ) -> bool:
         """Check if two given packets are hopping packets"""
+        assert first_packet.qubit_vertex == second_packet.qubit_vertex
 
-        logging.debug(
+        logger.debug(
             f"Are packets {first_packet} and "
             + f"{second_packet} packable via embedding?"
         )
@@ -328,74 +298,79 @@ class PacMan:
         intermediate_commands = self.get_intermediate_commands(
             first_packet, second_packet
         )
-        logging.debug(
-            f"Intermediate ops \
-                {[command.op for command in intermediate_commands]}"
+        logger.debug(
+            f"Intermediate ops {[command.op for command in intermediate_commands]}"
         )
         cu1_indices = []
         for i, command in enumerate(intermediate_commands):
             if command.op.type not in allowed_op_types:
-                logging.debug(f"No, {command} is not embeddable.")
+                logger.debug(f"No, {command} is not embeddable.")
                 return False
             if command.op.type == OpType.CU1:
-                if not self.is_h_embeddable_CU1(command, first_packet):
-                    logging.debug(
+                assert first_packet.connected_server_index == second_packet.connected_server_index
+                if not self.hypergraph_circuit.is_h_embeddable_CU1(
+                    command,
+                    set([
+                        self.placement.placement[first_packet.qubit_vertex],
+                        first_packet.connected_server_index
+                    ]),
+                    self.placement
+                ):
+                    logger.debug(
                         f"No, CU1 command {command} is not embeddable."
                     )
                     return False
                 cu1_indices.append(i)
 
-        ops_1q_list: List[List[Op]] = []
+        ops_1q_list: list[list[Op]] = [
+            [command.op for command in intermediate_commands[0:cu1_indices[0]]]
+        ]
 
         # Convert the intermediate commands between CU1s as necessary
-        first_commands = intermediate_commands[: cu1_indices[0]]
-        first_ops = [command.op for command in first_commands]
-        ops_1q_list.append(first_ops)
-        for i, cu1_index in enumerate(cu1_indices):
-            if cu1_index == cu1_indices[0]:
-                continue
+        prev_cu1_index = cu1_indices[0]
+        for cu1_index in cu1_indices[1:]:
             commands = intermediate_commands[
-                cu1_indices[i - 1] + 1: cu1_index
+                prev_cu1_index: cu1_index
             ]
             ops = [command.op for command in commands]
-            if OpType.H in [op.type for op in ops]:
-                ops_1q_list.append(self.convert_1q_ops(ops))
+            # Convert this list if it contains a Hadamard
+            # and is not the last set of gates
+            if (
+                cu1_index != cu1_indices[-1]
+                and OpType.H in [op.type for op in ops]
+            ):
+                ops_1q_list.append(to_euler_with_two_hadamards(ops))
             else:
                 ops_1q_list.append(ops)
+            prev_cu1_index = cu1_index
 
-        last_commands = intermediate_commands[cu1_indices[-1] + 1:]
-        last_ops = [command.op for command in last_commands]
-        ops_1q_list.append(last_ops)
-        logging.debug(f"ops_1q_list {ops_1q_list}")
+        logger.debug(f"ops_1q_list {ops_1q_list}")
 
-        for i, ops_1q in enumerate(ops_1q_list[:-1]):
-            if i == 0:
-                n_hadamards = len([op for op in ops_1q if op.type == OpType.H])
-                if n_hadamards != 1:
-                    logging.debug(
-                        "No, there can only be 1 Hadamard "
-                        + "the start of the Hadamard sandwich."
-                    )
-                    return False
+        n_hadamards_start = len([op for op in ops_1q_list[0] if op.type == OpType.H])
+        if n_hadamards_start != 1:
+            logger.debug(
+                "No, there can only be 1 Hadamard "
+                + "at the start of the Hadamard sandwich."
+            )
+            return False
+        
+        n_hadamards_end = len([op for op in ops_1q_list[-1] if op.type == OpType.H])
+        if n_hadamards_end != 1:
+            logger.debug(
+                "No, there can only be 1 Hadamard "
+                + "at the end of the Hadamard sandwich."
+            )
+            return False
 
-            if i == len(ops_1q_list) - 2:
-                n_hadamards = len(
-                    [op for op in ops_1q_list[-1] if op.type == OpType.H]
-                )
-                if n_hadamards != 1:
-                    logging.debug(
-                        "No, there can only be 1 Hadamard "
-                        + "at the end of the Hadamard sandwich."
-                    )
-                    return False
-
+        for i, ops_1q in enumerate(ops_1q_list[1:-1]):
             if not self.are_1q_op_phases_npi(ops_1q, ops_1q_list[i + 1]):
-                logging.debug(
+                logger.debug(
                     f"No, the phases of {ops_1q} and "
                     + f"{ops_1q_list[i+1]} prevent embedding."
                 )
                 return False
 
+        logger.debug("YES!")
         return True
 
     # Methods that interface between Packets and HypergraphCircuit
@@ -452,125 +427,20 @@ class PacMan:
             first_packet.qubit_vertex == second_packet.qubit_vertex
         ), "Qubit vertices do not match."
 
-        qubit_vertex = first_packet.qubit_vertex
-        qubit = self.circuit_element_from_vertex(qubit_vertex)
+        assert first_packet.qubit_vertex == second_packet.qubit_vertex
 
-        last_command_index = self.get_last_command_index(
+        qubit_vertex = first_packet.qubit_vertex
+
+        first_vertex = self.hypergraph_circuit.get_last_gate_vertex(
             first_packet.gate_vertices
         )
-        first_command_index = self.get_first_command_index(
+        second_vertex = self.hypergraph_circuit.get_first_gate_vertex(
             second_packet.gate_vertices
         )
 
-        intermediate_commands = []
-
-        for (
-            command_dict
-        ) in self.hypergraph_circuit._commands[  # TODO: Hidden stuff
-            last_command_index + 1: first_command_index
-        ]:
-            command = command_dict["command"]
-            assert type(command) == Command
-            if qubit in command.qubits:
-                intermediate_commands.append(command_dict["command"])
-
-        return intermediate_commands
-
-    def is_h_embeddable_CU1(self, command: Command, packet: Packet) -> bool:
-        """Check that a CU1 itself
-        COULD be embeddable in a H embedding unit
-        i.e. only prove that we cannot embed but does not check the 1q
-        gates surrounding it, hence doesn't prove it IS embeddable
-        """
-        packet_servers = {
-            self.placement.placement[packet.qubit_vertex],
-            packet.connected_server_index,
-        }
-
-        this_command_qubit_vertices = [
-            self.hypergraph_circuit.get_vertex_of_qubit(qubit)
-            for qubit in command.qubits
-        ]
-        this_command_servers = {
-            self.placement.placement[qubit_vertex]
-            for qubit_vertex in this_command_qubit_vertices
-        }
-        if packet_servers != this_command_servers:
-            return False
-
-        return (
-            isclose(command.op.params[0] % 1, 0) 
-            or isclose(command.op.params[0] % 1, 1)
+        return self.hypergraph_circuit.get_intermediate_commands(
+            first_vertex, second_vertex, qubit_vertex
         )
-
-    def convert_1q_ops(self, ops: List[Op]) -> List[Op]:
-        """Converts a set of 1q ops
-        in the gateset of Rz, Z, X, H
-        with up to 1 Hadamard
-        so that it is in the same gateset
-        but has 2 Hadamards in the list.
-        """
-
-        hadamard_indices = [
-            i for i, op in enumerate(ops) if op.type == OpType.H
-        ]
-        hadamard = Op.create(OpType.H)
-        hadamard_count = len(hadamard_indices)
-
-        assert (
-            hadamard_count <= 2
-        ), f"There should not be more than 2 Hadamards. {ops}"
-
-        if hadamard_count == 2:
-            logging.debug(f"Returning {ops} unchanged.")
-            return ops
-
-        elif hadamard_count == 0:
-            logging.debug(f"Appending 2 Hadamards to {ops}")
-            ops.append(hadamard)
-            ops.append(hadamard)
-            logging.debug(f"Appending 2 Hadamards to {ops}")
-            return ops
-
-        else:
-            assert (
-                len(ops) <= 3
-            ), "There can only be up to 3 ops in this decomposition."
-            new_ops: List[Op] = []
-            s_op = Op.create(OpType.U1, [0.5])
-
-            if len(ops) == 1:
-                new_ops += [s_op, hadamard, s_op, hadamard, s_op]
-
-            elif len(ops) == 2:
-                phase_op_index = int(
-                    not hadamard_indices[0]
-                )  # only takes value of 1 or 0
-                phase_op = ops[phase_op_index]
-                phase = phase_op.params[0]  # phase in turns of pi
-                new_phase_op = Op.create(
-                    OpType.U1, [phase + 1 / 2]
-                )  # need to add another half phase
-                new_ops += [new_phase_op, hadamard, s_op, hadamard, s_op]
-                if phase_op_index:
-                    new_ops.reverse()
-
-            else:
-                first_phase = ops[0].params[0]
-                second_phase = ops[2].params[0]
-                first_new_phase_op = Op.create(OpType.U1, [first_phase + 0.5])
-                second_new_phase_op = Op.create(
-                    OpType.U1, [second_phase + 0.5]
-                )
-                new_ops += [
-                    first_new_phase_op,
-                    hadamard,
-                    s_op,
-                    hadamard,
-                    second_new_phase_op,
-                ]
-            logging.debug(f"Converted {ops} for {new_ops}")
-            return new_ops
 
     def are_1q_op_phases_npi(
         self, prior_1q_ops: List[Op], post_1q_ops: List[Op]
@@ -579,8 +449,6 @@ class PacMan:
         U1 gates that sandwich a CU1 are
         equal to n
         (i.e. the actual phases are equal to n * pi)
-
-        QUESTION: Move to utils? It's a bit specific I suppose though
         """
 
         if (
@@ -618,7 +486,7 @@ class PacMan:
     def get_connected_packets(self, packet: Packet):
         connected_packets = []
         for gate_vertex in packet.gate_vertices:
-            gate_qubits = self.circuit_element_from_vertex(gate_vertex).qubits
+            gate_qubits = self.hypergraph_circuit.get_gate_of_vertex(gate_vertex).qubits
             other_qubit_candidates = [
                 qubit
                 for qubit in gate_qubits
@@ -905,7 +773,7 @@ class PacMan:
                             )
 
                         checked_hopping_packets.append(embedded_packet)
-        logging.debug(f"Conflict edges: {conflict_edges}")
+        logger.debug(f"Conflict edges: {conflict_edges}")
         graph.add_edges_from(conflict_edges)
         return graph, bipartitions[1]
 
@@ -1022,9 +890,9 @@ class PacMan:
         for vertex in gate_vertex_list:
             if (
                 last_command_index == -1
-                or self.vertex_to_command_index[vertex] > last_command_index
+                or self.hypergraph_circuit.get_vertex_to_command_index_map()[vertex] > last_command_index
             ):
-                last_command_index = self.vertex_to_command_index[vertex]
+                last_command_index = self.hypergraph_circuit.get_vertex_to_command_index_map()[vertex]
 
         return last_command_index
 
@@ -1037,26 +905,8 @@ class PacMan:
         for vertex in gate_vertex_list:
             if (
                 first_command_index == -1
-                or self.vertex_to_command_index[vertex] < first_command_index
+                or self.hypergraph_circuit.get_vertex_to_command_index_map()[vertex] < first_command_index
             ):
-                first_command_index = self.vertex_to_command_index[vertex]
+                first_command_index = self.hypergraph_circuit.get_vertex_to_command_index_map()[vertex]
 
         return first_command_index
-
-    def circuit_element_from_vertex(self, vertex: Vertex):
-        """Given a vertex, return the circuit element (Qubit or Command)
-        Question: Should be `HypergraphCircuit` method?
-        """
-        # TODO: Don't access hidden stuff
-        if (
-            self.hypergraph_circuit._vertex_circuit_map[vertex]["type"]
-            == "qubit"
-        ):
-            return self.hypergraph_circuit._vertex_circuit_map[vertex]["node"]
-        elif (
-            self.hypergraph_circuit._vertex_circuit_map[vertex]["type"]
-            == "gate"
-        ):
-            return self.hypergraph_circuit._vertex_circuit_map[vertex][
-                "command"
-            ]
