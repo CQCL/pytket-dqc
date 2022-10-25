@@ -159,6 +159,38 @@ def test_alap():
     assert distribution.hyperedge_cost(hyp_2) == 2
 
 
+def test_alap_on_hyperedge_requiring_euler():
+    # The circuit given below has a hyperedge between the first and last
+    # CU1 gates. The gates in between can all be embedded but, to do so,
+    # it is required to decompose the middle Hadamard to its Euler form
+    # and squash the Rz(0.5) accordingly.
+
+    circ = Circuit(5)
+    circ.add_gate(OpType.CU1, [0.3], [0, 1])
+    circ.H(0)
+    circ.Rz(0.5, 0)
+    circ.add_gate(OpType.CU1, [1.0], [0, 3])
+    circ.H(0)
+    circ.Rz(0.5, 0)
+    circ.add_gate(OpType.CU1, [1.0], [0, 4])
+    circ.H(0)
+    circ.add_gate(OpType.CU1, [0.8], [0, 2])
+
+    network = NISQNetwork([[0, 1]], {0: [0], 1: [1, 2, 3, 4]},)
+
+    placement = Placement(
+        {0: 0, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1}
+    )
+
+    distribution = Distribution(HypergraphCircuit(circ), placement, network)
+    assert distribution.is_valid()
+
+    hyp = Hyperedge([0, 5, 8])
+
+    # These cost has been calculated by hand
+    assert distribution.hyperedge_cost(hyp) == 1
+
+
 def test_distribution_cost_with_embedding():
     # Note: This is testing ALAP as well
 
