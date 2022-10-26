@@ -186,8 +186,8 @@ class HypergraphCircuit(Hypergraph):
         NOTE: The single qubit gates on the hyperedge's qubit are replaced by
         their Euler decomposition using ``to_euler_with_two_hadamards`` when
         necessary to satisfy the embedding requirements.
-        NOTE: Rz gates at either side of an embedded CU1 gate are squashed
-        together.
+        NOTE: Rz gates at either side of an H-embedded CU1 gate are squashed
+        together. The resulting phase must be an integer.
         """
         hyp_q_vertex = self.get_qubit_vertex(hyperedge)
         hyp_qubit = self.get_qubit_of_vertex(hyp_q_vertex)
@@ -248,6 +248,10 @@ class HypergraphCircuit(Hypergraph):
                     first_rz = new_ops[0]
                     assert first_rz.type == OpType.Rz
                     squashed_phase = prev_phase + first_rz.params[0]
+                    # Sanity check: the phase is an integer
+                    assert np.isclose(squashed_phase % 1, 0) or np.isclose(
+                        squashed_phase % 1, 1
+                    )
                     new_ops[0] = Op.create(OpType.Rz, squashed_phase)
                     current_1q_cmds = [
                         Command(op, [hyp_qubit]) for op in new_ops
@@ -271,6 +275,10 @@ class HypergraphCircuit(Hypergraph):
                 if last_1q_cmds[0].op.type == OpType.Rz:
                     rz = last_1q_cmds.pop(0)  # Remove it
                     prev_phase += rz.op.params[0]  # Squash phases together
+                # Sanity check: the phase is an integer
+                assert np.isclose(prev_phase % 1, 0) or np.isclose(
+                    prev_phase % 1, 1
+                )
                 # Append the Rz gate with the squashed phase
                 rz = Command(Op.create(OpType.Rz, prev_phase), [hyp_qubit])
                 subcirc_commands.append(rz)
