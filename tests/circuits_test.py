@@ -132,28 +132,39 @@ def test_hypergraph_split_hyperedge():
     hypergraph.add_hyperedge([0, 1, 2])
     hypergraph.add_hyperedge([0, 1])
 
-    old_hyperedge = Hyperedge(
+    old_hyperedge_one = Hyperedge(
         vertices=[Vertex(0), Vertex(1), Vertex(2)], weight=1)
+    old_hyperedge_two = Hyperedge(
+        vertices=[Vertex(0), Vertex(1)], weight=1)
     new_hyperedge_one = Hyperedge(vertices=[Vertex(0), Vertex(2)], weight=1)
     new_hyperedge_two = Hyperedge(vertices=[Vertex(1), Vertex(2)], weight=1)
 
     hypergraph.split_hyperedge(
-        old_hyperedge=old_hyperedge,
+        old_hyperedge=old_hyperedge_one,
         new_hyperedge_list=[new_hyperedge_one, new_hyperedge_two]
     )
 
     assert hypergraph.vertex_neighbours == {0: {1, 2}, 1: {0, 2}, 2: {0, 1}}
+    assert hypergraph.hyperedge_list == [
+        new_hyperedge_one,
+        new_hyperedge_two,
+        old_hyperedge_two
+    ]
 
     hypergraph = Hypergraph()
     hypergraph.add_vertices([Vertex(0), Vertex(1), Vertex(2)])
     hypergraph.add_hyperedge([0, 1, 2])
 
     hypergraph.split_hyperedge(
-        old_hyperedge=old_hyperedge,
+        old_hyperedge=old_hyperedge_one,
         new_hyperedge_list=[new_hyperedge_one, new_hyperedge_two]
     )
 
     assert hypergraph.vertex_neighbours == {0: {2}, 1: {2}, 2: {0, 1}}
+    assert hypergraph.hyperedge_list == [
+        new_hyperedge_one,
+        new_hyperedge_two
+    ]
 
 
 def test_hypergraph_merge_hyperedge():

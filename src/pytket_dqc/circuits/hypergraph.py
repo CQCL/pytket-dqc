@@ -112,7 +112,7 @@ class Hypergraph:
                 raise
             removed_hyperedge_list.append(hyperedge)
 
-        return Hyperedge(vertices=vertices, weight=weight)
+        return new_hyperedge
 
     def split_hyperedge(
         self,
