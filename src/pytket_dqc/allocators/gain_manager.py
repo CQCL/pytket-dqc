@@ -193,7 +193,8 @@ class GainManager:
             weight=to_merge_hyperedge_list[0].weight
         )
 
-        # Take cost f hyperedge from hyperedge_cost_map if it exists there,
+        # Take cost of hyperedge from hyperedge_cost_map if it exists there,
+
         # else calculate it.
         if new_hyperedge in self.hyperedge_cost_map.keys():
             new_cost = self.hyperedge_cost_map[new_hyperedge]
