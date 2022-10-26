@@ -96,21 +96,17 @@ class Hypergraph:
         self.add_hyperedge(vertices=new_hyperedge.vertices,
                            weight=new_hyperedge.weight, index=index)
 
-        # TODO: That the whole list is saved here is probably overkill.
-        # Indexes of the removed hyperedges would be enough.
-        removed_hyperedge_list: list[Hyperedge] = []
-        for hyperedge in to_merge_hyperedge_list:
+        for i, hyperedge in enumerate(to_merge_hyperedge_list):
             try:
                 self.remove_hyperedge(hyperedge)
             except Exception:
-                for removed_hyperedge in removed_hyperedge_list:
+                for removed_hyperedge in to_merge_hyperedge_list[:i]:
                     self.add_hyperedge(
                         vertices=removed_hyperedge.vertices,
                         weight=removed_hyperedge.weight
                     )
                 self.remove_hyperedge(new_hyperedge)
                 raise
-            removed_hyperedge_list.append(hyperedge)
 
         return new_hyperedge
 
@@ -144,18 +140,15 @@ class Hypergraph:
             )
 
         index = self.hyperedge_list.index(old_hyperedge)
-        # TODO: That the whole list is saved here is probably overkill.
-        # Indexes of the added hyperedges would be enough.
-        added_hyperedge_list: list[Hyperedge] = []
-        for new_hyperedge in reversed(new_hyperedge_list):
+        for i, new_hyperedge in enumerate(reversed(new_hyperedge_list)):
             try:
                 self.add_hyperedge(new_hyperedge.vertices,
                                    new_hyperedge.weight, index=index)
             except Exception:
-                for hyperedge in added_hyperedge_list:
+                for hyperedge in new_hyperedge_list[-i:]:
                     self.remove_hyperedge(hyperedge)
                 raise
-            added_hyperedge_list.append(new_hyperedge)
+
         self.remove_hyperedge(old_hyperedge)
 
     def remove_hyperedge(self, old_hyperedge: Hyperedge):
