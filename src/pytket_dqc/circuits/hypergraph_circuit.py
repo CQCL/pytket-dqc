@@ -78,7 +78,8 @@ class HypergraphCircuit(Hypergraph):
         self,
         vertices: list[Vertex],
         weight: int = 1,
-        index: int = None
+        hyperedge_list_index: int = None,
+        hyperedge_dict_index: list[int] = None
     ):
         """Add hyperedge to hypergraph of circuit. Adds some checks on top
         of add_hypergraph in `Hypergraph` in order to ensure that the
@@ -88,9 +89,12 @@ class HypergraphCircuit(Hypergraph):
         :type vertices: list[Vertex]
         :param weight: Hyperedge weight
         :type weight: int
-        :param index: index in `hyperedge_list` at which the new
+        :param hyperedge_list_index: index in `hyperedge_list` at which the new
             hyperedge will be added.
-        :type index: int
+        :type hyperedge_list_index: int
+        :param hyperedge_dict_index: index in `hyperedge_dict` at which the new
+            hyperedge will be added. Note that `hyperedge_dict_index` should
+            be the same length as vertices.
         :raises Exception: Raised if first vertex in hyperedge is not a qubit
         :raised Exception: Raised if there is more than one qubit
             vertex in the list of vertices.
@@ -114,7 +118,11 @@ class HypergraphCircuit(Hypergraph):
             raise Exception("Vertex indices must be in increasing order.")
 
         super(HypergraphCircuit, self).add_hyperedge(
-            vertices=vertices, weight=weight, index=index)
+            vertices=vertices,
+            weight=weight,
+            hyperedge_list_index=hyperedge_list_index,
+            hyperedge_dict_index=hyperedge_dict_index
+        )
 
     def add_qubit_vertex(self, vertex: int, qubit: Qubit):
         """Add a vertex to the underlying hypergraph which corresponds to a

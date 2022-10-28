@@ -80,7 +80,7 @@ def test_failing_circuit_hyperedge_split_and_merge():
     assert str(
         e_info.value) == (
             "The first element of [3, 0] is required to be a qubit vertex."
-        )
+    )
 
     # This has been added to ensure that when an error occurs when adding
     # the hypergraph has not been changed.
@@ -103,7 +103,7 @@ def test_failing_circuit_hyperedge_split_and_merge():
             "[Hyperedge(vertices=[0, 2, 3], weight=1), " +
             "Hyperedge(vertices=[0, 4], weight=1)] does not match " +
             "the vertices in Hyperedge(vertices=[0, 3, 4], weight=1)"
-        )
+    )
 
     assert hyp_circ.hyperedge_list == [
         Hyperedge(vertices=[0, 3, 4], weight=1),
@@ -150,6 +150,11 @@ def test_hypergraph_split_hyperedge():
         new_hyperedge_two,
         old_hyperedge_two
     ]
+    assert hypergraph.hyperedge_dict == {
+        Vertex(0): [new_hyperedge_one, old_hyperedge_two],
+        Vertex(1): [new_hyperedge_two, old_hyperedge_two],
+        Vertex(2): [new_hyperedge_one, new_hyperedge_two]
+    }
 
     hypergraph = Hypergraph()
     hypergraph.add_vertices([Vertex(0), Vertex(1), Vertex(2)])
@@ -165,6 +170,11 @@ def test_hypergraph_split_hyperedge():
         new_hyperedge_one,
         new_hyperedge_two
     ]
+    assert hypergraph.hyperedge_dict == {
+        Vertex(0): [new_hyperedge_one],
+        Vertex(1): [new_hyperedge_two],
+        Vertex(2): [new_hyperedge_one, new_hyperedge_two]
+    }
 
 
 def test_hypergraph_merge_hyperedge():
@@ -176,17 +186,56 @@ def test_hypergraph_merge_hyperedge():
     hypergraph.add_hyperedge([2, 0])
 
     to_merge_hyperedge_one = Hyperedge(
-        vertices=[Vertex(1), Vertex(2)], weight=1)
+        vertices=[Vertex(1), Vertex(2)], weight=1
+    )
     to_merge_hyperedge_two = Hyperedge(
-        vertices=[Vertex(2), Vertex(0)], weight=1)
+        vertices=[Vertex(2), Vertex(0)], weight=1
+    )
+    merged_hyperedge_one = Hyperedge(
+        vertices=[Vertex(0), Vertex(1)], weight=1
+    )
+    merged_hyperedge_two = Hyperedge(
+        vertices=[Vertex(1), Vertex(2), Vertex(0)], weight=1
+    )
 
     hypergraph.merge_hyperedge(
         to_merge_hyperedge_list=[
-            to_merge_hyperedge_one, to_merge_hyperedge_two]
+            to_merge_hyperedge_one, to_merge_hyperedge_two
+        ]
+    )
+
+    assert hypergraph.vertex_neighbours == {
+        Vertex(0): {1, 2}, 1: {0, 2}, 2: {0, 1}}
+    assert hypergraph.hyperedge_list == [
+        merged_hyperedge_one, merged_hyperedge_two
+    ]
+    assert hypergraph.hyperedge_dict == {
+        Vertex(0): [merged_hyperedge_one, merged_hyperedge_two],
+        Vertex(1): [merged_hyperedge_one, merged_hyperedge_two],
+        Vertex(2): [merged_hyperedge_two]
+    }
+
+    hypergraph = Hypergraph()
+    hypergraph.add_vertices([0, Vertex(1), Vertex(2)])
+    hypergraph.add_hyperedge([1, 2])
+    hypergraph.add_hyperedge([0, 1])
+    hypergraph.add_hyperedge([2, 0])
+
+    hypergraph.merge_hyperedge(
+        to_merge_hyperedge_list=[
+            to_merge_hyperedge_one, to_merge_hyperedge_two
+        ]
     )
 
     assert hypergraph.vertex_neighbours == {0: {1, 2}, 1: {0, 2}, 2: {0, 1}}
-    assert len(hypergraph.hyperedge_list) == 2
+    assert hypergraph.hyperedge_list == [
+        merged_hyperedge_two, merged_hyperedge_one
+    ]
+    assert hypergraph.hyperedge_dict == {
+        Vertex(0): [merged_hyperedge_one, merged_hyperedge_two],
+        Vertex(1): [merged_hyperedge_two, merged_hyperedge_one],
+        Vertex(2): [merged_hyperedge_two]
+    }
 
     hypergraph = Hypergraph()
     hypergraph.add_vertices([Vertex(0), Vertex(1), Vertex(2)])
@@ -199,7 +248,12 @@ def test_hypergraph_merge_hyperedge():
     )
 
     assert hypergraph.vertex_neighbours == {0: {1, 2}, 1: {0, 2}, 2: {0, 1}}
-    assert len(hypergraph.hyperedge_list) == 1
+    assert hypergraph.hyperedge_list == [merged_hyperedge_two]
+    assert hypergraph.hyperedge_dict == {
+        Vertex(0): [merged_hyperedge_two],
+        Vertex(1): [merged_hyperedge_two],
+        Vertex(2): [merged_hyperedge_two]
+    }
 
 
 def test_hypergraph_is_valid():

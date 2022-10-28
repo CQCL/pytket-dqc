@@ -258,8 +258,6 @@ def test_split_merge():
 
     # Check that merge recovers original circuit. I assume the order of
     # hyperedges in the hyperedge_list does not matter. This may be reckless.
-    merge_hyperedge_list.sort()
-    gain_manager.distribution.circuit.hyperedge_list.sort()
     assert (
         merge_hyperedge_list ==
         gain_manager.distribution.circuit.hyperedge_list

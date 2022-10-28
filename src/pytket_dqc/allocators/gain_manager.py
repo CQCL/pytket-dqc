@@ -24,7 +24,13 @@ class GainManager:
     :type server_graph: nx.Graph
     :param occupancy: Maps servers to its current number of qubit vertices
     :type occupancy: dict[int, int]
-    :param hyperedge_cost_map: Contains the current cost of each hyperedge
+    :param hyperedge_cost_map: Contains the current cost of each hyperedge.
+        Note that `hyperedge_cost_map` may contain hyperedges which are not
+        currently in the `HyperGraph` of `distribution`. Hyperedges in
+        `hyperedge_cost_map` may be conflicting due to the embeddings
+        they imply, in which case the cost would be that if only one was
+        implemented. All hyperedges in hyperedge_cost_map are however
+        valid given the placement in `distribution`.
     :type hyperedge_cost_map: dict[Hyperedge, int]
     :param h_embedding_required: For each hyperedge, it indicates whether
         an H-embedding is required to implement it
@@ -115,18 +121,13 @@ class GainManager:
         :rtype: int
         """
 
-        # TODO: Here and in other split and merge related functions,
-        # I'm using that we can store the cost of hyperedges that
-        # might not be in the hypergraph any more. Are we okay with that.
-        # In the case of steiner trees we have capped the size of the
-        # tree which can be stored. We might wish to do something similar here?
         current_cost = self.hyperedge_cost_map[old_hyperedge]
         new_cost = 0
+
         for hyperedge in new_hyperedge_list:
-            if hyperedge in self.hyperedge_cost_map.keys():
-                new_cost += self.hyperedge_cost_map[hyperedge]
-            else:
-                new_cost += self.distribution.hyperedge_cost(hyperedge)
+            if hyperedge not in self.hyperedge_cost_map.keys():
+                self.update_cost(hyperedge)
+            new_cost += self.hyperedge_cost_map[hyperedge]
 
         return current_cost - new_cost
 
@@ -183,23 +184,19 @@ class GainManager:
         new_hyperedge = Hyperedge(
             vertices=list(
                 set(
-                    [
-                        vertex
-                        for hyperedge in to_merge_hyperedge_list
-                        for vertex in hyperedge.vertices
-                    ]
+                    vertex
+                    for hyperedge in to_merge_hyperedge_list
+                    for vertex in hyperedge.vertices
                 )
             ),
             weight=to_merge_hyperedge_list[0].weight
         )
 
-        # Take cost of hyperedge from hyperedge_cost_map if it exists there,
-
-        # else calculate it.
-        if new_hyperedge in self.hyperedge_cost_map.keys():
-            new_cost = self.hyperedge_cost_map[new_hyperedge]
-        else:
-            new_cost = self.distribution.hyperedge_cost(new_hyperedge)
+        # Add cost of hyperedge to hyperedge_cost_map if it does not
+        # exists there.
+        if new_hyperedge not in self.hyperedge_cost_map.keys():
+            self.update_cost(new_hyperedge)
+        new_cost = self.hyperedge_cost_map[new_hyperedge]
 
         return current_cost - new_cost
 
