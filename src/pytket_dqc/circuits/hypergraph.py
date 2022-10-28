@@ -193,13 +193,8 @@ class Hypergraph:
         self.hyperedge_list.remove(old_hyperedge)
         # For every vertex in the hyperedge being removed, update
         # appropriately if it is still a neighbour to other vertices.
-        # Since self.vertex_neighbours is symmetric (neighbours appear
-        # in the neighbour list of each other) they will be removed from each
-        # others lists in the following. As such only those vertices with index
-        # in old_hyperedge.vertices greater then the one being considered
-        # need to be considered for removal.
-        for i, vertex in enumerate(old_hyperedge.vertices[:-1]):
-            old_neighbour_list = old_hyperedge.vertices[i+1:]
+        for vertex in old_hyperedge.vertices:
+            old_neighbour_list = set(old_hyperedge.vertices) - {vertex}
             # For every old_neighbour of vertex, check if the pair both
             # belong to another hyperedge. Update vertex_neighbours
             # accordingly.
@@ -210,9 +205,7 @@ class Hypergraph:
                 )
                 if not paired_elsewhere:
                     self.vertex_neighbours[vertex].remove(old_neighbour)
-                    self.vertex_neighbours[old_neighbour].remove(vertex)
 
-        for vertex in old_hyperedge.vertices:
             self.hyperedge_dict[vertex].remove(old_hyperedge)
 
     def is_placement(self, placement: Placement) -> bool:
