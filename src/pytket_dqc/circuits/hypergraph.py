@@ -105,7 +105,6 @@ class Hypergraph:
             )
             for vertex in vertices
         ]
-        print("hyperedge_dict_index", hyperedge_dict_index)
         new_hyperedge = Hyperedge(vertices=vertices, weight=weight)
         self.add_hyperedge(
             vertices=new_hyperedge.vertices,
@@ -171,9 +170,9 @@ class Hypergraph:
                     hyperedge_dict_index=hyperedge_dict_index,
                 )
             except Exception:
-                if i > 0:
-                    for hyperedge in new_hyperedge_list[-i:]:
-                        self.remove_hyperedge(hyperedge)
+                for _ in range(i):
+                    hedge = self.hyperedge_list[hyperedge_list_index]
+                    self.remove_hyperedge(hedge)
                 raise
 
         self.remove_hyperedge(old_hyperedge)
@@ -326,8 +325,6 @@ class Hypergraph:
             hypergraph.
         """
 
-        print("parent hyperedge_dict_index", hyperedge_dict_index)
-
         if len(vertices) < 1:
             raise Exception("Hyperedges must contain at least 1 vertex.")
 
@@ -341,19 +338,13 @@ class Hypergraph:
                     ).format(hyperedge, self.vertex_list)
                 )
 
-            print("self.hyperedge_dict", self.hyperedge_dict)
-
             if hyperedge_dict_index is None:
                 self.hyperedge_dict[vertex].append(hyperedge)
             else:
-                print(hyperedge_dict_index[vertex_index])
-                print(hyperedge)
                 self.hyperedge_dict[vertex].insert(
                     hyperedge_dict_index[vertex_index],
                     hyperedge
                 )
-
-            print("self.hyperedge_dict", self.hyperedge_dict)
 
             # Add in all vertices of the hyperedge to the neighbourhood. Since
             # this is a set there will be no duplicates. This carelessly adds
