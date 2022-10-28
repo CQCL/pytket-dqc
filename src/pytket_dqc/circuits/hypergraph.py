@@ -113,14 +113,38 @@ class Hypergraph:
             hyperedge_dict_index=hyperedge_dict_index
         )
 
+        hyperedge_list_index_list = []
+        hyperedge_dict_index_list = []
         for i, hyperedge in enumerate(to_merge_hyperedge_list):
             try:
+                hyperedge_list_index = self.hyperedge_list.index(hyperedge)
+                hyperedge_dict_index = [
+                    self.hyperedge_dict[vertex].index(hyperedge)
+                    for vertex in hyperedge.vertices
+                ]
                 self.remove_hyperedge(hyperedge)
+                hyperedge_list_index_list.append(hyperedge_list_index)
+                hyperedge_dict_index_list.append(hyperedge_dict_index)
+            # I'm unsure that this would every really be raised, as it's
+            # already been checked that the hyperedges to be removed are
+            # in the hyperedge list. That's just about the only thing that
+            # could go wrong. The hacky fix above is so hacky and hard to
+            # test that I'm tempted to remove the whole thing.
             except Exception:
-                for removed_hyperedge in to_merge_hyperedge_list[:i]:
+                for (
+                    removed_hyperedge,
+                    hyperedge_list_index,
+                    hyperedge_dict_index
+                ) in zip(
+                    reversed(to_merge_hyperedge_list[:i]),
+                    reversed(hyperedge_list_index_list),
+                    reversed(hyperedge_dict_index_list)
+                ):
                     self.add_hyperedge(
                         vertices=removed_hyperedge.vertices,
-                        weight=removed_hyperedge.weight
+                        weight=removed_hyperedge.weight,
+                        hyperedge_list_index=hyperedge_list_index,
+                        hyperedge_dict_index=hyperedge_dict_index
                     )
                 self.remove_hyperedge(new_hyperedge)
                 raise
