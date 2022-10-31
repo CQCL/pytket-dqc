@@ -117,6 +117,7 @@ class PacMan:
                         self.hopping_packets[qubit_vertex].append(
                             (packet, packet_to_compare)
                         )
+                        break
                     packet_to_compare = self.get_next_packet(packet_to_compare)
 
     def merge_all_packets(self):
@@ -198,14 +199,20 @@ class PacMan:
             for hopping_packet in self.hopping_packets[packet.qubit_vertex]
             if hopping_packet[0] == packet
         ]
-        assert (
-            len(potential_hopping_packets) <= 1
-        ), "There should only be up to 1 hopping packet \
-            containing this packet."
+        # Remove this assert since we list all hopping packets originating
+        # from given packet
+        # assert (
+        #     len(potential_hopping_packets) <= 1
+        # ), "There should only be up to 1 hopping packet \
+        #     containing this packet."
 
         if len(potential_hopping_packets) == 0:
             return None
         else:
+            # For now we get first hopping
+            # REVIEW THIS
+            # Pablo and Dan please comment if this
+            # comment is still here
             return potential_hopping_packets[0][1]
 
     def get_next_packet(self, packet: Optional[Packet]) -> Optional[Packet]:
@@ -321,6 +328,8 @@ class PacMan:
                     )
                     return False
                 cu1_indices.append(i)
+
+        assert cu1_indices
 
         ops_1q_list: list[list[Op]] = [
             [command.op for command in intermediate_commands[0:cu1_indices[0]]]
@@ -507,40 +516,6 @@ class PacMan:
                     break
         return connected_packets
 
-    def add_all_connected_nodes_to_bipartition(
-        self,
-        packet: Union[Packet, Tuple[Packet, ...]],
-        edges: Set[FrozenSet[Union[Packet, Tuple[Packet, ...]]]],
-        bipartitions: Dict[int, Set[Union[Packet, Tuple[Packet, ...]]]],
-        added_nodes: Set[Union[Packet, Tuple[Packet, ...]]],
-    ):
-        """And for my next attempt to properly
-        assign packets (normal or neighbouring)
-        a correct bipartition, I will take
-        a given node, assign all nodes connected to
-        it, then assign all the nodes connected
-        to those nodes, and so on
-        """
-        relevant_edges = [edge for edge in edges if packet in edge]
-        nodes_to_check = set()
-        for relevant_edge in relevant_edges:
-            (u, v) = relevant_edge
-            if packet == u:
-                other_packet = v
-            else:
-                other_packet = u
-            self.assign_to_bipartition(packet, other_packet, bipartitions)
-            if other_packet not in added_nodes:
-                nodes_to_check.add(other_packet)
-                added_nodes.add(other_packet)
-
-        for node in nodes_to_check:
-            self.add_all_connected_nodes_to_bipartition(
-                node, edges, bipartitions, added_nodes
-            )
-
-        return
-
     def get_connected_neighbouring_packets(
         self, neighbouring_packet: Tuple[Packet, ...]
     ) -> List[Tuple[Packet, ...]]:
@@ -568,9 +543,9 @@ class PacMan:
 
     def get_connected_merged_packets(
         self, merged_packet: Tuple[Packet]
-    ) -> List[Tuple[Packet]]:
+    ) -> list[tuple[Packet, ...]]:
         """Also works for neighbouring packets"""
-        connected_merged_packets: List[Tuple[Packet]] = list()
+        connected_merged_packets: list[tuple[Packet, ...]] = list()
         for packet in merged_packet:
             connected_packets = self.get_connected_packets(packet)
             for connected_packet in connected_packets:
@@ -649,34 +624,18 @@ class PacMan:
         Nodes are merged packets (neighbouring + hopping).
         """
         graph = nx.Graph()
-        bipartitions = {
-            0: set(),  # Bottom packets
-            1: set(),  # Top packets
-        }
         edges = set()
+
+        # Add edges to the graph
         for qubit_vertex in self.hypergraph_circuit.get_qubit_vertices():
             for merged_packet in self.merged_packets[qubit_vertex]:
-                for (
-                    connected_merged_packet
-                ) in self.get_connected_merged_packets(merged_packet):
-                    if (
-                        frozenset([merged_packet, connected_merged_packet])
-                        not in edges
-                    ):
-                        self.assign_to_bipartition(
-                            merged_packet,
-                            connected_merged_packet,
-                            bipartitions,
-                        )
-                        edges.add(
-                            frozenset([merged_packet, connected_merged_packet])
-                        )
+                for connected_merged_packet in self.get_connected_merged_packets(merged_packet):
+                    edges.add(frozenset([merged_packet, connected_merged_packet]))
 
-        graph.add_nodes_from(bipartitions[0], bipartite=0)
-        graph.add_nodes_from(bipartitions[1], bipartite=1)
         graph.add_edges_from(edges)
-        assert nx.is_bipartite(graph), "The graph must be bipartite."
-        return graph, bipartitions[1]
+        bipartitions = self.assign_bipartitions(graph)
+        self.verify_is_bipartite(graph, edges, bipartitions)
+        return graph, bipartitions[1]      
 
     def get_nx_graph_neighbouring(self):
         """Strategy is to add every edge between packets
@@ -684,10 +643,6 @@ class PacMan:
         can be merged by neighbouring packing
         """
         graph = nx.Graph()
-        bipartitions = {
-            0: set(),  # Bottom packets
-            1: set(),  # Top packets
-        }
         edges = set()
 
         for packet in self.get_all_packets():
@@ -706,36 +661,16 @@ class PacMan:
                         edges.add(frozenset([neighbouring_packet, other_node]))
         added_nodes = set()
 
-        for edge in edges:
-            (u, v) = edge
-            self.add_all_connected_nodes_to_bipartition(
-                u, edges, bipartitions, added_nodes
-            )
-            self.add_all_connected_nodes_to_bipartition(
-                v, edges, bipartitions, added_nodes
-            )
-
-        graph.add_nodes_from(bipartitions[0], bipartite=0)
-        graph.add_nodes_from(bipartitions[1], bipartite=1)
         graph.add_edges_from(edges)
-        assert nx.is_bipartite(graph), "The graph must be bipartite."
-
-        for edge in edges:
-            (u, v) = edge
-            assert (u in bipartitions[0] and v in bipartitions[1]) or (
-                v in bipartitions[0] and u in bipartitions[1]
-            ), f"{edge} has two nodes in the same partition"
-
+        bipartitions = self.assign_bipartitions(graph)
+        self.verify_is_bipartite(graph, edges, bipartitions)
         return graph, bipartitions[1]
 
     def get_nx_graph_conflict(self):
         graph = nx.Graph()
         conflict_edges = set()
         checked_hopping_packets = []
-        bipartitions = {
-            0: set(),  # Bottom half
-            1: set(),  # Top half
-        }
+
         # Iterate through each packet that can be embedded in a hopping packet
         for qubit_vertex in self.hypergraph_circuit.get_qubit_vertices():
             for (
@@ -761,20 +696,11 @@ class PacMan:
                                     embedded_packet, connected_packet
                                 )
                             )
-
-                            self.assign_to_bipartition(
-                                self.get_hopping_packet_from_embedded_packet(
-                                    embedded_packet
-                                ),
-                                self.get_hopping_packet_from_embedded_packet(
-                                    connected_packet
-                                ),
-                                bipartitions,
-                            )
-
                         checked_hopping_packets.append(embedded_packet)
         logger.debug(f"Conflict edges: {conflict_edges}")
         graph.add_edges_from(conflict_edges)
+        bipartitions = self.assign_bipartitions(graph)
+        self.verify_is_bipartite(graph, conflict_edges, bipartitions)
         return graph, bipartitions[1]
 
     def get_mvc_merged_graph(self):
@@ -810,29 +736,29 @@ class PacMan:
             ]
         )
 
-    def assign_to_bipartition(
-        self,
-        first_packet: Union[Packet, Tuple[Packet, ...]],
-        second_packet: Union[Packet, Tuple[Packet, ...]],
-        bipartitions: Dict[int, Set[Union[Packet, Tuple[Packet, ...]]]],
-    ):
-        """Given two packets (can be normal or merged or hopping)
-        that (should) form an edge and a bipartitioning,
-        decide where the given packets should/must go.
+    def assign_bipartitions(self, graph: nx.Graph) -> dict[int, set[tuple[Packet, ...]]]:
+        """Given a graph, for each connected component designate its nodes
+        as top or bottom half
         """
+        bipartitions: dict[int, set[tuple[Packet, ...]]] = {
+            0: set(),  # Bottom
+            1: set(),  # Top
+        }
 
-        # Refers to first_packet
-        is_first_in_top_half = (
-            first_packet not in bipartitions[0]
-            and second_packet not in bipartitions[1]
-        )
+        for subgraph in [graph.subgraph(c) for c in nx.connected_components(graph)]:
+            bottom_nodes, top_nodes = bipartite.sets(subgraph)
+            bipartitions[0].update(bottom_nodes)
+            bipartitions[1].update(top_nodes)
+        
+        return bipartitions
 
-        if all(first_packet not in bipartitions[i] for i in [0, 1]):
-            bipartitions[is_first_in_top_half].add(first_packet)
-
-        if all(second_packet not in bipartitions[i] for i in [0, 1]):
-            bipartitions[not is_first_in_top_half].add(second_packet)
-        return
+    def verify_is_bipartite(self, graph, edges, bipartitions):
+        assert nx.is_bipartite(graph), "The graph must be bipartite."
+        for edge in edges:
+            (u, v) = edge
+            assert (u in bipartitions[0] and v in bipartitions[1]) or (
+                v in bipartitions[0] and u in bipartitions[1]
+            )
 
     # Methods that could be moved to `HypergraphCircuit`
 
@@ -884,7 +810,6 @@ class PacMan:
         """Given a list of gate vertices,
         return the index in `Circuit.get_commands()`
         that corresponds to the last gate in the circuit.
-        Question: Should be `HypergraphCircuit` method?
         """
         last_command_index: int = -1  # Placeholder value
         for vertex in gate_vertex_list:
@@ -899,7 +824,6 @@ class PacMan:
     def get_first_command_index(self, gate_vertex_list: List[Vertex]) -> int:
         """Given a list of gate vertices, return the vertex that
         corresponds to the last gate in the circuit.
-        Question: Should be `HypergraphCircuit` method?
         """
         first_command_index: int = -1  # Placeholder value
         for vertex in gate_vertex_list:
