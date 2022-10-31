@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import networkx as nx  # type: ignore
 from pytket_dqc.utils import steiner_tree
+from pytket_dqc.circuits.hypergraph import Hyperedge
 
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from pytket_dqc import Distribution
-    from pytket_dqc.circuits import Hyperedge
 
 
 class GainManager:
@@ -24,7 +24,13 @@ class GainManager:
     :type server_graph: nx.Graph
     :param occupancy: Maps servers to its current number of qubit vertices
     :type occupancy: dict[int, int]
-    :param hyperedge_cost_map: Contains the current cost of each hyperedge
+    :param hyperedge_cost_map: Contains the current cost of each hyperedge.
+        Note that `hyperedge_cost_map` may contain hyperedges which are not
+        currently in the `HyperGraph` of `distribution`. Hyperedges in
+        `hyperedge_cost_map` may be conflicting due to the embeddings
+        they imply, in which case the cost would be that if only one was
+        implemented. All hyperedges in hyperedge_cost_map are however
+        valid given the placement in `distribution`.
     :type hyperedge_cost_map: dict[Hyperedge, int]
     :param h_embedding_required: For each hyperedge, it indicates whether
         an H-embedding is required to implement it
@@ -96,7 +102,128 @@ class GainManager:
             h_embedding=self.h_embedding_required[hyperedge],
         )
 
-    def gain(self, vertex: int, new_server: int) -> int:
+    def split_hyperedge_gain(
+        self,
+        old_hyperedge: Hyperedge,
+        new_hyperedge_list: list[Hyperedge]
+    ) -> int:
+        """Calculate the cost gain from splitting a hyperedge.
+        This uses `hyperedge_cost_map`, a stored hyperedge cost
+        dictionary to reduce cost recalculation. The cost may be
+        negative, indicating an increase in the cost caused by splitting.
+
+        :param old_hyperedge: Hyperedge to be split.
+        :type old_hyperedge: Hyperedge
+        :param new_hyperedge_list: List of hyperedges into which
+        `old_hyperedge` should be split.
+        :type new_hyperedge_list: list[Hyperedge]
+        :return: Cost of splitting hyperedge as specified.
+        :rtype: int
+        """
+
+        current_cost = self.hyperedge_cost_map[old_hyperedge]
+        new_cost = 0
+
+        for hyperedge in new_hyperedge_list:
+            if hyperedge not in self.hyperedge_cost_map.keys():
+                self.update_cost(hyperedge)
+            new_cost += self.hyperedge_cost_map[hyperedge]
+
+        return current_cost - new_cost
+
+    def split_hyperedge(
+        self,
+        old_hyperedge: Hyperedge,
+        new_hyperedge_list: list[Hyperedge],
+        recalculate_cost: bool = True
+    ):
+        """Split hyperedge `old_hyperedge` into hyperedges in
+        `new_hyperedge_list`. This method utilises the
+        `Hypergraph.split_hyperedge` method.
+
+        :param old_hyperedge: Hyperedge to be split
+        :type old_hyperedge: Hyperedge
+        :param new_hyperedge_list: List of hyperedges into which
+        `old_hyperedge` should be split.
+        :type new_hyperedge_list: list[Hyperedge]
+        :param recalculate_cost: Update dictionary of hyperedge costs,
+        defaults to True
+        :type recalculate_cost: bool, optional
+        """
+
+        self.distribution.circuit.split_hyperedge(
+            old_hyperedge=old_hyperedge,
+            new_hyperedge_list=new_hyperedge_list,
+        )
+
+        if recalculate_cost:
+            for hypedge in new_hyperedge_list:
+                self.update_cost(hypedge)
+
+    def merge_hyperedge_gain(
+        self,
+        to_merge_hyperedge_list: list[Hyperedge]
+    ) -> int:
+        """Calculate the gain from merging a list of hyperedges.
+        This uses `hyperedge_cost_map`, a stored hyperedge cost
+        dictionary to reduce cost recalculation. The cost may be
+        negative, indicating an increase in the cost caused by merging.
+
+        :param to_merge_hyperedge_list: List of hyperedges to be merged.
+        :type to_merge_hyperedge_list: list[Hyperedge]
+        :return: Gain from merging hyperedges. This may be negative.
+        :rtype: int
+        """
+
+        current_cost = sum(
+            self.hyperedge_cost_map[hyperedge]
+            for hyperedge in to_merge_hyperedge_list
+        )
+
+        # Create new hyperedge by merging given list.
+        new_hyperedge = Hyperedge(
+            vertices=list(
+                set(
+                    vertex
+                    for hyperedge in to_merge_hyperedge_list
+                    for vertex in hyperedge.vertices
+                )
+            ),
+            weight=to_merge_hyperedge_list[0].weight
+        )
+
+        # Add cost of hyperedge to hyperedge_cost_map if it does not
+        # exists there.
+        if new_hyperedge not in self.hyperedge_cost_map.keys():
+            self.update_cost(new_hyperedge)
+        new_cost = self.hyperedge_cost_map[new_hyperedge]
+
+        return current_cost - new_cost
+
+    def merge_hyperedge(
+        self,
+        to_merge_hyperedge_list: list[Hyperedge],
+        recalculate_cost: bool = True
+    ):
+        """Merge `to_merge_hyperedge_list`, a list of given hyperedges
+        and update `hyperedge_cost_map`, a stored hyperedge cost
+        dictionary. This uses the `Hyperedge.merge_hyperedges` method.
+
+        :param to_merge_hyperedge_list: List of hyperedges to merge.
+        :type to_merge_hyperedge_list: list[Hyperedge]
+        :param recalculate_cost: Determines if the hyperedge cost dictionary
+        should be updated, defaults to True
+        :type recalculate_cost: bool, optional
+        """
+
+        new_hyperedge = self.distribution.circuit.merge_hyperedge(
+            to_merge_hyperedge_list=to_merge_hyperedge_list
+        )
+
+        if recalculate_cost:
+            self.update_cost(new_hyperedge)
+
+    def move_vertex_gain(self, vertex: int, new_server: int) -> int:
         """Compute the gain of moving ``vertex`` to ``new_server``. Instead
         of calculating the cost of the whole hypergraph using the new
         placement, we simply compare the previous cost of all hyperedges
@@ -124,21 +251,26 @@ class GainManager:
             prev_cost_map[hypedge] = self.hyperedge_cost_map[hypedge]
             prev_cost += self.hyperedge_cost_map[hypedge]
 
-        self.move(vertex, new_server)  # This will recalculate the costs
+        self.move_vertex(vertex, new_server)  # This will recalculate the costs
 
         new_cost = 0
         for hypedge in self.distribution.circuit.hyperedge_dict[vertex]:
             new_cost += self.hyperedge_cost_map[hypedge]
 
         # Move back without recalculating costs
-        self.move(vertex, prev_server, recalculate_cost=False)
+        self.move_vertex(vertex, prev_server, recalculate_cost=False)
         # Reassign previous costs
         for hypedge, cost in prev_cost_map.items():
             self.hyperedge_cost_map[hypedge] = cost
 
         return prev_cost - new_cost
 
-    def move(self, vertex: int, server: int, recalculate_cost=True):
+    def move_vertex(
+        self,
+        vertex: int,
+        server: int,
+        recalculate_cost: bool = True
+    ):
         """Moves ``vertex`` to ``server``, updating ``placement`` and
         ``occupancy`` accordingly.
         By default it updates the cost of the hyperedge, but this can

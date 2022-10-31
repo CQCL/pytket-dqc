@@ -7,6 +7,4 @@ Placement
 
     .. automethod:: Placement.is_valid
 
-    .. automethod:: Placement.cost
-
     .. automethod:: Placement.get_distribution_tree

@@ -152,16 +152,19 @@ class Annealing(Allocator):
                     swap_vertex = random.choice(destination_server_qubit_list)
 
             # Calculate gain
-            gain = gain_manager.gain(vertex_to_move, destination_server)
+            gain = gain_manager.move_vertex_gain(
+                vertex_to_move,
+                destination_server
+            )
             if swap_vertex is not None:
                 # In order to accurately calculate the gain of moving
                 # ``swap_vertex`` we need to move ``vertex_to_move``
-                gain_manager.move(
+                gain_manager.move_vertex(
                     vertex_to_move, destination_server, recalculate_cost=False
                 )
-                gain += gain_manager.gain(swap_vertex, home_server)
+                gain += gain_manager.move_vertex_gain(swap_vertex, home_server)
                 # Restore ``vertex_to_move`` to its original placement
-                gain_manager.move(
+                gain_manager.move_vertex(
                     vertex_to_move, home_server, recalculate_cost=False
                 )
 
@@ -173,9 +176,9 @@ class Annealing(Allocator):
             # TODO: Should new placement be accepted if the cost
             # does not change?
             if acceptance_prob > random.uniform(0, 1):
-                gain_manager.move(vertex_to_move, destination_server)
+                gain_manager.move_vertex(vertex_to_move, destination_server)
                 if swap_vertex is not None:
-                    gain_manager.move(swap_vertex, home_server)
+                    gain_manager.move_vertex(swap_vertex, home_server)
 
         assert gain_manager.distribution.is_valid()
         return gain_manager.distribution
