@@ -1,4 +1,5 @@
-import pickle
+import pickle  # type: ignore
+import json  # type: ignore
 import pytest
 from pytket import Circuit
 from pytket_dqc.placement import Placement
@@ -17,8 +18,8 @@ from pytket_dqc.utils.gateset import (
     end_proc,
     telep_proc,
 )
+from pytket_dqc.allocators import Brute, Random, HypergraphPartitioning
 from pytket_dqc.utils import check_equivalence
-from pytket_dqc.allocators import Brute, Random
 from pytket_dqc.networks import NISQNetwork
 from pytket.circuit import QControlBox, Op, OpType  # type: ignore
 
@@ -464,42 +465,28 @@ def test_to_pytket_circ_CRz():
     dist_circ = HypergraphCircuit(circ)
 
     placement = Placement({0: 1, 1: 2, 2: 0, 3: 0, 4: 0})
+    distribution = Distribution(dist_circ, placement, network)
+    assert distribution.is_valid()
 
-    assert dist_circ.is_placement(placement)
-
-    circ_with_dist = dist_circ.to_pytket_circuit(placement, network)
+    circ_with_dist = distribution.to_pytket_circuit()
 
     test_circ = Circuit()
 
     server_1 = test_circ.add_q_register("server_1", 1)
     server_2 = test_circ.add_q_register("server_2", 1)
 
-    server_0_link_0 = test_circ.add_q_register("server_0_link_edge_0", 1)
-    server_0_link_1 = test_circ.add_q_register("server_0_link_edge_1", 1)
-    server_0_link_2 = test_circ.add_q_register("server_0_link_edge_2", 1)
+    server_0_link = test_circ.add_q_register("server_0_link_register", 2)
 
-    test_circ.add_custom_gate(
-        start_proc, [], [server_1[0], server_0_link_0[0]]
-    )
-    test_circ.add_custom_gate(
-        start_proc, [], [server_2[0], server_0_link_2[0]]
-    )
-    test_circ.add_gate(
-        OpType.CU1, 0.3, [server_0_link_0[0], server_0_link_2[0]]
-    )
-    test_circ.add_custom_gate(end_proc, [], [server_0_link_0[0], server_1[0]])
+    test_circ.add_custom_gate(start_proc, [], [server_1[0], server_0_link[0]])
+    test_circ.add_custom_gate(start_proc, [], [server_2[0], server_0_link[1]])
+    test_circ.add_gate(OpType.CU1, 0.3, [server_0_link[0], server_0_link[1]])
+    test_circ.add_custom_gate(end_proc, [], [server_0_link[0], server_1[0]])
     test_circ.H(server_1[0])
-    test_circ.add_custom_gate(
-        start_proc, [], [server_1[0], server_0_link_1[0]]
-    )
-    test_circ.add_gate(
-        OpType.CU1, 1.0, [server_0_link_1[0], server_0_link_2[0]]
-    )
-    test_circ.add_gate(
-        OpType.CU1, 0.3, [server_0_link_2[0], server_0_link_1[0]]
-    )
-    test_circ.add_custom_gate(end_proc, [], [server_0_link_1[0], server_1[0]])
-    test_circ.add_custom_gate(end_proc, [], [server_0_link_2[0], server_2[0]])
+    test_circ.add_custom_gate(start_proc, [], [server_1[0], server_0_link[0]])
+    test_circ.add_gate(OpType.CU1, 1.0, [server_0_link[0], server_0_link[1]])
+    test_circ.add_gate(OpType.CU1, 0.3, [server_0_link[1], server_0_link[0]])
+    test_circ.add_custom_gate(end_proc, [], [server_0_link[0], server_1[0]])
+    test_circ.add_custom_gate(end_proc, [], [server_0_link[1], server_2[0]])
 
     test_circ_command_names = [
         command.op.get_name() for command in test_circ.get_commands()
@@ -519,6 +506,10 @@ def test_to_pytket_circ_CRz():
 
     assert test_circ_command_qubits == circ_with_dist_command_qubits
 
+    assert check_equivalence(
+        circ, circ_with_dist, distribution.get_qubit_mapping()
+    )
+
 
 def test_to_pytket_circuit_detached_gate():
     # This test tests the case where the gate is acted on a server to which
@@ -534,47 +525,32 @@ def test_to_pytket_circuit_detached_gate():
     )
     dist_circ = HypergraphCircuit(circ)
     placement = Placement({0: 1, 1: 2, 2: 0, 3: 0})
+    distribution = Distribution(dist_circ, placement, network)
+    assert distribution.is_valid()
 
-    assert dist_circ.is_placement(placement)
-
-    circ_with_dist = dist_circ.to_pytket_circuit(placement, network)
+    circ_with_dist = distribution.to_pytket_circuit()
 
     test_circ = Circuit()
 
     server_1 = test_circ.add_q_register("server_1", 1)
     server_2 = test_circ.add_q_register("server_2", 1)
 
-    server_0_link_0 = test_circ.add_q_register("server_0_link_edge_0", 1)
-    server_0_link_1 = test_circ.add_q_register("server_0_link_edge_1", 1)
-    server_0_link_2 = test_circ.add_q_register("server_0_link_edge_2", 1)
+    server_0_link = test_circ.add_q_register("server_0_link_register", 2)
+    server_1_link = test_circ.add_q_register("server_1_link_register", 1)
 
-    server_1_link_2 = test_circ.add_q_register("server_1_link_edge_2", 1)
-
+    test_circ.add_custom_gate(start_proc, [], [server_1[0], server_0_link[0]])
+    test_circ.add_custom_gate(start_proc, [], [server_2[0], server_1_link[0]])
     test_circ.add_custom_gate(
-        start_proc, [], [server_1[0], server_0_link_0[0]]
+        start_proc, [], [server_1_link[0], server_0_link[1]]
     )
-    test_circ.add_custom_gate(
-        start_proc, [], [server_2[0], server_1_link_2[0]]
-    )
-    test_circ.add_custom_gate(
-        start_proc, [], [server_1_link_2[0], server_0_link_2[0]]
-    )
-    test_circ.add_gate(
-        OpType.CU1, 1.0, [server_0_link_0[0], server_0_link_2[0]]
-    )
-    test_circ.add_custom_gate(end_proc, [], [server_0_link_0[0], server_1[0]])
+    test_circ.add_gate(OpType.CU1, 1.0, [server_0_link[0], server_0_link[1]])
+    test_circ.add_custom_gate(end_proc, [], [server_0_link[0], server_1[0]])
+    test_circ.add_custom_gate(end_proc, [], [server_1_link[0], server_2[0]])
     test_circ.H(server_1[0])
-    test_circ.add_custom_gate(
-        start_proc, [], [server_1[0], server_0_link_1[0]]
-    )
-    test_circ.add_gate(
-        OpType.CU1, 1.0, [server_0_link_1[0], server_0_link_2[0]]
-    )
-    test_circ.add_custom_gate(end_proc, [], [server_0_link_1[0], server_1[0]])
-    test_circ.add_custom_gate(
-        end_proc, [], [server_0_link_2[0], server_1_link_2[0]]
-    )
-    test_circ.add_custom_gate(end_proc, [], [server_1_link_2[0], server_2[0]])
+    test_circ.add_custom_gate(start_proc, [], [server_1[0], server_0_link[0]])
+    test_circ.add_gate(OpType.CU1, 1.0, [server_0_link[0], server_0_link[1]])
+    test_circ.add_custom_gate(end_proc, [], [server_0_link[0], server_1[0]])
+    test_circ.add_custom_gate(end_proc, [], [server_0_link[1], server_2[0]])
 
     # TODO: Ideally we would compare the circuits directly here, rather than
     # checking the command names. This is prevented by a feature of TKET
@@ -601,6 +577,10 @@ def test_to_pytket_circuit_detached_gate():
 
     assert test_circ.q_registers == circ_with_dist.q_registers
 
+    assert check_equivalence(
+        circ, circ_with_dist, distribution.get_qubit_mapping()
+    )
+
 
 def test_to_pytket_circuit_gates_on_different_servers():
 
@@ -615,44 +595,32 @@ def test_to_pytket_circuit_gates_on_different_servers():
     dist_circ = HypergraphCircuit(circ)
 
     placement = Placement({0: 1, 1: 2, 2: 0, 3: 1})
+    distribution = Distribution(dist_circ, placement, network)
+    assert distribution.is_valid()
 
-    assert dist_circ.is_placement(placement)
-
-    circ_with_dist = dist_circ.to_pytket_circuit(placement, network)
+    circ_with_dist = distribution.to_pytket_circuit()
 
     test_circ = Circuit()
 
     server_1 = test_circ.add_q_register("server_1", 1)
     server_2 = test_circ.add_q_register("server_2", 1)
 
-    server_0_link_0 = test_circ.add_q_register("server_0_link_edge_0", 1)
-    server_0_link_1 = test_circ.add_q_register("server_0_link_edge_1", 1)
-    server_1_link_1 = test_circ.add_q_register("server_1_link_edge_1", 1)
-    server_1_link_2 = test_circ.add_q_register("server_1_link_edge_2", 1)
+    server_0_link = test_circ.add_q_register("server_0_link_register", 2)
+    server_1_link = test_circ.add_q_register("server_1_link_register", 1)
 
+    test_circ.add_custom_gate(start_proc, [], [server_1[0], server_0_link[0]])
+    test_circ.add_custom_gate(start_proc, [], [server_2[0], server_1_link[0]])
     test_circ.add_custom_gate(
-        start_proc, [], [server_1[0], server_0_link_0[0]]
+        start_proc, [], [server_1_link[0], server_0_link[1]]
     )
-    test_circ.add_custom_gate(
-        start_proc, [], [server_2[0], server_1_link_1[0]]
-    )
-    test_circ.add_custom_gate(
-        start_proc, [], [server_1_link_1[0], server_0_link_1[0]]
-    )
-    test_circ.add_gate(
-        OpType.CU1, 1.0, [server_0_link_0[0], server_0_link_1[0]]
-    )
-    test_circ.add_custom_gate(
-        end_proc, [], [server_0_link_1[0], server_1_link_1[0]]
-    )
-    test_circ.add_custom_gate(end_proc, [], [server_1_link_1[0], server_2[0]])
+    test_circ.add_gate(OpType.CU1, 1.0, [server_0_link[0], server_0_link[1]])
+    test_circ.add_custom_gate(end_proc, [], [server_1_link[0], server_2[0]])
+    test_circ.add_custom_gate(end_proc, [], [server_0_link[1], server_2[0]])
     test_circ.H(server_2[0])
-    test_circ.add_custom_gate(
-        start_proc, [], [server_2[0], server_1_link_2[0]]
-    )
-    test_circ.add_gate(OpType.CU1, 1.0, [server_1[0], server_1_link_2[0]])
-    test_circ.add_custom_gate(end_proc, [], [server_0_link_0[0], server_1[0]])
-    test_circ.add_custom_gate(end_proc, [], [server_1_link_2[0], server_2[0]])
+    test_circ.add_custom_gate(start_proc, [], [server_2[0], server_1_link[0]])
+    test_circ.add_gate(OpType.CU1, 1.0, [server_1[0], server_1_link[0]])
+    test_circ.add_custom_gate(end_proc, [], [server_0_link[0], server_1[0]])
+    test_circ.add_custom_gate(end_proc, [], [server_1_link[0], server_2[0]])
 
     test_circ_command_names = [
         command.op.get_name() for command in test_circ.get_commands()
@@ -673,6 +641,10 @@ def test_to_pytket_circuit_gates_on_different_servers():
     assert test_circ_command_qubits == circ_with_dist_command_qubits
 
     assert test_circ.q_registers == circ_with_dist.q_registers
+
+    assert check_equivalence(
+        circ, circ_with_dist, distribution.get_qubit_mapping()
+    )
 
 
 def test_to_pytket_circuit_with_branching_distribution_tree():
@@ -682,15 +654,18 @@ def test_to_pytket_circuit_with_branching_distribution_tree():
         {0: [0], 1: [1], 2: [2], 3: [3], 4: [4]},
     )
 
-    two_CZ_circ = (
+    circ = (
         Circuit(3)
         .add_gate(OpType.CU1, 1.0, [0, 1])
         .add_gate(OpType.CU1, 1.0, [0, 2])
     )
-    dist_two_CZ_circ = HypergraphCircuit(two_CZ_circ)
+    dist_circ = HypergraphCircuit(circ)
 
-    placement_two = Placement({0: 0, 1: 2, 2: 3, 3: 2, 4: 3})
-    circ_with_dist = dist_two_CZ_circ.to_pytket_circuit(placement_two, network)
+    placement = Placement({0: 0, 1: 2, 2: 3, 3: 2, 4: 3})
+    distribution = Distribution(dist_circ, placement, network)
+    assert distribution.is_valid()
+
+    circ_with_dist = distribution.to_pytket_circuit()
 
     test_circ = Circuit()
 
@@ -698,30 +673,22 @@ def test_to_pytket_circuit_with_branching_distribution_tree():
     server_2 = test_circ.add_q_register("server_2", 1)
     server_3 = test_circ.add_q_register("server_3", 1)
 
-    server_1_link_0 = test_circ.add_q_register("server_1_link_edge_0", 1)
-    server_2_link_0 = test_circ.add_q_register("server_2_link_edge_0", 1)
-    server_3_link_0 = test_circ.add_q_register("server_3_link_edge_0", 1)
+    server_1_link = test_circ.add_q_register("server_1_link_register", 1)
+    server_2_link = test_circ.add_q_register("server_2_link_register", 1)
+    server_3_link = test_circ.add_q_register("server_3_link_register", 1)
 
+    test_circ.add_custom_gate(start_proc, [], [server_0[0], server_1_link[0]])
     test_circ.add_custom_gate(
-        start_proc, [], [server_0[0], server_1_link_0[0]]
+        start_proc, [], [server_1_link[0], server_2_link[0]]
     )
     test_circ.add_custom_gate(
-        start_proc, [], [server_1_link_0[0], server_2_link_0[0]]
+        start_proc, [], [server_1_link[0], server_3_link[0]]
     )
-    test_circ.add_custom_gate(
-        start_proc, [], [server_1_link_0[0], server_3_link_0[0]]
-    )
-
-    test_circ.add_gate(OpType.CU1, 1.0, [server_2_link_0[0], server_2[0]])
-    test_circ.add_gate(OpType.CU1, 1.0, [server_3_link_0[0], server_3[0]])
-
-    test_circ.add_custom_gate(
-        end_proc, [], [server_3_link_0[0], server_1_link_0[0]]
-    )
-    test_circ.add_custom_gate(
-        end_proc, [], [server_2_link_0[0], server_1_link_0[0]]
-    )
-    test_circ.add_custom_gate(end_proc, [], [server_1_link_0[0], server_0[0]])
+    test_circ.add_gate(OpType.CU1, 1.0, [server_2_link[0], server_2[0]])
+    test_circ.add_custom_gate(end_proc, [], [server_1_link[0], server_0[0]])
+    test_circ.add_gate(OpType.CU1, 1.0, [server_3_link[0], server_3[0]])
+    test_circ.add_custom_gate(end_proc, [], [server_2_link[0], server_0[0]])
+    test_circ.add_custom_gate(end_proc, [], [server_3_link[0], server_0[0]])
 
     test_circ_command_names = [
         command.op.get_name() for command in test_circ.get_commands()
@@ -729,6 +696,8 @@ def test_to_pytket_circuit_with_branching_distribution_tree():
     circ_with_dist_command_names = [
         command.op.get_name() for command in circ_with_dist.get_commands()
     ]
+
+    print(circ_with_dist.get_commands())
 
     assert test_circ_command_names == circ_with_dist_command_names
 
@@ -742,6 +711,258 @@ def test_to_pytket_circuit_with_branching_distribution_tree():
     assert test_circ_command_qubits == circ_with_dist_command_qubits
 
     assert test_circ.q_registers == circ_with_dist.q_registers
+
+    assert check_equivalence(
+        circ, circ_with_dist, distribution.get_qubit_mapping()
+    )
+
+
+def test_to_pytket_circuit_with_embedding_1q():
+
+    network = NISQNetwork(
+        [[2, 1], [1, 0], [1, 3], [0, 4]],
+        {0: [0], 1: [1], 2: [2], 3: [3], 4: [4, 5]},
+    )
+
+    circ = (
+        Circuit(3)
+        .add_gate(OpType.CU1, 0.3, [0, 1])
+        .H(0)
+        .Rz(1.0, 0)  # To be embedded
+        .H(0)
+        .add_gate(OpType.CU1, 0.8, [0, 2])
+    )
+    hyp_circ = HypergraphCircuit(circ)
+    hyp_circ.hyperedge_list = []
+    hyp_circ.hyperedge_dict = {v: [] for v in hyp_circ.vertex_list}
+    hyp_circ.vertex_neighbours = {v: set() for v in hyp_circ.vertex_list}
+    hyp_circ.add_hyperedge([0, 3, 4])  # Hyperedge with embedding
+    hyp_circ.add_hyperedge([1, 3])
+    hyp_circ.add_hyperedge([2, 4])
+
+    placement = Placement({0: 0, 1: 4, 2: 4, 3: 4, 4: 4})
+    distribution = Distribution(hyp_circ, placement, network)
+    assert distribution.is_valid()
+
+    circ_with_dist = distribution.to_pytket_circuit()
+
+    assert check_equivalence(
+        circ, circ_with_dist, distribution.get_qubit_mapping()
+    )
+
+
+def test_to_pytket_circuit_with_embedding_2q():
+
+    network = NISQNetwork(
+        [[2, 1], [1, 0], [1, 3], [0, 4]],
+        {0: [0], 1: [1], 2: [2], 3: [3], 4: [4, 5, 6]},
+    )
+
+    circ = (
+        Circuit(4)
+        .add_gate(OpType.CU1, 0.3, [0, 1])
+        .H(0)
+        .add_gate(OpType.CU1, 1.0, [0, 3])  # To be embedded
+        .H(0)
+        .add_gate(OpType.CU1, 0.8, [0, 2])
+    )
+    hyp_circ = HypergraphCircuit(circ)
+    hyp_circ.hyperedge_list = []
+    hyp_circ.hyperedge_dict = {v: [] for v in hyp_circ.vertex_list}
+    hyp_circ.vertex_neighbours = {v: set() for v in hyp_circ.vertex_list}
+    hyp_circ.add_hyperedge([0, 4, 6])  # Hyperedge with embedding
+    hyp_circ.add_hyperedge([0, 5])
+    hyp_circ.add_hyperedge([1, 4])
+    hyp_circ.add_hyperedge([2, 6])
+    hyp_circ.add_hyperedge([3, 5])
+
+    placement = Placement({0: 0, 1: 4, 2: 4, 3: 4, 4: 4, 5: 3, 6: 4})
+    distribution = Distribution(hyp_circ, placement, network)
+    assert distribution.is_valid()
+
+    circ_with_dist = distribution.to_pytket_circuit()
+
+    assert check_equivalence(
+        circ, circ_with_dist, distribution.get_qubit_mapping()
+    )
+
+
+def test_to_pytket_circuit_circ_with_embeddings():
+
+    network = NISQNetwork(
+        [[0, 1], [0, 2], [0, 3], [3, 4]],
+        {0: [0], 1: [1, 2], 2: [3, 4], 3: [7], 4: [5, 6]},
+    )
+
+    circ = Circuit(4)
+    circ.add_gate(OpType.CU1, 0.1234, [1, 2])
+    circ.add_gate(OpType.CU1, 0.1234, [0, 2])
+    circ.add_gate(OpType.CU1, 0.1234, [2, 3])
+    circ.add_gate(OpType.CU1, 0.1234, [0, 3])
+    circ.H(0).H(2).Rz(0.1234, 3)
+    circ.add_gate(OpType.CU1, 1.0, [0, 2])
+    circ.add_gate(OpType.CU1, 1.0, [0, 3])
+    circ.add_gate(OpType.CU1, 1.0, [1, 2])
+    circ.H(0).H(2).Rz(0.1234, 0)
+    circ.add_gate(OpType.CU1, 0.1234, [0, 1])
+    circ.add_gate(OpType.CU1, 0.1234, [0, 3])
+    circ.add_gate(OpType.CU1, 1.0, [1, 2])
+
+    placement = Placement(
+        {
+            0: 1,
+            1: 1,
+            2: 2,
+            3: 4,
+            4: 1,
+            5: 2,
+            6: 4,
+            7: 4,
+            8: 2,
+            9: 4,
+            10: 0,
+            11: 1,
+            12: 4,
+            13: 3,
+        }
+    )
+
+    hyp_circ = HypergraphCircuit(circ)
+    hyp_circ.hyperedge_list = []
+    hyp_circ.hyperedge_dict = {v: [] for v in hyp_circ.vertex_list}
+    hyp_circ.vertex_neighbours = {v: set() for v in hyp_circ.vertex_list}
+
+    hyp_circ.add_hyperedge([0, 11, 12])
+    hyp_circ.add_hyperedge([0, 5, 7])
+    hyp_circ.add_hyperedge([0, 8, 9])
+    hyp_circ.add_hyperedge([1, 4, 10, 11, 13])
+    hyp_circ.add_hyperedge([2, 4, 5, 6, 13])  # Merged hyperedge
+    hyp_circ.add_hyperedge([2, 8, 10])
+    hyp_circ.add_hyperedge([3, 6, 7, 9, 12])  # Merged hyperedge
+
+    distribution = Distribution(hyp_circ, placement, network)
+    assert distribution.is_valid()
+
+    circ_with_dist = distribution.to_pytket_circuit()
+
+    assert check_equivalence(
+        circ, circ_with_dist, distribution.get_qubit_mapping()
+    )
+
+
+def test_to_pytket_circuit_with_hyperedge_requiring_euler():
+    # The circuit given below has a hyperedge between the first and last
+    # CU1 gates. The gates in between can all be embedded but, to do so,
+    # it is required to decompose the middle Hadamard to its Euler form
+    # and squash the Rz(0.5) accordingly.
+
+    circ = Circuit(5)
+    circ.H(0)
+    circ.add_gate(OpType.CU1, [0.3], [0, 1])
+    circ.H(0)
+    circ.Rz(0.5, 0)
+    circ.add_gate(OpType.CU1, [1.0], [0, 3])
+    circ.H(0)
+    circ.add_gate(OpType.CU1, [1.0], [0, 4])
+    circ.Rz(0.5, 0)
+    circ.H(0)
+    circ.add_gate(OpType.CU1, [0.8], [0, 2])
+    circ.Rz(0.3, 0)
+    circ.H(0)
+
+    network = NISQNetwork([[0, 1]], {0: [0], 1: [1, 2, 3, 4]},)
+
+    placement = Placement(
+        {0: 0, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1}
+    )
+
+    hyp_circ = HypergraphCircuit(circ)
+    hyp_circ.hyperedge_list = []
+    hyp_circ.hyperedge_dict = {v: [] for v in hyp_circ.vertex_list}
+    hyp_circ.vertex_neighbours = {v: set() for v in hyp_circ.vertex_list}
+
+    hyp_circ.add_hyperedge([0, 5, 8])  # Merged hyperedge
+    hyp_circ.add_hyperedge([0, 6])
+    hyp_circ.add_hyperedge([0, 7])
+    hyp_circ.add_hyperedge([1, 5])
+    hyp_circ.add_hyperedge([2, 8])
+    hyp_circ.add_hyperedge([3, 6])
+    hyp_circ.add_hyperedge([4, 7])
+
+    distribution = Distribution(hyp_circ, placement, network)
+    assert distribution.is_valid()
+
+    assert check_equivalence(
+        circ,
+        distribution.to_pytket_circuit(),
+        distribution.get_qubit_mapping(),
+    )
+
+
+def test_to_pytket_circuit_with_pauli_circ():
+    # Randomly generated circuit of type pauli, depth 10 and 10 qubits
+    with open(
+        "tests/test_circuits/to_pytket_circuit/pauli_10.json", "r"
+    ) as fp:
+        circ = Circuit().from_dict(json.load(fp))
+
+    network = NISQNetwork(
+        [[2, 1], [1, 0], [1, 3], [0, 4]],
+        {0: [0, 1, 2], 1: [3, 4], 2: [5, 6, 7], 3: [8], 4: [9]},
+    )
+
+    allocator = HypergraphPartitioning()
+    distribution = allocator.allocate(circ, network, num_rounds=0)
+
+    assert check_equivalence(
+        circ,
+        distribution.to_pytket_circuit(),
+        distribution.get_qubit_mapping(),
+    )
+
+
+def test_to_pytket_circuit_with_random_circ():
+    # Randomly generated circuit of type random, depth 6 and 6 qubits
+    with open(
+        "tests/test_circuits/to_pytket_circuit/random_6.json", "r"
+    ) as fp:
+        circ = Circuit().from_dict(json.load(fp))
+
+    network = NISQNetwork(
+        [[2, 1], [1, 0], [1, 3], [0, 4]],
+        {0: [0, 1, 2], 1: [3, 4], 2: [5, 6, 7], 3: [8], 4: [9]},
+    )
+
+    allocator = HypergraphPartitioning()
+    distribution = allocator.allocate(circ, network, num_rounds=0)
+
+    assert check_equivalence(
+        circ,
+        distribution.to_pytket_circuit(),
+        distribution.get_qubit_mapping(),
+    )
+
+
+def test_to_pytket_circuit_with_frac_cz_circ():
+    # Randomly generated circuit of type frac_CZ, depth 10 and 10 qubits
+    with open(
+        "tests/test_circuits/to_pytket_circuit/frac_CZ_10.json", "r"
+    ) as fp:
+        circ = Circuit().from_dict(json.load(fp))
+
+    network = NISQNetwork(
+        [[2, 1], [1, 0], [1, 3], [0, 4]],
+        {0: [0, 1, 2], 1: [3, 4], 2: [5, 6, 7], 3: [8], 4: [9]},
+    )
+
+    allocator = HypergraphPartitioning()
+    distribution = allocator.allocate(circ, network, num_rounds=0)
+
+    assert check_equivalence(
+        circ,
+        distribution.to_pytket_circuit(),
+        distribution.get_qubit_mapping(),
+    )
 
 
 @pytest.mark.skip(reason="Support for teleportation has been disabled")
@@ -755,9 +976,10 @@ def test_to_pytket_circuit_with_teleportation():
     dist_circ = HypergraphCircuit(circ)
 
     placement = Placement({0: 1, 1: 2, 2: 0, 3: 2})
-    assert dist_circ.is_placement(placement)
+    distribution = Distribution(dist_circ, placement, network)
+    assert distribution.is_valid()
 
-    circ_with_dist = dist_circ.to_pytket_circuit(placement, network)
+    circ_with_dist = distribution.to_pytket_circuit()
 
     test_circ = Circuit()
 
@@ -815,7 +1037,12 @@ def test_to_pytket_circuit_with_teleportation():
 
     assert test_circ.q_registers == circ_with_dist.q_registers
 
+    assert check_equivalence(
+        circ, circ_with_dist, distribution.get_qubit_mapping()
+    )
 
+
+@pytest.mark.skip(reason="Tests a function that has been removed")
 def test_to_relabeled_registers():
 
     circ = Circuit(3)
@@ -929,7 +1156,7 @@ def test_get_hyperedge_subcircuit():
     assert test_c.get_commands() == hyp_circ.get_hyperedge_subcircuit(hyp_2)
 
 
-def test_h_embedding_required():
+def test_requires_h_embedded_cu1():
 
     circ = Circuit(4)
     circ.add_gate(OpType.CU1, 0.1234, [1, 2])
@@ -948,12 +1175,12 @@ def test_h_embedding_required():
     # The initial hyperedges do not have embeddings
     hyp_circ = HypergraphCircuit(circ)
     for hyperedge in hyp_circ.hyperedge_list:
-        assert not hyp_circ.h_embedding_required(hyperedge)
+        assert not hyp_circ.requires_h_embedded_cu1(hyperedge)
 
     # Consider some merged hyperedges
     hyp_0 = Hyperedge([0, 5, 7, 11, 12])
     hyp_2 = Hyperedge([2, 4, 5, 6, 13])
     hyp_3 = Hyperedge([3, 6, 7, 9, 12])
-    assert hyp_circ.h_embedding_required(hyp_0)
-    assert hyp_circ.h_embedding_required(hyp_2)
-    assert not hyp_circ.h_embedding_required(hyp_3)
+    assert hyp_circ.requires_h_embedded_cu1(hyp_0)
+    assert hyp_circ.requires_h_embedded_cu1(hyp_2)
+    assert not hyp_circ.requires_h_embedded_cu1(hyp_3)
