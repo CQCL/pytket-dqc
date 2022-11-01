@@ -76,6 +76,56 @@ class HypergraphCircuit(Hypergraph):
     def get_circuit(self):
         return self._circuit.copy()
 
+    def add_hyperedge(
+        self,
+        vertices: list[Vertex],
+        weight: int = 1,
+        hyperedge_list_index: int = None,
+        hyperedge_dict_index: list[int] = None
+    ):
+        """Add hyperedge to hypergraph of circuit. Adds some checks on top
+        of add_hypergraph in `Hypergraph` in order to ensure that the
+        first vertex is a qubit, and that there is only one qubit vertex.
+
+        :param vertices: List of vertices in hyperedge to add.
+        :type vertices: list[Vertex]
+        :param weight: Hyperedge weight
+        :type weight: int
+        :param hyperedge_list_index: index in `hyperedge_list` at which the new
+            hyperedge will be added.
+        :type hyperedge_list_index: int
+        :param hyperedge_dict_index: index in `hyperedge_dict` at which the new
+            hyperedge will be added. Note that `hyperedge_dict_index` should
+            be the same length as vertices.
+        :raises Exception: Raised if first vertex in hyperedge is not a qubit
+        :raised Exception: Raised if there is more than one qubit
+            vertex in the list of vertices.
+        """
+
+        if not self.is_qubit_vertex(vertices[0]):
+            raise Exception(
+                f"The first element of {vertices} " +
+                "is required to be a qubit vertex."
+            )
+
+        if any(self.is_qubit_vertex(vertex) for vertex in vertices[1:]):
+            raise Exception("There must be only one qubit in the hyperedge.")
+
+        # I believe this is assumed when distribution costs are calculated.
+        # Please correct me if this is unnecessary.
+        if any(
+            vertex >= next_vertex
+            for vertex, next_vertex in zip(vertices[:-1], vertices[1:])
+        ):
+            raise Exception("Vertex indices must be in increasing order.")
+
+        super(HypergraphCircuit, self).add_hyperedge(
+            vertices=vertices,
+            weight=weight,
+            hyperedge_list_index=hyperedge_list_index,
+            hyperedge_dict_index=hyperedge_dict_index
+        )
+
     def add_qubit_vertex(self, vertex: Vertex, qubit: Qubit):
         """Add a vertex to the underlying hypergraph which corresponds to a
         qubit. Adding vertices in this way allow for the distinction between

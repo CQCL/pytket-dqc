@@ -147,7 +147,7 @@ class HypergraphPartitioning(Allocator):
                     if gain_manager.is_move_valid(vertex, server):
                         # Move ``vertex`` to a server with free spaces and
                         # return control to the outer loop
-                        gain_manager.move(vertex, server)
+                        gain_manager.move_vertex(vertex, server)
                         break
         # Notice that the moves have been arbitrary, i.e. we have not
         # calculated gains. This is fine since the vertices we moved will
@@ -185,7 +185,7 @@ class HypergraphPartitioning(Allocator):
                     # have the worst gain since they contain no neighbours
                     # of ``vertex``. As such, we  simply ignore them.
 
-                    gain = gain_manager.gain(vertex, server)
+                    gain = gain_manager.move_vertex_gain(vertex, server)
 
                     # If the move is not valid (i.e. the server is full) we
                     # find the best vertex in ``server`` to swap this one with
@@ -205,13 +205,13 @@ class HypergraphPartitioning(Allocator):
                         # ``server`` first and move it back at the end. This is
                         # possible because ``move`` is an unsafe function, i.e.
                         # it does not require that the move is valid.
-                        gain_manager.move(
+                        gain_manager.move_vertex(
                             vertex, server, recalculate_cost=False
                         )
 
                         best_swap_gain = float("-inf")
                         for swap_vertex in valid_swaps:
-                            swap_gain = gain_manager.gain(
+                            swap_gain = gain_manager.move_vertex_gain(
                                 swap_vertex, current_server
                             )
 
@@ -224,7 +224,7 @@ class HypergraphPartitioning(Allocator):
                                 best_swap_gain = swap_gain
                                 best_swap_vertex = swap_vertex
                         # Restore ``vertex`` to its original server.
-                        gain_manager.move(
+                        gain_manager.move_vertex(
                             vertex, current_server, recalculate_cost=False
                         )
 
@@ -257,11 +257,14 @@ class HypergraphPartitioning(Allocator):
                 assert best_server is not None
 
                 if best_server != current_server:
-                    gain_manager.move(vertex, best_server)
+                    gain_manager.move_vertex(vertex, best_server)
                     if best_best_swap is not None:
                         # This means that the move was not valid, so we need
                         # to swap to make it valid
-                        gain_manager.move(best_best_swap, current_server)
+                        gain_manager.move_vertex(
+                            best_best_swap,
+                            current_server
+                        )
                     # Either if we swap or we don't, we count it as one move
                     # since this is meant to count 'rounds with change' rather
                     # than literal moves
