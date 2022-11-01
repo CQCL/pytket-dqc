@@ -1,22 +1,26 @@
 from __future__ import annotations  # May be redundant in future (PEP 649)
 import logging
-from numpy import isclose, bool_
+from numpy import isclose
 import networkx as nx  # type: ignore
 from networkx.algorithms import bipartite  # type: ignore
-from typing import List, Dict, Tuple, Optional, Set, FrozenSet, Union, NamedTuple, cast
+from typing import (
+    Optional,
+    NamedTuple,
+)
 
 from pytket_dqc.circuits import HypergraphCircuit, Hyperedge, Vertex
 from pytket_dqc.placement import Placement
-from pytket.circuit import Command, OpType, Op, Qubit  # type: ignore
+from pytket.circuit import Command, OpType, Op  # type: ignore
 from pytket_dqc.utils import (
     is_distributable,
     distributable_1q_op_types,
     distributable_op_types,
-    to_euler_with_two_hadamards
+    to_euler_with_two_hadamards,
 )
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
+
 
 class Packet(NamedTuple):
     """The basic structure of a collection of
@@ -26,19 +30,26 @@ class Packet(NamedTuple):
     These are similar to ``Hyperedges`` in that they contain:
         - A single qubit vertex from the ``HypergraphCircuit``
         - Gate vertices corresponding to CU1 gates in the ``HypergraphCircuit``
-    
-    They differ in that they can only contain gate vertices whose connected qubits
-    are assigned to the same server.
 
-    On a given qubit vertex, ``Packet``s can be ordered by their ``packet_index``s which weakly describe their relation to each other on the circuit.
-    A ``Packet`` with a lower index means that the first gate in the ``Packet`` before the first gate of a ``Packet`` with a higher index.
-    If the ``Packet``s have the same connected server, then all of the gates in the ``Packet`` with the lower index occur before the ``Packet`` with the higher index.
+    They differ in that they can only contain gate vertices
+    whose connected qubits are assigned to the same server.
 
-    :param packet_index: The index by which this packet is labelled. 
+    On a given qubit vertex, ``Packet``s can be ordered by their
+    ``packet_index``s which weakly describe their relation to
+    each other on the circuit.
+    A ``Packet`` with a lower index means that the first gate in the ``Packet``
+    before the first gate of a ``Packet`` with a higher index.
+    If the ``Packet``s have the same connected server, then all of the gates
+    in the ``Packet`` with the lower index occur before the ``Packet``
+    with the higher index.
+
+    :param packet_index: The index by which this packet is labelled.
     :type packet_index: int
-    :param qubit_vertex: The qubit vertex shared by all the gates in this ``Packet``.
+    :param qubit_vertex: The qubit vertex shared by all
+    the gates in this ``Packet``.
     :type qubit_vertex: Vertex
-    :param connected_server_index: The index of the server that all the gates are connected to.
+    :param connected_server_index: The index of the server that all
+    the gates are connected to.
     :type connected_server_index: int
     :param gate_vertices: A list of gate vertices.
     :type gate_vertices: list[Vertex]
@@ -58,23 +69,40 @@ class Packet(NamedTuple):
     def __hash__(self):
         return hash(repr(self))
 
+
 class PacMan:
     """Pac(ket)Man(ager)
-    Creates and manages ``Packet``s from a given ``HypergraphCircuit`` and ``Placement``, as well as identifying ``Packet``s that can be merged by 'neighbouring' packing and 'hopping' packing.
+    Creates and manages ``Packet``s from a given ``HypergraphCircuit``
+    and ``Placement``, as well as identifying ``Packet``s that can be
+    merged by 'neighbouring' packing and 'hopping' packing.
 
-    NOTE: A hopping packet is only comprised of two ``Packet``s, neighbouring packets are of any length greater than one and merged packets can be of any non-zero length.
+    NOTE: A hopping packet is only comprised of two ``Packet``s, neighbouring
+    packets are of any length greater than one and merged packets can be of
+    any non-zero length.
 
-    :param hypergraph_circuit: The ``HypergraphCircuit`` from which to build and identify ``Packet``s.
+    :param hypergraph_circuit: The ``HypergraphCircuit`` from which
+    to build and identify ``Packet``s.
     :type hypergraph_circuit: HypergraphCircuit
-    :param placement: The ``Placement`` describing the placement of qubits and their gates.
+    :param placement: The ``Placement`` describing the placement of qubits
+    and their gates.
     :type placement: Placement
-    :param packets_by_qubit: A dictionary containing chronologically ordered lists of all the ``Packet``s on each qubit, with each qubit's ``Vertex`` as the key.
+    :param packets_by_qubit: A dictionary containing chronologically
+    ordered lists of all the ``Packet``s on each qubit, with
+    each qubit's ``Vertex`` as the key.
     :type packets_by_qubit: dict[Vertex, list[Packet]]
-    :param neighbouring_packets: A dictionary containing lists of ``Packet`` tuples on each qubit. A tuple of ``Packet``s represents a group of packets that can be packed together via neighbouring packing.
+    :param neighbouring_packets: A dictionary containing lists of ``Packet``
+    tuples on each qubit. A tuple of ``Packet``s represents a group of packets
+    that can be packed together via neighbouring packing.
     :type neighbouring_packets: dict[Vertex, list[tuple[Packet, ...]]]
-    :param hopping_packets: A dictionary containing lists of ``Packet`` tuples than can be merged by hopping packing on each qubit. A tuple of ``Packet``s represents two packets that can be packed together via hopping packing.
+    :param hopping_packets: A dictionary containing lists of ``Packet`` tuples
+    than can be merged by hopping packing on each qubit.
+    A tuple of ``Packet``s represents two packets that can be packed together
+    via hopping packing.
     :type hopping_packets: dict[Vertex, list[tuple[Packet, Packet]]]
-    :param merged_packets: A dictionary containing lists of ``Packet`` tuples than can be merged by neighbouring or hopping packing on each qubit. A tuple of ``Packet``s represents two packets that can be packed together, either by neighbouring or hopping packing.
+    :param merged_packets: A dictionary containing lists of ``Packet`` tuples
+    than can be merged by neighbouring or hopping packing on each qubit.
+    A tuple of ``Packet``s represents two packets that can be packed together,
+    either by neighbouring or hopping packing.
     """
 
     def __init__(
@@ -83,8 +111,12 @@ class PacMan:
         self.hypergraph_circuit: HypergraphCircuit = hypergraph_circuit
         self.placement: Placement = placement
         self.packets_by_qubit: dict[Vertex, list[Packet]] = dict()
-        self.neighbouring_packets: dict[Vertex, list[tuple[Packet, ...]]] = dict()
-        self.hopping_packets: dict[Vertex, list[tuple[Packet, Packet]]] = dict()
+        self.neighbouring_packets: dict[
+            Vertex, list[tuple[Packet, ...]]
+        ] = dict()
+        self.hopping_packets: dict[
+            Vertex, list[tuple[Packet, Packet]]
+        ] = dict()
         self.merged_packets: dict[Vertex, list[tuple[Packet, ...]]] = dict()
         self.build_packets()
         self.identify_neighbouring_packets()
@@ -94,7 +126,8 @@ class PacMan:
     # The basic methods that are called in __init__()
 
     def build_packets(self):
-        """Populate ``.packets_by_qubit`` by creating ``Packet``s from ``Hyperedge``s.
+        """Populate ``.packets_by_qubit``
+        by creating ``Packet``s from ``Hyperedge``s.
         Essentially split them up if they go to different servers.
         """
         # The fact they are ordered is guarateed
@@ -111,17 +144,19 @@ class PacMan:
                     self.packets_by_qubit[qubit_vertex].append(packet)
 
     def identify_neighbouring_packets(self):
-        """Populate ``.neighbouring_packets`` by finding groups of packets that can be merged by neighbouring packing.
+        """Populate ``.neighbouring_packets`` by finding groups of packets
+        that can be merged by neighbouring packing.
 
-        Groups of packets that can be merged by neighbouring packing are placed together in a tuple.
+        Groups of packets that can be merged by neighbouring packing are
+        placed together in a tuple.
         """
         logger.debug("------------------------------")
         logger.debug("Identifying neighbouring packets.")
         for qubit_vertex in self.hypergraph_circuit.get_qubit_vertices():
             logger.debug(
-                f"Checking qubit vertex {qubit_vertex} for neighbouring packets."
+                f"Checking qubit vertex {qubit_vertex} for nghbrng packets."
             )
-            neighbouring_packets: List[Tuple[Packet, ...]] = list()
+            neighbouring_packets: list[tuple[Packet, ...]] = list()
             considered_packet_list = []
             for packet in self.packets_by_qubit[qubit_vertex][:-1]:
                 if packet in considered_packet_list:
@@ -140,9 +175,11 @@ class PacMan:
             self.neighbouring_packets[qubit_vertex] = neighbouring_packets
 
     def identify_hopping_packets(self):
-        """Populate ``.hopping_packets`` by finding groups of packets that can be merged by hopping packing
+        """Populate ``.hopping_packets`` by finding groups of packets that
+         can be merged by hopping packing
 
-        Groups of packets that can be merged by hopping packing are placed together in a tuple.
+        Groups of packets that can be merged by hopping packing are
+        placed together in a tuple.
         """
         logger.debug("------------------------------")
         logger.debug("Identifying hopping packets.")
@@ -152,10 +189,10 @@ class PacMan:
             )
             self.hopping_packets[qubit_vertex] = []
             for packet in self.packets_by_qubit[qubit_vertex][:-1]:
-                packet_to_compare = self.get_next_packet(self.get_next_packet(packet))
-                while (
-                    packet_to_compare is not None
-                ):
+                packet_to_compare = self.get_next_packet(
+                    self.get_next_packet(packet)
+                )
+                while packet_to_compare is not None:
                     logger.debug(f"Comparing {packet} and {packet_to_compare}")
                     if self.are_hoppable_packets(packet, packet_to_compare):
                         self.hopping_packets[qubit_vertex].append(
@@ -165,7 +202,8 @@ class PacMan:
                     packet_to_compare = self.get_next_packet(packet_to_compare)
 
     def merge_all_packets(self):
-        """Populate ``.merged_packets`` by merging together already identified neighbouring and hopping packets.
+        """Populate ``.merged_packets`` by merging together already identified
+        neighbouring and hopping packets.
 
         Groups of packets that are merged are placed together in a tuple.
         """
@@ -192,7 +230,7 @@ class PacMan:
                             packet
                         )
                         logger.debug(
-                            f"Adding {packet} to mergeable packets (neighbouring) {mergeable_packets}"
+                            f"Adding {packet} to (nghbrng) {mergeable_packets}"
                         )
                         mergeable_packets.append(packet)
                         considered_packets.append(packet)
@@ -201,7 +239,7 @@ class PacMan:
                     ):
                         packet = self.get_subsequent_hopping_packet(packet)
                         logger.debug(
-                            f"Adding {packet} to mergeable packets (hopping) {mergeable_packets}"
+                            f"Adding {packet} to (hopping) {mergeable_packets}"
                         )
                         mergeable_packets.append(packet)
                         considered_packets.append(packet)
@@ -218,11 +256,13 @@ class PacMan:
     def get_subsequent_neighbouring_packet(
         self, packet: Packet
     ) -> Optional[Packet]:
-        """Given a ``Packet``, find the next ``Packet`` that can be packed with the given ``Packet`` by neighbouring packing.
+        """Given a ``Packet``, find the next ``Packet`` that can be
+        packed with the given ``Packet`` by neighbouring packing.
 
         Returns ``None`` if no such ``Packet`` exists.
 
-        :param packet: The ``Packet`` for which the subsequent neighbouring ``Packet`` should be found.
+        :param packet: The ``Packet`` for which the subsequent
+        neighbouring ``Packet`` should be found.
         :type packet: Packet
         :return: The subsequent neighbouring ``Packet``.
         :rtype: Optional[Packet]
@@ -234,8 +274,9 @@ class PacMan:
             ]
             if packet in neighbouring_packets
         ]
-        assert len(potential_neighbouring_packets) <= 1,\
-            "There can only be 1 neighbouring packet containing the given packet."
+        assert (
+            len(potential_neighbouring_packets) <= 1
+        ), "Can only be 1 neighbouring packet containing the given packet."
         if len(potential_neighbouring_packets) == 0:
             return None
         idx = potential_neighbouring_packets[0].index(packet)
@@ -247,11 +288,13 @@ class PacMan:
     def get_subsequent_hopping_packet(
         self, packet: Packet
     ) -> Optional[Packet]:
-        """Given a ``Packet``, find the next ``Packet`` that can be packed with the given ``Packet`` by hopping packing.
+        """Given a ``Packet``, find the next ``Packet`` that can be packed
+        with the given ``Packet`` by hopping packing.
 
         Returns ``None`` if no such ``Packet`` exists.
 
-        :param packet: The ``Packet`` for which the subsequent hopping ``Packet`` should be found.
+        :param packet: The ``Packet`` for which the subsequent hopping
+        ``Packet`` should be found.
         :type packet: Packet
         :return: The subsequent hopping ``Packet``.
         :rtype: Optional[Packet]
@@ -268,16 +311,20 @@ class PacMan:
 
         if len(potential_hopping_packets) == 0:
             return None
-        assert len(potential_hopping_packets[0]) == 2,\
-            "Hopping packets are always length two."
+        assert (
+            len(potential_hopping_packets[0]) == 2
+        ), "Hopping packets are always length two."
         return potential_hopping_packets[0][1]
 
     def get_next_packet(self, packet: Optional[Packet]) -> Optional[Packet]:
-        """Given a ``Packet``, find the next ``Packet`` on the same qubit with the same connected server.
+        """Given a ``Packet``, find the next ``Packet`` on the same qubit
+        with the same connected server.
 
-        Returns ``None`` if no such ``Packet`` exists, or if ``None`` is passed in.
+        Returns ``None`` if no such ``Packet`` exists, or if ``None``
+        is passed in.
 
-        :param packet: The ``Packet`` for which the subsequent hopping ``Packet`` should be found.
+        :param packet: The ``Packet`` for which the subsequent hopping
+        ``Packet`` should be found.
         :type packet: Optional[Packet]
         :return: The subsequent ``Packet``.
         :rtype: Optional[Packet]
@@ -297,24 +344,32 @@ class PacMan:
 
         return None
 
-    def get_all_packets(self) -> List[Packet]:
-        """Return a list of all ``Packet``s on the entire circuit, sorted in index order.
+    def get_all_packets(self) -> list[Packet]:
+        """Return a list of all ``Packet``s on the entire circuit,
+        sorted in index order.
 
-        NOTE: Indices only describe chronological order of ``Packet``s on the same qubit vertex, so there is no gurantee in general that ``all_packets[i]`` is earlier than ``all_packets[i + 1]``.
+        NOTE: Indices only describe chronological order of ``Packet``s on the
+        same qubit vertex, so there is no gurantee in general that
+        ``all_packets[i]`` is earlier than ``all_packets[i + 1]``.
 
         :return: All the packets on the entire circuit.
         :rtype: List[Packet]
         """
-        all_packets: List[Packet] = []
+        all_packets: list[Packet] = []
         for packets in self.packets_by_qubit.values():
             all_packets += packets
         all_packets.sort(key=lambda x: x.packet_index)
         return all_packets
 
-    def get_connected_server(self, qubit_vertex: Vertex, gate_vertex: Vertex) -> int:
-        """Given a qubit and gate ``Vertex`` corresponding to a CU1 gate, find the server number of the server containing the other qubit of the gate.
+    def get_connected_server(
+        self, qubit_vertex: Vertex, gate_vertex: Vertex
+    ) -> int:
+        """Given a qubit and gate ``Vertex`` corresponding to a CU1 gate,
+        find the server number of the server containing the
+        other qubit of the gate.
 
-        :param qubit_vertex: The qubit ``Vertex`` which we are not concerned about the server index.
+        :param qubit_vertex: The qubit ``Vertex``
+        which we are not concerned about the server index.
         :type qubit_vertex: Vertex
         :param gate_vertex: The CU1 gate of interest.
         :type gate_vertex: Vertex
@@ -324,10 +379,12 @@ class PacMan:
 
         assert self.hypergraph_circuit.is_qubit_vertex(qubit_vertex)
         assert not self.hypergraph_circuit.is_qubit_vertex(gate_vertex)
-        command_index = self.hypergraph_circuit.get_vertex_to_command_index_map()[gate_vertex]
-        command_dict = self.hypergraph_circuit._commands[
-            command_index
-        ]
+        command_index = (
+            self.hypergraph_circuit.get_vertex_to_command_index_map()[
+                gate_vertex
+            ]
+        )
+        command_dict = self.hypergraph_circuit._commands[command_index]
         command = command_dict["command"]
         assert (
             type(command) == Command
@@ -349,7 +406,8 @@ class PacMan:
     def are_neighbouring_packets(
         self, first_packet: Packet, second_packet: Packet
     ) -> bool:
-        """Given two packets, determine if they can be packed by neighbouring packing.
+        """Given two packets, determine if they can
+        be packed by neighbouring packing.
 
         :param first_packet: The first packet of interest.
         :type first_packet: Packet
@@ -378,7 +436,8 @@ class PacMan:
     def are_hoppable_packets(
         self, first_packet: Packet, second_packet: Packet
     ) -> bool:
-        """Given two packets, determine if they can be packed by hopping packing.
+        """Given two packets, determine if they can
+        be packed by hopping packing.
 
         :param first_packet: The first packet of interest.
         :type first_packet: Packet
@@ -400,7 +459,7 @@ class PacMan:
             first_packet, second_packet
         )
         logger.debug(
-            f"Intermediate ops {[command.op for command in intermediate_commands]}"
+            f"Int ops {[command.op for command in intermediate_commands]}"
         )
         cu1_indices = []
         for i, command in enumerate(intermediate_commands):
@@ -408,14 +467,21 @@ class PacMan:
                 logger.debug(f"No, {command} is not embeddable.")
                 return False
             if command.op.type == OpType.CU1:
-                assert first_packet.connected_server_index == second_packet.connected_server_index
+                assert (
+                    first_packet.connected_server_index
+                    == second_packet.connected_server_index
+                )
                 if not self.hypergraph_circuit.is_h_embeddable_CU1(
                     command,
-                    set([
-                        self.placement.placement[first_packet.qubit_vertex],
-                        first_packet.connected_server_index
-                    ]),
-                    self.placement
+                    set(
+                        [
+                            self.placement.placement[
+                                first_packet.qubit_vertex
+                            ],
+                            first_packet.connected_server_index,
+                        ]
+                    ),
+                    self.placement,
                 ):
                     logger.debug(
                         f"No, CU1 command {command} is not embeddable."
@@ -426,7 +492,10 @@ class PacMan:
         assert cu1_indices
 
         ops_1q_list: list[list[Op]] = [
-            [command.op for command in intermediate_commands[0:cu1_indices[0]]]
+            [
+                command.op
+                for command in intermediate_commands[0: cu1_indices[0]]
+            ]
         ]
 
         # Convert the intermediate commands between CU1s
@@ -434,29 +503,36 @@ class PacMan:
         # set of commands
         prev_cu1_index = cu1_indices[0]
         for cu1_index in cu1_indices[1:]:
-            commands = intermediate_commands[
-                prev_cu1_index + 1: cu1_index
-            ]
+            commands = intermediate_commands[prev_cu1_index + 1: cu1_index]
             ops = [command.op for command in commands]
             if len([op for op in ops if op.type == OpType.H]) > 0:
                 ops_1q_list.append(to_euler_with_two_hadamards(ops))
             else:
                 ops_1q_list.append(ops)
             prev_cu1_index = cu1_index
-        
-        ops_1q_list.append([command.op for command in intermediate_commands[cu1_indices[-1] + 1:]])
+
+        ops_1q_list.append(
+            [
+                command.op
+                for command in intermediate_commands[cu1_indices[-1] + 1:]
+            ]
+        )
 
         logger.debug(f"ops_1q_list {ops_1q_list}")
 
-        n_hadamards_start = len([op for op in ops_1q_list[0] if op.type == OpType.H])
+        n_hadamards_start = len(
+            [op for op in ops_1q_list[0] if op.type == OpType.H]
+        )
         if n_hadamards_start != 1:
             logger.debug(
                 "No, there can only be 1 Hadamard "
                 + "at the start of the Hadamard sandwich."
             )
             return False
-        
-        n_hadamards_end = len([op for op in ops_1q_list[-1] if op.type == OpType.H])
+
+        n_hadamards_end = len(
+            [op for op in ops_1q_list[-1] if op.type == OpType.H]
+        )
         if n_hadamards_end != 1:
             logger.debug(
                 "No, there can only be 1 Hadamard "
@@ -464,7 +540,9 @@ class PacMan:
             )
             return False
 
-        for first_ops_1q, second_ops_1q in zip(ops_1q_list[0:-1], ops_1q_list[1:]):
+        for first_ops_1q, second_ops_1q in zip(
+            ops_1q_list[0:-1], ops_1q_list[1:]
+        ):
             if not self.are_1q_op_phases_npi(first_ops_1q, second_ops_1q):
                 logger.debug(
                     f"No, the phases of {first_ops_1q} and "
@@ -480,22 +558,24 @@ class PacMan:
     def hyperedge_to_packets(
         self, hyperedge: Hyperedge, current_index: int
     ) -> tuple[int, list[Packet]]:
-        """Given a ``Hyperedge``, convert it into a list of ``Packet``s, labelling with the appropriate index.
+        """Given a ``Hyperedge``, convert it into a list of ``Packet``s,
+        labelling with the appropriate index.
 
         :param hyperedge: The ``Hyperedge`` to convert.
         :type hyperedge: Hyperedge
         :param current_index: The index to start labelling ``Packet``s from
         :type current_index: int
-        :return: The index from which to carry on labelling future ``Packet``s and the list of created ``Packet``s.
+        :return: The index from which to carry on labelling future
+        ``Packet``s and the list of created ``Packet``s.
         :rtype: tuple[int, list[Packet]]
         """
         hyperedge_qubit_vertex = self.hypergraph_circuit.get_qubit_vertex(
             hyperedge
         )
-        connected_server_to_dist_gates: Dict[
-            int, List[Vertex]
+        connected_server_to_dist_gates: dict[
+            int, list[Vertex]
         ] = {}  # Server number to list of distributed gates on that server.
-        packets: List[Packet] = []
+        packets: list[Packet] = []
         for gate_vertex in self.hypergraph_circuit.get_gate_vertices(
             hyperedge
         ):
@@ -530,7 +610,9 @@ class PacMan:
     def get_intermediate_commands(
         self, first_packet: Packet, second_packet: Packet
     ) -> list[Command]:
-        """Given two packets, find all the commands between the last gate of the first packet and the first gate of the last packet.
+        """Given two packets, find all the commands between
+        the last gate of the first packet
+        and the first gate of the last packet.
 
         :param first_packet: The first ``Packet`` of interest.
         :type first_packet: Packet
@@ -561,7 +643,10 @@ class PacMan:
     def are_1q_op_phases_npi(
         self, prior_1q_ops: list[Op], post_1q_ops: list[Op]
     ) -> bool:
-        """Given two lists of ``Op``s, determine whether these allow for the CU1 that these operations sandwich to be embedded, by calculating if the relevant phases either side of the CU1 sum to an integer.
+        """Given two lists of ``Op``s, determine whether these allow
+        for the CU1 that these operations sandwich to be embedded,
+        by calculating if the relevant phases
+        either side of the CU1 sum to an integer.
 
         :param prior_1q_ops: List of ``Op``s prior to a CU1.
         :type prior_1q_ops: list[Op]
@@ -604,7 +689,8 @@ class PacMan:
         return bool(isclose(phase_sum % 1, 0) or isclose(phase_sum % 1, 1))
 
     def get_connected_packets(self, packet: Packet) -> set[Packet]:
-        """Get all the ``Packet``s connected to the gate vertices in this ``Packet``.
+        """Get all the ``Packet``s connected to the
+        gate vertices in this ``Packet``.
 
         :param packet: The ``Packet`` to find connections to.
         :type packet: Packet
@@ -613,7 +699,9 @@ class PacMan:
         """
         connected_packets = set()
         for gate_vertex in packet.gate_vertices:
-            gate_qubits = self.hypergraph_circuit.get_gate_of_vertex(gate_vertex).qubits
+            gate_qubits = self.hypergraph_circuit.get_gate_of_vertex(
+                gate_vertex
+            ).qubits
             other_qubit_candidates = [
                 qubit
                 for qubit in gate_qubits
@@ -634,7 +722,9 @@ class PacMan:
                     break
         return connected_packets
 
-    def get_containing_merged_packet(self, packet: Packet) -> tuple[Packet, ...]:
+    def get_containing_merged_packet(
+        self, packet: Packet
+    ) -> tuple[Packet, ...]:
         """Given a ``Packet`` return the merged packet containing it.
 
         :param packet: The ``Packet`` of interest.
@@ -661,7 +751,10 @@ class PacMan:
         connected_merged_packets: set[tuple[Packet, ...]] = set()
         for packet in merged_packet:
             connected_merged_packets.update(
-                [self.get_containing_merged_packet(connected_packet) for connected_packet in self.get_connected_packets(packet)]
+                [
+                    self.get_containing_merged_packet(connected_packet)
+                    for connected_packet in self.get_connected_packets(packet)
+                ]
             )
 
         return connected_merged_packets
@@ -669,7 +762,8 @@ class PacMan:
     def get_embedded_packets(
         self, hopping_packet: tuple[Packet, Packet]
     ) -> set[Packet]:
-        """For a given hopping packet, find all the ``Packet``s embedded inside it.
+        """For a given hopping packet,
+        find all the ``Packet``s embedded inside it.
 
         :param hopping_packet: The hopping packet of interest.
         :type hopping_packet: tuple[Packet, Packet]
@@ -692,11 +786,13 @@ class PacMan:
     def get_all_embedded_packets_for_qubit_vertex(
         self, qubit_vertex: Vertex
     ) -> dict[tuple[Packet, Packet], set[Packet]]:
-        """Get all the embedded packets on a given qubit ``Vertex``, with keys being the hopping packets that embed them. 
+        """Get all the embedded packets on a given qubit ``Vertex``,
+        with keys being the hopping packets that embed them.
 
         :param qubit_vertex: Qubit ``Vertex`` of interest.
         :type qubit_vertex: Vertex
-        :return: Dictionary of sets of embedded packets, keyed by their embedding hopping packets.
+        :return: Dictionary of sets of embedded packets,
+        keyed by their embedding hopping packets.
         :rtype: dict[tuple[Packet, Packet], set[Packet]]
         """
         embedded_packets: dict = {}
@@ -706,12 +802,16 @@ class PacMan:
             )
         return embedded_packets
 
-    def get_all_embedded_packets(self) -> dict[Vertex, dict[tuple[Packet, Packet], set[Packet]]]:
+    def get_all_embedded_packets(
+        self,
+    ) -> dict[Vertex, dict[tuple[Packet, Packet], set[Packet]]]:
         """Get all the embedded packets.
 
-        Nested dictionary keys follow qubit ``Vertex`` -> hopping packet -> set of embedded ``Packet``s.
+        Nested dictionary keys follow:
+        qubit ``Vertex`` -> hopping packet -> set of embedded ``Packet``s.
 
-        :return: A nested dictionary leading to sets of all embedded ``Packet``s.
+        :return: A nested dictionary leading to sets
+        of all embedded ``Packet``s.
         :rtype: dict[Vertex, dict[tuple[Packet, Packet], set[Packet]]]
         """
         embedded_packets: dict = {}
@@ -725,8 +825,11 @@ class PacMan:
                 ] = embedded_packets_for_qubit_vertex
         return embedded_packets
 
-    def get_hopping_packet_from_embedded_packet(self, embedded_packet: Packet) -> tuple[Packet, Packet]:
-        """Given a ``Packet`` that is embedded in a hopping packet, find that hopping packet.
+    def get_hopping_packet_from_embedded_packet(
+        self, embedded_packet: Packet
+    ) -> tuple[Packet, Packet]:
+        """Given a ``Packet`` that is embedded in a hopping packet,
+        find that hopping packet.
 
         :param embedded_packet: The embedded ``Packet``.
         :type embedded_packet: Packet
@@ -774,16 +877,21 @@ class PacMan:
         # Add edges to the graph
         for qubit_vertex in self.hypergraph_circuit.get_qubit_vertices():
             for merged_packet in self.merged_packets[qubit_vertex]:
-                for connected_merged_packet in self.get_connected_merged_packets(merged_packet):
-                    edges.add(frozenset([merged_packet, connected_merged_packet]))
+                for (
+                    connected_merged_packet
+                ) in self.get_connected_merged_packets(merged_packet):
+                    edges.add(
+                        frozenset([merged_packet, connected_merged_packet])
+                    )
 
         graph.add_edges_from(edges)
         bipartitions = self.assign_bipartitions(graph)
         assert self.is_bipartite_predicate(graph, edges, bipartitions)
-        return graph, bipartitions[1]      
+        return graph, bipartitions[1]
 
     def get_nx_graph_neighbouring(self):
-        """Get the NetworkX graph representing the circuit assuming only neighbouring packing.
+        """Get the NetworkX graph representing
+        the circuit assuming only neighbouring packing.
         Nodes are neighbouring packets.
         """
         graph = nx.Graph()
@@ -803,7 +911,6 @@ class PacMan:
                         (other_node,) = edge - frozenset([packet])
                         edges.remove(edge)
                         edges.add(frozenset([neighbouring_packet, other_node]))
-        added_nodes = set()
 
         graph.add_edges_from(edges)
         bipartitions = self.assign_bipartitions(graph)
@@ -851,21 +958,22 @@ class PacMan:
         return graph, bipartitions[1]
 
     def get_mvc_merged_graph(self) -> set[tuple[Packet, ...]]:
-        """Get the minimum vertex cover of the merged graph.
-        """
+        """Get the minimum vertex cover of the merged graph."""
         g, topnodes = self.get_nx_graph_merged()
         matching = bipartite.maximum_matching(g, top_nodes=topnodes)
         return bipartite.to_vertex_cover(g, matching, top_nodes=topnodes)
 
     def get_mvc_neighbouring_graph(self) -> set[tuple[Packet, ...]]:
-        """Get the minimum vertex cover of the neighbouring graph.
-        """
+        """Get the minimum vertex cover of the neighbouring graph."""
         g, topnodes = self.get_nx_graph_neighbouring()
         matching = bipartite.maximum_matching(g, top_nodes=topnodes)
         return bipartite.to_vertex_cover(g, matching, top_nodes=topnodes)
 
-    def get_true_conflict_edges(self, mvc: set[tuple[Packet, ...]]) -> set[frozenset[tuple[Packet, Packet]]]:
-        """Given an MVC, find all the edges in the conflict graph that represent true conflicts.
+    def get_true_conflict_edges(
+        self, mvc: set[tuple[Packet, ...]]
+    ) -> set[frozenset[tuple[Packet, Packet]]]:
+        """Given an MVC, find all the edges in the
+        conflict graph that represent true conflicts.
 
         True conflicts means that both nodes of the edge are in the MVC.
 
@@ -887,7 +995,7 @@ class PacMan:
     ) -> frozenset[tuple[Packet, Packet]]:
         """Given two embedded packets, return a ``frozenset``
         that has the hopping packets that embed the packets as elements.
-        
+
         This is a very specific function to replace
         long lines of code in `get_nx_graph_conflict()`
         that failed flake8 line length checks.
@@ -899,7 +1007,9 @@ class PacMan:
             ]
         )
 
-    def assign_bipartitions(self, graph: nx.Graph) -> dict[int, set[tuple[Packet, ...]]]:
+    def assign_bipartitions(
+        self, graph: nx.Graph
+    ) -> dict[int, set[tuple[Packet, ...]]]:
         """Given a graph, for each connected component designate its nodes
         as top or bottom half
         """
@@ -908,18 +1018,22 @@ class PacMan:
             1: set(),  # Top
         }
 
-        for subgraph in [graph.subgraph(c) for c in nx.connected_components(graph)]:
+        for subgraph in [
+            graph.subgraph(c) for c in nx.connected_components(graph)
+        ]:
             bottom_nodes, top_nodes = bipartite.sets(subgraph)
             bipartitions[0].update(bottom_nodes)
             bipartitions[1].update(top_nodes)
-        
+
         return bipartitions
 
     def is_bipartite_predicate(self, graph, edges, bipartitions):
         predicate = nx.is_bipartite(graph)
         for edge in edges:
             (u, v) = edge
-            predicate = predicate and (u in bipartitions[0] and v in bipartitions[1]) or (
-                v in bipartitions[0] and u in bipartitions[1]
+            predicate = (
+                predicate
+                and (u in bipartitions[0] and v in bipartitions[1])
+                or (v in bipartitions[0] and u in bipartitions[1])
             )
         return predicate

@@ -958,6 +958,7 @@ def test_h_embedding_required():
     assert hyp_circ.h_embedding_required(hyp_2)
     assert not hyp_circ.h_embedding_required(hyp_3)
 
+
 def test_get_vertex_to_command_index_map():
     test_circuit = Circuit(6)
     # This test circuit is comprised of sections
@@ -1008,18 +1009,6 @@ def test_get_vertex_to_command_index_map():
     test_circuit.H(0).H(2)
     test_circuit.add_gate(cz, [0, 2])
 
-    placement_dict = {
-        0: 0,
-        1: 0,
-        2: 1,
-        3: 1,
-        4: 2,
-        5: 2,
-    }
-    for i in range(6, 19):
-        placement_dict[i] = 0
-
-    placement = Placement(placement_dict)
     hypergraph_circuit = HypergraphCircuit(test_circuit)
     commands = test_circuit.get_commands()
     cu1_command_indices = [
@@ -1031,4 +1020,7 @@ def test_get_vertex_to_command_index_map():
         i + len(test_circuit.qubits): cu1_command_indices[i]
         for i in range(len(cu1_command_indices))
     }
-    assert hypergraph_circuit.get_vertex_to_command_index_map() == vertex_to_command_index_reference
+    assert (
+        hypergraph_circuit.get_vertex_to_command_index_map()
+        == vertex_to_command_index_reference
+    )

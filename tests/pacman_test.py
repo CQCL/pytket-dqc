@@ -68,6 +68,7 @@ placement = Placement(placement_dict)
 
 hypergraph_circuit = HypergraphCircuit(test_circuit)
 
+
 def test_build_packets():
     packets_by_qubit_reference = dict()
     q0_packets = [
