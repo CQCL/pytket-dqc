@@ -68,22 +68,6 @@ placement = Placement(placement_dict)
 
 hypergraph_circuit = HypergraphCircuit(test_circuit)
 
-
-def test_build_vertex_to_command_index():
-    pacman = PacMan(hypergraph_circuit, placement)
-    commands = test_circuit.get_commands()
-    cu1_command_indices = [
-        i
-        for i, command in enumerate(commands)
-        if command.op.type == OpType.CU1
-    ]
-    vertex_to_command_index_reference = {
-        i + len(test_circuit.qubits): cu1_command_indices[i]
-        for i in range(len(cu1_command_indices))
-    }
-    assert pacman.vertex_to_command_index == vertex_to_command_index_reference
-
-
 def test_build_packets():
     packets_by_qubit_reference = dict()
     q0_packets = [
