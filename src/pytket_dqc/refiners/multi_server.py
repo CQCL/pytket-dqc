@@ -2,7 +2,7 @@ from .refiners import Refiner
 from pytket_dqc.circuits.distribution import Distribution
 
 
-class MultiServerRefinement(Refiner):
+class MultiServerRefiner(Refiner):
 
     def refine(self, distribution: Distribution):
 
