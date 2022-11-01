@@ -162,7 +162,7 @@ class PacMan:
                         considered_packets.append(packet)
                     else:
                         continue_merging = False
-                    logger.debug(f"End of checks {mergeable_packets}")
+                        logger.debug(f"End of checks {mergeable_packets}")
 
                 self.merged_packets[qubit_vertex].append(
                     tuple(mergeable_packets)
@@ -178,18 +178,17 @@ class PacMan:
             for neighbouring_packets in self.neighbouring_packets[
                 packet.qubit_vertex
             ]
-            if neighbouring_packets[0] == packet
+            if packet in neighbouring_packets
         ]
-        assert (
-            len(potential_neighbouring_packets) <= 1
-        ), f"There should only be up to 1 neighbouring packet \
-            for which the given packet is the earlier packet.\
-            Got {potential_neighbouring_packets}."
-
+        assert len(potential_neighbouring_packets) <= 1,\
+            "There can only be 1 neighbouring packet containing the given packet."
         if len(potential_neighbouring_packets) == 0:
             return None
-        else:
-            return potential_neighbouring_packets[0][1]
+        idx = potential_neighbouring_packets[0].index(packet)
+        if idx + 1 == len(potential_neighbouring_packets[0]):
+            return None
+
+        return potential_neighbouring_packets[0][idx + 1]
 
     def get_subsequent_hopping_packet(
         self, packet: Packet
@@ -199,21 +198,16 @@ class PacMan:
             for hopping_packet in self.hopping_packets[packet.qubit_vertex]
             if hopping_packet[0] == packet
         ]
-        # Remove this assert since we list all hopping packets originating
-        # from given packet
-        # assert (
-        #     len(potential_hopping_packets) <= 1
-        # ), "There should only be up to 1 hopping packet \
-        #     containing this packet."
+        assert (
+            len(potential_hopping_packets) <= 1
+        ), "There should only be up to 1 hopping packet \
+            containing this packet."
 
         if len(potential_hopping_packets) == 0:
             return None
-        else:
-            # For now we get first hopping
-            # REVIEW THIS
-            # Pablo and Dan please comment if this
-            # comment is still here
-            return potential_hopping_packets[0][1]
+        assert len(potential_hopping_packets[0]) == 2,\
+            "Hopping packets are always length two."
+        return potential_hopping_packets[0][1]
 
     def get_next_packet(self, packet: Optional[Packet]) -> Optional[Packet]:
         """Find the next packet on the qubit of the given packet that
@@ -335,23 +329,22 @@ class PacMan:
             [command.op for command in intermediate_commands[0:cu1_indices[0]]]
         ]
 
-        # Convert the intermediate commands between CU1s as necessary
+        # Convert the intermediate commands between CU1s
+        # barring the initial set of commands and the final
+        # set of commands
         prev_cu1_index = cu1_indices[0]
         for cu1_index in cu1_indices[1:]:
             commands = intermediate_commands[
-                prev_cu1_index: cu1_index
+                prev_cu1_index + 1: cu1_index
             ]
             ops = [command.op for command in commands]
-            # Convert this list if it contains a Hadamard
-            # and is not the last set of gates
-            if (
-                cu1_index != cu1_indices[-1]
-                and OpType.H in [op.type for op in ops]
-            ):
+            if len([op for op in ops if op.type == OpType.H]) > 0:
                 ops_1q_list.append(to_euler_with_two_hadamards(ops))
             else:
                 ops_1q_list.append(ops)
             prev_cu1_index = cu1_index
+        
+        ops_1q_list.append([command.op for command in intermediate_commands[cu1_indices[-1] + 1:]])
 
         logger.debug(f"ops_1q_list {ops_1q_list}")
 
@@ -371,11 +364,11 @@ class PacMan:
             )
             return False
 
-        for i, ops_1q in enumerate(ops_1q_list[1:-1]):
-            if not self.are_1q_op_phases_npi(ops_1q, ops_1q_list[i + 1]):
+        for first_ops_1q, second_ops_1q in zip(ops_1q_list[0:-1], ops_1q_list[1:]):
+            if not self.are_1q_op_phases_npi(first_ops_1q, second_ops_1q):
                 logger.debug(
-                    f"No, the phases of {ops_1q} and "
-                    + f"{ops_1q_list[i+1]} prevent embedding."
+                    f"No, the phases of {first_ops_1q} and "
+                    + f"{second_ops_1q} prevent embedding."
                 )
                 return False
 
@@ -453,7 +446,7 @@ class PacMan:
 
     def are_1q_op_phases_npi(
         self, prior_1q_ops: List[Op], post_1q_ops: List[Op]
-    ) -> bool_:
+    ) -> bool:
         """Check if the sum of the params of the
         U1 gates that sandwich a CU1 are
         equal to n
@@ -490,7 +483,7 @@ class PacMan:
 
         phase_sum = prior_phase + post_phase
 
-        return isclose(phase_sum % 1, 0) or isclose(phase_sum % 1, 1)
+        return bool(isclose(phase_sum % 1, 0) or isclose(phase_sum % 1, 1))
 
     def get_connected_packets(self, packet: Packet):
         connected_packets = []
@@ -516,26 +509,6 @@ class PacMan:
                     break
         return connected_packets
 
-    def get_connected_neighbouring_packets(
-        self, neighbouring_packet: Tuple[Packet, ...]
-    ) -> List[Tuple[Packet, ...]]:
-        """Given a connected neighbouring packet,
-        find connected ones.
-        """
-        connected_neighbouring = []
-
-        for packet in neighbouring_packet:
-            for connected_packet in self.get_connected_packets(packet):
-                connected_neighbouring += [
-                    connected_neighbouring_packet
-                    for connected_neighbouring_packet
-                    in self.neighbouring_packets[
-                        connected_packet.qubit_vertex
-                    ]
-                    if connected_packet in connected_neighbouring_packet
-                ]
-        return connected_neighbouring
-
     def get_containing_merged_packet(self, packet: Packet):
         for merged_packet in self.merged_packets[packet.qubit_vertex]:
             if packet in merged_packet:
@@ -543,13 +516,13 @@ class PacMan:
 
     def get_connected_merged_packets(
         self, merged_packet: Tuple[Packet]
-    ) -> list[tuple[Packet, ...]]:
+    ) -> set[tuple[Packet, ...]]:
         """Also works for neighbouring packets"""
-        connected_merged_packets: list[tuple[Packet, ...]] = list()
+        connected_merged_packets: set[tuple[Packet, ...]] = set()
         for packet in merged_packet:
             connected_packets = self.get_connected_packets(packet)
             for connected_packet in connected_packets:
-                connected_merged_packets.append(
+                connected_merged_packets.add(
                     self.get_containing_merged_packet(connected_packet)
                 )
 
