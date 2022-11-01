@@ -76,7 +76,7 @@ class HypergraphCircuit(Hypergraph):
     def get_circuit(self):
         return self._circuit.copy()
 
-    def add_qubit_vertex(self, vertex: int, qubit: Qubit):
+    def add_qubit_vertex(self, vertex: Vertex, qubit: Qubit):
         """Add a vertex to the underlying hypergraph which corresponds to a
         qubit. Adding vertices in this way allow for the distinction between
         qubit vertices and gate vertices to be tracked.
@@ -89,7 +89,7 @@ class HypergraphCircuit(Hypergraph):
         self.add_vertex(vertex)
         self._vertex_circuit_map[vertex] = {"type": "qubit", "node": qubit}
 
-    def get_qubit_vertices(self) -> list[int]:
+    def get_qubit_vertices(self) -> list[Vertex]:
         """Return list of vertices which correspond to qubits
 
         :return: list of vertices which correspond to qubits
@@ -101,7 +101,7 @@ class HypergraphCircuit(Hypergraph):
             if self._vertex_circuit_map[vertex]["type"] == "qubit"
         ]
 
-    def add_gate_vertex(self, vertex: int, command: Command):
+    def add_gate_vertex(self, vertex: Vertex, command: Command):
         """Add a vertex to the underlying hypergraph which corresponds to a
         gate. Adding vertices in this way allows for the distinction between
         qubit and gate vertices to be tracked.
@@ -114,7 +114,7 @@ class HypergraphCircuit(Hypergraph):
         self.add_vertex(vertex)
         self._vertex_circuit_map[vertex] = {"type": "gate", "command": command}
 
-    def is_qubit_vertex(self, vertex: int) -> bool:
+    def is_qubit_vertex(self, vertex: Vertex) -> bool:
         """Checks if the given vertex corresponds to a qubit.
 
         :param vertex: Vertex to be checked.
@@ -124,7 +124,7 @@ class HypergraphCircuit(Hypergraph):
         """
         return self._vertex_circuit_map[vertex]["type"] == "qubit"
 
-    def get_qubit_vertex(self, hyperedge: Hyperedge) -> int:
+    def get_qubit_vertex(self, hyperedge: Hyperedge) -> Vertex:
         """Returns the qubit vertex in ``hyperedge``."""
         qubit_list = [
             vertex
@@ -135,7 +135,7 @@ class HypergraphCircuit(Hypergraph):
         assert len(qubit_list) == 1
         return qubit_list[0]
 
-    def get_vertex_of_qubit(self, qubit: Qubit) -> int:
+    def get_vertex_of_qubit(self, qubit: Qubit) -> Vertex:
         """Returns the vertex that corresponds to ``qubit``."""
         vertex_list = [
             vertex
@@ -147,7 +147,7 @@ class HypergraphCircuit(Hypergraph):
         assert len(vertex_list) == 1
         return vertex_list[0]
 
-    def get_gate_vertices(self, hyperedge: Hyperedge) -> list[int]:
+    def get_gate_vertices(self, hyperedge: Hyperedge) -> list[Vertex]:
         """Returns the list of gate vertices in ``hyperedge``."""
         gate_vertex_list = [
             vertex
@@ -158,7 +158,7 @@ class HypergraphCircuit(Hypergraph):
         assert len(gate_vertex_list) == len(hyperedge.vertices) - 1
         return gate_vertex_list
 
-    def get_qubit_of_vertex(self, vertex: int) -> Qubit:
+    def get_qubit_of_vertex(self, vertex: Vertex) -> Qubit:
         """Returns the qubit the hypergraph's vertex corresponds to.
         If the vertex is not a qubit vertex, an exception is raised.
         """
@@ -166,7 +166,7 @@ class HypergraphCircuit(Hypergraph):
             raise Exception("Not a qubit vertex!")
         return self._vertex_circuit_map[vertex]['node']
 
-    def get_gate_of_vertex(self, vertex: int) -> Command:
+    def get_gate_of_vertex(self, vertex: Vertex) -> Command:
         """Returns the gate the hypergraph's vertex corresponds to.
         If the vertex is not a gate vertex, an exception is raised.
         """
@@ -175,7 +175,7 @@ class HypergraphCircuit(Hypergraph):
         return self._vertex_circuit_map[vertex]['command']
 
     def get_hyperedges_containing(
-        self, vertices: list[int]
+        self, vertices: list[Vertex]
     ) -> list[Hyperedge]:
         """Returns the list of hyperedges that contain ``vertices`` as
         a subset of their own vertices.
@@ -486,7 +486,7 @@ class HypergraphCircuit(Hypergraph):
 
     def _get_server_to_qubit_vertex(
         self, placement: Placement
-    ) -> dict[int, list[int]]:
+    ) -> dict[int, list[Vertex]]:
         """Return dictionary mapping servers to a list of the qubit
         vertices which it contains.
 
@@ -495,7 +495,7 @@ class HypergraphCircuit(Hypergraph):
         :raises Exception: Raised if the placement is not valid.
         :return: Dictionary mapping servers to a list of the qubit
         vertices which it contains.
-        :rtype: dict[int, list[int]]
+        :rtype: dict[int, list[Vertex]]
         """
 
         # Initial check that placement is valid
