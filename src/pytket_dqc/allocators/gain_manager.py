@@ -32,9 +32,9 @@ class GainManager:
         implemented. All hyperedges in hyperedge_cost_map are however
         valid given the placement in `distribution`.
     :type hyperedge_cost_map: dict[Hyperedge, int]
-    :param h_embedding_required: For each hyperedge, it indicates whether
-        an H-embedding is required to implement it
-    :type h_embedding_required: dict[Hyperedge, bool]
+    :param requires_h_embedded_cu1: For each hyperedge, it indicates whether
+        an H-embedded CU1 gate is required to implement it
+    :type requires_h_embedded_cu1: dict[Hyperedge, bool]
     :param steiner_cache: A dictionary of sets of servers to their
         steiner tree
     :type steiner_cache: dict[frozenset[int], nx.Graph]
@@ -58,7 +58,7 @@ class GainManager:
         self.server_graph: nx.Graph = self.distribution.network.get_server_nx()
         self.occupancy: dict[int, int] = dict()
         self.hyperedge_cost_map: dict[Hyperedge, int] = dict()
-        self.h_embedding_required: dict[Hyperedge, bool] = dict()
+        self.requires_h_embedded_cu1: dict[Hyperedge, bool] = dict()
         self.steiner_cache: dict[frozenset[int], nx.Graph] = dict()
 
         for server in self.distribution.network.server_qubits.keys():
@@ -72,7 +72,7 @@ class GainManager:
 
     def update_cost(self, hyperedge: Hyperedge):
         """Updates ``hyperedge_cost_map`` and the caches ``steiner_cache`` and
-        ``h_embedding_required``.
+        ``requires_h_embedded_cu1``.
         """
 
         # Retrieve tree from cache or calculate it
@@ -90,16 +90,16 @@ class GainManager:
             tree = steiner_tree(self.server_graph, list(servers))
 
         # Retrieve embedding information from cache or calculate it
-        if hyperedge not in self.h_embedding_required.keys():
-            self.h_embedding_required[
+        if hyperedge not in self.requires_h_embedded_cu1.keys():
+            self.requires_h_embedded_cu1[
                 hyperedge
-            ] = self.distribution.circuit.h_embedding_required(hyperedge)
+            ] = self.distribution.circuit.requires_h_embedded_cu1(hyperedge)
 
         # Update the cost of the hyperedge
         self.hyperedge_cost_map[hyperedge] = self.distribution.hyperedge_cost(
             hyperedge,
             server_tree=tree,
-            h_embedding=self.h_embedding_required[hyperedge],
+            requires_h_embedded_cu1=self.requires_h_embedded_cu1[hyperedge],
         )
 
     def split_hyperedge_gain(
@@ -286,7 +286,7 @@ class GainManager:
         # no longer be implemented with the estimated cost.
         # To avoid this, we simply forbid placement moves once a hyperedge
         # embedded.
-        if any(b for b in self.h_embedding_required.values()):
+        if any(b for b in self.requires_h_embedded_cu1.values()):
             raise Exception("Changing the placement after gates are embedded \
                              is not allowed.")
 

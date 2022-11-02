@@ -10,6 +10,7 @@ from pytket_dqc.utils import (
 from pytket import Circuit, OpType  # type: ignore
 from pytket.circuit import Op  # type: ignore
 from pytket.pauli import Pauli  # type: ignore
+from pytket_dqc import Distribution
 from pytket_dqc.circuits import HypergraphCircuit
 from pytket_dqc.networks import NISQNetwork
 from pytket_dqc.allocators import Brute
@@ -31,15 +32,14 @@ def test_qasm():
     network = NISQNetwork([[0, 1], [0, 2]], {0: [0], 1: [1], 2: [2]})
 
     circ = Circuit(2)
-    circ.add_gate(OpType.CU1, 1.0, [0, 1]).H(0).Rz(0.3, 0).H(0).add_gate(
-        OpType.CU1, 1.0, [0, 1]
-    )
-    dist_circ = HypergraphCircuit(circ)
+    circ.add_gate(OpType.CU1, 1.0, [0, 1]).H(0).Rz(
+        0.3, 0).H(0).add_gate(OpType.CU1, 1.0, [0, 1])
 
     placement = Placement({0: 1, 1: 2, 2: 0, 3: 0})
-    assert dist_circ.is_placement(placement)
+    distribution = Distribution(HypergraphCircuit(circ), placement, network)
+    assert distribution.is_valid()
 
-    circ_with_dist = dist_circ.to_pytket_circuit(placement, network)
+    circ_with_dist = distribution.to_pytket_circuit()
     qasm_str = to_qasm_str(circ_with_dist)
 
     qasm_circ = circuit_from_qasm_str(qasm_str)
