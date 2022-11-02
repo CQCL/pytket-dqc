@@ -13,8 +13,6 @@ from pytket_dqc.placement import Placement
 from pytket.circuit import Command, OpType, Op  # type: ignore
 from pytket_dqc.utils import (
     is_distributable,
-    distributable_1q_op_types,
-    distributable_op_types,
     to_euler_with_two_hadamards,
 )
 
@@ -453,24 +451,24 @@ class PacMan:
             + f"{second_packet} packable via embedding?"
         )
 
-        allowed_op_types = distributable_op_types + [OpType.H]
-
         intermediate_commands = self.get_intermediate_commands(
             first_packet, second_packet
         )
         logger.debug(
             f"Int ops {[command.op for command in intermediate_commands]}"
         )
+
+        # Find and check that all the CU1 gates are embeddable
+        # Store their indices in ``intermediate_commands`` so that
+        # it can be sliced later into lists of 1 qubit gates between
+        # the CU1 gates.
         cu1_indices = []
         for i, command in enumerate(intermediate_commands):
-            if command.op.type not in allowed_op_types:
-                logger.debug(f"No, {command} is not embeddable.")
-                return False
             if command.op.type == OpType.CU1:
                 assert (
                     first_packet.connected_server_index
                     == second_packet.connected_server_index
-                )
+                ), "Cannot pack packets connected to different servers"
                 if not self.hypergraph_circuit.is_h_embeddable_CU1(
                     command,
                     set(
@@ -489,8 +487,9 @@ class PacMan:
                     return False
                 cu1_indices.append(i)
 
-        assert cu1_indices
+        assert cu1_indices, "There must be CU1 gates between the two packets."
 
+        # Add the ops at the start of the embedding
         ops_1q_list: list[list[Op]] = [
             [
                 command.op
@@ -505,12 +504,16 @@ class PacMan:
         for cu1_index in cu1_indices[1:]:
             commands = intermediate_commands[prev_cu1_index + 1: cu1_index]
             ops = [command.op for command in commands]
-            if len([op for op in ops if op.type == OpType.H]) > 0:
-                ops_1q_list.append(to_euler_with_two_hadamards(ops))
-            else:
-                ops_1q_list.append(ops)
+            # Check that each sublist has at least 1 Hadamard in
+            # i.e there aren't any neighbouring packets that we
+            # would split by doing this embedding
+            if len([op for op in ops if op.type == OpType.H]) == 0:
+                logger.debug(f"There is no Hadamard in {ops}.")
+                return False
+            ops_1q_list.append(to_euler_with_two_hadamards(ops))
             prev_cu1_index = cu1_index
 
+        # Add the ops at the end of the embedding
         ops_1q_list.append(
             [
                 command.op
@@ -525,7 +528,7 @@ class PacMan:
         )
         if n_hadamards_start != 1:
             logger.debug(
-                "No, there can only be 1 Hadamard "
+                "No, there must be 1 Hadamard "
                 + "at the start of the Hadamard sandwich."
             )
             return False
@@ -535,7 +538,7 @@ class PacMan:
         )
         if n_hadamards_end != 1:
             logger.debug(
-                "No, there can only be 1 Hadamard "
+                "No, there must be 1 Hadamard "
                 + "at the end of the Hadamard sandwich."
             )
             return False
@@ -656,32 +659,40 @@ class PacMan:
         :rtype: bool
         """
 
+        # If the length of prior ops is not 5,
+        # then the list has not been passed into
+        # ``to_euler_with_two_hadamards``
+        # This only happens for the very first
+        # set of ops in the embedding, which is the
+        # only time we may not have an Rz at the end
+        # of the ops list
         if (
-            len(prior_1q_ops) == 0
-            or prior_1q_ops[-1].type == OpType.H
-            or all(
-                [op.type in distributable_1q_op_types for op in prior_1q_ops]
-            )
-            and prior_1q_ops[-1].type != OpType.Rz
+            not len(prior_1q_ops) == 5
+            and prior_1q_ops[-1].type == OpType.H
         ):
             prior_phase = 0
 
         else:
             prior_op = prior_1q_ops[-1]
+            assert prior_op.type == OpType.Rz
             prior_phase = prior_op.params[0]
 
+        # If the length of post ops is not 5,
+        # then the list has not been passed into
+        # ``to_euler_with_two_hadamards``
+        # This only happens for the very last
+        # set of ops in the embedding, which is the
+        # only time we may not have an Rz at the start
+        # of the ops list.
         if (
-            len(post_1q_ops) == 0
-            or post_1q_ops[0].type == OpType.H
-            or all(
-                [op.type in distributable_1q_op_types for op in post_1q_ops]
-            )
-            and post_1q_ops[0].type != OpType.Rz
+            not len(post_1q_ops) == 5
+            and post_1q_ops[0].type == OpType.H
         ):
             post_phase = 0
 
         else:
             post_op = post_1q_ops[0]
+            assert post_op.type == OpType.Rz
             post_phase = post_op.params[0]
 
         phase_sum = prior_phase + post_phase
