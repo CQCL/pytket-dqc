@@ -359,6 +359,12 @@ class PacMan:
         all_packets.sort(key=lambda x: x.packet_index)
         return all_packets
 
+    def get_all_merged_packets(self) -> list[tuple[Packet, ...]]:
+        merged_packets: list[tuple[Packet, ...]] = list()
+        for i in range(len(self.merged_packets.keys())):
+            merged_packets.extend(self.merged_packets[i])
+        return merged_packets
+
     def get_connected_server(
         self, qubit_vertex: Vertex, gate_vertex: Vertex
     ) -> int:
@@ -425,11 +431,37 @@ class PacMan:
         intermediate_commands = self.get_intermediate_commands(
             first_packet, second_packet
         )
+        # Since DQCPass() removes X gates,
+        # need to see if there is a sequence
+        # HZH (= X) in the intermediate commands
+        # The below switches activate accordingly when
+        # - An initial H is found (searching_for_Z is True)
+        # - The next command is a Z (searching_for_Z is False, searching_for_H is True)
+        # - The next command is a H (searching_for_H is False)
+        # Then we can continue as usual
+        searching_for_Z = False
+        searching_for_H = False
         for command in intermediate_commands:
-            if not is_distributable(command.op):
+            if searching_for_Z:
+                if command.op.type == OpType.Rz and abs(command.op.params[0]) == 1:
+                    logger.debug("Found Z, looking for second H")
+                    searching_for_Z = False
+                    searching_for_H = True
+                else:
+                    return False
+            elif searching_for_H:
+                if command.op.type == OpType.H:
+                    logger.debug("Found second H, got an X overall")
+                    searching_for_H = False
+                else:
+                    return False
+            elif command.op.type == OpType.H:
+                logger.debug("Found first H, now looking for Z")
+                searching_for_Z = True
+            elif not is_distributable(command.op):
                 return False
 
-        return True
+        return not(searching_for_H or searching_for_Z)
 
     def are_hoppable_packets(
         self, first_packet: Packet, second_packet: Packet
@@ -498,18 +530,13 @@ class PacMan:
         ]
 
         # Convert the intermediate commands between CU1s
+        # to ensure they have 2 Hadamards
         # barring the initial set of commands and the final
         # set of commands
         prev_cu1_index = cu1_indices[0]
         for cu1_index in cu1_indices[1:]:
             commands = intermediate_commands[prev_cu1_index + 1: cu1_index]
             ops = [command.op for command in commands]
-            # Check that each sublist has at least 1 Hadamard in
-            # i.e there aren't any neighbouring packets that we
-            # would split by doing this embedding
-            if len([op for op in ops if op.type == OpType.H]) == 0:
-                logger.debug(f"There is no Hadamard in {ops}.")
-                return False
             ops_1q_list.append(to_euler_with_two_hadamards(ops))
             prev_cu1_index = cu1_index
 
@@ -543,10 +570,28 @@ class PacMan:
             )
             return False
 
+        # In the case that two Hadamards were inserted at the end of
+        # just a single Rz gate, we need to check if the embedding
+        # condition is met if we insert the two Hadamards at the start
+        # I.e we have
+        # [Rz(x), H, Rz(y), H, Rz(z)], [Rz(a), H, Rz(0), H, Rz(0)]
+        # then must also check
+        # [Rz(x), H, Rz(y), H, Rz(z)], [Rz(0), H, Rz(0), H, Rz(a)]
+        # Hence we iterate through combinations where appropriate
         for first_ops_1q, second_ops_1q in zip(
             ops_1q_list[0:-1], ops_1q_list[1:]
         ):
-            if not self.are_1q_op_phases_npi(first_ops_1q, second_ops_1q):
+            combinations_to_try = [(first_ops_1q, second_ops_1q)]
+            if len(first_ops_1q) == 5 and first_ops_1q[2].params == 0 and first_ops_1q[4].params == 0:
+                combinations_to_try.append((list(reversed(first_ops_1q)), second_ops_1q))
+            if len(second_ops_1q) == 5 and second_ops_1q[2].params == 0 and second_ops_1q[4].params == 0:
+                combinations_to_try.append((first_ops_1q, list(reversed(second_ops_1q))))
+                if len(combinations_to_try) == 3:
+                    combinations_to_try.append((list(reversed(first_ops_1q)), list(reversed(second_ops_1q))))
+            if any([
+                not self.are_1q_op_phases_npi(combi[0], combi[1])
+                for combi in combinations_to_try
+            ]):
                 logger.debug(
                     f"No, the phases of {first_ops_1q} and "
                     + f"{second_ops_1q} prevent embedding."
@@ -696,8 +741,8 @@ class PacMan:
             post_phase = post_op.params[0]
 
         phase_sum = prior_phase + post_phase
-
         return bool(isclose(phase_sum % 1, 0) or isclose(phase_sum % 1, 1))
+
 
     def get_connected_packets(self, packet: Packet) -> set[Packet]:
         """Get all the ``Packet``s connected to the
@@ -928,12 +973,12 @@ class PacMan:
         assert self.is_bipartite_predicate(graph, edges, bipartitions)
         return graph, bipartitions[1]
 
-    def get_nx_graph_conflict(self):
+    def get_nx_graph_conflict(self, mvc: Optional[set[tuple[Packet, ...]]] = None):
         """Get the NetworkX graph representing conflict edges.
         Nodes are hopping packets that represent conflicts.
         """
         graph = nx.Graph()
-        conflict_edges = set()
+        potential_conflict_edges = set()
         checked_hopping_packets = []
 
         # Iterate through each packet that can be embedded in a hopping packet
@@ -956,12 +1001,15 @@ class PacMan:
 
                         # Only care if the connected packet is also embedded
                         if self.is_packet_embedded(connected_packet):
-                            conflict_edges.add(
+                            potential_conflict_edges.add(
                                 self.get_conflict_edge(
                                     embedded_packet, connected_packet
                                 )
                             )
                         checked_hopping_packets.append(embedded_packet)
+        if mvc is None:
+            mvc = self.get_mvc_merged_graph()
+        conflict_edges = self.get_conflict_edges_given_mvc(potential_conflict_edges, mvc)
         logger.debug(f"Conflict edges: {conflict_edges}")
         graph.add_edges_from(conflict_edges)
         bipartitions = self.assign_bipartitions(graph)
@@ -980,8 +1028,10 @@ class PacMan:
         matching = bipartite.maximum_matching(g, top_nodes=topnodes)
         return bipartite.to_vertex_cover(g, matching, top_nodes=topnodes)
 
-    def get_true_conflict_edges(
-        self, mvc: set[tuple[Packet, ...]]
+    def get_conflict_edges_given_mvc(
+        self,
+        potential_conflict_edges: set[frozenset[tuple[Packet, Packet]]],
+        mvc: set[tuple[Packet, ...]]
     ) -> set[frozenset[tuple[Packet, Packet]]]:
         """Given an MVC, find all the edges in the
         conflict graph that represent true conflicts.
@@ -993,10 +1043,11 @@ class PacMan:
         :return: Set of true conflict edges.
         :rtype: set[tuple[Packet, ...]]
         """
-        cg, topnodes = self.get_nx_graph_conflict()
         true_conflicts = set()
-        for u, v in cg.edges():
-            if u in mvc and v in mvc:
+        for u, v in potential_conflict_edges:
+            assert self.get_containing_merged_packet(u[0]) == self.get_containing_merged_packet(u[1])
+            assert self.get_containing_merged_packet(v[0]) == self.get_containing_merged_packet(v[1])
+            if self.get_containing_merged_packet(u[0]) in mvc and self.get_containing_merged_packet(v[0]) in mvc:
                 true_conflicts.add(frozenset([u, v]))
 
         return true_conflicts
