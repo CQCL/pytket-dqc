@@ -1181,9 +1181,9 @@ def test_requires_h_embedded_cu1():
     hyp_0 = Hyperedge([0, 5, 7, 11, 12])
     hyp_2 = Hyperedge([2, 4, 5, 6, 13])
     hyp_3 = Hyperedge([3, 6, 7, 9, 12])
-    assert hyp_circ.h_embedding_required(hyp_0)
-    assert hyp_circ.h_embedding_required(hyp_2)
-    assert not hyp_circ.h_embedding_required(hyp_3)
+    assert hyp_circ.requires_h_embedded_cu1(hyp_0)
+    assert hyp_circ.requires_h_embedded_cu1(hyp_2)
+    assert not hyp_circ.requires_h_embedded_cu1(hyp_3)
 
 
 def test_get_vertex_to_command_index_map():
