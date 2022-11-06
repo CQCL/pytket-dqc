@@ -7,8 +7,8 @@ Refiners
 
     .. automethod:: Refiner.refine
 
-.. autoclass:: pytket_dqc.refiners.MultiServerRefiner
+.. autoclass:: pytket_dqc.refiners.MergeDTypeRefiner
 
-    .. automethod:: MultiServerRefiner.__init__
+    .. automethod:: MergeDTypeRefiner.__init__
 
-    .. automethod:: MultiServerRefiner.refine
+    .. automethod:: MergeDTypeRefiner.refine
