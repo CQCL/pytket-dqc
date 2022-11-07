@@ -19,7 +19,7 @@ from pytket_dqc.utils.gateset import (
     telep_proc,
 )
 from pytket_dqc.allocators import Brute, Random, HypergraphPartitioning
-from pytket_dqc.utils import check_equivalence
+from pytket_dqc.utils import check_equivalence, DQCPass
 from pytket_dqc.networks import NISQNetwork
 from pytket.circuit import QControlBox, Op, OpType  # type: ignore
 
@@ -906,6 +906,8 @@ def test_to_pytket_circuit_with_pauli_circ():
     ) as fp:
         circ = Circuit().from_dict(json.load(fp))
 
+    DQCPass().apply(circ)
+
     network = NISQNetwork(
         [[2, 1], [1, 0], [1, 3], [0, 4]],
         {0: [0, 1, 2], 1: [3, 4], 2: [5, 6, 7], 3: [8], 4: [9]},
@@ -949,6 +951,8 @@ def test_to_pytket_circuit_with_frac_cz_circ():
         "tests/test_circuits/to_pytket_circuit/frac_CZ_10.json", "r"
     ) as fp:
         circ = Circuit().from_dict(json.load(fp))
+
+    DQCPass().apply(circ)
 
     network = NISQNetwork(
         [[2, 1], [1, 0], [1, 3], [0, 4]],
@@ -1087,6 +1091,7 @@ def test_from_placed_circuit():
             "rb",
         ) as f:
             rebased_circuit = pickle.load(f)
+        DQCPass().apply(rebased_circuit)
         network = NISQNetwork(network_tuple[0], network_tuple[1])
         distribution = allocator.allocate(rebased_circuit, network, seed=seed)
         bp_circuit = BipartiteCircuit(rebased_circuit, distribution.placement)
@@ -1127,7 +1132,7 @@ def test_get_hyperedge_subcircuit():
     circ.Rz(0.2, 0)
     circ.H(0)
     circ.add_gate(OpType.CU1, 0.3, [1, 2])  # Gate 4
-    circ.Z(0)
+    circ.Rz(1, 0)
     circ.add_gate(OpType.CU1, 1.0, [0, 2])  # Gate 5
     circ.H(0)
     circ.add_gate(OpType.CU1, 0.4, [0, 1])  # Gate 6
@@ -1150,7 +1155,7 @@ def test_get_hyperedge_subcircuit():
     test_c.add_gate(OpType.CU1, 0.1, [0, 1])
     test_c.Rz(0.2, 0)
     test_c.H(0)
-    test_c.Z(0)
+    test_c.Rz(1, 0)
     test_c.add_gate(OpType.CU1, 1.0, [0, 2])
 
     assert test_c.get_commands() == hyp_circ.get_hyperedge_subcircuit(hyp_2)
