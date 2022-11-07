@@ -50,7 +50,7 @@ jobs:
 
       - name: Install kahypar
         run: |
-          ls ~/kahypar.cpython-39-x86_64-linux-gnu.so
+          ls ~/
           cp ~/kahypar.cpython-39-x86_64-linux-gnu.so /opt/hostedtoolcache/Python/3.9.12/x64/lib/python3.9/site-packages
 
       - name: Checkout pytket-dqc
