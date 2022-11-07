@@ -575,28 +575,32 @@ class PacMan:
         # condition is met if we insert the two Hadamards at the start
         # I.e we have
         # [Rz(x), H, Rz(y), H, Rz(z)], [Rz(a), H, Rz(0), H, Rz(0)]
-        # then must also check
+        # and the condition is not met then must also check
         # [Rz(x), H, Rz(y), H, Rz(z)], [Rz(0), H, Rz(0), H, Rz(a)]
-        # Hence we iterate through combinations where appropriate
+        # If the condition is met in the second instance then we
+        # record that the list must be reversed when considering with the
+        # next set of gates.
+        is_reversed = False
         for first_ops_1q, second_ops_1q in zip(
             ops_1q_list[0:-1], ops_1q_list[1:]
         ):
-            combinations_to_try = [(first_ops_1q, second_ops_1q)]
-            if len(first_ops_1q) == 5 and first_ops_1q[2].params == 0 and first_ops_1q[4].params == 0:
-                combinations_to_try.append((list(reversed(first_ops_1q)), second_ops_1q))
-            if len(second_ops_1q) == 5 and second_ops_1q[2].params == 0 and second_ops_1q[4].params == 0:
-                combinations_to_try.append((first_ops_1q, list(reversed(second_ops_1q))))
-                if len(combinations_to_try) == 3:
-                    combinations_to_try.append((list(reversed(first_ops_1q)), list(reversed(second_ops_1q))))
-            if any([
-                not self.are_1q_op_phases_npi(combi[0], combi[1])
-                for combi in combinations_to_try
-            ]):
-                logger.debug(
-                    f"No, the phases of {first_ops_1q} and "
-                    + f"{second_ops_1q} prevent embedding."
-                )
-                return False
+            if is_reversed:
+                first_ops_1q_to_try = list(reversed(first_ops_1q))
+            else:
+                first_ops_1q_to_try = first_ops_1q
+            is_reversed = False
+            if not(self.are_1q_op_phases_npi(first_ops_1q_to_try, second_ops_1q)):
+                if len(second_ops_1q) == 5 and second_ops_1q[2].params == 0 and second_ops_1q[4].params == 0:
+                    if (self.are_1q_op_phases_npi(first_ops_1q_to_try, list(reversed(second_ops_1q)))):
+                        is_reversed = True
+                    else:
+                        logger.debug(
+                            f"No, the phases of {first_ops_1q} and "
+                            + f"{second_ops_1q} prevent embedding."
+                        )
+                    return False
+                else:
+                    return False
 
         logger.debug("YES!")
         return True
