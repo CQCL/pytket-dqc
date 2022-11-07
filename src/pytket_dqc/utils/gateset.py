@@ -24,8 +24,6 @@ logging.basicConfig(level=logging.INFO)
 dqc_1_qubit = {
     OpType.Rz,
     OpType.H,
-    OpType.X,
-    OpType.Z,
 }
 dqc_2_qubit = {
     OpType.CU1,

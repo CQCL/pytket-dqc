@@ -57,7 +57,11 @@ class BipartiteCircuit:
         :raises Exception: If the circuit is not in the allowed gateset.
         """
         if not dqc_gateset_predicate.verify(circuit):
-            raise Exception("The given circuit is not in the allowed gateset.")
+            raise Exception(
+                "The inputted circuit is not in a valid gateset. " +
+                "You can apply ``DQCPass`` from pytket_dqc.utils " +
+                "on the circuit to rebase it to a valid gateset."
+            )
         dist_circ = HypergraphCircuit(circuit)
         self.circuit = dist_circ.to_relabeled_registers(self.placement)
         self.build_bipartite_graph()

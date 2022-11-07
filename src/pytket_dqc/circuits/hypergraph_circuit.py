@@ -376,7 +376,11 @@ class HypergraphCircuit(Hypergraph):
         """
 
         if not dqc_gateset_predicate.verify(self._circuit):
-            raise Exception("The inputted circuit is not in a valid gateset.")
+            raise Exception(
+                "The inputted circuit is not in a valid gateset. " +
+                "You can apply ``DQCPass`` from pytket_dqc.utils " +
+                "on the circuit to rebase it to a valid gateset."
+            )
 
         two_q_gate_count = 0
         # For each command in the circuit, add the command to a list.
