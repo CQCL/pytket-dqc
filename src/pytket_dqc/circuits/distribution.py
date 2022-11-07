@@ -142,9 +142,6 @@ class Distribution:
                 if command.op.type == OpType.H:
                     currently_h_embedding = not currently_h_embedding
 
-                elif command.op.type in [OpType.X, OpType.Z]:
-                    pass  # These gates can always be embedded
-
                 elif command.op.type == OpType.Rz:
                     assert (
                         not currently_h_embedding
@@ -690,34 +687,8 @@ class Distribution:
                         c_servers = linkman.connected_servers(q)
                         for server in c_servers:
                             link_qubit = linkman.link_qubit_dict[(q, server)]
-                            new_circ.Z(link_qubit)
+                            new_circ.Rz(phase, link_qubit)
                     # Otherwise, it is an identity gate and we do nothing
-
-            elif cmd.op.type == OpType.Z:
-                q = cmd.qubits[0]
-                # Append the gate to ``new_circ``
-                new_circ.Z(qubit_mapping[q])
-
-                # If not H-embedding, nothing needs to be done; otherwise:
-                if currently_h_embedding[q]:
-                    # Apply the gate to all connected servers
-                    c_servers = linkman.connected_servers(q)
-                    for server in c_servers:
-                        link_qubit = linkman.link_qubit_dict[(q, server)]
-                        new_circ.Z(link_qubit)
-
-            elif cmd.op.type == OpType.X:
-                q = cmd.qubits[0]
-                # Append the gate to ``new_circ``
-                new_circ.X(qubit_mapping[q])
-
-                # If H-embedding, nothing needs to be done; otherwise:
-                if not currently_h_embedding[q]:
-                    # Apply the gate to all connected servers
-                    c_servers = linkman.connected_servers(q)
-                    for server in c_servers:
-                        link_qubit = linkman.link_qubit_dict[(q, server)]
-                        new_circ.X(link_qubit)
 
             elif cmd.op.type == OpType.CU1:
                 phase = cmd.op.params[0]
