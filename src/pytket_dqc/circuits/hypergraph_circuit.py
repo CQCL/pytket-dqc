@@ -80,8 +80,8 @@ class HypergraphCircuit(Hypergraph):
         self,
         vertices: list[Vertex],
         weight: int = 1,
-        hyperedge_list_index: int = None,
-        hyperedge_dict_index: list[int] = None
+        hyperedge_list_index: Union[int, None] = None,
+        hyperedge_dict_index: Union[list[int], None] = None
     ):
         """Add hyperedge to hypergraph of circuit. Adds some checks on top
         of add_hypergraph in `Hypergraph` in order to ensure that the
@@ -749,7 +749,7 @@ class RegularGraphHypergraphCircuit(HypergraphCircuit):
     """
 
     def __init__(
-        self, n_qubits: int, degree: int, n_layers: int, seed: int = None,
+        self, n_qubits: int, degree: int, n_layers: int, **kwargs,
     ):
         """Initialisation function
 
@@ -759,10 +759,13 @@ class RegularGraphHypergraphCircuit(HypergraphCircuit):
         :type degree: int
         :param n_layers: The number of random regular graphs to generate.
         :type n_layers: int
-        :param seed: Seed for the random generation of regular graphs,
+
+        :key seed: Seed for the random generation of regular graphs,
             defaults to None
         :type seed: int, optional
         """
+
+        seed = kwargs.get("seed", None)
 
         circ = Circuit(n_qubits)
         for _ in range(n_layers):
