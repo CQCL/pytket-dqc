@@ -48,8 +48,7 @@ jobs:
           cp kahypar.cpython-39-x86_64-linux-gnu.so ~/
 
       - name: Install kahypar
-        run: |
-          cp ~/kahypar.cpython-39-x86_64-linux-gnu.so /opt/hostedtoolcache/Python/3.9.12/x64/lib/python3.9/site-packages
+        run: cp ~/kahypar.cpython-39-x86_64-linux-gnu.so /opt/hostedtoolcache/Python/3.9.12/x64/lib/python3.9/site-packages
 
       - name: Checkout pytket-dqc
         uses: actions/checkout@v2
