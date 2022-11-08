@@ -7,8 +7,8 @@ Refiners
 
     .. automethod:: Refiner.refine
 
-.. autoclass:: pytket_dqc.refiners.MergeDTypeRefiner
+.. autoclass:: pytket_dqc.refiners.MergeDType
 
-    .. automethod:: MergeDTypeRefiner.__init__
+    .. automethod:: MergeDType.__init__
 
-    .. automethod:: MergeDTypeRefiner.refine
+    .. automethod:: MergeDType.refine
