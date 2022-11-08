@@ -173,7 +173,12 @@ class GainManager:
         :type to_merge_hyperedge_list: list[Hyperedge]
         :return: Gain from merging hyperedges. This may be negative.
         :rtype: int
+
+        :raises Exception: Raised if hyperedges to be merged are not unique.
         """
+
+        if len(to_merge_hyperedge_list) > len(set(to_merge_hyperedge_list)):
+            raise Exception("The hyperedges to be merged must be unique.")
 
         current_cost = sum(
             self.hyperedge_cost_map[hyperedge]
@@ -204,7 +209,7 @@ class GainManager:
         self,
         to_merge_hyperedge_list: list[Hyperedge],
         recalculate_cost: bool = True
-    ):
+    ) -> Hyperedge:
         """Merge `to_merge_hyperedge_list`, a list of given hyperedges
         and update `hyperedge_cost_map`, a stored hyperedge cost
         dictionary. This uses the `Hyperedge.merge_hyperedges` method.
@@ -222,6 +227,8 @@ class GainManager:
 
         if recalculate_cost:
             self.update_cost(new_hyperedge)
+
+        return new_hyperedge
 
     def move_vertex_gain(self, vertex: int, new_server: int) -> int:
         """Compute the gain of moving ``vertex`` to ``new_server``. Instead

@@ -64,6 +64,7 @@ class Hypergraph:
             to_merge_hyperedge_list are not in this hypergraph.
         :raises Exception: Raised if the weights of the hyperedges to merge
             do not match.
+        :raises Exception: Raised if hyperedges to be merged are not unique.
         """
 
         if not all(
@@ -80,6 +81,9 @@ class Hypergraph:
             for to_merge_hyperedge in to_merge_hyperedge_list
         ):
             raise Exception("Weights of hyperedges to merge should be equal.")
+
+        if len(to_merge_hyperedge_list) > len(set(to_merge_hyperedge_list)):
+            raise Exception("The hyperedges to be merged must be unique.")
 
         # Gather list of all vertices in hyperedges to be merged.
         # This list is constructed in order to maintain the order
