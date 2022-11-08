@@ -80,7 +80,7 @@ class HypergraphCircuit(Hypergraph):
         self,
         vertices: list[Vertex],
         weight: int = 1,
-        hyperedge_list_index: Optional[int]= None,
+        hyperedge_list_index: Optional[int] = None,
         hyperedge_dict_index: Optional[list[int]] = None
     ):
         """Add hyperedge to hypergraph of circuit. Adds some checks on top
