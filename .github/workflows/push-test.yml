@@ -21,7 +21,6 @@ jobs:
           key: kahypar_cache
 
       - name: Install boost
-        if: ${{ steps.cache-kahypar.outputs.cache-hit != 'true' }}
         run: sudo apt-get install libboost-all-dev
 
       - name: Setup cmake
