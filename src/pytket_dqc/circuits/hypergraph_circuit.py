@@ -16,7 +16,7 @@ from pytket_dqc.utils.gateset import (
     to_euler_with_two_hadamards,
 )
 
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, Union, Optional
 
 if TYPE_CHECKING:
     from pytket_dqc import Placement
@@ -80,8 +80,8 @@ class HypergraphCircuit(Hypergraph):
         self,
         vertices: list[Vertex],
         weight: int = 1,
-        hyperedge_list_index: Union[int, None] = None,
-        hyperedge_dict_index: Union[list[int], None] = None
+        hyperedge_list_index: Optional[int]= None,
+        hyperedge_dict_index: Optional[list[int]] = None
     ):
         """Add hyperedge to hypergraph of circuit. Adds some checks on top
         of add_hypergraph in `Hypergraph` in order to ensure that the

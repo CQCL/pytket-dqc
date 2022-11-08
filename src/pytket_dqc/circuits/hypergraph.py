@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hypernetx as hnx  # type: ignore
 
-from typing import TYPE_CHECKING, Tuple, NamedTuple, Union
+from typing import TYPE_CHECKING, Tuple, NamedTuple, Optional
 
 if TYPE_CHECKING:
     from pytket_dqc.placement import Placement
@@ -296,8 +296,8 @@ class Hypergraph:
         self,
         vertices: list[Vertex],
         weight: int = 1,
-        hyperedge_list_index: Union[int, None] = None,
-        hyperedge_dict_index: Union[list[int], None] = None
+        hyperedge_list_index: Optional[int] = None,
+        hyperedge_dict_index: Optional[list[int]] = None
     ):
         """Add hyperedge to hypergraph. Update vertex_neighbours.
 
