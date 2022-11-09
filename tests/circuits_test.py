@@ -26,6 +26,115 @@ from pytket.circuit import QControlBox, Op, OpType  # type: ignore
 # TODO: Test new circuit classes
 
 
+def test_embedding_and_not_embedding():
+
+    network = NISQNetwork(
+        server_coupling=[[0, 1], [1, 2], [1, 3]],
+        server_qubits={0: [0], 1: [1], 2: [2], 3: [3]}
+    )
+
+    circ = Circuit(4)
+
+    # These gates will be in different hyperedges
+    circ.add_gate(OpType.CU1, 1.0, [0, 2])
+    circ.Rz(0.3, 0)
+    circ.add_gate(OpType.CU1, 1.0, [0, 1])
+
+    # Will be embedded
+    circ.H(2)
+    circ.add_gate(OpType.CU1, 1.0, [3, 2])
+    circ.H(2)
+
+    # Allows for embedding, but will not be
+    circ.H(0)
+    circ.add_gate(OpType.CU1, 1.0, [0, 2])
+    circ.add_gate(OpType.CU1, 1.0, [3, 0])
+    circ.H(0)
+
+    circ.add_gate(OpType.CU1, 1.0, [1, 0])
+
+    hyp_circ = HypergraphCircuit(circ)
+
+    placement = Placement({0: 0, 1: 1, 2: 2, 3: 3, 4: 2,
+                          5: 1, 6: 2, 7: 2, 8: 1, 9: 0})
+
+    hyp_circ.vertex_neighbours = {
+        0: {4, 5, 7, 8, 9},
+        4: {0, 2, 7},
+        5: {0, 1, 9},
+        7: {0, 2, 4, 8},
+        8: {0, 3, 6, 7},
+        9: {0, 1, 5},
+        1: {5, 9},
+        2: {4, 6, 7},
+        6: {2, 3, 8},
+        3: {8, 6}
+    }
+
+    hyp_circ.hyperedge_list = [
+        Hyperedge(vertices=[0, 4], weight=1),
+        Hyperedge(vertices=[0, 5], weight=1),
+        Hyperedge(vertices=[0, 7, 8], weight=1),
+        Hyperedge(vertices=[0, 9], weight=1),
+        Hyperedge(vertices=[1, 5, 9], weight=1),
+        Hyperedge(vertices=[2, 4, 7], weight=1),
+        Hyperedge(vertices=[2, 6], weight=1),
+        Hyperedge(vertices=[3, 6, 8], weight=1)
+    ]
+
+    hyp_circ.hyperedge_dict = {
+        0: [
+            Hyperedge(vertices=[0, 4], weight=1),
+            Hyperedge(vertices=[0, 5], weight=1),
+            Hyperedge(vertices=[0, 7, 8], weight=1),
+            Hyperedge(vertices=[0, 9], weight=1)
+        ],
+        4: [
+            Hyperedge(vertices=[0, 4], weight=1),
+            Hyperedge(vertices=[2, 4, 7], weight=1)
+        ],
+        5: [
+            Hyperedge(vertices=[0, 5], weight=1),
+            Hyperedge(vertices=[1, 5, 9], weight=1)
+        ],
+        7: [
+            Hyperedge(vertices=[0, 7, 8], weight=1),
+            Hyperedge(vertices=[2, 4, 7], weight=1)
+        ],
+        8: [
+            Hyperedge(vertices=[0, 7, 8], weight=1),
+            Hyperedge(vertices=[3, 6, 8], weight=1)
+        ],
+        9: [
+            Hyperedge(vertices=[0, 9], weight=1),
+            Hyperedge(vertices=[1, 5, 9], weight=1)
+        ],
+        1: [
+            Hyperedge(vertices=[1, 5, 9], weight=1)
+        ],
+        2: [
+            Hyperedge(vertices=[2, 4, 7], weight=1),
+            Hyperedge(vertices=[2, 6], weight=1),
+        ],
+        6: [
+            Hyperedge(vertices=[2, 6], weight=1),
+            Hyperedge(vertices=[3, 6, 8], weight=1)
+        ],
+        3: [
+            Hyperedge(vertices=[3, 6, 8], weight=1)
+        ]
+    }
+
+    distribution = Distribution(
+        circuit=hyp_circ, placement=placement, network=network)
+
+    pytket_circ = distribution.to_pytket_circuit()
+
+    check_equivalence(
+        circ, pytket_circ, distribution.get_qubit_mapping()
+    )
+
+
 def test_failing_circuit_hyperedge_split_and_merge():
 
     circ = Circuit(3)
