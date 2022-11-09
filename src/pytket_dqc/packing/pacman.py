@@ -607,6 +607,32 @@ class PacMan:
 
         return current_index, packets
 
+    def get_hypergraph_from_packets(self) -> HypergraphCircuit:
+        """Return a fresh instance of HypergraphCircuit whose hypergraph is
+        generated from scratch using the information from the dictionary
+        ``self.packets_by_qubit``. One hyperedge per packet.
+
+        :return: A new HypergraphCircuit on the same circuit but with
+        a new hypergraph.
+        :rtype: HypergraphCircuit
+        """
+        # Create a new instance of HyperedgeCircuit
+        circ = self.hypergraph_circuit.get_circuit()
+        hyp_circ = HypergraphCircuit(circ)
+        qubit_vertices = hyp_circ.get_qubit_vertices()
+        # Empty all dictionaries
+        hyp_circ.hyperedge_list = []
+        hyp_circ.hyperedge_dict = {v: [] for v in hyp_circ.vertex_list}
+        hyp_circ.vertex_neighbours = {v: set() for v in hyp_circ.vertex_list}
+        # Add each hyperedge, one per packet
+        for qubit_vertex in qubit_vertices:
+            for packet in self.packets_by_qubit[qubit_vertex]
+            hyp_circ.add_hyperedge([qubit_vertex] + packet.gate_vertices)
+
+        assert hyp_circ._vertex_id_predicate()
+        assert hyp_circ._sorted_hedges_predicate()
+        return hyp_circ
+
     def get_intermediate_commands(
         self, first_packet: Packet, second_packet: Packet
     ) -> list[Command]:
@@ -758,6 +784,24 @@ class PacMan:
             )
 
         return connected_merged_packets
+
+    def get_split_packets(self, merged_packet: tuple[Packet, ...], conflict_packet: tuple[Packet, Packet]) -> tuple[tuple[Packet, ...], tuple[Packet, ...]]:
+        """Given a merged packet and a conflicting hopping packet within it,
+        split ``merged_packet`` into two merged packets so that each side of
+        ``conflict_packet`` is on one side of the split.
+
+        :param merged_packet: The merged packet to be split in two
+        :type merged_packet: tuple[Packet, ...]
+        :param conflict_packet: The hopping packet in conflict
+        :type conflict_packet: tuple[Packet, Packet]
+        :return: The two merged packets resulting after splitting
+        :rtype: tuple[tuple[Packet, ...], tuple[Packet, ...]]
+        """
+        c_pac_a, c_pac_b = conflict_packet
+        assert c_pac_a.packet_index < c_pac_b.packet_index
+        packet_a = tuple(p for p in merged_packets if p.packet_index <= c_pac_a.packet_index)
+        packet_b = tuple(p for p in merged_packets if p.packet_index >= c_pac_b.packet_index)
+        return packet_a, packet_b
 
     def get_embedded_packets(
         self, hopping_packet: tuple[Packet, Packet]

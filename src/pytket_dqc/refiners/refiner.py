@@ -11,5 +11,5 @@ class Refiner(ABC):
         pass
 
     @abstractmethod
-    def refine(self, distribution: Distribution) -> None:
+    def refine(self, distribution: Distribution, **kwargs) -> None:
         pass
