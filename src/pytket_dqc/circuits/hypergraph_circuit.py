@@ -124,6 +124,55 @@ class HypergraphCircuit(Hypergraph):
             hyperedge_dict_index=hyperedge_dict_index,
         )
 
+    def merge_hyperedge(
+        self,
+        to_merge_hyperedge_list: list[Hyperedge]
+    ) -> Hyperedge:
+        """Merge vertices of each of the hyperedges in to_merge_hyperedge_list
+        into a single hyperedge. The new hyperedge will appear in
+        `hyperedge_list` at the lowest index of the hyperedges in
+        `to_merge_hyperedge_list`. This just wraps
+        `Hyperedge.merge_hyperedge` in some checks, and adds no additional
+        functionality.
+
+        :param to_merge_hyperedge_list: List of hyperedges to merge.
+        :type to_merge_hyperedge_list: list[Hyperedge]
+        """
+
+        new_hyperedge = super().merge_hyperedge(
+            to_merge_hyperedge_list=to_merge_hyperedge_list
+        )
+
+        self._sorted_hedges_predicate()
+
+        return new_hyperedge
+
+    def split_hyperedge(
+        self,
+        old_hyperedge: Hyperedge,
+        new_hyperedge_list: list[Hyperedge]
+    ):
+        """Split `old_hyperedge` into the hyperedges in `new_hyperedge_list`.
+        The new hyperedges will appear in `hyperedge_list` at the
+        same location as the `old_hyperedge` in the same order as they
+        appear in `new_hyperedge_list`. This just wraps
+        `Hyperedge.split_hyperedge` in some checks, and adds no additional
+        functionality.
+
+        :param old_hyperedge: Hyperedge to split.
+        :type old_hyperedge: Hyperedge
+        :param new_hyperedge_list: List of hyperedges into which
+            `old_hyperedge` should be split.
+        :type new_hyperedge_list: list[Hyperedge]
+        """
+
+        super().split_hyperedge(
+            old_hyperedge=old_hyperedge,
+            new_hyperedge_list=new_hyperedge_list
+        )
+
+        self._sorted_hedges_predicate()
+
     def add_qubit_vertex(self, vertex: Vertex, qubit: Qubit):
         """Add a vertex to the underlying hypergraph which corresponds to a
         qubit. Adding vertices in this way allow for the distinction between

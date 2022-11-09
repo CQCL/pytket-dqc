@@ -132,8 +132,8 @@ class Hypergraph:
             # I'm unsure that this would every really be raised, as it's
             # already been checked that the hyperedges to be removed are
             # in the hyperedge list. That's just about the only thing that
-            # could go wrong. The hacky fix above is so hacky and hard to
-            # test that I'm tempted to remove the whole thing.
+            # could go wrong. This fix is hard to test as a result, but
+            # added just in case.
             except Exception:
                 for (
                     removed_hyperedge,

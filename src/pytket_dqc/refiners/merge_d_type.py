@@ -9,8 +9,6 @@ class MergeDType(Refiner):
     def refine(self, initial_distribution: Distribution):
 
         init_circ = initial_distribution.circuit
-        assert init_circ._sorted_hedges_predicate()
-
         gain_mgr = GainManager(initial_distribution=initial_distribution)
 
         for qubit_vertex in init_circ.get_qubit_vertices():
@@ -48,5 +46,3 @@ class MergeDType(Refiner):
                             [hedge_one, hedge_two])
                         hedge_list.pop(0)
                         hedge_list.insert(0, new_hyperedge)
-
-        assert init_circ._sorted_hedges_predicate()
