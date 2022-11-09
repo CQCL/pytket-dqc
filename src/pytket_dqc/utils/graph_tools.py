@@ -56,14 +56,14 @@ def direct_from_origin(G: nx.Graph, origin: int) -> List[Tuple[int, int]]:
     return edge_list
 
 
-def steiner_tree(graph: nx.Graph, nodes: list[int]):
+def steiner_tree(graph: nx.Graph, nodes: list[int]) -> nx.Graph:
     """Calls NetworkX's steiner_tree but manually manages the case of
     ``nodes`` being a singleton set, so that the singleton graph is
     returned, instead of the empty graph that NetworkX returns.
     """
     if len(nodes) == 0:
         raise Exception("No nodes have been provided")
-    elif len(nodes) == 1:
+    elif len(set(nodes)) == 1:
         tree = nx.Graph()
         tree.add_nodes_from(nodes)
         return tree
