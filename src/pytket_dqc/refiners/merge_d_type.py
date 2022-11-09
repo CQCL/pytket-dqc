@@ -34,7 +34,7 @@ class MergeDType(Refiner):
 
                 if not (
                     init_circ.requires_h_embedded_cu1(hedge_one)
-                    and init_circ.requires_h_embedded_cu1(hedge_two)
+                    or init_circ.requires_h_embedded_cu1(hedge_two)
                 ) and not (
                     OpType.H in [
                         command.op.type for command in intermediate_commands

@@ -86,6 +86,7 @@ class Distribution:
         :return: The cost of the hyperedge.
         :rtype: int
         """
+
         tree = kwargs.get("server_tree", None)
         requires_h_embedded_cu1 = kwargs.get("requires_h_embedded_cu1", None)
 
