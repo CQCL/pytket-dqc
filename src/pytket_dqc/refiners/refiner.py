@@ -7,9 +7,6 @@ class Refiner(ABC):
     processing on a `Distribution`.
     """
 
-    def __init__(self) -> None:
-        pass
-
     @abstractmethod
     def refine(self, distribution: Distribution) -> None:
         pass
