@@ -1024,8 +1024,8 @@ class PacMan:
         :return: The set of hopping packets contained in ``merged_packets``
         :rtype: set[tuple[Packet, Packet]]
         """
-        hoppings_within = {}
-        all_hopping_packets = [hop_packet for _, packet_list in self.hopping_packets for hop_packet in packet_list]
+        hoppings_within: set[tuple[Packet, Packet]] = set()
+        all_hopping_packets = [hop_packet for packet_list in self.hopping_packets.values() for hop_packet in packet_list]
         for (p0, p1) in all_hopping_packets:
             # Try to find a merged packet that contains both p0 and p1
             for merged_packet in merged_packets:
