@@ -626,8 +626,8 @@ class PacMan:
         hyp_circ.vertex_neighbours = {v: set() for v in hyp_circ.vertex_list}
         # Add each hyperedge, one per packet
         for qubit_vertex in qubit_vertices:
-            for packet in self.packets_by_qubit[qubit_vertex]
-            hyp_circ.add_hyperedge([qubit_vertex] + packet.gate_vertices)
+            for packet in self.packets_by_qubit[qubit_vertex]:
+                hyp_circ.add_hyperedge([qubit_vertex] + packet.gate_vertices)
 
         assert hyp_circ._vertex_id_predicate()
         assert hyp_circ._sorted_hedges_predicate()
@@ -799,8 +799,8 @@ class PacMan:
         """
         c_pac_a, c_pac_b = conflict_packet
         assert c_pac_a.packet_index < c_pac_b.packet_index
-        packet_a = tuple(p for p in merged_packets if p.packet_index <= c_pac_a.packet_index)
-        packet_b = tuple(p for p in merged_packets if p.packet_index >= c_pac_b.packet_index)
+        packet_a = tuple(p for p in merged_packet if p.packet_index <= c_pac_a.packet_index)
+        packet_b = tuple(p for p in merged_packet if p.packet_index >= c_pac_b.packet_index)
         return packet_a, packet_b
 
     def get_embedded_packets(
@@ -1013,26 +1013,26 @@ class PacMan:
         matching = bipartite.maximum_matching(g, top_nodes=topnodes)
         return bipartite.to_vertex_cover(g, matching, top_nodes=topnodes)
 
-    def get_true_conflict_edges(
-        self, mvc: set[tuple[Packet, ...]]
-    ) -> set[frozenset[tuple[Packet, Packet]]]:
-        """Given an MVC, find all the edges in the
-        conflict graph that represent true conflicts.
+    def get_hopping_packets_within(
+        self, merged_packets: set[tuple[Packet, ...]]
+    ) -> set[tuple[Packet, Packet]]:
+        """Given a set of merged packets, find all the hopping packets that
+        are contained in them.
 
-        True conflicts means that both nodes of the edge are in the MVC.
-
-        :param mvc: The minimum vertex cover to use to find true conflicts.
-        :type mvc: set[tuple[Packet, ...]]
-        :return: Set of true conflict edges.
-        :rtype: set[tuple[Packet, ...]]
+        :param merged_packets: The set of merged packets to look into
+        :type merged_packets: set[tuple[Packet, ...]]
+        :return: The set of hopping packets contained in ``merged_packets``
+        :rtype: set[tuple[Packet, Packet]]
         """
-        cg, topnodes = self.get_nx_graph_conflict()
-        true_conflicts = set()
-        for u, v in cg.edges():
-            if u in mvc and v in mvc:
-                true_conflicts.add(frozenset([u, v]))
+        hoppings_within = {}
+        all_hopping_packets = [hop_packet for _, packet_list in self.hopping_packets for hop_packet in packet_list]
+        for (p0, p1) in all_hopping_packets:
+            # Try to find a merged packet that contains both p0 and p1
+            for merged_packet in merged_packets:
+                if p0 in merged_packet and p1 in merged_packet:
+                    hoppings_within.add((p0, p1))
 
-        return true_conflicts
+        return hoppings_within
 
     def get_conflict_edge(
         self, embedded_packet1: Packet, embedded_packet2: Packet
