@@ -83,13 +83,20 @@ class VertexCover(Refiner):
                 hop_packets = pacman.get_hopping_packets_within(cover)
                 # Step 3. Find the best way to remove conflicts on ``cover``
                 true_conflicts_g = conflict_graph.subgraph(hop_packets)
-                conflict_removal = get_min_covers(list(true_conflicts_g.edges))[0]
-                # Step 4. Find the best conflict removal among ``min_covers``
-                if best_conflict_removal is None or len(
-                    conflict_removal
-                ) < len(best_conflict_removal):
+                conflict_covers = get_min_covers(list(true_conflicts_g.edges))
+                # Pick one of the conflict_covers, all are optimal; there's
+                # always at least one
+                assert len(conflict_covers) > 0
+                conflict_removal = conflict_covers[0]
+                # Step 4. Find the best among cover after conflict removal
+                # fmt: off
+                if (
+                    best_conflict_removal is None or
+                    len(conflict_removal) < len(best_conflict_removal)
+                ):
                     best_cover = cover
                     best_conflict_removal = conflict_removal
+                # fmt: on
             assert best_cover is not None
             assert best_conflict_removal is not None
 
@@ -197,4 +204,8 @@ def get_min_covers(edges: list[tuple[Any, Any]]) -> list[set[Any]]:
     # Filter out the covers that are not optimal
     covers = get_covers(edges)
     min_cover_size = min([len(c) for c in covers])
-    return [c for c in covers if len(c) == min_cover_size]
+    min_covers = [c for c in covers if len(c) == min_cover_size]
+    # There is always at least one cover.
+    # Even in the case of no edges, we get the empty cover
+    assert len(min_covers) > 0
+    return min_covers
