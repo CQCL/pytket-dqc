@@ -2,14 +2,15 @@ from __future__ import annotations
 
 import networkx as nx  # type: ignore
 from pytket_dqc.refiners import Refiner
-from pytket_dqc.packing import PacMan
+from pytket_dqc.packing import PacMan, Packet
 from pytket_dqc.placement import Placement
 from pytket_dqc.circuits import Hyperedge
 
 from typing import TYPE_CHECKING, Any
+
 if TYPE_CHECKING:
     from pytket_dqc import Distribution
-    from pytket_dqc.packing import Packet
+
 
 class VertexCover(Refiner):
     """Refiner that leaves qubit allocation unchanged and decides gate
@@ -37,12 +38,17 @@ class VertexCover(Refiner):
                           single vertex cover
         """
         vertex_cover_alg = kwargs.get("vertex_cover_alg", None)
-        if vertex_cover_alg is None or vertex_cover_alg not in ["all_brute_force", "networkx"]:
-            raise Exception(f"You must provide a vertex_cover_alg. Either:\n"+
-                "\t\t\"all_brute_force\" -> "+
-                "exhaustive search of all minimum vertex covers\n"+
-                "\t\t\"networkx\" -> "+
-                "use NetworkX's approximate algorithm to find a single vertex cover\n")
+        if vertex_cover_alg is None or vertex_cover_alg not in [
+            "all_brute_force",
+            "networkx",
+        ]:
+            raise Exception(
+                f"You must provide a vertex_cover_alg. Either:\n"
+                + "\t\t\"all_brute_force\" -> "
+                + "exhaustive search of all minimum vertex covers\n"
+                + "\t\t\"networkx\" -> "
+                + "use NetworkX's approximate algorithm to find a single vertex cover\n"
+            )
 
         if vertex_cover_alg == "all_brute_force":
             self.exhaustive_refine(distribution)
@@ -56,43 +62,47 @@ class VertexCover(Refiner):
         :type distribution: Distribution
         """
         pacman = PacMan(distribution.circuit, distribution.placement)
-        merged_graph = pacman.get_nx_graph_merged()
-        conflict_graph = pacman.get_nx_graph_conflict()
+        merged_graph, _ = pacman.get_nx_graph_merged()
+        conflict_graph, _ = pacman.get_nx_graph_conflict()
 
         # Find the vertex covers of each connected component separately
         full_valid_cover: list[tuple[Packet, ...]] = []
-        for subgraph in [merged_graph.subgraph(c) for c in nx.connected_components(merged_graph)]:
+        for subgraph in [
+            merged_graph.subgraph(c)
+            for c in nx.connected_components(merged_graph)
+        ]:
 
             # Step 1. Find all minimum vertex coverings of subgraph
-            covers = all_covers(list(subgraph.edges))
-            assert covers
-            min_cover_size = min([len(c) for c in covers])
-            min_covers = [c for c in covers if len(c) == min_cover_size]
+            min_covers = get_min_covers(list(subgraph.edges))
 
             # Find the best way to remove conflicts for each cover
             best_cover = None
             best_conflict_removal = None
             for cover in min_covers:
                 # Step 2. Find all the hopping packets in ``cover``
-                hoppings_within = pacman.get_hopping_packets_within(cover)
+                hop_packets = pacman.get_hopping_packets_within(cover)
                 # Step 3. Find the best way to remove conflicts on ``cover``
                 true_conflicts_g = conflict_graph.subgraph(hop_packets)
-                conflict_covers = all_covers(list(true_conflicts_g.edges))
-                conflict_removal = min(conflict_covers, key=lambda c: len(c))
+                conflict_removal = get_min_covers(list(true_conflicts_g.edges))[0]
                 # Step 4. Find the best conflict removal among ``min_covers``
-                if best_conflict_removal is None or len(conflict_removal) < len(best_conflict_removal):
+                if best_conflict_removal is None or len(
+                    conflict_removal
+                ) < len(best_conflict_removal):
                     best_cover = cover
                     best_conflict_removal = conflict_removal
-            assert type(best_cover) is set[tuple[Packet, ...]]
-            assert type(best_conflict_removal) is set[Packet]
+            assert best_cover is not None
+            assert best_conflict_removal is not None
 
             # Step 5. Update ``best_cover`` by splitting according to
             # ``best_conflict_removal``
-            for conflict_packet in best_conflict_removal:
+            for (p0, p1) in best_conflict_removal:
                 # Retrieve the merged packet containing this conflict
-                merged_packet = pacman.get_containing_merged_packet(conflict_packet)
+                merged_packet = pacman.get_containing_merged_packet(p0)
+                assert merged_packet == pacman.get_containing_merged_packet(p1)
                 # Split the packet
-                packet_a, packet_b = pacman.get_split_packets(merged_packet, conflict_packet)
+                packet_a, packet_b = pacman.get_split_packets(
+                    merged_packet, (p0, p1)
+                )
                 # Update the ``best_cover``
                 best_cover.remove(merged_packet)
                 best_cover.add(packet_a)
@@ -113,14 +123,19 @@ class VertexCover(Refiner):
             hyperedges: list[Hyperedge] = []
             for packet in merged_packet:
                 assert qubit_vertex == packet.qubit_vertex
-                hyperedges.append(Hyperedge([qubit_vertex]+packet.gate_vertices))
+                hyperedges.append(
+                    Hyperedge([qubit_vertex] + packet.gate_vertices)
+                )
             # And merge them
             new_hyp_circ.merge_hyperedge(hyperedges)
         # Update the hypergraph in ``distribution``
         distribution.circuit = new_hyp_circ
 
         # Create a fresh placement dict with all qubits placed as originally
-        new_placement = {q: distribution.placement.placement[q] for q in distribution.circuit.get_qubit_vertices()}
+        new_placement = {
+            q: distribution.placement.placement[q]
+            for q in distribution.circuit.get_qubit_vertices()
+        }
         # Place gate vertices according to the packets in ``full_valid_cover``
         for merged_packet in full_valid_cover:
             for packet in merged_packet:
@@ -136,7 +151,6 @@ class VertexCover(Refiner):
         # Sanity check
         distribution.is_valid()
 
-
     def networkx_refine(self, distribution: Distribution):
         """Refinement where the vertex covers are found using NetworkX's
         approximate algorithm. Only one vertex cover is found.
@@ -149,18 +163,38 @@ class VertexCover(Refiner):
         raise Exception("Not implemented.")
 
 
-def all_covers(edges: list[tuple[Any,Any]]) -> list[set[Any]]:
-    """Recursive function that finds all vertex covers of the given edges.
-    Its complexity is at most O(2^c) where c is the size of the worst cover.
+def get_min_covers(edges: list[tuple[Any, Any]]) -> list[set[Any]]:
+    """Recursive function that finds all minimum vertex covers of the given
+    edges. Its complexity is at most O(2^c) where c is the size of the worst
+    cover.
     """
-    if not edges:
-        return []
-    else:
-        (v0, v1) = edges[0]
-        covers_w_v0 = all_covers([e for e in edges if e[0] != v0 and e[1] != v0])
-        covers_w_v1 = all_covers([e for e in edges if e[0] != v1 and e[1] != v1])
-        return [c.union({v0}) for c in covers_w_v0] + [c.union({v1}) for c in covers_w_v1]
 
+    def get_covers(edges: list[tuple[Any, Any]]) -> list[set[Any]]:
+        """All minimum vertex covers are guaranteed to be found by this
+        recursive function, some extra non-minimal covers are also found.
+        """
+        if not edges:
+            # Return a singleton list with the minimum cover: the trivial one
+            return [set()]
+        else:
+            (v0, v1) = edges[0]
+            # Omit all edges covered by v0 in recursive call
+            covers_w_v0 = get_covers(
+                [e for e in edges if e[0] != v0 and e[1] != v0]
+            )
+            for c in covers_w_v0: c.add(v0)
+            # Omit all edges covered by v1 in recursive call
+            covers_w_v1 = get_covers(
+                [e for e in edges if e[0] != v1 and e[1] != v1]
+            )
+            for c in covers_w_v1: c.add(v1)
+            # Return the union
+            # NOTE: I'm not using set[set[Any]] instead of list[set[Any]]
+            # due to set not being hashable -> I'd need set[frozenset[Any]]
+            # but then it'd be a mess of types and I'd rather do this
+            return covers_w_v0 + [c for c in covers_w_v1 if c not in covers_w_v0]
 
-
-
+    # Filter out the covers that are not optimal
+    covers = get_covers(edges)
+    min_cover_size = min([len(c) for c in covers])
+    return [c for c in covers if len(c) == min_cover_size]
