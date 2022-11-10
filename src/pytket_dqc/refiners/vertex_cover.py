@@ -148,10 +148,7 @@ class VertexCover(Refiner):
             for packet in merged_packet:
                 server = packet.connected_server_index
                 for vertex in packet.gate_vertices:
-                    if vertex in new_placement.keys():
-                        assert server == new_placement[vertex]
-                    else:
-                        new_placement[vertex] = server
+                    new_placement[vertex] = server
         # Update the placement in ``distribution``
         distribution.placement = Placement(new_placement)
 
