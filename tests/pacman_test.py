@@ -14,7 +14,7 @@ test_circuit = Circuit(6)
 cz = Op.create(OpType.CU1, 1)
 test_circuit.add_gate(cz, [0, 2])
 test_circuit.add_gate(cz, [0, 4])
-test_circuit.Z(0).X(0)
+test_circuit.Rz(1.0, 0).H(0).Rz(1.0, 0).H(0)
 test_circuit.add_gate(cz, [0, 5])
 test_circuit.add_gate(cz, [0, 3])
 
