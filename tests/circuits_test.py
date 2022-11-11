@@ -1217,6 +1217,28 @@ def test_get_hyperedge_subcircuit():
     assert test_c.get_commands() == hyp_circ.get_hyperedge_subcircuit(hyp_2)
 
 
+def test_get_hyperedge_subcircuit_complex():
+    # This test comes from a larger test that failed in
+    # ``get_hyperedge_subcircuit``. It should be fixed now
+    circ = Circuit(4)
+    circ.add_gate(OpType.CU1, 0.1234, [1, 2])
+    circ.add_gate(OpType.CU1, 0.1234, [0, 2])
+    circ.add_gate(OpType.CU1, 0.1234, [2, 3])
+    circ.add_gate(OpType.CU1, 0.1234, [0, 3])
+    circ.H(0).H(2).Rz(0.1234, 3)
+    circ.add_gate(OpType.CU1, 1.0, [0, 2])
+    circ.add_gate(OpType.CU1, 1.0, [0, 3])
+    circ.add_gate(OpType.CU1, 1.0, [1, 2])
+    circ.H(0).H(2).Rz(0.1234, 0)
+    circ.add_gate(OpType.CU1, 0.1234, [0, 1])
+    circ.add_gate(OpType.CU1, 0.1234, [0, 3])
+    circ.add_gate(OpType.CU1, 1.0, [1, 2])
+
+    hyp_circ = HypergraphCircuit(circ)
+
+    hyp_circ.get_hyperedge_subcircuit(Hyperedge([1, 4, 10, 13]))
+
+
 def test_requires_h_embedded_cu1():
 
     circ = Circuit(4)
