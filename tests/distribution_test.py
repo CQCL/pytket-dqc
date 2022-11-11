@@ -212,6 +212,7 @@ def test_alap_on_hyperedge_mixing_H_and_D_embeddings():
     assert distribution.is_valid()
 
     hyp = Hyperedge([1, 4, 8])
+    assert distribution.circuit.requires_h_embedded_cu1(hyp)
 
     # This cost has been calculated by hand
     assert distribution.hyperedge_cost(hyp) == 2
