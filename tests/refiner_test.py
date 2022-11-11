@@ -19,7 +19,7 @@ test_circuit.add_gate(OpType.CU1, 1.0, [0, 2])
 test_circuit.Rz(0.3, 0)
 test_circuit.add_gate(OpType.CU1, 1.0, [0, 1])
 
-# Will be embetted
+# Will be embedded
 test_circuit.H(2)
 test_circuit.add_gate(OpType.CU1, 1.0, [3, 2])
 test_circuit.H(2)
