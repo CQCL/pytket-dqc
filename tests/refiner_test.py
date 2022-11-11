@@ -120,7 +120,7 @@ def test_merge_d_type_only_CZ():
     assert distribution.cost() == 2
 
 
-def test_no_new_hyperedges():
+def test_merge_d_type_no_new_hyperedges():
 
     network = NISQNetwork(
         server_coupling=[[0, 1], [1, 2]],
