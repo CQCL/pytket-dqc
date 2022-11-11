@@ -4,7 +4,7 @@ from pytket_dqc.circuits.distribution import Distribution
 
 class Refiner(ABC):
     """Abstract base class defining the behaviors of Refiners, which perform
-    processing on a `Distribution`.
+    in place processing on a `Distribution`.
     """
 
     @abstractmethod

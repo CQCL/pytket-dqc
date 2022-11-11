@@ -144,7 +144,7 @@ class HypergraphCircuit(Hypergraph):
         old_hyperedge: Hyperedge,
         new_hyperedge_list: list[Hyperedge]
     ):
-        """Wrapper around `Hyperedge.split_hyperedge` adding some checks. 
+        """Wrapper around `Hyperedge.split_hyperedge` adding some checks.
         Adds no additional functionality.
         """
 
