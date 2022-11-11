@@ -1196,7 +1196,7 @@ def test_get_hyperedge_subcircuit():
 
     # The hyperedges to test
     hyp_1 = Hyperedge([1, 3, 4, 6])  # This one is in hyp_circ
-    hyp_2 = Hyperedge([0, 3, 5])  # This is a merge of two (has embeddings)
+    hyp_2 = Hyperedge([0, 3, 6])  # This is a merge of two (has embeddings)
 
     # Testing for hyp_1
     test_c = Circuit(3)
@@ -1211,10 +1211,42 @@ def test_get_hyperedge_subcircuit():
     test_c.add_gate(OpType.CU1, 0.1, [0, 1])
     test_c.Rz(0.2, 0)
     test_c.H(0)
-    test_c.Rz(1, 0)
     test_c.add_gate(OpType.CU1, 1.0, [0, 2])
+    test_c.Rz(1, 0)
+    test_c.H(0)
+    test_c.add_gate(OpType.CU1, 0.4, [0, 1])
 
     assert test_c.get_commands() == hyp_circ.get_hyperedge_subcircuit(hyp_2)
+
+
+def test_get_hyperedge_subcircuit_complex():
+    # This test comes from a larger test that failed in
+    # ``get_hyperedge_subcircuit``. It should be fixed now
+    circ = Circuit(4)
+    circ.add_gate(OpType.CU1, 0.1234, [1, 2])  # Gate 4
+    circ.add_gate(OpType.CU1, 0.1234, [0, 2])  # Gate 5
+    circ.add_gate(OpType.CU1, 0.1234, [2, 3])  # Gate 6
+    circ.add_gate(OpType.CU1, 0.1234, [0, 3])  # Gate 7
+    circ.H(0).H(2).Rz(0.1234, 3)
+    circ.add_gate(OpType.CU1, 1.0, [0, 2])  # Gate 8
+    circ.add_gate(OpType.CU1, 1.0, [0, 3])  # Gate 9
+    circ.add_gate(OpType.CU1, 1.0, [1, 2])  # Gate 10
+    circ.H(0).H(2).Rz(0.1234, 0)
+    circ.add_gate(OpType.CU1, 0.1234, [0, 1])  # Gate 11
+    circ.add_gate(OpType.CU1, 0.1234, [0, 3])  # Gate 12
+    circ.add_gate(OpType.CU1, 1.0, [1, 2])  # Gate 13
+
+    hyp_circ = HypergraphCircuit(circ)
+
+    hedge = Hyperedge([1, 4, 10, 13])
+    hyp_circ.get_hyperedge_subcircuit(hedge)
+    test_c = Circuit(3)
+    test_c.add_gate(OpType.CU1, 0.1234, [1, 2])  # Gate 4
+    test_c.add_gate(OpType.CU1, 1.0, [1, 2])  # Gate 10
+    test_c.add_gate(OpType.CU1, 0.1234, [0, 1])  # Gate 11
+    test_c.add_gate(OpType.CU1, 1.0, [1, 2])  # Gate 13
+
+    assert test_c.get_commands() == hyp_circ.get_hyperedge_subcircuit(hedge)
 
 
 def test_requires_h_embedded_cu1():
