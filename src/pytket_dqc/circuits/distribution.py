@@ -576,8 +576,6 @@ class Distribution:
 
             if cmd.op.type == OpType.H:
                 q = cmd.qubits[0]
-                # Append the gate to ``new_circ``
-                new_circ.H(qubit_mapping[q])
                 # The presence of an H gate indicates the beginning or end
                 # of an H-embedding on the qubit
                 #
@@ -685,6 +683,9 @@ class Distribution:
                             linkman.link_qubit_dict[(q, rmt_server)] = q_link
                             # Append the correction Hadamard to the circuit
                             new_circ.H(q_link)
+
+                # Append the gate to ``new_circ``
+                new_circ.H(qubit_mapping[q])
 
             elif cmd.op.type == OpType.Rz:
                 q = cmd.qubits[0]
