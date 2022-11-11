@@ -20,9 +20,6 @@ class VertexCover(Refiner):
     NOTE: Any prior gate placement is ignored.
     """
 
-    def __init__(self):
-        pass
-
     def refine(self, distribution: Distribution, **kwargs):
         """Updates the given distribution with a chosen allocation of qubits
         to choose a gate placement that minimises ebit count. Any prior gate
