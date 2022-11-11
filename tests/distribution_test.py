@@ -187,8 +187,34 @@ def test_alap_on_hyperedge_requiring_euler():
 
     hyp = Hyperedge([0, 5, 8])
 
-    # These cost has been calculated by hand
+    # This cost has been calculated by hand
     assert distribution.hyperedge_cost(hyp) == 1
+
+
+def test_alap_on_hyperedge_mixing_H_and_D_embeddings():
+
+    circ = Circuit(4)
+    circ.add_gate(OpType.CU1, 0.1234, [0, 1])  # Gate 4
+    circ.H(1)
+    circ.add_gate(OpType.CU1, 1.0, [1, 2])  # Gate 5, H-embedded
+    circ.add_gate(OpType.CU1, 1.0, [1, 3])  # Gate 6, H-embedded
+    circ.H(1)
+    circ.add_gate(OpType.CU1, 0.1234, [1, 3])  # Gate 7, D-embedded
+    circ.add_gate(OpType.CU1, 0.1234, [1, 2])  # Gate 8
+
+    network = NISQNetwork([[0, 1], [1, 2]], {0: [0], 1: [1], 2: [2, 3]})
+
+    placement = Placement(
+        {0: 0, 1: 1, 2: 2, 3: 2, 4: 0, 5: 1, 6: 1, 7: 1, 8: 2}
+    )
+
+    distribution = Distribution(HypergraphCircuit(circ), placement, network)
+    assert distribution.is_valid()
+
+    hyp = Hyperedge([1, 4, 8])
+
+    # This cost has been calculated by hand
+    assert distribution.hyperedge_cost(hyp) == 2
 
 
 def test_distribution_cost_with_embedding():
@@ -269,3 +295,4 @@ def test_distribution_cost_with_embedding():
     assert distribution.hyperedge_cost(new_hyperedges[6]) == 0
 
     assert distribution.cost() == 3 + 4 + 4 + 2 + 6 + 1 + 0
+    assert distribution.is_valid()

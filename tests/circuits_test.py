@@ -77,7 +77,7 @@ def test_embedding_and_not_embedding():
 
     pytket_circ = distribution.to_pytket_circuit()
 
-    check_equivalence(
+    assert check_equivalence(
         circ, pytket_circ, distribution.get_qubit_mapping()
     )
 
