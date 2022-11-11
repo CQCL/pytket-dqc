@@ -80,7 +80,7 @@ def test_merge_d_type_complex_circuit():
     assert distribution.cost() == 8
 
 
-def test_only_CZ_merge_d_type():
+def test_merge_d_type_only_CZ():
 
     network = NISQNetwork(
         server_coupling=[[0, 1], [1, 2]],
