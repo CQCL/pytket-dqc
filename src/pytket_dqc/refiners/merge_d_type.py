@@ -82,7 +82,7 @@ class MergeDType(Refiner):
                     ) > 0:
                         new_hyperedge = gain_mgr.merge_hyperedge(
                             [hedge_one, hedge_two])
-                        
+
                         # Remove old and add new hyperedge
                         hedge_list.pop(0)
                         hedge_list.insert(0, new_hyperedge)
