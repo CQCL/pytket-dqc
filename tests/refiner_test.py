@@ -45,7 +45,9 @@ def test_merge_d_type_complex_circuit():
         i: set() for i in test_hyp_circuit.vertex_list
     }
     test_hyp_circuit.hyperedge_list = []
-    test_hyp_circuit.hyperedge_dict = {i: [] for i in test_hyp_circuit.vertex_list}
+    test_hyp_circuit.hyperedge_dict = {
+        i: [] for i in test_hyp_circuit.vertex_list
+    }
 
     new_hyperedge_list = [
         [0, 4],
