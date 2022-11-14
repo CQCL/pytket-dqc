@@ -1297,6 +1297,8 @@ def test_get_vertex_to_command_index_map():
     test_circuit.H(0).H(2)
     test_circuit.add_gate(cz, [0, 2])
 
+    DQCPass().apply(test_circuit)
+
     hypergraph_circuit = HypergraphCircuit(test_circuit)
     commands = test_circuit.get_commands()
     cu1_command_indices = [
