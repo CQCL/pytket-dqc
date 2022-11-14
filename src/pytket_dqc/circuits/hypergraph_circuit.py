@@ -339,7 +339,7 @@ class HypergraphCircuit(Hypergraph):
                         Command(op, [hyp_qubit]) for op in new_ops
                     ]
                     # Remove last Rz; its phase is stored in ``prev_phase``
-                    rz = current_1q_cmds.pop()
+                    current_1q_cmds.pop()
                     # Append the batch of embedded 1-qubit gates [Rz,H,Rz,H]
                     prepared_cmds += current_1q_cmds
                     # Append the next embedded CU1 gate
