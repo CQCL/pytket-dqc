@@ -202,6 +202,9 @@ class Distribution:
                             # the one that is shortest among them
                             best_path = None
                             for c_server in connected_servers:
+                                # Skip if c_server is not in the Steiner tree
+                                if c_server not in tree.nodes:
+                                    continue
                                 connection_path = nx.shortest_path(
                                     tree, c_server, gate_server
                                 )
@@ -363,6 +366,9 @@ class Distribution:
                 connected_servers.append(home_server)
                 best_path = None
                 for c_server in connected_servers:
+                    # Skip if c_server is not in the Steiner tree
+                    if c_server not in tree.nodes:
+                        continue
                     connection_path = nx.shortest_path(tree, c_server, target)
                     # fmt: off
                     if (
@@ -675,10 +681,10 @@ class Distribution:
                         # embedding, if any
                         if q in embedded_link.keys():
                             q_link = embedded_link[q]
-                            remote_vertex = hyp_circ.get_vertex_of_qubit(
-                                remote_qubit
-                            )
-                            rmt_server = placement_map[remote_vertex]
+                            # Find the server that holds q_link
+                            potential_servers = [s for s, occ in linkman.occupied.items() if q_link in occ]
+                            assert len(potential_servers) == 1
+                            rmt_server = potential_servers[0]
                             # Restore the dictionaries
                             del embedded_link[q]
                             linkman.link_qubit_dict[(q, rmt_server)] = q_link
@@ -808,5 +814,4 @@ class Distribution:
         )
         assert _cost_from_circuit(new_circ) == self.cost()
 
-        RemoveRedundancies().apply(new_circ)
         return new_circ
