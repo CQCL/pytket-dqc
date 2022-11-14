@@ -1047,6 +1047,8 @@ class PacMan:
 
         True conflicts means that both nodes of the edge are in the MVC.
 
+        :param potential_conflict_edges: The set of all edges that would be conflicting if both nodes were to be in an MVC.
+        :type potential_conflict_edges: set[frozenset[HoppingPacket]]
         :param mvc: The minimum vertex cover to use to find true conflicts.
         :type mvc: set[MergedPacket]
         :return: Set of true conflict edges.
