@@ -117,9 +117,7 @@ class PacMan:
         self.neighbouring_packets: dict[
             Vertex, list[NeighbouringPacket]
         ] = dict()
-        self.hopping_packets: dict[
-            Vertex, list[HoppingPacket]
-        ] = dict()
+        self.hopping_packets: dict[Vertex, list[HoppingPacket]] = dict()
         self.merged_packets: dict[Vertex, list[MergedPacket]] = dict()
         self.build_packets()
         self.identify_neighbouring_packets()
@@ -441,14 +439,17 @@ class PacMan:
         # HZH (= X) in the intermediate commands
         # The below switches activate accordingly when
         # - An initial H is found (searching_for_Z is True)
-        # - The next command is a Z (searching_for_Z is False, searching_for_H is True)
-        # - The next command is a H (searching_for_H is False)
+        # - Next command is a Z (searching_for_Z False, searching_for_H True)
+        # - Next command is a H (searching_for_H is False)
         # Then we can continue as usual
         searching_for_Z = False
         searching_for_H = False
         for command in intermediate_commands:
             if searching_for_Z:
-                if command.op.type == OpType.Rz and abs(command.op.params[0]) == 1:
+                if (
+                    command.op.type == OpType.Rz
+                    and abs(command.op.params[0]) == 1
+                ):
                     logger.debug("Found Z, looking for second H")
                     searching_for_Z = False
                     searching_for_H = True
@@ -466,7 +467,7 @@ class PacMan:
             elif not is_distributable(command.op):
                 return False
 
-        return not(searching_for_H or searching_for_Z)
+        return not (searching_for_H or searching_for_Z)
 
     def are_hoppable_packets(
         self, first_packet: Packet, second_packet: Packet
@@ -594,9 +595,17 @@ class PacMan:
             else:
                 first_ops_1q_to_try = first_ops_1q
             is_reversed = False
-            if not(self.are_1q_op_phases_npi(first_ops_1q_to_try, second_ops_1q)):
-                if len(second_ops_1q) == 5 and second_ops_1q[2].params == 0 and second_ops_1q[4].params == 0:
-                    if (self.are_1q_op_phases_npi(first_ops_1q_to_try, list(reversed(second_ops_1q)))):
+            if not (
+                self.are_1q_op_phases_npi(first_ops_1q_to_try, second_ops_1q)
+            ):
+                if (
+                    len(second_ops_1q) == 5
+                    and second_ops_1q[2].params == 0
+                    and second_ops_1q[4].params == 0
+                ):
+                    if self.are_1q_op_phases_npi(
+                        first_ops_1q_to_try, list(reversed(second_ops_1q))
+                    ):
                         is_reversed = True
                     else:
                         logger.debug(
@@ -720,10 +729,7 @@ class PacMan:
         # set of ops in the embedding, which is the
         # only time we may not have an Rz at the end
         # of the ops list
-        if (
-            not len(prior_1q_ops) == 5
-            and prior_1q_ops[-1].type == OpType.H
-        ):
+        if not len(prior_1q_ops) == 5 and prior_1q_ops[-1].type == OpType.H:
             prior_phase = 0
 
         else:
@@ -738,10 +744,7 @@ class PacMan:
         # set of ops in the embedding, which is the
         # only time we may not have an Rz at the start
         # of the ops list.
-        if (
-            not len(post_1q_ops) == 5
-            and post_1q_ops[0].type == OpType.H
-        ):
+        if not len(post_1q_ops) == 5 and post_1q_ops[0].type == OpType.H:
             post_phase = 0
 
         else:
@@ -751,7 +754,6 @@ class PacMan:
 
         phase_sum = prior_phase + post_phase
         return bool(isclose(phase_sum % 1, 0) or isclose(phase_sum % 1, 1))
-
 
     def get_connected_packets(self, packet: Packet) -> set[Packet]:
         """Get all the ``Packet``s connected to the
@@ -787,9 +789,7 @@ class PacMan:
                     break
         return connected_packets
 
-    def get_containing_merged_packet(
-        self, packet: Packet
-    ) -> MergedPacket:
+    def get_containing_merged_packet(self, packet: Packet) -> MergedPacket:
         """Given a ``Packet`` return the merged packet containing it.
 
         :param packet: The ``Packet`` of interest.
@@ -1018,7 +1018,9 @@ class PacMan:
                         checked_hopping_packets.append(embedded_packet)
         if mvc is None:
             mvc = self.get_mvc_merged_graph()
-        conflict_edges = self.get_conflict_edges_given_mvc(potential_conflict_edges, mvc)
+        conflict_edges = self.get_conflict_edges_given_mvc(
+            potential_conflict_edges, mvc
+        )
         logger.debug(f"Conflict edges: {conflict_edges}")
         graph.add_edges_from(conflict_edges)
         bipartitions = self.assign_bipartitions(graph)
@@ -1040,14 +1042,15 @@ class PacMan:
     def get_conflict_edges_given_mvc(
         self,
         potential_conflict_edges: set[frozenset[HoppingPacket]],
-        mvc: set[MergedPacket]
+        mvc: set[MergedPacket],
     ) -> set[frozenset[HoppingPacket]]:
         """Given an MVC, find all the edges in the
         conflict graph that represent true conflicts.
 
         True conflicts means that both nodes of the edge are in the MVC.
 
-        :param potential_conflict_edges: The set of all edges that would be conflicting if both nodes were to be in an MVC.
+        :param potential_conflict_edges: The set of all edges that would be
+        conflicting if both nodes were to be in an MVC.
         :type potential_conflict_edges: set[frozenset[HoppingPacket]]
         :param mvc: The minimum vertex cover to use to find true conflicts.
         :type mvc: set[MergedPacket]
@@ -1056,9 +1059,16 @@ class PacMan:
         """
         true_conflicts = set()
         for u, v in potential_conflict_edges:
-            assert self.get_containing_merged_packet(u[0]) == self.get_containing_merged_packet(u[1])
-            assert self.get_containing_merged_packet(v[0]) == self.get_containing_merged_packet(v[1])
-            if self.get_containing_merged_packet(u[0]) in mvc and self.get_containing_merged_packet(v[0]) in mvc:
+            assert self.get_containing_merged_packet(
+                u[0]
+            ) == self.get_containing_merged_packet(u[1])
+            assert self.get_containing_merged_packet(
+                v[0]
+            ) == self.get_containing_merged_packet(v[1])
+            if (
+                self.get_containing_merged_packet(u[0]) in mvc
+                and self.get_containing_merged_packet(v[0]) in mvc
+            ):
                 true_conflicts.add(frozenset([u, v]))
 
         return true_conflicts
@@ -1104,11 +1114,8 @@ class PacMan:
         predicate = nx.is_bipartite(graph)
         for edge in edges:
             (u, v) = edge
-            predicate = (
-                predicate
-                and (
-                    (u in bipartitions[0] and v in bipartitions[1])
-                    or (v in bipartitions[0] and u in bipartitions[1])
-                )
+            predicate = predicate and (
+                (u in bipartitions[0] and v in bipartitions[1])
+                or (v in bipartitions[0] and u in bipartitions[1])
             )
         return predicate
