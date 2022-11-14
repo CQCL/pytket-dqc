@@ -302,21 +302,44 @@ class HypergraphCircuit(Hypergraph):
                         ]
                     ]
                     new_ops = to_euler_with_two_hadamards(current_1q_ops)
+                    assert len(new_ops) == 5  # [Rz,H,Rz,H,Rz]
+
                     first_rz = new_ops[0]
                     assert first_rz.type == OpType.Rz
                     squashed_phase = prev_phase + first_rz.params[0]
-                    # Sanity check: the phase is an integer
-                    assert np.isclose(squashed_phase % 1, 0) or np.isclose(
-                        squashed_phase % 1, 1
-                    )
+
+                    middle_rz = new_ops[2]
+                    assert middle_rz.type == OpType.Rz
+                    mid_phase = middle_rz.params[0]
+
+                    last_rz = new_ops[4]
+                    assert last_rz.type == OpType.Rz
+                    last_phase = last_rz.params[0]
+
+                    # If the middle Rz gate has phase k2pi, we can push the
+                    # squashed phase to the end, merge it with the last
+                    # and leave this as the ``prev_phase`` for next iteration
+                    if np.isclose(mid_phase % 2, 0) or np.isclose(
+                        mid_phase % 2, 2
+                    ):
+                        prev_phase = squashed_phase + mid_phase + last_phase
+                        squashed_phase = 0
+                    # Otherwise, ``squashed_phase`` must be an integer and
+                    # we store the phase of the last CZ for the next iteration
+                    else:
+                        assert np.isclose(squashed_phase % 1, 0) or np.isclose(
+                            squashed_phase % 1, 1
+                        )
+                        prev_phase = last_phase
+
+                    # Replace the phase of the first Rz with ``squashed_phase``
                     new_ops[0] = Op.create(OpType.Rz, squashed_phase)
+                    # Create the command list
                     current_1q_cmds = [
                         Command(op, [hyp_qubit]) for op in new_ops
                     ]
-                    # Remove the last Rz and store its phase for squashing
+                    # Remove last Rz; its phase is stored in ``prev_phase``
                     rz = current_1q_cmds.pop()
-                    assert rz.op.type == OpType.Rz
-                    prev_phase = rz.op.params[0]
                     # Append the batch of embedded 1-qubit gates [Rz,H,Rz,H]
                     prepared_cmds += current_1q_cmds
                     # Append the next embedded CU1 gate
