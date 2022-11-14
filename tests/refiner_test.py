@@ -12,7 +12,7 @@ from pytket_dqc.refiners.vertex_cover import (
 )
 
 
-def test_all_covers():
+def test_min_covers():
     edges = [(0,1), (0,2), (0,5), (1,3), (1,4), (2,5), (3,4), (4,5)]
     covers = [
         {0,1,2,4},
