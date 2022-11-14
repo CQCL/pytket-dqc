@@ -68,6 +68,11 @@ class Packet(NamedTuple):
         return hash(repr(self))
 
 
+MergedPacket = tuple[Packet, ...]
+NeighbouringPacket = tuple[Packet, ...]
+HoppingPacket = tuple[Packet, Packet]
+
+
 class PacMan:
     """Pac(ket)Man(ager)
     Creates and manages ``Packet``s from a given ``HypergraphCircuit``
@@ -75,8 +80,8 @@ class PacMan:
     merged by 'neighbouring' packing and 'hopping' packing.
 
     NOTE: A hopping packet is only comprised of two ``Packet``s, neighbouring
-    packets are of any length greater than one and merged packets can be of
-    any non-zero length.
+    packets are of any length >= 2 and merged packets can be of
+    length >= 1.
 
     :param hypergraph_circuit: The ``HypergraphCircuit`` from which
     to build and identify ``Packet``s.
@@ -91,12 +96,12 @@ class PacMan:
     :param neighbouring_packets: A dictionary containing lists of ``Packet``
     tuples on each qubit. A tuple of ``Packet``s represents a group of packets
     that can be packed together via neighbouring packing.
-    :type neighbouring_packets: dict[Vertex, list[tuple[Packet, ...]]]
+    :type neighbouring_packets: dict[Vertex, list[NeighbouringPacket]]
     :param hopping_packets: A dictionary containing lists of ``Packet`` tuples
     than can be merged by hopping packing on each qubit.
     A tuple of ``Packet``s represents two packets that can be packed together
     via hopping packing.
-    :type hopping_packets: dict[Vertex, list[tuple[Packet, Packet]]]
+    :type hopping_packets: dict[Vertex, list[HoppingPacket]]
     :param merged_packets: A dictionary containing lists of ``Packet`` tuples
     than can be merged by neighbouring or hopping packing on each qubit.
     A tuple of ``Packet``s represents two packets that can be packed together,
@@ -110,12 +115,12 @@ class PacMan:
         self.placement: Placement = placement
         self.packets_by_qubit: dict[Vertex, list[Packet]] = dict()
         self.neighbouring_packets: dict[
-            Vertex, list[tuple[Packet, ...]]
+            Vertex, list[NeighbouringPacket]
         ] = dict()
         self.hopping_packets: dict[
-            Vertex, list[tuple[Packet, Packet]]
+            Vertex, list[HoppingPacket]
         ] = dict()
-        self.merged_packets: dict[Vertex, list[tuple[Packet, ...]]] = dict()
+        self.merged_packets: dict[Vertex, list[MergedPacket]] = dict()
         self.build_packets()
         self.identify_neighbouring_packets()
         self.identify_hopping_packets()
@@ -154,7 +159,7 @@ class PacMan:
             logger.debug(
                 f"Checking qubit vertex {qubit_vertex} for nghbrng packets."
             )
-            neighbouring_packets: list[tuple[Packet, ...]] = list()
+            neighbouring_packets: list[NeighbouringPacket] = list()
             considered_packet_list = []
             for packet in self.packets_by_qubit[qubit_vertex][:-1]:
                 if packet in considered_packet_list:
@@ -359,8 +364,8 @@ class PacMan:
         all_packets.sort(key=lambda x: x.packet_index)
         return all_packets
 
-    def get_all_merged_packets(self) -> list[tuple[Packet, ...]]:
-        merged_packets: list[tuple[Packet, ...]] = list()
+    def get_all_merged_packets(self) -> list[MergedPacket]:
+        merged_packets: list[MergedPacket] = list()
         for i in range(len(self.merged_packets.keys())):
             merged_packets.extend(self.merged_packets[i])
         return merged_packets
@@ -784,13 +789,13 @@ class PacMan:
 
     def get_containing_merged_packet(
         self, packet: Packet
-    ) -> tuple[Packet, ...]:
+    ) -> MergedPacket:
         """Given a ``Packet`` return the merged packet containing it.
 
         :param packet: The ``Packet`` of interest.
         :type packet: Packet
         :return: The containing merged packet.
-        :rtype: tuple[Packet, ...]
+        :rtype: MergedPacket
         """
         for merged_packet in self.merged_packets[packet.qubit_vertex]:
             if packet in merged_packet:
@@ -799,16 +804,16 @@ class PacMan:
         return containing_packet
 
     def get_connected_merged_packets(
-        self, merged_packet: tuple[Packet, ...]
-    ) -> set[tuple[Packet, ...]]:
+        self, merged_packet: MergedPacket
+    ) -> set[MergedPacket]:
         """Given a merged packet, find all its connected merged packets.
 
         :param merged_packet: The merged packet of interest
-        :type merged_packet: tuple[Packet, ...]
+        :type merged_packet: MergedPacket
         :return: The set of connected merged packets.
-        :rtype: set[tuple[Packet, ...]]
+        :rtype: set[MergedPacket]
         """
-        connected_merged_packets: set[tuple[Packet, ...]] = set()
+        connected_merged_packets: set[MergedPacket] = set()
         for packet in merged_packet:
             connected_merged_packets.update(
                 [
@@ -820,13 +825,13 @@ class PacMan:
         return connected_merged_packets
 
     def get_embedded_packets(
-        self, hopping_packet: tuple[Packet, Packet]
+        self, hopping_packet: HoppingPacket
     ) -> set[Packet]:
         """For a given hopping packet,
         find all the ``Packet``s embedded inside it.
 
         :param hopping_packet: The hopping packet of interest.
-        :type hopping_packet: tuple[Packet, Packet]
+        :type hopping_packet: HoppingPacket
         :return: Set of embedded packets.
         :rtype: set[Packet]
         """
@@ -845,7 +850,7 @@ class PacMan:
 
     def get_all_embedded_packets_for_qubit_vertex(
         self, qubit_vertex: Vertex
-    ) -> dict[tuple[Packet, Packet], set[Packet]]:
+    ) -> dict[HoppingPacket, set[Packet]]:
         """Get all the embedded packets on a given qubit ``Vertex``,
         with keys being the hopping packets that embed them.
 
@@ -853,7 +858,7 @@ class PacMan:
         :type qubit_vertex: Vertex
         :return: Dictionary of sets of embedded packets,
         keyed by their embedding hopping packets.
-        :rtype: dict[tuple[Packet, Packet], set[Packet]]
+        :rtype: dict[HoppingPacket, set[Packet]]
         """
         embedded_packets: dict = {}
         for hopping_packet in self.hopping_packets[qubit_vertex]:
@@ -864,7 +869,7 @@ class PacMan:
 
     def get_all_embedded_packets(
         self,
-    ) -> dict[Vertex, dict[tuple[Packet, Packet], set[Packet]]]:
+    ) -> dict[Vertex, dict[HoppingPacket, set[Packet]]]:
         """Get all the embedded packets.
 
         Nested dictionary keys follow:
@@ -872,7 +877,7 @@ class PacMan:
 
         :return: A nested dictionary leading to sets
         of all embedded ``Packet``s.
-        :rtype: dict[Vertex, dict[tuple[Packet, Packet], set[Packet]]]
+        :rtype: dict[Vertex, dict[HoppingPacket, set[Packet]]]
         """
         embedded_packets: dict = {}
         for qubit_vertex in self.hypergraph_circuit.get_qubit_vertices():
@@ -887,14 +892,14 @@ class PacMan:
 
     def get_hopping_packet_from_embedded_packet(
         self, embedded_packet: Packet
-    ) -> tuple[Packet, Packet]:
+    ) -> HoppingPacket:
         """Given a ``Packet`` that is embedded in a hopping packet,
         find that hopping packet.
 
         :param embedded_packet: The embedded ``Packet``.
         :type embedded_packet: Packet
         :return: The hopping packet that embeds it.
-        :rtype: tuple[Packet, Packet]
+        :rtype: HoppingPacket
         """
         for hopping_packet in self.hopping_packets[
             embedded_packet.qubit_vertex
@@ -977,7 +982,7 @@ class PacMan:
         assert self.is_bipartite_predicate(graph, edges, bipartitions)
         return graph, bipartitions[1]
 
-    def get_nx_graph_conflict(self, mvc: Optional[set[tuple[Packet, ...]]] = None):
+    def get_nx_graph_conflict(self, mvc: Optional[set[MergedPacket]] = None):
         """Get the NetworkX graph representing conflict edges.
         Nodes are hopping packets that represent conflicts.
         """
@@ -1020,13 +1025,13 @@ class PacMan:
         assert self.is_bipartite_predicate(graph, conflict_edges, bipartitions)
         return graph, bipartitions[1]
 
-    def get_mvc_merged_graph(self) -> set[tuple[Packet, ...]]:
+    def get_mvc_merged_graph(self) -> set[MergedPacket]:
         """Get the minimum vertex cover of the merged graph."""
         g, topnodes = self.get_nx_graph_merged()
         matching = bipartite.maximum_matching(g, top_nodes=topnodes)
         return bipartite.to_vertex_cover(g, matching, top_nodes=topnodes)
 
-    def get_mvc_neighbouring_graph(self) -> set[tuple[Packet, ...]]:
+    def get_mvc_neighbouring_graph(self) -> set[NeighbouringPacket]:
         """Get the minimum vertex cover of the neighbouring graph."""
         g, topnodes = self.get_nx_graph_neighbouring()
         matching = bipartite.maximum_matching(g, top_nodes=topnodes)
@@ -1034,18 +1039,18 @@ class PacMan:
 
     def get_conflict_edges_given_mvc(
         self,
-        potential_conflict_edges: set[frozenset[tuple[Packet, Packet]]],
-        mvc: set[tuple[Packet, ...]]
-    ) -> set[frozenset[tuple[Packet, Packet]]]:
+        potential_conflict_edges: set[frozenset[HoppingPacket]],
+        mvc: set[MergedPacket]
+    ) -> set[frozenset[HoppingPacket]]:
         """Given an MVC, find all the edges in the
         conflict graph that represent true conflicts.
 
         True conflicts means that both nodes of the edge are in the MVC.
 
         :param mvc: The minimum vertex cover to use to find true conflicts.
-        :type mvc: set[tuple[Packet, ...]]
+        :type mvc: set[MergedPacket]
         :return: Set of true conflict edges.
-        :rtype: set[tuple[Packet, ...]]
+        :rtype: set[MergedPacket]
         """
         true_conflicts = set()
         for u, v in potential_conflict_edges:
@@ -1058,7 +1063,7 @@ class PacMan:
 
     def get_conflict_edge(
         self, embedded_packet1: Packet, embedded_packet2: Packet
-    ) -> frozenset[tuple[Packet, Packet]]:
+    ) -> frozenset[HoppingPacket]:
         """Given two embedded packets, return a ``frozenset``
         that has the hopping packets that embed the packets as elements.
 
@@ -1075,11 +1080,11 @@ class PacMan:
 
     def assign_bipartitions(
         self, graph: nx.Graph
-    ) -> dict[int, set[tuple[Packet, ...]]]:
+    ) -> dict[int, set[MergedPacket]]:
         """Given a graph, for each connected component designate its nodes
         as top or bottom half
         """
-        bipartitions: dict[int, set[tuple[Packet, ...]]] = {
+        bipartitions: dict[int, set[MergedPacket]] = {
             0: set(),  # Bottom
             1: set(),  # Top
         }
@@ -1099,7 +1104,9 @@ class PacMan:
             (u, v) = edge
             predicate = (
                 predicate
-                and (u in bipartitions[0] and v in bipartitions[1])
-                or (v in bipartitions[0] and u in bipartitions[1])
+                and (
+                    (u in bipartitions[0] and v in bipartitions[1])
+                    or (v in bipartitions[0] and u in bipartitions[1])
+                )
             )
         return predicate
