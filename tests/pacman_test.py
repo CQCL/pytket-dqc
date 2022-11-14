@@ -16,26 +16,9 @@ cz = Op.create(OpType.CU1, 1)  # For the sake of convinience
 # Each part can be viewed visually in the ``pacman-example.ipynb``.
 
 # Build the big circuit comprising of these little parts.
-subcircuits = [
-]
+subcircuits = []
 
-subplacements = [
-]
-
-big_circ = Circuit(6)
-for subcircuit in subcircuits:
-    circ_big.add_circuit(subcircuit)
-big_h_circ = HypergraphCircuit(big_circ)
-
-big_placement = {}
-for i in range(6):
-    big_placement[i] = i // 2
-
-current_key = 6
-for subplacement in subplacements:
-    for i in [j for j in subplacement.keys() if j > 5].sort():
-        big_placement[current_key] = subplacement[i]
-        current_key += 1
+subplacements = []
 
 
 def test_build_packets():
@@ -54,9 +37,9 @@ def test_identify_neighbouring_packets_00():
 
     # Build circuit
     circ00 = Circuit(6)
-    circ00.add_gate(cz, [0,2])
+    circ00.add_gate(cz, [0, 2])
     circ00.Rz(0.3, 0)
-    circ00.add_gate(cz, [0,3])
+    circ00.add_gate(cz, [0, 3])
     subcircuits.append(circ00)
 
     # Make hypergraph of circuit
@@ -89,13 +72,13 @@ def test_identify_neighbouring_packets_01():
 
     # Build circuit
     circ01 = Circuit(6)
-    circ01.add_gate(cz, [0,2])
+    circ01.add_gate(cz, [0, 2])
     circ01.Rz(0.3, 0)
     # Note H Rz(1) H = H Z H = X, an anti-diagonal gate.
     circ01.H(0)
     circ01.Rz(1, 0)
     circ01.H(0)
-    circ01.add_gate(cz, [0,3])
+    circ01.add_gate(cz, [0, 3])
     subcircuits.append(circ01)
 
     # Make hypergraph of circuit
@@ -130,11 +113,12 @@ def test_identify_neighbouring_packets_02():
 
     # Build circuit
     circ02 = Circuit(6)
-    circ02.add_gate(cz, [0,2])
-    circ02.add_gate(cz, [0,4])
+    circ02.add_gate(cz, [0, 2])
+    circ02.add_gate(cz, [0, 4])
     circ02.Rz(0.5, 0)
-    circ02.add_gate(cz, [0,3])
-    circ02.add_gate(cz, [0,5])
+    circ02.add_gate(cz, [0, 3])
+    circ02.add_gate(cz, [0, 5])
+    subcircuits.append(circ02)
 
     # Make hypergraph of circuit
     h_circ02 = HypergraphCircuit(circ02)
@@ -170,11 +154,11 @@ def test_identify_hopping_packets_03():
 
     # Build circuit
     circ03 = Circuit(6)
-    circ03.add_gate(cz, [0,2])
+    circ03.add_gate(cz, [0, 2])
     circ03.H(0)
-    circ03.add_gate(cz, [0,3])
+    circ03.add_gate(cz, [0, 3])
     circ03.H(0)
-    circ03.add_gate(cz, [0,2])
+    circ03.add_gate(cz, [0, 2])
     subcircuits.append(circ03)
 
     # Make hypergraph of circuit
@@ -190,7 +174,11 @@ def test_identify_hopping_packets_03():
 
     assert pacman03.hopping_packets == {
         0: [(p0, p2)],
-        1: [], 2: [], 3: [], 4: [], 5: []
+        1: [],
+        2: [],
+        3: [],
+        4: [],
+        5: [],
     }
 
 
@@ -208,13 +196,13 @@ def test_identify_hopping_packets_04():
 
     # Build circuit
     circ04 = Circuit(6)
-    circ04.add_gate(cz, [0,2])
+    circ04.add_gate(cz, [0, 2])
     circ04.H(0)
-    circ04.add_gate(cz, [0,2])
+    circ04.add_gate(cz, [0, 2])
     circ04.Rz(1, 0)
-    circ04.add_gate(cz, [0,3])
+    circ04.add_gate(cz, [0, 3])
     circ04.H(0)
-    circ04.add_gate(cz, [0,2])
+    circ04.add_gate(cz, [0, 2])
     subcircuits.append(circ04)
 
     # Make hypergraph of circuit
@@ -228,8 +216,13 @@ def test_identify_hopping_packets_04():
 
     assert pacman04.hopping_packets == {
         0: [(p0, p3)],
-        1: [], 2: [], 3: [], 4: [], 5: []
+        1: [],
+        2: [],
+        3: [],
+        4: [],
+        5: [],
     }
+
 
 def test_identify_hopping_packets_05():
     # Custom placement
@@ -245,16 +238,16 @@ def test_identify_hopping_packets_05():
 
     # Build circuit
     circ05 = Circuit(6)
-    circ05.add_gate(cz, [0,2])
+    circ05.add_gate(cz, [0, 2])
     circ05.H(0)
-    circ05.add_gate(cz, [0,2])
+    circ05.add_gate(cz, [0, 2])
     # Note H Rz(1) H = H Z H = X, an anti-diagonal gate.
     circ05.H(0)
     circ05.Rz(1, 0)
     circ05.H(0)
-    circ05.add_gate(cz, [0,3])
+    circ05.add_gate(cz, [0, 3])
     circ05.H(0)
-    circ05.add_gate(cz, [0,2])
+    circ05.add_gate(cz, [0, 2])
     subcircuits.append(circ05)
 
     # Make hypergraph of circuit
@@ -268,8 +261,13 @@ def test_identify_hopping_packets_05():
 
     assert pacman05.hopping_packets == {
         0: [(p0, p3)],
-        1: [], 2: [], 3: [], 4: [], 5: []
+        1: [],
+        2: [],
+        3: [],
+        4: [],
+        5: [],
     }
+
 
 def test_identify_hopping_packets_06():
     # Custom placement
@@ -285,15 +283,15 @@ def test_identify_hopping_packets_06():
 
     # Build circuit
     circ06 = Circuit(6)
-    circ06.add_gate(cz, [0,2])
+    circ06.add_gate(cz, [0, 2])
     circ06.H(0)
-    circ06.add_gate(cz, [0,2])
+    circ06.add_gate(cz, [0, 2])
     circ06.H(0)
     circ06.Rz(0.27, 0)
     circ06.H(0)
-    circ06.add_gate(cz, [0,3])
+    circ06.add_gate(cz, [0, 3])
     circ06.H(0)
-    circ06.add_gate(cz, [0,2])
+    circ06.add_gate(cz, [0, 2])
     subcircuits.append(circ06)
 
     # Make hypergraph of circuit
@@ -307,8 +305,13 @@ def test_identify_hopping_packets_06():
 
     assert pacman06.hopping_packets == {
         0: [(p0, p3)],
-        1: [], 2: [], 3: [], 4: [], 5: []
+        1: [],
+        2: [],
+        3: [],
+        4: [],
+        5: [],
     }
+
 
 def test_identify_hopping_packets_07():
     # Custom placement
@@ -324,15 +327,15 @@ def test_identify_hopping_packets_07():
 
     # Build circuit
     circ07 = Circuit(6)
-    circ07.add_gate(cz, [0,2])
+    circ07.add_gate(cz, [0, 2])
     circ07.H(0)
-    circ07.add_gate(cz, [0,2])
+    circ07.add_gate(cz, [0, 2])
     circ07.Rz(0.5, 0)
     circ07.H(0)
     circ07.Rz(0.5, 0)
-    circ07.add_gate(cz, [0,3])
+    circ07.add_gate(cz, [0, 3])
     circ07.H(0)
-    circ07.add_gate(cz, [0,2])
+    circ07.add_gate(cz, [0, 2])
     subcircuits.append(circ07)
 
     # Make hypergraph of circuit
@@ -346,7 +349,11 @@ def test_identify_hopping_packets_07():
 
     assert pacman07.hopping_packets == {
         0: [(p0, p3)],
-        1: [], 2: [], 3: [], 4: [], 5: []
+        1: [],
+        2: [],
+        3: [],
+        4: [],
+        5: [],
     }
 
 
@@ -364,19 +371,19 @@ def test_identify_hopping_packets_08():
 
     # Build circuit
     circ08 = Circuit(6)
-    circ08.add_gate(cz, [0,2])
+    circ08.add_gate(cz, [0, 2])
     circ08.H(0)
     circ08.Rz(0.33, 0)
-    circ08.add_gate(cz, [0,2])
+    circ08.add_gate(cz, [0, 2])
     circ08.Rz(0.67, 0)
     circ08.H(0)
     circ08.Rz(0.27, 0)
     circ08.H(0)
     circ08.Rz(0.43847, 0)
-    circ08.add_gate(cz, [0,3])
+    circ08.add_gate(cz, [0, 3])
     circ08.Rz(1 - 0.43847, 0)
     circ08.H(0)
-    circ08.add_gate(cz, [0,2])
+    circ08.add_gate(cz, [0, 2])
     subcircuits.append(circ08)
 
     # Make hypergraph of circuit
@@ -390,7 +397,11 @@ def test_identify_hopping_packets_08():
 
     assert pacman08.hopping_packets == {
         0: [(p0, p3)],
-        1: [], 2: [], 3: [], 4: [], 5: []
+        1: [],
+        2: [],
+        3: [],
+        4: [],
+        5: [],
     }
 
 
@@ -408,13 +419,13 @@ def test_identify_hopping_packets_09():
 
     # Build circuit
     circ09 = Circuit(6)
-    circ09.add_gate(cz, [0,2])
+    circ09.add_gate(cz, [0, 2])
     circ09.H(0)
-    circ09.add_gate(cz, [0,2])
+    circ09.add_gate(cz, [0, 2])
     circ09.Rz(1, 0)
-    circ09.add_gate(cz, [0,4])
+    circ09.add_gate(cz, [0, 4])
     circ09.H(0)
-    circ09.add_gate(cz, [0,2])
+    circ09.add_gate(cz, [0, 2])
     subcircuits.append(circ09)
 
     # Make hypergraph of circuit
@@ -424,8 +435,13 @@ def test_identify_hopping_packets_09():
     pacman09 = PacMan(h_circ09, placement09)
 
     assert pacman09.hopping_packets == {
-        0: [], 1: [], 2: [], 3: [], 4: [], 5: []
-}
+        0: [],
+        1: [],
+        2: [],
+        3: [],
+        4: [],
+        5: [],
+    }
 
 
 def test_identify_hopping_packets_10():
@@ -442,13 +458,13 @@ def test_identify_hopping_packets_10():
 
     # Build circuit
     circ10 = Circuit(6)
-    circ10.add_gate(cz, [0,2])
+    circ10.add_gate(cz, [0, 2])
     circ10.H(0)
-    circ10.add_gate(cz, [0,2])
+    circ10.add_gate(cz, [0, 2])
     circ10.Rz(1, 0)
-    circ10.add_gate(cz, [0,1])
+    circ10.add_gate(cz, [0, 1])
     circ10.H(0)
-    circ10.add_gate(cz, [0,2])
+    circ10.add_gate(cz, [0, 2])
     subcircuits.append(circ10)
 
     # Make hypergraph of circuit
@@ -458,9 +474,135 @@ def test_identify_hopping_packets_10():
     pacman10 = PacMan(h_circ10, placement10)
 
     assert pacman10.hopping_packets == {
-        0: [], 1: [], 2: [], 3: [], 4: [], 5: []
-}
+        0: [],
+        1: [],
+        2: [],
+        3: [],
+        4: [],
+        5: [],
+    }
 
 
 def test_merge_packets():
-    assert True
+
+    big_circ = Circuit(6)
+    for subcircuit in subcircuits:
+        big_circ.add_circuit(subcircuit, list(range(6)))
+    big_h_circ = HypergraphCircuit(big_circ)
+
+    big_placement = {}
+    for i in range(6):
+        big_placement[i] = i // 2
+
+    current_key = 6
+    for subplacement in subplacements:
+        for i in sorted([j for j in subplacement.placement.keys() if j > 5]):
+            big_placement[current_key] = subplacement.placement[i]
+            current_key += 1
+    pacman = PacMan(big_h_circ, Placement(big_placement))
+
+    # Reference Packets
+    P0 = Packet(0, 0, 1, [6])
+    P1 = Packet(1, 0, 1, [7, 8])
+    P2 = Packet(2, 0, 1, [9, 10])
+    P3 = Packet(3, 0, 2, [11])
+    P4 = Packet(4, 0, 1, [12, 14])
+    P5 = Packet(5, 0, 2, [13])
+    P6 = Packet(6, 0, 1, [15])
+    P7 = Packet(7, 0, 1, [16, 17])
+    P8 = Packet(8, 0, 1, [18])
+    P9 = Packet(9, 0, 1, [19])
+    P10 = Packet(10, 0, 1, [20, 21])
+    P11 = Packet(11, 0, 1, [22])
+    P12 = Packet(12, 0, 1, [23])
+    P13 = Packet(13, 0, 1, [24, 25])
+    P14 = Packet(14, 0, 1, [26])
+    P15 = Packet(15, 0, 1, [27])
+    P16 = Packet(16, 0, 1, [28, 29])
+    P17 = Packet(17, 0, 1, [30])
+    P18 = Packet(18, 0, 1, [31])
+    P19 = Packet(19, 0, 1, [32, 33])
+    P20 = Packet(20, 0, 1, [34])
+    P21 = Packet(21, 0, 1, [35])
+    P22 = Packet(22, 0, 1, [36, 37])
+    P23 = Packet(23, 0, 1, [38])
+    P24 = Packet(24, 0, 2, [39])
+    P25 = Packet(25, 0, 1, [40, 41])
+    P26 = Packet(26, 0, 1, [42])
+    P27 = Packet(27, 0, 0, [43])
+    P28 = Packet(28, 0, 1, [44])
+    P29 = Packet(29, 1, 0, [43])
+    P30 = Packet(
+        30,
+        2,
+        0,
+        [
+            6,
+            8,
+            10,
+            14,
+            16,
+            17,
+            18,
+            20,
+            21,
+            22,
+            24,
+            25,
+            26,
+            28,
+            29,
+            30,
+            32,
+            33,
+            34,
+            36,
+            37,
+            38,
+            40,
+            41,
+            42,
+            44,
+        ],
+    )
+    P31 = Packet(
+        31,
+        3,
+        0,
+        [
+            7,
+            9,
+            12,
+            15,
+            19,
+            23,
+            27,
+            31,
+            35,
+        ],
+    )
+    P32 = Packet(32, 4, 0, [11, 39])
+    P33 = Packet(33, 5, 0, [13])
+
+    merged_packets_ref = {
+        0: [
+            (P0, P1, P2, P4, P7, P10, P13, P16, P19, P22),
+            (P3, P5),
+            (P6, P8, P9, P11, P12, P14),
+            (P15, P17),
+            (P18, P20),
+            (P21, P23),
+            (P24,),
+            (P25,),
+            (P26,),
+            (P27,),
+            (P28,),
+        ],
+        1: [(P29,)],
+        2: [(P30,)],
+        3: [(P31,)],
+        4: [(P32,)],
+        5: [(P33,)],
+    }
+
+    assert merged_packets_ref == pacman.merged_packets
