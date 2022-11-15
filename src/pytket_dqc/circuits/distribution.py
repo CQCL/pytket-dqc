@@ -180,19 +180,18 @@ class Distribution:
                         # NOTE: by the condition of H-embeddability, all gates
                         # that are being embedded simultaneously act on the
                         # same two distinct servers.
-                        connected_servers = {home_server, remote_server}
+                        connected_servers = connected_servers.intersection(
+                            {home_server, remote_server}
+                        )
                         assert home_server != remote_server
 
+                    # If the command does not match the vertex, then this
+                    # CU1 gate is meant to be D-embedded
+                    elif command != dist_circ.get_gate_of_vertex(vertices[0]):
+                        pass  # Nothing needs to be done
                     else:  # Gate to be distributed (or already local)
-
                         # Get the server where the gate is to be implemented
                         gate_vertex = vertices.pop(0)
-                        assert (
-                            dist_circ._vertex_circuit_map[gate_vertex][
-                                "command"
-                            ]
-                            == command
-                        )
                         gate_server = placement_map[gate_vertex]
                         # If gate_server doesn't have access to shared_qubit
                         # update the cost, adding the necessary ebits
@@ -222,6 +221,8 @@ class Distribution:
                             # would be shorter => contradiction
                             connected_servers.update(best_path)
                             cost += len(best_path) - 1
+            # Sanity check: all gate vertices have been considered
+            assert not vertices
             return cost
 
     def get_qubit_mapping(self) -> dict[Qubit, Qubit]:
@@ -575,8 +576,6 @@ class Distribution:
 
             if cmd.op.type == OpType.H:
                 q = cmd.qubits[0]
-                # Append the gate to ``new_circ``
-                new_circ.H(qubit_mapping[q])
                 # The presence of an H gate indicates the beginning or end
                 # of an H-embedding on the qubit
                 #
@@ -684,6 +683,9 @@ class Distribution:
                             linkman.link_qubit_dict[(q, rmt_server)] = q_link
                             # Append the correction Hadamard to the circuit
                             new_circ.H(q_link)
+
+                # Append the gate to ``new_circ``
+                new_circ.H(qubit_mapping[q])
 
             elif cmd.op.type == OpType.Rz:
                 q = cmd.qubits[0]

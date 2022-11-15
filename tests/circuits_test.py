@@ -77,7 +77,7 @@ def test_embedding_and_not_embedding():
 
     pytket_circ = distribution.to_pytket_circuit()
 
-    check_equivalence(
+    assert check_equivalence(
         circ, pytket_circ, distribution.get_qubit_mapping()
     )
 
@@ -906,6 +906,45 @@ def test_to_pytket_circuit_circ_with_embeddings():
     )
 
 
+def test_to_pytket_circuit_mixing_H_and_D_embeddings():
+
+    network = NISQNetwork([[0, 1], [1, 2]], {0: [0], 1: [1], 2: [2, 3]})
+
+    placement = Placement(
+        {0: 0, 1: 1, 2: 2, 3: 2, 4: 0, 5: 1, 6: 1, 7: 1, 8: 2}
+    )
+
+    circ = Circuit(4)
+    circ.add_gate(OpType.CU1, 0.1234, [0, 1])  # Gate 4
+    circ.H(1)
+    circ.add_gate(OpType.CU1, 1.0, [1, 2])  # Gate 5, H-embedded
+    circ.add_gate(OpType.CU1, 1.0, [1, 3])  # Gate 6, H-embedded
+    circ.H(1)
+    circ.add_gate(OpType.CU1, 0.1234, [1, 3])  # Gate 7, D-embedded
+    circ.add_gate(OpType.CU1, 0.1234, [1, 2])  # Gate 8
+
+    hyp_circ = HypergraphCircuit(circ)
+    hyp_circ.hyperedge_list = []
+    hyp_circ.hyperedge_dict = {v: [] for v in hyp_circ.vertex_list}
+    hyp_circ.vertex_neighbours = {v: set() for v in hyp_circ.vertex_list}
+
+    hyp_circ.add_hyperedge([0, 4])
+    hyp_circ.add_hyperedge([1, 4, 8])  # Mixing H- and D-embeddings
+    hyp_circ.add_hyperedge([1, 5, 6])
+    hyp_circ.add_hyperedge([1, 7])
+    hyp_circ.add_hyperedge([2, 5, 8])
+    hyp_circ.add_hyperedge([3, 6, 7])
+
+    distribution = Distribution(hyp_circ, placement, network)
+    assert distribution.is_valid()
+
+    circ_with_dist = distribution.to_pytket_circuit()
+
+    assert check_equivalence(
+        circ, circ_with_dist, distribution.get_qubit_mapping()
+    )
+
+
 def test_to_pytket_circuit_with_hyperedge_requiring_euler():
     # The circuit given below has a hyperedge between the first and last
     # CU1 gates. The gates in between can all be embedded but, to do so,
@@ -1196,7 +1235,7 @@ def test_get_hyperedge_subcircuit():
 
     # The hyperedges to test
     hyp_1 = Hyperedge([1, 3, 4, 6])  # This one is in hyp_circ
-    hyp_2 = Hyperedge([0, 3, 5])  # This is a merge of two (has embeddings)
+    hyp_2 = Hyperedge([0, 3, 6])  # This is a merge of two (has embeddings)
 
     # Testing for hyp_1
     test_c = Circuit(3)
@@ -1211,10 +1250,42 @@ def test_get_hyperedge_subcircuit():
     test_c.add_gate(OpType.CU1, 0.1, [0, 1])
     test_c.Rz(0.2, 0)
     test_c.H(0)
-    test_c.Rz(1, 0)
     test_c.add_gate(OpType.CU1, 1.0, [0, 2])
+    test_c.Rz(1, 0)
+    test_c.H(0)
+    test_c.add_gate(OpType.CU1, 0.4, [0, 1])
 
     assert test_c.get_commands() == hyp_circ.get_hyperedge_subcircuit(hyp_2)
+
+
+def test_get_hyperedge_subcircuit_complex():
+    # This test comes from a larger test that failed in
+    # ``get_hyperedge_subcircuit``. It should be fixed now
+    circ = Circuit(4)
+    circ.add_gate(OpType.CU1, 0.1234, [1, 2])  # Gate 4
+    circ.add_gate(OpType.CU1, 0.1234, [0, 2])  # Gate 5
+    circ.add_gate(OpType.CU1, 0.1234, [2, 3])  # Gate 6
+    circ.add_gate(OpType.CU1, 0.1234, [0, 3])  # Gate 7
+    circ.H(0).H(2).Rz(0.1234, 3)
+    circ.add_gate(OpType.CU1, 1.0, [0, 2])  # Gate 8
+    circ.add_gate(OpType.CU1, 1.0, [0, 3])  # Gate 9
+    circ.add_gate(OpType.CU1, 1.0, [1, 2])  # Gate 10
+    circ.H(0).H(2).Rz(0.1234, 0)
+    circ.add_gate(OpType.CU1, 0.1234, [0, 1])  # Gate 11
+    circ.add_gate(OpType.CU1, 0.1234, [0, 3])  # Gate 12
+    circ.add_gate(OpType.CU1, 1.0, [1, 2])  # Gate 13
+
+    hyp_circ = HypergraphCircuit(circ)
+
+    hedge = Hyperedge([1, 4, 10, 13])
+    hyp_circ.get_hyperedge_subcircuit(hedge)
+    test_c = Circuit(3)
+    test_c.add_gate(OpType.CU1, 0.1234, [1, 2])  # Gate 4
+    test_c.add_gate(OpType.CU1, 1.0, [1, 2])  # Gate 10
+    test_c.add_gate(OpType.CU1, 0.1234, [0, 1])  # Gate 11
+    test_c.add_gate(OpType.CU1, 1.0, [1, 2])  # Gate 13
+
+    assert test_c.get_commands() == hyp_circ.get_hyperedge_subcircuit(hedge)
 
 
 def test_requires_h_embedded_cu1():
