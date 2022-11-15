@@ -96,6 +96,7 @@ class Hypergraph:
                     if vertex not in vertices
                 ]
             )
+        vertices.sort()
         weight = to_merge_hyperedge_list[0].weight
         hyperedge_list_index = min(
             self.hyperedge_list.index(hyperedge)

@@ -8,6 +8,69 @@ from pytket_dqc.circuits.hypergraph import Hyperedge
 from pytket_dqc.refiners import SequentialDTypeMerge
 
 
+def test_sequential_merge_d_type_intertwined():
+
+    test_network = NISQNetwork(
+        server_coupling=[[0, 1], [1, 2]],
+        server_qubits={0: [0], 1: [1], 2: [2]}
+    )
+
+    test_circuit = Circuit(3)
+
+    test_circuit.add_gate(OpType.CU1, 1.0, [0, 1])
+    test_circuit.add_gate(OpType.CU1, 1.0, [1, 2])
+
+    test_circuit.H(1)
+    test_circuit.add_gate(OpType.CU1, 1.0, [1, 2])
+    test_circuit.H(1)
+
+    test_circuit.add_gate(OpType.CU1, 1.0, [1, 0])
+
+    test_hyp_circuit = HypergraphCircuit(test_circuit)
+
+    test_hyp_circuit.vertex_neighbours = {
+        i: set() for i in test_hyp_circuit.vertex_list
+    }
+    test_hyp_circuit.hyperedge_list = []
+    test_hyp_circuit.hyperedge_dict = {
+        i: [] for i in test_hyp_circuit.vertex_list
+    }
+
+    new_hyperedge_list = [
+        [0, 3, 6],
+        [1, 3, 6],
+        [1, 4],
+        [1, 5],
+        [2, 4, 5],
+    ]
+
+    for new_hyperedge in new_hyperedge_list:
+        test_hyp_circuit.add_hyperedge(new_hyperedge)
+
+    test_placement = Placement({0: 0, 1: 1, 2: 2, 3: 2, 4: 2, 5: 2, 6: 0})
+    distribution = Distribution(
+        circuit=test_hyp_circuit,
+        placement=test_placement,
+        network=test_network
+    )
+
+    assert distribution.cost() == 6
+
+    refiner = SequentialDTypeMerge()
+    refiner.refine(distribution)
+
+    assert distribution.cost() == 5
+
+    ideal_hyperedge_list = [
+        Hyperedge(vertices=[0, 3, 6], weight=1),
+        Hyperedge(vertices=[1, 3, 4, 6], weight=1),
+        Hyperedge(vertices=[1, 5], weight=1),
+        Hyperedge(vertices=[2, 4, 5], weight=1)
+    ]
+
+    assert distribution.circuit.hyperedge_list == ideal_hyperedge_list
+
+
 def test_sequential_merge_d_type_complex_circuit():
 
     test_network = NISQNetwork(
