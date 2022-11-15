@@ -989,6 +989,53 @@ def test_to_pytket_circuit_circ_with_embeddings_2():
     )
 
 
+def test_to_pytket_circuit_with_D_embedding():
+
+    test_network = NISQNetwork(
+        server_coupling=[[0, 1], [1, 2]],
+        server_qubits={0: [0], 1: [1], 2: [2]},
+    )
+
+    test_circuit = Circuit(3)
+
+    test_circuit.add_gate(OpType.CU1, 1.0, [0, 1])
+    test_circuit.add_gate(OpType.CU1, 1.0, [1, 2])
+    test_circuit.add_gate(OpType.CU1, 1.0, [1, 0])
+
+    test_hyp_circuit = HypergraphCircuit(test_circuit)
+
+    test_hyp_circuit.vertex_neighbours = {
+        i: set() for i in test_hyp_circuit.vertex_list
+    }
+    test_hyp_circuit.hyperedge_list = []
+    test_hyp_circuit.hyperedge_dict = {
+        i: [] for i in test_hyp_circuit.vertex_list
+    }
+
+    new_hyperedge_list = [
+        [0, 3, 5],
+        [1, 3, 5],
+        [1, 4],  # D-embedded gate
+        [2, 4],
+    ]
+
+    for new_hyperedge in new_hyperedge_list:
+        test_hyp_circuit.add_hyperedge(new_hyperedge)
+
+    test_placement = Placement({0: 0, 1: 1, 2: 2, 3: 0, 4: 2, 5: 0})
+
+    distribution = Distribution(
+        circuit=test_hyp_circuit,
+        placement=test_placement,
+        network=test_network,
+    )
+
+    circ_with_dist = distribution.to_pytket_circuit()
+    assert check_equivalence(
+        test_circuit, circ_with_dist, distribution.get_qubit_mapping()
+    )
+
+
 def test_to_pytket_circuit_mixing_H_and_D_embeddings():
 
     network = NISQNetwork([[0, 1], [1, 2]], {0: [0], 1: [1], 2: [2, 3]})
