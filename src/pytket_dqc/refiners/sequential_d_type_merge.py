@@ -9,12 +9,12 @@ class SequentialDTypeMerge(Refiner):
     """
 
     def refine(self, distribution: Distribution):
-        """Merges neighbouring packets when no Hadamard act between them
-        Packets concerning a particular qubit are
-        all merged where possible.
+        """Merges neighbouring packets when no Hadamard act between them.
+        A hyperedge may be merged with a hyperedge it embeds, again if no
+        Hadamard gate prevents this. Packets concerning a particular qubit
+        are all merged where possible.
 
-        :param distribution: Distribution whose packets should be
-            merged.
+        :param distribution: Distribution whose packets should be merged.
         :type distribution: Distribution
         """
 
@@ -28,13 +28,13 @@ class SequentialDTypeMerge(Refiner):
                 qubit_vertex
             ].copy()
 
-            # iterates through list of hyperedges. If the first element in
+            # Iterates through list of hyperedges. If the first element in
             # list can be merged with the next, do so, add the merged
             # hyperedge to the start of the list, and remove the two original
             # hyperedges. If it cannot be merged with the next, remove it
             # or the second element from the list. The second is removed in
             # the case where the first hops over the second.
-            # Repear until the list is empty.
+            # Repeat until the list is empty.
             while len(hedge_list) >= 2:
 
                 # Hyperedges to try to merge.
@@ -44,6 +44,8 @@ class SequentialDTypeMerge(Refiner):
                 hedge_one_gates = gain_mgr.distribution.circuit.get_gate_vertices(hedge_one)  # noqa: E501
                 hedge_two_gates = gain_mgr.distribution.circuit.get_gate_vertices(hedge_two)  # noqa: E501
 
+                # Gates intermediate between the fist gate in hedge_two,
+                # and the last gate in hedge_one which predeeds it.
                 intermediate_commands = gain_mgr.distribution.circuit.get_intermediate_commands(  # noqa: E501
                     first_vertex=max(
                         vertex for vertex in hedge_one_gates
@@ -53,6 +55,8 @@ class SequentialDTypeMerge(Refiner):
                     qubit_vertex=qubit_vertex
                 )
 
+                # If there are no Hadamard gates preventing the merge, and
+                # it it beneficial to do so, merge the hyperedges.
                 if OpType.H not in [
                     command.op.type for command in intermediate_commands
                 ] and gain_mgr.merge_hyperedge_gain(
@@ -67,7 +71,7 @@ class SequentialDTypeMerge(Refiner):
                     del hedge_list[:2]
                     hedge_list.insert(0, new_hyperedge)
 
-                # Remove whichever of the hyperedges has the gate occurring
+                # Keep whichever of the hyperedges has the gate occurring
                 # latest in the circuit.
                 elif max(hedge_one_gates) < max(hedge_two_gates):
                     hedge_list.pop(0)
