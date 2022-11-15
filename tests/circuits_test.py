@@ -926,7 +926,7 @@ def test_to_pytket_circuit_circ_with_embeddings_2():
     circ.add_gate(OpType.CU1, 0.1234, [0, 3])
     circ.add_gate(OpType.CU1, 1.0, [1, 2])
 
-    placement = Placement({0: 1, 1: 1, 2: 2, 3: 4, 4: 1, 10: 2, 13: 2, 5: 1, 8: 2, 7: 1, 9: 1, 12: 1, 6: 2, 11: 1})
+    placement = Placement({0: 1, 1: 1, 2: 2, 3: 4, 4: 1, 5: 1, 6: 2, 7: 1, 8: 2, 9: 1, 10: 2, 11: 1, 12: 1, 13: 2})
 
     hyp_circ = HypergraphCircuit(circ)
     hyp_circ.hyperedge_list = []
@@ -950,6 +950,21 @@ def test_to_pytket_circuit_circ_with_embeddings_2():
 
     distribution = Distribution(hyp_circ, placement, network)
     assert distribution.is_valid()
+
+    assert distribution.hyperedge_cost(Hyperedge([0, 5])) == 0
+    assert distribution.hyperedge_cost(Hyperedge([0, 7])) == 0
+    assert distribution.hyperedge_cost(Hyperedge([0, 8])) == 2
+    assert distribution.hyperedge_cost(Hyperedge([0, 9])) == 0
+    assert distribution.hyperedge_cost(Hyperedge([0, 11])) == 0
+    assert distribution.hyperedge_cost(Hyperedge([0, 12])) == 0
+    assert distribution.hyperedge_cost(Hyperedge([1, 4, 10, 13])) == 2
+    assert distribution.hyperedge_cost(Hyperedge([1, 11])) == 0
+    assert distribution.hyperedge_cost(Hyperedge([2, 4, 5])) == 2
+    assert distribution.hyperedge_cost(Hyperedge([2, 6])) == 0
+    assert distribution.hyperedge_cost(Hyperedge([2, 8, 10])) == 0
+    assert distribution.hyperedge_cost(Hyperedge([2, 13])) == 0
+    assert distribution.hyperedge_cost(Hyperedge([3, 6])) == 3
+    assert distribution.hyperedge_cost(Hyperedge([3, 7, 9, 12])) == 3
 
     circ_with_dist = distribution.to_pytket_circuit()
 
