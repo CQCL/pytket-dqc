@@ -5,10 +5,10 @@ from pytket_dqc import HypergraphCircuit
 from pytket_dqc.placement import Placement
 from pytket_dqc.circuits.distribution import Distribution
 from pytket_dqc.circuits.hypergraph import Hyperedge
-from pytket_dqc.refiners import SequentialMerge
+from pytket_dqc.refiners import SequentialDTypeMerge
 
 
-def test_merge_d_type_complex_circuit():
+def test_sequential_merge_d_type_complex_circuit():
 
     test_network = NISQNetwork(
         server_coupling=[[0, 1], [1, 2], [1, 3]],
@@ -80,7 +80,7 @@ def test_merge_d_type_complex_circuit():
 
     assert distribution.cost() == 12
 
-    refiner = SequentialMerge()
+    refiner = SequentialDTypeMerge()
     refiner.refine(distribution)
 
     assert distribution.cost() == 10
@@ -98,7 +98,7 @@ def test_merge_d_type_complex_circuit():
     assert distribution.circuit.hyperedge_list == ideal_hyperedge_list
 
 
-def test_merge_d_type_only_CZ():
+def test_sequential_merge_d_type_only_CZ():
 
     network = NISQNetwork(
         server_coupling=[[0, 1], [1, 2]],
@@ -132,13 +132,13 @@ def test_merge_d_type_only_CZ():
     )
     assert distribution.cost() == 4
 
-    refiner = SequentialMerge()
+    refiner = SequentialDTypeMerge()
     refiner.refine(distribution)
 
     assert distribution.cost() == 2
 
 
-def test_merge_d_type_no_new_hyperedges():
+def test_sequential_merge_d_type_no_new_hyperedges():
 
     network = NISQNetwork(
         server_coupling=[[0, 1], [1, 2]],
@@ -181,7 +181,7 @@ def test_merge_d_type_no_new_hyperedges():
 
     assert distribution.circuit.hyperedge_list == hyperedge_list
 
-    refiner = SequentialMerge()
+    refiner = SequentialDTypeMerge()
     refiner.refine(distribution)
 
     assert distribution.circuit.hyperedge_list == hyperedge_list
