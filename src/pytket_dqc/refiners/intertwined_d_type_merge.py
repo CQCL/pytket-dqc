@@ -91,12 +91,5 @@ class IntertwinedDTypeMerge(Refiner):
                             [first_hedge, intertwined_hedge]
                         )
                         del hedge_list[hedge_list.index(intertwined_hedge)]
-                        # del hedge_list[0]
-                        # hedge_list.insert(0, new_first_hedge)
-                        # merged = True
-                        # break # never use break statements kids
-                
-                # if not merged:
-                #     del hedge_list[0]
 
 
