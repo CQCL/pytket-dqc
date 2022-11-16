@@ -13,16 +13,6 @@ def test_sequential_merge_d_type_backwards_meregable():
     # In particular there are hyperedges which could be merged
     # but are missed by this greedy approach.
 
-    ideal_hyperedge_list = [
-        Hyperedge(vertices=[0, 4, 7, 8, 11], weight=1),
-        Hyperedge(vertices=[1, 4, 7], weight=1),
-        Hyperedge(vertices=[1, 6, 10], weight=1),
-        Hyperedge(vertices=[1, 8, 11], weight=1),
-        Hyperedge(vertices=[1, 9], weight=1),
-        Hyperedge(vertices=[2, 9], weight=1),
-        Hyperedge(vertices=[3, 5, 6, 10], weight=1),
-    ]
-
     test_network = NISQNetwork(
         server_coupling=[[0, 1], [1, 2], [1, 3]],
         server_qubits={0: [0], 1: [1], 2: [2], 3: [3]}
@@ -57,13 +47,17 @@ def test_sequential_merge_d_type_backwards_meregable():
     new_hyperedge_list = [
         [0, 4, 7, 8, 11],
         [1, 4, 7],
+        [1, 5],
         [1, 6, 10],
         [1, 8, 11],
         [1, 9],
         [2, 9],
         [3, 5, 6, 10],
     ]
-
+    ideal_hyperedge_list = [
+        Hyperedge(vertices=vertices, weight=1)
+        for vertices in new_hyperedge_list
+    ]
     for new_hyperedge in new_hyperedge_list:
         test_hyp_circuit.add_hyperedge(new_hyperedge)
 
@@ -90,13 +84,14 @@ def test_sequential_merge_d_type_backwards_meregable():
         network=test_network,
     )
 
-    assert distribution.cost() == 7
+    assert distribution.cost() == 8
     assert distribution.circuit.hyperedge_list == ideal_hyperedge_list
+    distribution.to_pytket_circuit()
 
     refiner = SequentialDTypeMerge()
     refiner.refine(distribution)
 
-    assert distribution.cost() == 7
+    assert distribution.cost() == 8
     assert distribution.circuit.hyperedge_list == ideal_hyperedge_list
 
 
