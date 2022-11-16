@@ -12,3 +12,9 @@ Refiners
 .. autoclass:: pytket_dqc.refiners.IntertwinedDTypeMerge
 
     .. automethod:: IntertwinedDTypeMerge.refine
+
+.. autoclass:: pytket_dqc.refiners.RepeatRefiner
+
+    .. automethod:: RepeatRefiner.__init__
+
+    .. automethod:: RepeatRefiner.refine

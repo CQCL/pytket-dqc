@@ -5,7 +5,11 @@ from pytket_dqc import HypergraphCircuit
 from pytket_dqc.placement import Placement
 from pytket_dqc.circuits.distribution import Distribution
 from pytket_dqc.circuits.hypergraph import Hyperedge
-from pytket_dqc.refiners import SequentialDTypeMerge, IntertwinedDTypeMerge
+from pytket_dqc.refiners import (
+    SequentialDTypeMerge,
+    IntertwinedDTypeMerge,
+    RepeatRefiner
+)
 
 
 intertwined_test_network = NISQNetwork(
@@ -59,6 +63,50 @@ intertwined_test_placement = Placement(
         11: 0
     }
 )
+
+def test_repeat_merge_d_type_backwards_meregable():
+    # Note that this test identifies the limits of SequentialDTypeMerge.
+    # In particular there are hyperedges which could be merged
+    # but are missed by this greedy approach.
+
+    test_hyp_circuit = HypergraphCircuit(intertwined_test_circuit)
+
+    test_hyp_circuit.vertex_neighbours = {
+        i: set() for i in test_hyp_circuit.vertex_list
+    }
+    test_hyp_circuit.hyperedge_list = []
+    test_hyp_circuit.hyperedge_dict = {
+        i: [] for i in test_hyp_circuit.vertex_list
+    }
+
+    for new_hyperedge in intertwined_hyperedge_vertex_list:
+        test_hyp_circuit.add_hyperedge(new_hyperedge)
+
+    distribution = Distribution(
+        circuit=test_hyp_circuit,
+        placement=intertwined_test_placement,
+        network=intertwined_test_network,
+    )
+
+    assert distribution.cost() == 8
+    assert distribution.circuit.hyperedge_list == intertwined_hyperedge_list
+
+    refiner = IntertwinedDTypeMerge()
+    refiner = RepeatRefiner(refiner)
+    refiner.refine(distribution)
+
+    assert distribution.cost() == 8
+    # Note that repeating the intertwined refiner results in fewer
+    # remaining hyperedges than does using the intertwined refiner
+    # only once.
+    assert distribution.circuit.hyperedge_list == [
+        Hyperedge(vertices=[0, 4, 7, 8, 11], weight=1),
+        Hyperedge(vertices=[1, 4, 6, 7, 9, 10], weight=1),
+        Hyperedge(vertices=[1, 5], weight=1),
+        Hyperedge(vertices=[1, 8, 11], weight=1),
+        Hyperedge(vertices=[2, 9], weight=1),
+        Hyperedge(vertices=[3, 5, 6, 10], weight=1),
+    ]
 
 def test_intertwined_merge_d_type_backwards_meregable():
     # Note that this test identifies the limits of SequentialDTypeMerge.

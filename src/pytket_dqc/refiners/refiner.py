@@ -8,5 +8,5 @@ class Refiner(ABC):
     """
 
     @abstractmethod
-    def refine(self, distribution: Distribution) -> None:
+    def refine(self, distribution: Distribution) -> bool:
         pass

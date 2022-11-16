@@ -8,7 +8,7 @@ class SequentialDTypeMerge(Refiner):
     """Refiner merging sequentially neighbouring packets
     """
 
-    def refine(self, distribution: Distribution):
+    def refine(self, distribution: Distribution) -> bool:
         """Merges neighbouring packets when no Hadamard act between them.
         A hyperedge may be merged with a hyperedge it embeds, again if no
         Hadamard gate prevents this. Packets concerning a particular qubit
@@ -19,6 +19,7 @@ class SequentialDTypeMerge(Refiner):
         """
 
         gain_mgr = GainManager(initial_distribution=distribution)
+        refinement_made = False
 
         # Iterate through all qubits, merging packets.
         for qubit_vertex in gain_mgr.distribution.circuit.get_qubit_vertices():
@@ -70,6 +71,7 @@ class SequentialDTypeMerge(Refiner):
                     # Remove old and add new hyperedges
                     del hedge_list[:2]
                     hedge_list.insert(0, new_hyperedge)
+                    refinement_made = True
 
                 # Keep whichever of the hyperedges has the gate occurring
                 # latest in the circuit.
@@ -79,3 +81,4 @@ class SequentialDTypeMerge(Refiner):
                     hedge_list.pop(1)
 
         assert gain_mgr.distribution.is_valid()
+        return refinement_made

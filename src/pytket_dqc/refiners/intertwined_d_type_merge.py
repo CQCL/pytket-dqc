@@ -6,9 +6,10 @@ from pytket import OpType
 
 class IntertwinedDTypeMerge(Refiner):
 
-    def refine(self, distribution: Distribution):
+    def refine(self, distribution: Distribution) -> bool:
 
         gain_mgr = GainManager(initial_distribution=distribution)
+        refinement_made = False
 
         # Iterate through all qubits, merging packets.
         for qubit_vertex in gain_mgr.distribution.circuit.get_qubit_vertices():
@@ -91,5 +92,9 @@ class IntertwinedDTypeMerge(Refiner):
                             [first_hedge, intertwined_hedge]
                         )
                         del hedge_list[hedge_list.index(intertwined_hedge)]
+                        refinement_made = True
+
+        assert gain_mgr.distribution.is_valid()
+        return refinement_made
 
 
