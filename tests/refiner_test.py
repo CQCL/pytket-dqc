@@ -86,7 +86,7 @@ def test_sequential_merge_d_type_backwards_meregable():
 
     assert distribution.cost() == 8
     assert distribution.circuit.hyperedge_list == ideal_hyperedge_list
-    distribution.to_pytket_circuit()
+    # distribution.to_pytket_circuit()
 
     refiner = SequentialDTypeMerge()
     refiner.refine(distribution)
