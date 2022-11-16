@@ -124,6 +124,37 @@ class HypergraphCircuit(Hypergraph):
             hyperedge_dict_index=hyperedge_dict_index,
         )
 
+    def merge_hyperedge(
+        self,
+        to_merge_hyperedge_list: list[Hyperedge]
+    ) -> Hyperedge:
+        """Wrapper around `Hyperedge.merge_hyperedge` adding some checks.
+        Adds no additional functionality.
+        """
+
+        new_hyperedge = super().merge_hyperedge(
+            to_merge_hyperedge_list=to_merge_hyperedge_list
+        )
+        self._sorted_hedges_predicate()
+
+        return new_hyperedge
+
+    def split_hyperedge(
+        self,
+        old_hyperedge: Hyperedge,
+        new_hyperedge_list: list[Hyperedge]
+    ):
+        """Wrapper around `Hyperedge.split_hyperedge` adding some checks.
+        Adds no additional functionality.
+        """
+
+        super().split_hyperedge(
+            old_hyperedge=old_hyperedge,
+            new_hyperedge_list=new_hyperedge_list
+        )
+
+        self._sorted_hedges_predicate()
+
     def add_qubit_vertex(self, vertex: Vertex, qubit: Qubit):
         """Add a vertex to the underlying hypergraph which corresponds to a
         qubit. Adding vertices in this way allow for the distinction between

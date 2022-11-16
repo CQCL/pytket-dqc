@@ -252,7 +252,7 @@ def test_hypergraph_merge_hyperedge():
         vertices=[Vertex(0), Vertex(1)], weight=1
     )
     merged_hyperedge_two = Hyperedge(
-        vertices=[Vertex(1), Vertex(2), Vertex(0)], weight=1
+        vertices=[Vertex(0), Vertex(1), Vertex(2)], weight=1
     )
 
     hypergraph.merge_hyperedge(
