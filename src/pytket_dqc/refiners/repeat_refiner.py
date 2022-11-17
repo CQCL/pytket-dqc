@@ -1,6 +1,7 @@
 from .refiner import Refiner
 from pytket_dqc.circuits.distribution import Distribution
 
+
 class RepeatRefiner(Refiner):
 
     def __init__(self, refiner: Refiner):
@@ -13,4 +14,4 @@ class RepeatRefiner(Refiner):
         while refinement_made:
             refinement_made = self.refiner.refine(distribution)
 
-        return self.refiner.refine(distribution)
+        return refinement_made

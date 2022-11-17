@@ -46,7 +46,7 @@ class IntertwinedDTypeMerge(Refiner):
                 # happened, the first hyperedge will be removed
                 # from hedge_list.
                 for intertwined_hedge, gate_vertices in intertwined:
-                    
+
                     # find the pairs of gates, one in first_hedge and one
                     # in intertwined_hedge, with only gates not in
                     # either hyperedge between them. This is done by checking
@@ -67,10 +67,10 @@ class IntertwinedDTypeMerge(Refiner):
                             neighbour_gates.extend(
                                 [
                                     (i, min(intermittent_gates)),
-                                    (max(intermittent_gates),j)
+                                    (max(intermittent_gates), j)
                                 ]
-                            )                            
-                                            
+                            )
+
                     intermediate_commands_list = [
                         gain_mgr.distribution.circuit.get_intermediate_commands(  # noqa: E501
                             first_vertex=gate_one,
@@ -96,5 +96,3 @@ class IntertwinedDTypeMerge(Refiner):
 
         assert gain_mgr.distribution.is_valid()
         return refinement_made
-
-
