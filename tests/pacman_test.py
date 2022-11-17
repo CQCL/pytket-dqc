@@ -529,11 +529,9 @@ def test_merge_packets():
     P24 = Packet(24, 0, 2, [39])
     P25 = Packet(25, 0, 1, [40, 41])
     P26 = Packet(26, 0, 1, [42])
-    P27 = Packet(27, 0, 0, [43])
-    P28 = Packet(28, 0, 1, [44])
-    P29 = Packet(29, 1, 0, [43])
-    P30 = Packet(
-        30,
+    P27 = Packet(27, 0, 1, [44])
+    P28 = Packet(
+        28,
         2,
         0,
         [
@@ -565,8 +563,8 @@ def test_merge_packets():
             44,
         ],
     )
-    P31 = Packet(
-        31,
+    P29 = Packet(
+        29,
         3,
         0,
         [
@@ -581,8 +579,8 @@ def test_merge_packets():
             35,
         ],
     )
-    P32 = Packet(32, 4, 0, [11, 39])
-    P33 = Packet(33, 5, 0, [13])
+    P30 = Packet(30, 4, 0, [11, 39])
+    P31 = Packet(31, 5, 0, [13])
 
     merged_packets_ref = {
         0: [
@@ -596,13 +594,12 @@ def test_merge_packets():
             (P25,),
             (P26,),
             (P27,),
-            (P28,),
         ],
-        1: [(P29,)],
-        2: [(P30,)],
-        3: [(P31,)],
-        4: [(P32,)],
-        5: [(P33,)],
+        1: [],
+        2: [(P28,)],
+        3: [(P29,)],
+        4: [(P30,)],
+        5: [(P31,)],
     }
 
     assert merged_packets_ref == pacman.merged_packets
