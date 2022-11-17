@@ -648,7 +648,9 @@ class PacMan:
             connected_server = self.get_connected_server(
                 hyperedge_qubit_vertex, gate_vertex
             )
-            if connected_server in connected_server_to_dist_gates.keys():
+            if connected_server == self.placement.placement[hyperedge_qubit_vertex]:
+                continue
+            elif connected_server in connected_server_to_dist_gates.keys():
                 connected_server_to_dist_gates[connected_server].append(
                     gate_vertex
                 )
