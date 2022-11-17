@@ -4,7 +4,7 @@ from pytket_dqc.allocators import GainManager
 from pytket import OpType
 
 
-class SequentialDTypeMerge(Refiner):
+class NeighbouringDTypeMerge(Refiner):
     """Refiner merging sequentially neighbouring packets
     """
 

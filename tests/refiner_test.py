@@ -6,7 +6,7 @@ from pytket_dqc.placement import Placement
 from pytket_dqc.circuits.distribution import Distribution
 from pytket_dqc.circuits.hypergraph import Hyperedge
 from pytket_dqc.refiners import (
-    SequentialDTypeMerge,
+    NeighbouringDTypeMerge,
     IntertwinedDTypeMerge,
     RepeatRefiner,
     SequenceRefiner,
@@ -69,12 +69,13 @@ intertwined_test_placement = Placement(
     }
 )
 
+
 @pytest.mark.xfail(
     reason="Known bug in circuit generation. " +
     "This should work once the bug is repaired."
 )
 def test_to_pytket_backwards_meregable():
-    # Note that this test identifies the limits of SequentialDTypeMerge.
+    # Note that this test identifies the limits of NeighbouringDTypeMerge.
     # In particular there are hyperedges which could be merged
     # but are missed by this greedy approach.
 
@@ -101,8 +102,9 @@ def test_to_pytket_backwards_meregable():
     assert distribution.circuit.hyperedge_list == intertwined_hyperedge_list
     distribution.to_pytket_circuit()
 
+
 def test_sequence_merge_d_type_backwards_meregable():
-    # Note that this test identifies the limits of SequentialDTypeMerge.
+    # Note that this test identifies the limits of NeighbouringDTypeMerge.
     # In particular there are hyperedges which could be merged
     # but are missed by this greedy approach.
 
@@ -126,7 +128,7 @@ def test_sequence_merge_d_type_backwards_meregable():
     )
 
     refiner_list = [
-        SequentialDTypeMerge(),
+        NeighbouringDTypeMerge(),
         IntertwinedDTypeMerge(),
     ]
     refiner = SequenceRefiner(refiner_list)
@@ -148,7 +150,7 @@ def test_sequence_merge_d_type_backwards_meregable():
 
 
 def test_repeat_merge_d_type_backwards_meregable():
-    # Note that this test identifies the limits of SequentialDTypeMerge.
+    # Note that this test identifies the limits of NeighbouringDTypeMerge.
     # In particular there are hyperedges which could be merged
     # but are missed by this greedy approach.
 
@@ -191,7 +193,7 @@ def test_repeat_merge_d_type_backwards_meregable():
 
 
 def test_intertwined_merge_d_type_backwards_meregable():
-    # Note that this test identifies the limits of SequentialDTypeMerge.
+    # Note that this test identifies the limits of NeighbouringDTypeMerge.
     # In particular there are hyperedges which could be merged
     # but are missed by this greedy approach.
 
@@ -231,7 +233,7 @@ def test_intertwined_merge_d_type_backwards_meregable():
 
 
 def test_sequential_merge_d_type_backwards_meregable():
-    # Note that this test identifies the limits of SequentialDTypeMerge.
+    # Note that this test identifies the limits of NeighbouringDTypeMerge.
     # In particular there are hyperedges which could be merged
     # but are missed by this greedy approach.
 
@@ -254,7 +256,7 @@ def test_sequential_merge_d_type_backwards_meregable():
         network=intertwined_test_network,
     )
 
-    refiner = SequentialDTypeMerge()
+    refiner = NeighbouringDTypeMerge()
     refiner.refine(distribution)
 
     assert distribution.cost() == 8
@@ -318,7 +320,7 @@ def test_sequential_merge_d_type_intertwined():
 
     assert distribution.cost() == 6
 
-    refiner = SequentialDTypeMerge()
+    refiner = NeighbouringDTypeMerge()
     refiner.refine(distribution)
 
     assert distribution.cost() == 5
@@ -405,7 +407,7 @@ def test_sequential_merge_d_type_complex_circuit():
 
     assert distribution.cost() == 12
 
-    refiner = SequentialDTypeMerge()
+    refiner = NeighbouringDTypeMerge()
     refiner.refine(distribution)
 
     assert distribution.cost() == 10
@@ -457,7 +459,7 @@ def test_sequential_merge_d_type_only_CZ():
     )
     assert distribution.cost() == 4
 
-    refiner = SequentialDTypeMerge()
+    refiner = NeighbouringDTypeMerge()
     refiner.refine(distribution)
 
     assert distribution.cost() == 2
@@ -506,7 +508,7 @@ def test_sequential_merge_d_type_no_new_hyperedges():
 
     assert distribution.circuit.hyperedge_list == hyperedge_list
 
-    refiner = SequentialDTypeMerge()
+    refiner = NeighbouringDTypeMerge()
     refiner.refine(distribution)
 
     assert distribution.circuit.hyperedge_list == hyperedge_list

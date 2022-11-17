@@ -5,9 +5,9 @@ Refiners
 
     .. automethod:: Refiner.refine
 
-.. autoclass:: pytket_dqc.refiners.SequentialDTypeMerge
+.. autoclass:: pytket_dqc.refiners.NeighbouringDTypeMerge
 
-    .. automethod:: SequentialDTypeMerge.refine
+    .. automethod:: NeighbouringDTypeMerge.refine
 
 .. autoclass:: pytket_dqc.refiners.IntertwinedDTypeMerge
 
