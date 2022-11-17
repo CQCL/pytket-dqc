@@ -951,7 +951,7 @@ class PacMan:
                     connected_merged_packet
                 ) in self.get_connected_merged_packets(merged_packet):
                     edges.add(
-                        frozenset([merged_packet, connected_merged_packet])
+                        (merged_packet, connected_merged_packet)
                     )
 
         graph.add_edges_from(edges)
@@ -969,18 +969,18 @@ class PacMan:
 
         for packet in self.get_all_packets():
             for connected_packet in self.get_connected_packets(packet):
-                if frozenset([packet, connected_packet]) not in edges:
-                    edges.add(frozenset([packet, connected_packet]))
+                if (packet, connected_packet) not in edges:
+                    edges.add((packet, connected_packet))
 
         for qubit_vertex in self.hypergraph_circuit.get_qubit_vertices():
             for neighbouring_packet in self.neighbouring_packets[qubit_vertex]:
                 for packet in neighbouring_packet:
                     relevant_edges = [edge for edge in edges if packet in edge]
                     for edge in relevant_edges:
-                        assert len(edge - frozenset([packet])) == 1
-                        (other_node,) = edge - frozenset([packet])
+                        assert len(edge - (packet)) == 1
+                        (other_node,) = edge - (packet)
                         edges.remove(edge)
-                        edges.add(frozenset([neighbouring_packet, other_node]))
+                        edges.add((neighbouring_packet, other_node))
 
         graph.add_edges_from(edges)
         bipartitions = self.assign_bipartitions(graph)
@@ -1044,7 +1044,7 @@ class PacMan:
         self,
         potential_conflict_edges: set[frozenset[HoppingPacket]],
         mvc: set[MergedPacket],
-    ) -> set[frozenset[HoppingPacket]]:
+    ) -> set[tuple[HoppingPacket, HoppingPacket]]:
         """Given an MVC, find all the edges in the
         conflict graph that represent true conflicts.
 
@@ -1070,13 +1070,13 @@ class PacMan:
                 self.get_containing_merged_packet(u[0]) in mvc
                 and self.get_containing_merged_packet(v[0]) in mvc
             ):
-                true_conflicts.add(frozenset([u, v]))
+                true_conflicts.add((u, v))
 
         return true_conflicts
 
     def get_conflict_edge(
         self, embedded_packet1: Packet, embedded_packet2: Packet
-    ) -> frozenset[HoppingPacket]:
+    ) -> tuple[HoppingPacket, HoppingPacket]:
         """Given two embedded packets, return a ``frozenset``
         that has the hopping packets that embed the packets as elements.
 
@@ -1084,11 +1084,9 @@ class PacMan:
         long lines of code in `get_nx_graph_conflict()`
         that failed flake8 line length checks.
         """
-        return frozenset(
-            [
-                self.get_hopping_packet_from_embedded_packet(embedded_packet1),
-                self.get_hopping_packet_from_embedded_packet(embedded_packet2),
-            ]
+        return (
+            self.get_hopping_packet_from_embedded_packet(embedded_packet1),
+            self.get_hopping_packet_from_embedded_packet(embedded_packet2),
         )
 
     def assign_bipartitions(
