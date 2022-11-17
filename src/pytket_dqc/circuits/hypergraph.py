@@ -64,6 +64,7 @@ class Hypergraph:
             to_merge_hyperedge_list are not in this hypergraph.
         :raises Exception: Raised if the weights of the hyperedges to merge
             do not match.
+        :raises Exception: Raised if hyperedges to be merged are not unique.
         """
 
         if not all(
@@ -81,6 +82,9 @@ class Hypergraph:
         ):
             raise Exception("Weights of hyperedges to merge should be equal.")
 
+        if len(to_merge_hyperedge_list) > len(set(to_merge_hyperedge_list)):
+            raise Exception("The hyperedges to be merged must be unique.")
+
         # Gather list of all vertices in hyperedges to be merged.
         # This list is constructed in order to maintain the order
         # of the vertices.
@@ -92,6 +96,7 @@ class Hypergraph:
                     if vertex not in vertices
                 ]
             )
+        vertices.sort()
         weight = to_merge_hyperedge_list[0].weight
         hyperedge_list_index = min(
             self.hyperedge_list.index(hyperedge)
@@ -113,14 +118,38 @@ class Hypergraph:
             hyperedge_dict_index=hyperedge_dict_index
         )
 
+        hyperedge_list_index_list = []
+        hyperedge_dict_index_list = []
         for i, hyperedge in enumerate(to_merge_hyperedge_list):
             try:
+                hyperedge_list_index = self.hyperedge_list.index(hyperedge)
+                hyperedge_dict_index = [
+                    self.hyperedge_dict[vertex].index(hyperedge)
+                    for vertex in hyperedge.vertices
+                ]
                 self.remove_hyperedge(hyperedge)
+                hyperedge_list_index_list.append(hyperedge_list_index)
+                hyperedge_dict_index_list.append(hyperedge_dict_index)
+            # I'm unsure that this would every really be raised, as it's
+            # already been checked that the hyperedges to be removed are
+            # in the hyperedge list. That's just about the only thing that
+            # could go wrong. This fix is hard to test as a result, but
+            # added just in case.
             except Exception:
-                for removed_hyperedge in to_merge_hyperedge_list[:i]:
+                for (
+                    removed_hyperedge,
+                    hyperedge_list_index,
+                    hyperedge_dict_index
+                ) in zip(
+                    reversed(to_merge_hyperedge_list[:i]),
+                    reversed(hyperedge_list_index_list),
+                    reversed(hyperedge_dict_index_list)
+                ):
                     self.add_hyperedge(
                         vertices=removed_hyperedge.vertices,
-                        weight=removed_hyperedge.weight
+                        weight=removed_hyperedge.weight,
+                        hyperedge_list_index=hyperedge_list_index,
+                        hyperedge_dict_index=hyperedge_dict_index
                     )
                 self.remove_hyperedge(new_hyperedge)
                 raise

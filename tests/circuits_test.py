@@ -77,7 +77,7 @@ def test_embedding_and_not_embedding():
 
     pytket_circ = distribution.to_pytket_circuit()
 
-    check_equivalence(
+    assert check_equivalence(
         circ, pytket_circ, distribution.get_qubit_mapping()
     )
 
@@ -252,7 +252,7 @@ def test_hypergraph_merge_hyperedge():
         vertices=[Vertex(0), Vertex(1)], weight=1
     )
     merged_hyperedge_two = Hyperedge(
-        vertices=[Vertex(1), Vertex(2), Vertex(0)], weight=1
+        vertices=[Vertex(0), Vertex(1), Vertex(2)], weight=1
     )
 
     hypergraph.merge_hyperedge(
@@ -843,7 +843,7 @@ def test_to_pytket_circuit_with_embedding_2q():
     )
 
 
-def test_to_pytket_circuit_circ_with_embeddings():
+def test_to_pytket_circuit_circ_with_embeddings_1():
 
     network = NISQNetwork(
         [[0, 1], [0, 2], [0, 3], [3, 4]],
@@ -895,6 +895,175 @@ def test_to_pytket_circuit_circ_with_embeddings():
     hyp_circ.add_hyperedge([2, 4, 5, 6, 13])  # Merged hyperedge
     hyp_circ.add_hyperedge([2, 8, 10])
     hyp_circ.add_hyperedge([3, 6, 7, 9, 12])  # Merged hyperedge
+
+    distribution = Distribution(hyp_circ, placement, network)
+    assert distribution.is_valid()
+
+    circ_with_dist = distribution.to_pytket_circuit()
+
+    assert check_equivalence(
+        circ, circ_with_dist, distribution.get_qubit_mapping()
+    )
+
+
+def test_to_pytket_circuit_circ_with_embeddings_2():
+
+    network = NISQNetwork(
+        [[0, 1], [0, 2], [0, 3], [3, 4]],
+        {0: [0], 1: [1, 2], 2: [3, 4], 3: [7], 4: [5, 6]},
+    )
+
+    circ = Circuit(4)
+    circ.add_gate(OpType.CU1, 0.1234, [1, 2])
+    circ.add_gate(OpType.CU1, 0.1234, [0, 2])
+    circ.add_gate(OpType.CU1, 0.1234, [2, 3])
+    circ.add_gate(OpType.CU1, 0.1234, [0, 3])
+    circ.H(0).H(2).Rz(0.1234, 3)
+    circ.add_gate(OpType.CU1, 1.0, [0, 2])
+    circ.add_gate(OpType.CU1, 1.0, [0, 3])
+    circ.add_gate(OpType.CU1, 1.0, [1, 2])
+    circ.H(0).H(2).Rz(0.1234, 0)
+    circ.add_gate(OpType.CU1, 0.1234, [0, 1])
+    circ.add_gate(OpType.CU1, 0.1234, [0, 3])
+    circ.add_gate(OpType.CU1, 1.0, [1, 2])
+
+    placement = Placement({
+        0: 1,
+        1: 1,
+        2: 2,
+        3: 4,
+        4: 1,
+        5: 1,
+        6: 2,
+        7: 1,
+        8: 2,
+        9: 1,
+        10: 2,
+        11: 1,
+        12: 1,
+        13: 2,
+    })
+
+    hyp_circ = HypergraphCircuit(circ)
+    hyp_circ.hyperedge_list = []
+    hyp_circ.hyperedge_dict = {v: [] for v in hyp_circ.vertex_list}
+    hyp_circ.vertex_neighbours = {v: set() for v in hyp_circ.vertex_list}
+
+    hyp_circ.add_hyperedge([0, 5])
+    hyp_circ.add_hyperedge([0, 7])
+    hyp_circ.add_hyperedge([0, 8])
+    hyp_circ.add_hyperedge([0, 9])
+    hyp_circ.add_hyperedge([0, 11])
+    hyp_circ.add_hyperedge([0, 12])
+    hyp_circ.add_hyperedge([1, 4, 10, 13])
+    hyp_circ.add_hyperedge([1, 11])
+    hyp_circ.add_hyperedge([2, 4, 5])
+    hyp_circ.add_hyperedge([2, 6])
+    hyp_circ.add_hyperedge([2, 8, 10])
+    hyp_circ.add_hyperedge([2, 13])
+    hyp_circ.add_hyperedge([3, 6])
+    hyp_circ.add_hyperedge([3, 7, 9, 12])
+
+    distribution = Distribution(hyp_circ, placement, network)
+    assert distribution.is_valid()
+
+    assert distribution.hyperedge_cost(Hyperedge([0, 5])) == 0
+    assert distribution.hyperedge_cost(Hyperedge([0, 7])) == 0
+    assert distribution.hyperedge_cost(Hyperedge([0, 8])) == 2
+    assert distribution.hyperedge_cost(Hyperedge([0, 9])) == 0
+    assert distribution.hyperedge_cost(Hyperedge([0, 11])) == 0
+    assert distribution.hyperedge_cost(Hyperedge([0, 12])) == 0
+    assert distribution.hyperedge_cost(Hyperedge([1, 4, 10, 13])) == 2
+    assert distribution.hyperedge_cost(Hyperedge([1, 11])) == 0
+    assert distribution.hyperedge_cost(Hyperedge([2, 4, 5])) == 2
+    assert distribution.hyperedge_cost(Hyperedge([2, 6])) == 0
+    assert distribution.hyperedge_cost(Hyperedge([2, 8, 10])) == 0
+    assert distribution.hyperedge_cost(Hyperedge([2, 13])) == 0
+    assert distribution.hyperedge_cost(Hyperedge([3, 6])) == 3
+    assert distribution.hyperedge_cost(Hyperedge([3, 7, 9, 12])) == 3
+
+    circ_with_dist = distribution.to_pytket_circuit()
+
+    assert check_equivalence(
+        circ, circ_with_dist, distribution.get_qubit_mapping()
+    )
+
+
+def test_to_pytket_circuit_with_D_embedding():
+
+    test_network = NISQNetwork(
+        server_coupling=[[0, 1], [1, 2]],
+        server_qubits={0: [0], 1: [1], 2: [2]},
+    )
+
+    test_circuit = Circuit(3)
+
+    test_circuit.add_gate(OpType.CU1, 1.0, [0, 1])
+    test_circuit.add_gate(OpType.CU1, 1.0, [1, 2])
+    test_circuit.add_gate(OpType.CU1, 1.0, [1, 0])
+
+    test_hyp_circuit = HypergraphCircuit(test_circuit)
+
+    test_hyp_circuit.vertex_neighbours = {
+        i: set() for i in test_hyp_circuit.vertex_list
+    }
+    test_hyp_circuit.hyperedge_list = []
+    test_hyp_circuit.hyperedge_dict = {
+        i: [] for i in test_hyp_circuit.vertex_list
+    }
+
+    new_hyperedge_list = [
+        [0, 3, 5],
+        [1, 3, 5],
+        [1, 4],  # D-embedded gate
+        [2, 4],
+    ]
+
+    for new_hyperedge in new_hyperedge_list:
+        test_hyp_circuit.add_hyperedge(new_hyperedge)
+
+    test_placement = Placement({0: 0, 1: 1, 2: 2, 3: 0, 4: 2, 5: 0})
+
+    distribution = Distribution(
+        circuit=test_hyp_circuit,
+        placement=test_placement,
+        network=test_network,
+    )
+
+    circ_with_dist = distribution.to_pytket_circuit()
+    assert check_equivalence(
+        test_circuit, circ_with_dist, distribution.get_qubit_mapping()
+    )
+
+
+def test_to_pytket_circuit_mixing_H_and_D_embeddings():
+
+    network = NISQNetwork([[0, 1], [1, 2]], {0: [0], 1: [1], 2: [2, 3]})
+
+    placement = Placement(
+        {0: 0, 1: 1, 2: 2, 3: 2, 4: 0, 5: 1, 6: 1, 7: 1, 8: 2}
+    )
+
+    circ = Circuit(4)
+    circ.add_gate(OpType.CU1, 0.1234, [0, 1])  # Gate 4
+    circ.H(1)
+    circ.add_gate(OpType.CU1, 1.0, [1, 2])  # Gate 5, H-embedded
+    circ.add_gate(OpType.CU1, 1.0, [1, 3])  # Gate 6, H-embedded
+    circ.H(1)
+    circ.add_gate(OpType.CU1, 0.1234, [1, 3])  # Gate 7, D-embedded
+    circ.add_gate(OpType.CU1, 0.1234, [1, 2])  # Gate 8
+
+    hyp_circ = HypergraphCircuit(circ)
+    hyp_circ.hyperedge_list = []
+    hyp_circ.hyperedge_dict = {v: [] for v in hyp_circ.vertex_list}
+    hyp_circ.vertex_neighbours = {v: set() for v in hyp_circ.vertex_list}
+
+    hyp_circ.add_hyperedge([0, 4])
+    hyp_circ.add_hyperedge([1, 4, 8])  # Mixing H- and D-embeddings
+    hyp_circ.add_hyperedge([1, 5, 6])
+    hyp_circ.add_hyperedge([1, 7])
+    hyp_circ.add_hyperedge([2, 5, 8])
+    hyp_circ.add_hyperedge([3, 6, 7])
 
     distribution = Distribution(hyp_circ, placement, network)
     assert distribution.is_valid()
@@ -1196,7 +1365,7 @@ def test_get_hyperedge_subcircuit():
 
     # The hyperedges to test
     hyp_1 = Hyperedge([1, 3, 4, 6])  # This one is in hyp_circ
-    hyp_2 = Hyperedge([0, 3, 5])  # This is a merge of two (has embeddings)
+    hyp_2 = Hyperedge([0, 3, 6])  # This is a merge of two (has embeddings)
 
     # Testing for hyp_1
     test_c = Circuit(3)
@@ -1211,10 +1380,42 @@ def test_get_hyperedge_subcircuit():
     test_c.add_gate(OpType.CU1, 0.1, [0, 1])
     test_c.Rz(0.2, 0)
     test_c.H(0)
-    test_c.Rz(1, 0)
     test_c.add_gate(OpType.CU1, 1.0, [0, 2])
+    test_c.Rz(1, 0)
+    test_c.H(0)
+    test_c.add_gate(OpType.CU1, 0.4, [0, 1])
 
     assert test_c.get_commands() == hyp_circ.get_hyperedge_subcircuit(hyp_2)
+
+
+def test_get_hyperedge_subcircuit_complex():
+    # This test comes from a larger test that failed in
+    # ``get_hyperedge_subcircuit``. It should be fixed now
+    circ = Circuit(4)
+    circ.add_gate(OpType.CU1, 0.1234, [1, 2])  # Gate 4
+    circ.add_gate(OpType.CU1, 0.1234, [0, 2])  # Gate 5
+    circ.add_gate(OpType.CU1, 0.1234, [2, 3])  # Gate 6
+    circ.add_gate(OpType.CU1, 0.1234, [0, 3])  # Gate 7
+    circ.H(0).H(2).Rz(0.1234, 3)
+    circ.add_gate(OpType.CU1, 1.0, [0, 2])  # Gate 8
+    circ.add_gate(OpType.CU1, 1.0, [0, 3])  # Gate 9
+    circ.add_gate(OpType.CU1, 1.0, [1, 2])  # Gate 10
+    circ.H(0).H(2).Rz(0.1234, 0)
+    circ.add_gate(OpType.CU1, 0.1234, [0, 1])  # Gate 11
+    circ.add_gate(OpType.CU1, 0.1234, [0, 3])  # Gate 12
+    circ.add_gate(OpType.CU1, 1.0, [1, 2])  # Gate 13
+
+    hyp_circ = HypergraphCircuit(circ)
+
+    hedge = Hyperedge([1, 4, 10, 13])
+    hyp_circ.get_hyperedge_subcircuit(hedge)
+    test_c = Circuit(3)
+    test_c.add_gate(OpType.CU1, 0.1234, [1, 2])  # Gate 4
+    test_c.add_gate(OpType.CU1, 1.0, [1, 2])  # Gate 10
+    test_c.add_gate(OpType.CU1, 0.1234, [0, 1])  # Gate 11
+    test_c.add_gate(OpType.CU1, 1.0, [1, 2])  # Gate 13
+
+    assert test_c.get_commands() == hyp_circ.get_hyperedge_subcircuit(hedge)
 
 
 def test_requires_h_embedded_cu1():

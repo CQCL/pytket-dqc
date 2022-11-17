@@ -12,9 +12,7 @@ from pytket_dqc.utils import (
     dqc_gateset_predicate,
     DQCPass,
 )
-from pytket_dqc.utils.gateset import (
-    to_euler_with_two_hadamards,
-)
+from pytket_dqc.utils.gateset import to_euler_with_two_hadamards
 
 from typing import TYPE_CHECKING, Union, Optional
 
@@ -81,7 +79,7 @@ class HypergraphCircuit(Hypergraph):
         vertices: list[Vertex],
         weight: int = 1,
         hyperedge_list_index: Optional[int] = None,
-        hyperedge_dict_index: Optional[list[int]] = None
+        hyperedge_dict_index: Optional[list[int]] = None,
     ):
         """Add hyperedge to hypergraph of circuit. Adds some checks on top
         of add_hypergraph in `Hypergraph` in order to ensure that the
@@ -104,8 +102,8 @@ class HypergraphCircuit(Hypergraph):
 
         if not self.is_qubit_vertex(vertices[0]):
             raise Exception(
-                f"The first element of {vertices} " +
-                "is required to be a qubit vertex."
+                f"The first element of {vertices} "
+                + "is required to be a qubit vertex."
             )
 
         if any(self.is_qubit_vertex(vertex) for vertex in vertices[1:]):
@@ -123,8 +121,39 @@ class HypergraphCircuit(Hypergraph):
             vertices=vertices,
             weight=weight,
             hyperedge_list_index=hyperedge_list_index,
-            hyperedge_dict_index=hyperedge_dict_index
+            hyperedge_dict_index=hyperedge_dict_index,
         )
+
+    def merge_hyperedge(
+        self,
+        to_merge_hyperedge_list: list[Hyperedge]
+    ) -> Hyperedge:
+        """Wrapper around `Hyperedge.merge_hyperedge` adding some checks.
+        Adds no additional functionality.
+        """
+
+        new_hyperedge = super().merge_hyperedge(
+            to_merge_hyperedge_list=to_merge_hyperedge_list
+        )
+        self._sorted_hedges_predicate()
+
+        return new_hyperedge
+
+    def split_hyperedge(
+        self,
+        old_hyperedge: Hyperedge,
+        new_hyperedge_list: list[Hyperedge]
+    ):
+        """Wrapper around `Hyperedge.split_hyperedge` adding some checks.
+        Adds no additional functionality.
+        """
+
+        super().split_hyperedge(
+            old_hyperedge=old_hyperedge,
+            new_hyperedge_list=new_hyperedge_list
+        )
+
+        self._sorted_hedges_predicate()
 
     def add_qubit_vertex(self, vertex: Vertex, qubit: Qubit):
         """Add a vertex to the underlying hypergraph which corresponds to a
@@ -253,38 +282,39 @@ class HypergraphCircuit(Hypergraph):
         if not gate_vertices:
             return []
 
-        subcirc_commands = []
-        subcirc_commands.append(self.get_gate_of_vertex(gate_vertices[0]))
-        prev_hyp_gate_vertex = gate_vertices[0]
+        def prepare_h_embedding(embed_cmds: list[Command]) -> list[Command]:
+            """An auxiliary interal function to tidy up the code. Given a list
+            of commands acting on ``hyp_qubit`` that start and end with a
+            Hadamard, modify the 1-qubit gates accordingly so that the
+            H-embedding of these commands is valid.
+            In particular, we use ``to_euler_with_two_hadamards`` on each
+            batch of single qubit gates and squash Rz gates at either side of
+            an CU1 gate, asserting that the resulting phase must be integer.
+            """
+            prepared_cmds = []
 
-        for next_hyp_gate_vertex in gate_vertices[1:]:
-            # Get all embedded gates between the previous and next distributed
-            # gates. Omit any commands that do not act on ``hyp_qubit``.
-            embedded_commands = self.get_intermediate_commands(
-                prev_hyp_gate_vertex, next_hyp_gate_vertex, hyp_q_vertex
-            )
             cu1_indices = [
                 i
-                for i, cmd in enumerate(embedded_commands)
+                for i, cmd in enumerate(embed_cmds)
                 if cmd.op.type == OpType.CU1
             ]
 
             # If there are no CU1 gates, no change is required
             if not cu1_indices:
-                subcirc_commands += embedded_commands
+                prepared_cmds += embed_cmds
             else:
                 # Include the first batch of embedded 1-qubit gates, make sure
                 # that the final gate is a Hadamard
-                subcirc_commands += embedded_commands[: cu1_indices[0]]
+                prepared_cmds += embed_cmds[: cu1_indices[0]]
                 # Remove the last Rz and remember its phase so that it may be
                 # squashed with the Rz after the embedded CU1 gate
                 prev_phase = 0
-                if subcirc_commands[-1].op.type == OpType.Rz:
-                    prev_phase = subcirc_commands[-1].op.params[0]
-                    subcirc_commands.pop()  # Remove the Rz gate
-                assert subcirc_commands[-1].op.type == OpType.H
+                if prepared_cmds[-1].op.type == OpType.Rz:
+                    prev_phase = prepared_cmds[-1].op.params[0]
+                    prepared_cmds.pop()  # Remove the Rz gate
+                assert prepared_cmds[-1].op.type == OpType.H
                 # Append the first embedded CU1 gate
-                subcirc_commands.append(embedded_commands[cu1_indices[0]])
+                prepared_cmds.append(embed_cmds[cu1_indices[0]])
 
                 # Append all gates from here until the last embedded CU1 gate.
                 # Any batch of 1-qubit gates between CU1 gates needs to be
@@ -298,38 +328,59 @@ class HypergraphCircuit(Hypergraph):
                     # ``prev_phase`` into the first Rz gate.
                     current_1q_ops = [
                         cmd.op
-                        for cmd in embedded_commands[
+                        for cmd in embed_cmds[
                             prev_cu1_idx + 1 : next_cu1_idx  # noqa: E203
                         ]
                     ]
                     new_ops = to_euler_with_two_hadamards(current_1q_ops)
+                    assert len(new_ops) == 5  # [Rz,H,Rz,H,Rz]
+
                     first_rz = new_ops[0]
                     assert first_rz.type == OpType.Rz
                     squashed_phase = prev_phase + first_rz.params[0]
-                    # Sanity check: the phase is an integer
-                    assert np.isclose(squashed_phase % 1, 0) or np.isclose(
-                        squashed_phase % 1, 1
-                    )
+
+                    middle_rz = new_ops[2]
+                    assert middle_rz.type == OpType.Rz
+                    mid_phase = middle_rz.params[0]
+
+                    last_rz = new_ops[4]
+                    assert last_rz.type == OpType.Rz
+                    last_phase = last_rz.params[0]
+
+                    # If the middle Rz gate has phase k2pi, we can push the
+                    # squashed phase to the end, merge it with the last
+                    # and leave this as the ``prev_phase`` for next iteration
+                    if np.isclose(mid_phase % 2, 0) or np.isclose(
+                        mid_phase % 2, 2
+                    ):
+                        prev_phase = squashed_phase + mid_phase + last_phase
+                        squashed_phase = 0
+                    # Otherwise, ``squashed_phase`` must be an integer and
+                    # we store the phase of the last CZ for the next iteration
+                    else:
+                        assert np.isclose(squashed_phase % 1, 0) or np.isclose(
+                            squashed_phase % 1, 1
+                        )
+                        prev_phase = last_phase
+
+                    # Replace the phase of the first Rz with ``squashed_phase``
                     new_ops[0] = Op.create(OpType.Rz, squashed_phase)
+                    # Create the command list
                     current_1q_cmds = [
                         Command(op, [hyp_qubit]) for op in new_ops
                     ]
-                    # Remove the last Rz and store its phase for squashing
-                    rz = current_1q_cmds.pop()
-                    assert rz.op.type == OpType.Rz
-                    prev_phase = rz.op.params[0]
+                    # Remove last Rz; its phase is stored in ``prev_phase``
+                    current_1q_cmds.pop()
                     # Append the batch of embedded 1-qubit gates [Rz,H,Rz,H]
-                    subcirc_commands += current_1q_cmds
+                    prepared_cmds += current_1q_cmds
                     # Append the next embedded CU1 gate
-                    subcirc_commands.append(embedded_commands[next_cu1_idx])
+                    prepared_cmds.append(embed_cmds[next_cu1_idx])
                     prev_cu1_idx = next_cu1_idx
 
                 # Include the last batch of embedded 1-qubit gates, make sure
                 # that the first gate is an Rz and that ``prev_phase`` is
                 # squashed into it
-                last_1q_cmds = embedded_commands[
-                    prev_cu1_idx + 1 :  # noqa: E203
-                ]
+                last_1q_cmds = embed_cmds[prev_cu1_idx + 1 :]  # noqa: E203
                 if last_1q_cmds[0].op.type == OpType.Rz:
                     rz = last_1q_cmds.pop(0)  # Remove it
                     prev_phase += rz.op.params[0]  # Squash phases together
@@ -339,9 +390,52 @@ class HypergraphCircuit(Hypergraph):
                 )
                 # Append the Rz gate with the squashed phase
                 rz = Command(Op.create(OpType.Rz, prev_phase), [hyp_qubit])
-                subcirc_commands.append(rz)
+                prepared_cmds.append(rz)
                 # Append the rest of the embedded commands
-                subcirc_commands += last_1q_cmds
+                prepared_cmds += last_1q_cmds
+
+            return prepared_cmds
+
+        subcirc_commands = []
+        subcirc_commands.append(self.get_gate_of_vertex(gate_vertices[0]))
+        prev_hyp_gate_vertex = gate_vertices[0]
+
+        for next_hyp_gate_vertex in gate_vertices[1:]:
+            # Get all embedded gates between the previous and next distributed
+            # gates. Omit any commands that do not act on ``hyp_qubit``.
+            embedded_commands = self.get_intermediate_commands(
+                prev_hyp_gate_vertex, next_hyp_gate_vertex, hyp_q_vertex
+            )
+
+            h_indices = [
+                i
+                for i, cmd in enumerate(embedded_commands)
+                if cmd.op.type == OpType.H
+            ]
+            # If there are no Hadamards, then it's all a D-embedding
+            if not h_indices:
+                # We don't need to change anything
+                subcirc_commands += embedded_commands
+            else:
+                # There must be at least two Hadamards, one starting
+                # the H-embedding and the other ending it
+                assert len(h_indices) >= 2
+                # All embedded commands before the first Hadamard
+                # are D-embedded
+                subcirc_commands += embedded_commands[: h_indices[0]]
+                # All embedded commands between the two Hadamard gates
+                # are H-embedded. These may need their 1-qubit gates to
+                # be changed, decomposing Hadamards and squashing phases
+                subcirc_commands += prepare_h_embedding(
+                    embedded_commands[
+                        h_indices[0] : h_indices[-1] + 1  # noqa: E203
+                    ]
+                )
+                # All embedded commands after the last Hadamard
+                # are D-embedded
+                subcirc_commands += embedded_commands[
+                    h_indices[-1] + 1 :  # noqa: E203
+                ]
 
             # Now that all embedded gates have been added, append the next
             # distributed gate and continue with the loop
@@ -377,9 +471,9 @@ class HypergraphCircuit(Hypergraph):
 
         if not dqc_gateset_predicate.verify(self._circuit):
             raise Exception(
-                "The inputted circuit is not in a valid gateset. " +
-                "You can apply ``DQCPass`` from pytket_dqc.utils " +
-                "on the circuit to rebase it to a valid gateset."
+                "The inputted circuit is not in a valid gateset. "
+                + "You can apply ``DQCPass`` from pytket_dqc.utils "
+                + "on the circuit to rebase it to a valid gateset."
             )
 
         two_q_gate_count = 0

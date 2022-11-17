@@ -17,6 +17,7 @@ Check out the :doc:`usage` section for further information, including how to
    networks
    allocators
    placement
+   refiners
    utils
    :maxdepth: 2
    :caption: Contents:
