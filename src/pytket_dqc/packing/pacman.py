@@ -648,7 +648,10 @@ class PacMan:
             connected_server = self.get_connected_server(
                 hyperedge_qubit_vertex, gate_vertex
             )
-            if connected_server == self.placement.placement[hyperedge_qubit_vertex]:
+            if (
+                connected_server
+                == self.placement.placement[hyperedge_qubit_vertex]
+            ):
                 continue
             elif connected_server in connected_server_to_dist_gates.keys():
                 connected_server_to_dist_gates[connected_server].append(
@@ -984,7 +987,7 @@ class PacMan:
         assert self.is_bipartite_predicate(graph, edges, bipartitions)
         return graph, bipartitions[1]
 
-    def get_nx_graph_conflict(self, mvc: Optional[set[MergedPacket]] = None):
+    def get_nx_graph_conflict(self):
         """Get the NetworkX graph representing conflict edges.
         Nodes are hopping packets that represent conflicts.
         """
@@ -1018,15 +1021,11 @@ class PacMan:
                                 )
                             )
                         checked_hopping_packets.append(embedded_packet)
-        if mvc is None:
-            mvc = self.get_mvc_merged_graph()
-        conflict_edges = self.get_conflict_edges_given_mvc(
-            potential_conflict_edges, mvc
-        )
-        logger.debug(f"Conflict edges: {conflict_edges}")
-        graph.add_edges_from(conflict_edges)
+        graph.add_edges_from(potential_conflict_edges)
         bipartitions = self.assign_bipartitions(graph)
-        assert self.is_bipartite_predicate(graph, conflict_edges, bipartitions)
+        assert self.is_bipartite_predicate(
+            graph, potential_conflict_edges, bipartitions
+        )
         return graph, bipartitions[1]
 
     def get_mvc_merged_graph(self) -> set[MergedPacket]:
