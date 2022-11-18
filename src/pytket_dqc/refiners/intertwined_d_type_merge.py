@@ -5,8 +5,20 @@ from pytket import OpType
 
 
 class IntertwinedDTypeMerge(Refiner):
+    """Refiner merging packets when they are intertwined. A packets is
+    intertwined with another if it contains gates which are
+    intermittent between gates in the original packet.
+    """
 
     def refine(self, distribution: Distribution) -> bool:
+        """Merge intertwined packets.
+
+        :param distribution: Distribution whose intertwined packets should
+            be merged.
+        :type distribution: Distribution
+        :return: True is a refinement has been performed. False otherwise.
+        :rtype: bool
+        """
 
         gain_mgr = GainManager(initial_distribution=distribution)
         refinement_made = False
@@ -19,20 +31,24 @@ class IntertwinedDTypeMerge(Refiner):
                 qubit_vertex
             ].copy()
 
+            # List of gate vertices belonging to all hyperedges in
+            # hedge_list.
+            gate_vertices_list = [
+                gain_mgr.distribution.circuit.get_gate_vertices(hedge)
+                for hedge in hedge_list
+            ]
+
             while len(hedge_list) >= 2:
 
                 first_hedge = hedge_list.pop(0)
-                first_hedge_gate_vertices = gain_mgr.distribution.circuit.get_gate_vertices(first_hedge)  # noqa: E501
+                first_hedge_gate_vertices = gate_vertices_list.pop(0)
 
-                # List of gate vertices belonging to all hyperedges in
-                # hedge_list but the first.
-                gate_vertices_list = [
-                    gain_mgr.distribution.circuit.get_gate_vertices(hedge)
-                    for hedge in hedge_list
-                ]
+                assert len(hedge_list) == len(gate_vertices_list)
 
                 # A list of all hyperedges which are intertwined with the
-                # first
+                # first. A hyperedge is intertwined if its first gate
+                # appears in the circuit before the last of the original
+                # packet
                 intertwined = [
                     (hedge, gate_vertices)
                     for hedge, gate_vertices in zip(
@@ -59,10 +75,15 @@ class IntertwinedDTypeMerge(Refiner):
                         first_hedge_gate_vertices[1:]
                     ):
 
+                        # List of gates in gate_vertices that are between
+                        # consecutive gates in first_hedge_gate_vertices.
                         intermittent_gates = [
                             k for k in gate_vertices if i < k < j
                         ]
 
+                        # If there are gates intermittent between gates in
+                        # first_hedge_gate_vertices store the indices of those
+                        # pairs of neighbouring gates.
                         if len(intermittent_gates) > 0:
                             neighbour_gates.extend(
                                 [
@@ -80,17 +101,21 @@ class IntertwinedDTypeMerge(Refiner):
                     ]
 
                     # If any of the subcircuits between neighbouring gates
-                    # contains only Rz gates then the hyperedges can be
-                    # merged.
+                    # do not contain H gates then the hyperedges can be
+                    # merged. Remove the packets with which the original
+                    # packet is being merged.
                     if any(
                         all(
-                            command.op.type == OpType.Rz
+                            command.op.type != OpType.H
                             for command in commands_list
                         ) for commands_list in intermediate_commands_list
                     ):
                         first_hedge = gain_mgr.merge_hyperedge(
                             [first_hedge, intertwined_hedge]
                         )
+                        del gate_vertices_list[
+                            hedge_list.index(intertwined_hedge)
+                        ]
                         del hedge_list[hedge_list.index(intertwined_hedge)]
                         refinement_made = True
 

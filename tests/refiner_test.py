@@ -133,7 +133,8 @@ def test_sequence_merge_d_type_backwards_meregable():
     ]
     refiner = SequenceRefiner(refiner_list)
     refiner = RepeatRefiner(refiner)
-    refiner.refine(distribution)
+    refinement_made = refiner.refine(distribution)
+    assert refinement_made
 
     assert distribution.cost() == 8
     # Note that sequencing and repeating results in fewer
@@ -175,7 +176,8 @@ def test_repeat_merge_d_type_backwards_meregable():
 
     refiner = IntertwinedDTypeMerge()
     refiner = RepeatRefiner(refiner)
-    refiner.refine(distribution)
+    refinement_made = refiner.refine(distribution)
+    assert refinement_made
 
     assert distribution.cost() == 9
     # Note that repeating the intertwined refiner results in fewer
@@ -217,7 +219,8 @@ def test_intertwined_merge_d_type_backwards_meregable():
     )
 
     refiner = IntertwinedDTypeMerge()
-    refiner.refine(distribution)
+    refinement_made = refiner.refine(distribution)
+    assert refinement_made
 
     assert distribution.cost() == 9
     assert distribution.circuit.hyperedge_list == [
@@ -257,7 +260,8 @@ def test_sequential_merge_d_type_backwards_meregable():
     )
 
     refiner = NeighbouringDTypeMerge()
-    refiner.refine(distribution)
+    refinement_made = refiner.refine(distribution)
+    assert refinement_made
 
     assert distribution.cost() == 8
     assert distribution.circuit.hyperedge_list == [
@@ -321,7 +325,8 @@ def test_sequential_merge_d_type_intertwined():
     assert distribution.cost() == 6
 
     refiner = NeighbouringDTypeMerge()
-    refiner.refine(distribution)
+    refinement_made = refiner.refine(distribution)
+    assert refinement_made
 
     assert distribution.cost() == 5
 
@@ -408,7 +413,8 @@ def test_sequential_merge_d_type_complex_circuit():
     assert distribution.cost() == 12
 
     refiner = NeighbouringDTypeMerge()
-    refiner.refine(distribution)
+    refinement_made = refiner.refine(distribution)
+    assert refinement_made
 
     assert distribution.cost() == 10
 
@@ -460,7 +466,8 @@ def test_sequential_merge_d_type_only_CZ():
     assert distribution.cost() == 4
 
     refiner = NeighbouringDTypeMerge()
-    refiner.refine(distribution)
+    refinement_made = refiner.refine(distribution)
+    assert refinement_made
 
     assert distribution.cost() == 2
 
@@ -509,6 +516,7 @@ def test_sequential_merge_d_type_no_new_hyperedges():
     assert distribution.circuit.hyperedge_list == hyperedge_list
 
     refiner = NeighbouringDTypeMerge()
-    refiner.refine(distribution)
+    refinement_made = refiner.refine(distribution)
+    assert not refinement_made
 
     assert distribution.circuit.hyperedge_list == hyperedge_list
