@@ -5,9 +5,9 @@ from pytket import OpType
 
 
 class IntertwinedDTypeMerge(Refiner):
-    """Refiner merging packets when they are intertwined. A packets is
-    intertwined with another if it contains gates which are
-    intermittent between gates in the original packet.
+    """Refiner merging packets when they are intertwined. A packet is
+    intertwined with another if the second packet contains gates which are
+    intermittent between gates in the first.
     """
 
     def refine(self, distribution: Distribution) -> bool:
@@ -16,7 +16,7 @@ class IntertwinedDTypeMerge(Refiner):
         :param distribution: Distribution whose intertwined packets should
             be merged.
         :type distribution: Distribution
-        :return: True is a refinement has been performed. False otherwise.
+        :return: True if a refinement has been performed. False otherwise.
         :rtype: bool
         """
 
@@ -58,9 +58,8 @@ class IntertwinedDTypeMerge(Refiner):
                 ]
 
                 # Iterate through intertwined hyperedge, until we find one
-                # that can be merged. Do so if it is possible. If no merging
-                # happened, the first hyperedge will be removed
-                # from hedge_list.
+                # that can be merged. Do so if it is possible. All packets
+                # which are merged are removed from hedge_list.
                 for intertwined_hedge, gate_vertices in intertwined:
 
                     # find the pairs of gates, one in first_hedge and one

@@ -16,7 +16,7 @@ class NeighbouringDTypeMerge(Refiner):
 
         :param distribution: Distribution whose packets should be merged.
         :type distribution: Distribution
-        :return: True is a refinement has been performed. False otherwise.
+        :return: True if a refinement has been performed. False otherwise.
         :rtype: bool
         """
 

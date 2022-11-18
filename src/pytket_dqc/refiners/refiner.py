@@ -13,7 +13,7 @@ class Refiner(ABC):
 
         :param distribution: Distribution to be refined.
         :type distribution: Distribution
-        :return: True is a refinement has been performed. False otherwise.
+        :return: True if a refinement has been performed. False otherwise.
         :rtype: bool
         """
         pass

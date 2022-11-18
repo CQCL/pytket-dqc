@@ -75,9 +75,6 @@ intertwined_test_placement = Placement(
     "This should work once the bug is repaired."
 )
 def test_to_pytket_backwards_meregable():
-    # Note that this test identifies the limits of NeighbouringDTypeMerge.
-    # In particular there are hyperedges which could be merged
-    # but are missed by this greedy approach.
 
     test_hyp_circuit = HypergraphCircuit(intertwined_test_circuit)
 
@@ -104,9 +101,6 @@ def test_to_pytket_backwards_meregable():
 
 
 def test_sequence_merge_d_type_backwards_meregable():
-    # Note that this test identifies the limits of NeighbouringDTypeMerge.
-    # In particular there are hyperedges which could be merged
-    # but are missed by this greedy approach.
 
     test_hyp_circuit = HypergraphCircuit(intertwined_test_circuit)
 
@@ -151,9 +145,6 @@ def test_sequence_merge_d_type_backwards_meregable():
 
 
 def test_repeat_merge_d_type_backwards_meregable():
-    # Note that this test identifies the limits of NeighbouringDTypeMerge.
-    # In particular there are hyperedges which could be merged
-    # but are missed by this greedy approach.
 
     test_hyp_circuit = HypergraphCircuit(intertwined_test_circuit)
 
@@ -182,7 +173,8 @@ def test_repeat_merge_d_type_backwards_meregable():
     assert distribution.cost() == 9
     # Note that repeating the intertwined refiner results in fewer
     # remaining hyperedges than does using the intertwined refiner
-    # only once.
+    # only once. This is because hyperedges which are intertwined and merged
+    # are not themselves merged with packets which are intertwined with them.
     assert distribution.circuit.hyperedge_list == [
         Hyperedge(vertices=[0, 4, 7, 8, 11, 12], weight=1),
         Hyperedge(vertices=[1, 4, 6, 7, 9, 10], weight=1),
@@ -195,9 +187,6 @@ def test_repeat_merge_d_type_backwards_meregable():
 
 
 def test_intertwined_merge_d_type_backwards_meregable():
-    # Note that this test identifies the limits of NeighbouringDTypeMerge.
-    # In particular there are hyperedges which could be merged
-    # but are missed by this greedy approach.
 
     test_hyp_circuit = HypergraphCircuit(intertwined_test_circuit)
 
@@ -235,7 +224,7 @@ def test_intertwined_merge_d_type_backwards_meregable():
     ]
 
 
-def test_sequential_merge_d_type_backwards_meregable():
+def test_neighbouring_merge_d_type_backwards_meregable():
     # Note that this test identifies the limits of NeighbouringDTypeMerge.
     # In particular there are hyperedges which could be merged
     # but are missed by this greedy approach.
@@ -263,6 +252,7 @@ def test_sequential_merge_d_type_backwards_meregable():
     refinement_made = refiner.refine(distribution)
     assert refinement_made
 
+    # Only the last hyperedge is merges with the second last.
     assert distribution.cost() == 8
     assert distribution.circuit.hyperedge_list == [
         Hyperedge(vertices=[0, 4, 7, 8, 11, 12], weight=1),
@@ -276,7 +266,7 @@ def test_sequential_merge_d_type_backwards_meregable():
     ]
 
 
-def test_sequential_merge_d_type_intertwined():
+def test_neighbouring_merge_d_type_intertwined():
 
     test_network = NISQNetwork(
         server_coupling=[[0, 1], [1, 2]],
@@ -340,7 +330,7 @@ def test_sequential_merge_d_type_intertwined():
     assert distribution.circuit.hyperedge_list == ideal_hyperedge_list
 
 
-def test_sequential_merge_d_type_complex_circuit():
+def test_neighbouring_merge_d_type_complex_circuit():
 
     test_network = NISQNetwork(
         server_coupling=[[0, 1], [1, 2], [1, 3]],
@@ -431,7 +421,7 @@ def test_sequential_merge_d_type_complex_circuit():
     assert distribution.circuit.hyperedge_list == ideal_hyperedge_list
 
 
-def test_sequential_merge_d_type_only_CZ():
+def test_neighbouring_merge_d_type_only_CZ():
 
     network = NISQNetwork(
         server_coupling=[[0, 1], [1, 2]],
@@ -472,7 +462,7 @@ def test_sequential_merge_d_type_only_CZ():
     assert distribution.cost() == 2
 
 
-def test_sequential_merge_d_type_no_new_hyperedges():
+def test_neighbouring_merge_d_type_no_new_hyperedges():
 
     network = NISQNetwork(
         server_coupling=[[0, 1], [1, 2]],
