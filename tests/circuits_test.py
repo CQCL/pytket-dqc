@@ -989,6 +989,223 @@ def test_to_pytket_circuit_circ_with_embeddings_2():
     )
 
 
+def test_to_pytket_circuit_circ_with_intertwined_embeddings_1():
+    network = NISQNetwork(
+        server_coupling=[[0, 1]],
+        server_qubits={0: [0], 1: [1, 2, 3, 4]}
+    )
+
+    circ = Circuit(5)
+    circ.add_gate(OpType.CU1, 1.0, [0, 1])
+    circ.H(0)
+    circ.add_gate(OpType.CU1, 1.0, [0, 2])
+    circ.H(0)
+    circ.add_gate(OpType.CU1, 1.0, [0, 3])
+    circ.H(0)
+    circ.add_gate(OpType.CU1, 1.0, [0, 4])
+
+    hyp_circ = HypergraphCircuit(circ)
+    hyp_circ.vertex_neighbours = {
+        i: set() for i in hyp_circ.vertex_list
+    }
+    hyp_circ.hyperedge_list = []
+    hyp_circ.hyperedge_dict = {
+        i: [] for i in hyp_circ.vertex_list
+    }
+
+    new_hedge_list = [
+        [0, 5, 7],
+        [0, 6, 8],
+        [1, 5],
+        [2, 6],
+        [3, 7],
+        [4, 8],
+    ]
+
+    for new_hedge in new_hedge_list:
+        hyp_circ.add_hyperedge(new_hedge)
+
+    placement = Placement({
+        0: 0,
+        1: 1,
+        2: 1,
+        3: 1,
+        4: 1,
+        5: 1,
+        6: 1,
+        7: 1,
+        8: 1,
+    })
+
+    distribution = Distribution(
+        circuit=hyp_circ,
+        placement=placement,
+        network=network,
+    )
+    assert distribution.is_valid()
+
+    circ_with_dist = distribution.to_pytket_circuit()
+    assert check_equivalence(
+        circ, circ_with_dist, distribution.get_qubit_mapping()
+    )
+
+
+def test_to_pytket_circuit_circ_with_intertwined_embeddings_2():
+    test_network = NISQNetwork(
+        server_coupling=[[0, 1], [1, 2], [1, 3]],
+        server_qubits={0: [0], 1: [1], 2: [2], 3: [3]}
+    )
+
+    test_circuit = Circuit(4)
+
+    test_circuit.add_gate(OpType.CU1, 1.0, [0, 1])
+    test_circuit.H(1)
+    test_circuit.add_gate(OpType.CU1, 1.0, [1, 3])
+    test_circuit.H(1)
+    test_circuit.add_gate(OpType.CU1, 1.0, [1, 3])
+    test_circuit.add_gate(OpType.CU1, 1.0, [0, 1])
+    test_circuit.H(1)
+    test_circuit.add_gate(OpType.CU1, 1.0, [0, 1])
+    test_circuit.H(1)
+    test_circuit.add_gate(OpType.CU1, 1.0, [1, 2])
+    test_circuit.add_gate(OpType.CU1, 1.0, [1, 3])
+    test_circuit.H(1)
+    test_circuit.add_gate(OpType.CU1, 1.0, [0, 1])
+
+    test_hyp_circuit = HypergraphCircuit(test_circuit)
+
+    test_hyp_circuit.vertex_neighbours = {
+        i: set() for i in test_hyp_circuit.vertex_list
+    }
+    test_hyp_circuit.hyperedge_list = []
+    test_hyp_circuit.hyperedge_dict = {
+        i: [] for i in test_hyp_circuit.vertex_list
+    }
+
+    new_hyperedge_list = [
+        [0, 4, 7, 8, 11],
+        [1, 4, 7],
+        [1, 5],
+        [1, 6, 10],
+        [1, 8, 11],
+        [1, 9],
+        [2, 9],
+        [3, 5, 6, 10],
+    ]
+    ideal_hyperedge_list = [
+        Hyperedge(vertices=vertices, weight=1)
+        for vertices in new_hyperedge_list
+    ]
+    for new_hyperedge in new_hyperedge_list:
+        test_hyp_circuit.add_hyperedge(new_hyperedge)
+
+    test_placement = Placement(
+        {
+            0: 0,
+            1: 1,
+            2: 2,
+            3: 3,
+            4: 0,
+            5: 3,
+            6: 3,
+            7: 0,
+            8: 0,
+            9: 2,
+            10: 3,
+            11: 0
+        }
+    )
+
+    distribution = Distribution(
+        circuit=test_hyp_circuit,
+        placement=test_placement,
+        network=test_network,
+    )
+
+    assert distribution.cost() == 8
+    assert distribution.circuit.hyperedge_list == ideal_hyperedge_list
+    distribution.to_pytket_circuit()
+
+
+def test_to_pytket_circuit_M_P_choice_collision():
+    # This is the case of a circuit whose chosen distribution has
+    # intertwined packets and, moreover, the packets require different
+    # choices of M and P decompositions of the single qubit gates between
+    # the CU1 gates.
+    # Note: The circuit CAN be distributed, but it's subtle.
+
+    network = NISQNetwork(
+        server_coupling=[[0, 1]],
+        server_qubits={0: [0], 1: [1]}
+    )
+
+    circ = Circuit(2)
+    circ.add_gate(OpType.CU1, 1.0, [0, 1])  # Gate: 2
+    circ.H(1).H(0)
+    circ.add_gate(OpType.CU1, 1.0, [0, 1])  # Gate: 3
+    circ.H(1).Rz(-0.5, 0)
+    circ.add_gate(OpType.CU1, 1.0, [0, 1])  # Gate: 4
+    circ.H(1).H(0).Rz(-0.5, 0)  #  Hedge A wants this to be M, but B wants P
+    circ.add_gate(OpType.CU1, 1.0, [0, 1])  # Gate: 5
+    circ.H(1).H(0)  #  Hedge A wants this to be P, but B wants M
+    circ.add_gate(OpType.CU1, 1.0, [0, 1])  # Gate: 6
+    circ.H(1).Rz(-0.5, 0)
+    circ.add_gate(OpType.CU1, 1.0, [0, 1])  # Gate: 7
+    circ.H(1).H(0)
+    circ.add_gate(OpType.CU1, 1.0, [0, 1])  # Gate: 8
+
+    hyp_circ = HypergraphCircuit(circ)
+    hyp_circ.vertex_neighbours = {
+        i: set() for i in hyp_circ.vertex_list
+    }
+    hyp_circ.hyperedge_list = []
+    hyp_circ.hyperedge_dict = {
+        i: [] for i in hyp_circ.vertex_list
+    }
+
+    new_hedge_list = [
+        [0, 2, 6],  # Hedge A
+        [0, 4, 8],  # Hedge B
+        [0, 3],
+        [0, 5],
+        [0, 7],
+        [1, 2],
+        [1, 3],
+        [1, 4],
+        [1, 5],
+        [1, 6],
+        [1, 7],
+        [1, 8],
+    ]
+
+    for new_hedge in new_hedge_list:
+        hyp_circ.add_hyperedge(new_hedge)
+
+    placement = Placement({
+        0: 0,
+        1: 1,
+        2: 1,
+        3: 1,
+        4: 1,
+        5: 1,
+        6: 1,
+        7: 1,
+        8: 1,
+    })
+
+    distribution = Distribution(
+        circuit=hyp_circ,
+        placement=placement,
+        network=network,
+    )
+    assert distribution.is_valid()
+
+    circ_with_dist = distribution.to_pytket_circuit()
+    assert check_equivalence(
+        circ, circ_with_dist, distribution.get_qubit_mapping()
+    )
+
+
 def test_to_pytket_circuit_with_D_embedding():
 
     test_network = NISQNetwork(
