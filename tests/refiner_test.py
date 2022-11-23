@@ -224,7 +224,7 @@ def test_intertwined_merge_d_type_backwards_meregable():
     ]
 
 
-def test_neighbouring_merge_d_type_backwards_meregable():
+def test_neighbouring_merge_d_type_backwards_mergeable():
     # Note that this test identifies the limits of NeighbouringDTypeMerge.
     # In particular there are hyperedges which could be merged
     # but are missed by this greedy approach.
