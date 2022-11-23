@@ -144,7 +144,7 @@ def test_sequence_merge_d_type_backwards_meregable():
     ]
 
 
-def test_repeat_merge_d_type_backwards_meregable():
+def test_repeat_merge_d_type_backwards_mergeable():
 
     test_hyp_circuit = HypergraphCircuit(intertwined_test_circuit)
 
