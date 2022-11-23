@@ -5,10 +5,10 @@ from pytket import OpType
 
 
 class NeighbouringDTypeMerge(Refiner):
-    """Refiner merging neighbouring packets when no Hadamard act between them.
-    For each qubit in the circuit, and given the packets ordered as they
-    appear in the corresponding hypergraph, this refiner will attempt
-    to merge packets appearing consecutively in that ordering.
+    """:class:`.Refiner` merging neighbouring packets when no Hadamard act
+    between them. For each qubit in the circuit, and given the packets
+    ordered as they appear in the corresponding hypergraph, this refiner
+    will attempt to merge packets appearing consecutively in that ordering.
     """
 
     def refine(self, distribution: Distribution) -> bool:

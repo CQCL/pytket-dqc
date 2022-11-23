@@ -5,7 +5,7 @@ from pytket import OpType
 
 
 class IntertwinedDTypeMerge(Refiner):
-    """Refiner merging packets when they are intertwined. A packet is
+    """:class:`.Refiner` merging packets when they are intertwined. A packet is
     intertwined with another if the second packet contains gates which are
     intermittent between gates in the first.
     """

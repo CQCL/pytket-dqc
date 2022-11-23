@@ -3,11 +3,11 @@ from pytket_dqc.circuits.distribution import Distribution
 
 
 class RepeatRefiner(Refiner):
-    """Repeats given Refiner until no refinement is made.
+    """Repeats given :class:`.Refiner` until no refinement is made.
     """
 
     def __init__(self, refiner: Refiner):
-        """RepeatRefiner is initialised with Refiner to repeat.
+        """RepeatRefiner is initialised with :class:`.Refiner` to repeat.
 
         :param refiner: Refiner to repeat.
         :type refiner: Refiner
@@ -16,7 +16,7 @@ class RepeatRefiner(Refiner):
         self.refiner = refiner
 
     def refine(self, distribution: Distribution) -> bool:
-        """Repeat given Refiner until it makes no more refinements.
+        """Repeat given :class:`.Refiner` until it makes no more refinements.
 
         :param distribution: Distribution to be refined.
         :type distribution: Distribution

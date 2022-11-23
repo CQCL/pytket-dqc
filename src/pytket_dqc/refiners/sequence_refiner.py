@@ -3,12 +3,12 @@ from pytket_dqc.circuits.distribution import Distribution
 
 
 class SequenceRefiner(Refiner):
-    """Performs sequence of Refiners as provided by the user.
+    """Performs sequence of :class:`.Refiner` as provided by the user.
     """
 
     def __init__(self, refiner_list: list[Refiner]):
-        """SequenceRefiner is initialised with a list of Refiners to be
-        run in sequence.
+        """SequenceRefiner is initialised with a list of :class:`.Refiner`
+        to be run in sequence.
 
         :param refiner_list: List of Refiners to be run in sequence.
         :type refiner_list: list[Refiner]
