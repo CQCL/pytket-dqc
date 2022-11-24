@@ -603,3 +603,81 @@ def test_merge_packets():
     }
 
     assert merged_packets_ref == pacman.merged_packets
+
+
+def test_intertwining_embeddings_0():
+    """Test that two sequential hopping packets
+    are identified correctly.
+    """
+    circ = Circuit(5)
+    circ.add_gate(cz, [0, 1]).H(0).add_gate(cz, [0, 2]).H(0)
+    circ.add_gate(cz, [0, 3]).H(0).add_gate(cz, [0, 4])
+    placement_dict = {0: 0, 1: 1, 2: 1, 3: 1, 4: 1, 5: 0, 6: 0, 7: 0, 8: 0}
+    placement = Placement(placement_dict)
+
+    hyp_circ = HypergraphCircuit(circ)
+    pacman = PacMan(hyp_circ, placement)
+
+    P0 = Packet(0, 0, 1, [5])
+    P1 = Packet(1, 0, 1, [6])
+    P2 = Packet(2, 0, 1, [7])
+    P3 = Packet(3, 0, 1, [8])
+    P4 = Packet(4, 1, 0, [5])
+    P5 = Packet(5, 2, 0, [6])
+    P6 = Packet(6, 3, 0, [7])
+    P7 = Packet(7, 4, 0, [8])
+
+    merged_packets_ref = {
+        0: [(P0, P2), (P1, P3)],
+        1: [(P4,)],
+        2: [(P5,)],
+        3: [(P6,)],
+        4: [(P7,)],
+    }
+    assert merged_packets_ref == pacman.merged_packets
+
+
+def test_intertwining_embeddings_1():
+    circ = Circuit(6)
+    circ.add_gate(cz, [0, 1]).H(0).add_gate(cz, [0, 2]).H(0)
+    circ.add_gate(cz, [0, 3]).H(0).add_gate(cz, [0, 4]).H(0).add_gate(
+        cz, [0, 5]
+    )
+    placement_dict = {
+        0: 0,
+        1: 1,
+        2: 1,
+        3: 1,
+        4: 1,
+        5: 1,
+        6: 0,
+        7: 0,
+        8: 0,
+        9: 0,
+        10: 0,
+    }
+    placement = Placement(placement_dict)
+
+    hyp_circ = HypergraphCircuit(circ)
+    pacman = PacMan(hyp_circ, placement)
+
+    P0 = Packet(0, 0, 1, [6])
+    P1 = Packet(1, 0, 1, [7])
+    P2 = Packet(2, 0, 1, [8])
+    P3 = Packet(3, 0, 1, [9])
+    P4 = Packet(4, 0, 1, [10])
+    P5 = Packet(5, 1, 0, [6])
+    P6 = Packet(6, 2, 0, [7])
+    P7 = Packet(7, 3, 0, [8])
+    P8 = Packet(8, 4, 0, [9])
+    P9 = Packet(9, 5, 0, [10])
+
+    merged_packets_ref = {
+        0: [(P0, P2, P4), (P1, P3)],
+        1: [(P5,)],
+        2: [(P6,)],
+        3: [(P7,)],
+        4: [(P8,)],
+        5: [(P9,)],
+    }
+    assert merged_packets_ref == pacman.merged_packets
