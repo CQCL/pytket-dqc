@@ -51,7 +51,8 @@ class Packet(NamedTuple):
     :type connected_server_index: int
     :param gate_vertices: A list of gate vertices.
     :type gate_vertices: list[Vertex]
-    :param parent_hedge: The `Hyperedge` from which this packet is originally made.
+    :param parent_hedge: The `Hyperedge` from which this
+    packet is originally made.
     :type parent_hedge: `Hyperedge`
     """
 
@@ -622,7 +623,9 @@ class PacMan:
         logger.debug("YES!")
         return True
 
-    def get_conflict_hoppings(self, hopping_packet: HoppingPacket) -> list[HoppingPacket]:
+    def get_conflict_hoppings(
+        self, hopping_packet: HoppingPacket
+    ) -> list[HoppingPacket]:
         """Given a `HoppingPacket`, determine the other `HoppingPacket`s with
         which it conflicts.
 
@@ -632,18 +635,21 @@ class PacMan:
 
         :param hopping_packet: The `HoppingPacket` to check
         :type hopping_packet: HoppingPacket
-        :return: Return the other `HoppingPacket`s that form a conflict with it.
+        :return: Return the other `HoppingPacket`s that form a conflict with it
         :rtype: list[HoppingPacket]
         """
         conflict_hoppings: list[HoppingPacket] = []
 
         for embedded_packet in self.get_embedded_packets(hopping_packet):
-            for connected_packet in self.get_connected_packets(embedded_packet):
+            for connected_packet in self.get_connected_packets(
+                embedded_packet
+            ):
                 if self.is_packet_embedded(connected_packet):
                     conflict_hoppings.append(
-                        self.get_hopping_packet_from_embedded_packet(connected_packet)
+                        self.get_hopping_packet_from_embedded_packet(
+                            connected_packet
+                        )
                     )
-        
         return conflict_hoppings
 
     # Methods that interface between Packets and HypergraphCircuit
