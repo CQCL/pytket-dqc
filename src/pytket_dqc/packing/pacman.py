@@ -51,12 +51,15 @@ class Packet(NamedTuple):
     :type connected_server_index: int
     :param gate_vertices: A list of gate vertices.
     :type gate_vertices: list[Vertex]
+    :param parent_hedge: The `Hyperedge` from which this packet is originally made.
+    :type parent_hedge: `Hyperedge`
     """
 
     packet_index: int
     qubit_vertex: Vertex
     connected_server_index: int
     gate_vertices: list[Vertex]
+    parent_hedge: Hyperedge
 
     def __str__(self):
         return f"P{self.packet_index}"
@@ -672,6 +675,7 @@ class PacMan:
                     hyperedge_qubit_vertex,
                     connected_server,
                     dist_gates,
+                    hyperedge
                 )
             )
             current_index += 1
