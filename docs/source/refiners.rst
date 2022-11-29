@@ -3,12 +3,24 @@ Refiners
 
 .. autoclass:: pytket_dqc.refiners.Refiner
 
-    .. automethod:: Refiner.__init__
-
     .. automethod:: Refiner.refine
 
-.. autoclass:: pytket_dqc.refiners.SequentialDTypeMerge
+.. autoclass:: pytket_dqc.refiners.NeighbouringDTypeMerge
 
-    .. automethod:: SequentialDTypeMerge.__init__
+    .. automethod:: NeighbouringDTypeMerge.refine
 
-    .. automethod:: SequentialDTypeMerge.refine
+.. autoclass:: pytket_dqc.refiners.IntertwinedDTypeMerge
+
+    .. automethod:: IntertwinedDTypeMerge.refine
+
+.. autoclass:: pytket_dqc.refiners.RepeatRefiner
+
+    .. automethod:: RepeatRefiner.__init__
+
+    .. automethod:: RepeatRefiner.refine
+
+.. autoclass:: pytket_dqc.refiners.SequenceRefiner
+
+    .. automethod:: SequenceRefiner.__init__
+
+    .. automethod:: SequenceRefiner.refine
