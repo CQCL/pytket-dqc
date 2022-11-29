@@ -622,6 +622,30 @@ class PacMan:
         logger.debug("YES!")
         return True
 
+    def get_conflict_hoppings(self, hopping_packet: HoppingPacket) -> list[HoppingPacket]:
+        """Given a `HoppingPacket`, determine the other `HoppingPacket`s with
+        which it conflicts.
+
+        i.e. see if any of the `Packet`s embedded in it are connnected
+        to other `Packet`s which are also embedded.
+        If so return the `HoppingPacket`s that contain them.
+
+        :param hopping_packet: The `HoppingPacket` to check
+        :type hopping_packet: HoppingPacket
+        :return: Return the other `HoppingPacket`s that form a conflict with it.
+        :rtype: list[HoppingPacket]
+        """
+        conflict_hoppings: list[HoppingPacket] = []
+
+        for embedded_packet in self.get_embedded_packets(hopping_packet):
+            for connected_packet in self.get_connected_packets(embedded_packet):
+                if self.is_packet_embedded(connected_packet):
+                    conflict_hoppings.append(
+                        self.get_hopping_packet_from_embedded_packet(connected_packet)
+                    )
+        
+        return conflict_hoppings
+
     # Methods that interface between Packets and HypergraphCircuit
 
     def hyperedge_to_packets(
