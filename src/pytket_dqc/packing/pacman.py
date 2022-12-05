@@ -705,7 +705,7 @@ class PacMan:
                     hyperedge_qubit_vertex,
                     connected_server,
                     dist_gates,
-                    hyperedge
+                    hyperedge,
                 )
             )
             current_index += 1
@@ -984,9 +984,7 @@ class PacMan:
                 for (
                     connected_merged_packet
                 ) in self.get_connected_merged_packets(merged_packet):
-                    edges.add(
-                        (merged_packet, connected_merged_packet)
-                    )
+                    edges.add((merged_packet, connected_merged_packet))
 
         graph.add_edges_from(edges)
         bipartitions = self.assign_bipartitions(graph)
@@ -1032,10 +1030,14 @@ class PacMan:
         # Iterate through each packet that can be embedded in a hopping packet
         for qubit_vertex in self.hypergraph_circuit.get_qubit_vertices():
             for hopping_packet in self.hopping_packets[qubit_vertex]:
-                for conflict_hopping in self.get_conflict_hoppings(hopping_packet):
+                for conflict_hopping in self.get_conflict_hoppings(
+                    hopping_packet
+                ):
                     if conflict_hopping in checked_hopping_packets:
                         continue
-                    potential_conflict_edges.add((hopping_packet, conflict_hopping))
+                    potential_conflict_edges.add(
+                        (hopping_packet, conflict_hopping)
+                    )
                 checked_hopping_packets.append(hopping_packet)
         graph.add_edges_from(potential_conflict_edges)
         bipartitions = self.assign_bipartitions(graph)
