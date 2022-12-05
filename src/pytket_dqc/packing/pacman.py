@@ -51,12 +51,16 @@ class Packet(NamedTuple):
     :type connected_server_index: int
     :param gate_vertices: A list of gate vertices.
     :type gate_vertices: list[Vertex]
+    :param parent_hedge: The `Hyperedge` from which this
+    packet is originally made.
+    :type parent_hedge: `Hyperedge`
     """
 
     packet_index: int
     qubit_vertex: Vertex
     connected_server_index: int
     gate_vertices: list[Vertex]
+    parent_hedge: Hyperedge
 
     def __str__(self):
         return f"P{self.packet_index}"
@@ -619,6 +623,35 @@ class PacMan:
         logger.debug("YES!")
         return True
 
+    def get_conflict_hoppings(
+        self, hopping_packet: HoppingPacket
+    ) -> list[HoppingPacket]:
+        """Given a `HoppingPacket`, determine the other `HoppingPacket`s with
+        which it conflicts.
+
+        i.e. see if any of the `Packet`s embedded in it are connnected
+        to other `Packet`s which are also embedded.
+        If so return the `HoppingPacket`s that contain them.
+
+        :param hopping_packet: The `HoppingPacket` to check
+        :type hopping_packet: HoppingPacket
+        :return: Return the other `HoppingPacket`s that form a conflict with it
+        :rtype: list[HoppingPacket]
+        """
+        conflict_hoppings: list[HoppingPacket] = []
+
+        for embedded_packet in self.get_embedded_packets(hopping_packet):
+            for connected_packet in self.get_connected_packets(
+                embedded_packet
+            ):
+                if self.is_packet_embedded(connected_packet):
+                    conflict_hoppings.append(
+                        self.get_hopping_packet_from_embedded_packet(
+                            connected_packet
+                        )
+                    )
+        return conflict_hoppings
+
     # Methods that interface between Packets and HypergraphCircuit
 
     def hyperedge_to_packets(
@@ -672,6 +705,7 @@ class PacMan:
                     hyperedge_qubit_vertex,
                     connected_server,
                     dist_gates,
+                    hyperedge,
                 )
             )
             current_index += 1
@@ -950,9 +984,7 @@ class PacMan:
                 for (
                     connected_merged_packet
                 ) in self.get_connected_merged_packets(merged_packet):
-                    edges.add(
-                        (merged_packet, connected_merged_packet)
-                    )
+                    edges.add((merged_packet, connected_merged_packet))
 
         graph.add_edges_from(edges)
         bipartitions = self.assign_bipartitions(graph)
@@ -997,30 +1029,16 @@ class PacMan:
 
         # Iterate through each packet that can be embedded in a hopping packet
         for qubit_vertex in self.hypergraph_circuit.get_qubit_vertices():
-            for (
-                embedded_packets
-            ) in self.get_all_embedded_packets_for_qubit_vertex(
-                qubit_vertex
-            ).values():
-                for embedded_packet in embedded_packets:
-                    # Find the connected packet(s) to the embedded packet
-                    connected_packets = self.get_connected_packets(
-                        embedded_packet
+            for hopping_packet in self.hopping_packets[qubit_vertex]:
+                for conflict_hopping in self.get_conflict_hoppings(
+                    hopping_packet
+                ):
+                    if conflict_hopping in checked_hopping_packets:
+                        continue
+                    potential_conflict_edges.add(
+                        (hopping_packet, conflict_hopping)
                     )
-                    for connected_packet in connected_packets:
-                        # If this connected packet has already
-                        # been dealt with we can skip it
-                        if connected_packet in checked_hopping_packets:
-                            continue
-
-                        # Only care if the connected packet is also embedded
-                        if self.is_packet_embedded(connected_packet):
-                            potential_conflict_edges.add(
-                                self.get_conflict_edge(
-                                    embedded_packet, connected_packet
-                                )
-                            )
-                        checked_hopping_packets.append(embedded_packet)
+                checked_hopping_packets.append(hopping_packet)
         graph.add_edges_from(potential_conflict_edges)
         bipartitions = self.assign_bipartitions(graph)
         assert self.is_bipartite_predicate(

@@ -1,28 +1,47 @@
 from pytket_dqc.packing import PacMan, Packet
 from pytket_dqc.placement import Placement
-from pytket_dqc.circuits import HypergraphCircuit
+from pytket_dqc.circuits import HypergraphCircuit, Hyperedge
 from pytket import Circuit, OpType
 from pytket.circuit import Op  # type: ignore
 
 cz = Op.create(OpType.CU1, 1)  # For the sake of convinience
 
-# Below are a bunch of a circuits with certain
-# desirable qualities from a testing POV.
-# Placements and HypergraphCircuits for each part
-# are also given.
-# They are in the global scope because they are
-# used in a test that has _XX appended at the
-# end ``test_build_packets``, and ``test_merge_packets``.
-# Each part can be viewed visually in the ``pacman-example.ipynb``.
-
-# Build the big circuit comprising of these little parts.
+# Build a big circuit comprising of the individual
+# test circuits stitched together.
 subcircuits = []
 
 subplacements = []
 
 
 def test_build_packets():
-    assert True
+    circ = Circuit(3)
+    # One Hyperedge but two Packets
+    circ.add_gate(cz, [0, 1]).add_gate(cz, [0, 2]).add_gate(cz, [0, 1])
+    circ.add_gate(cz, [1, 2]).Rz(1, 1).add_gate(cz, [2, 1])
+
+    placement_dict = {0: 0, 1: 1, 2: 2, 3: 0, 4: 0, 5: 0, 6: 1, 7: 2}
+    pacman = PacMan(HypergraphCircuit(circ), Placement(placement_dict))
+
+    H0 = Hyperedge([0, 3, 4, 5])
+    H1 = Hyperedge([1, 3, 5, 6])
+    H2 = Hyperedge([1, 7])
+    H3 = Hyperedge([2, 4, 6, 7])
+
+    P0 = Packet(0, 0, 1, [3, 5], H0)
+    P1 = Packet(1, 0, 2, [4], H0)
+    P2 = Packet(2, 1, 0, [3, 5], H1)
+    P3 = Packet(3, 1, 2, [6], H1)
+    P4 = Packet(4, 1, 2, [7], H2)
+    P5 = Packet(5, 2, 0, [4], H3)
+    P6 = Packet(6, 2, 1, [6, 7], H3)
+
+    packets_by_qubit = {
+        0: [P0, P1],
+        1: [P2, P3, P4],
+        2: [P5, P6]
+    }
+
+    assert packets_by_qubit == pacman.packets_by_qubit
 
 
 def test_identify_neighbouring_packets_00():
@@ -49,10 +68,10 @@ def test_identify_neighbouring_packets_00():
     pacman00 = PacMan(h_circ00, placement00)
 
     # Reference packets
-    p0 = Packet(0, 0, 1, [6])
-    p1 = Packet(1, 0, 1, [7])
+    P0 = pacman00.packets_by_qubit[0][0]
+    P1 = pacman00.packets_by_qubit[0][1]
     assert pacman00.neighbouring_packets == {
-        0: [(p0, p1)],
+        0: [(P0, P1)],
         1: [],
         2: [],
         3: [],
@@ -88,10 +107,10 @@ def test_identify_neighbouring_packets_01():
     pacman01 = PacMan(h_circ01, placement01)
 
     # Reference packets
-    p0 = Packet(0, 0, 1, [6])
-    p1 = Packet(1, 0, 1, [7])
+    P0 = pacman01.packets_by_qubit[0][0]
+    P1 = pacman01.packets_by_qubit[0][1]
     assert pacman01.neighbouring_packets == {
-        0: [(p0, p1)],
+        0: [(P0, P1)],
         1: [],
         2: [],
         3: [],
@@ -126,13 +145,13 @@ def test_identify_neighbouring_packets_02():
     # Pass into PacMan
     pacman02 = PacMan(h_circ02, placement02)
 
-    p0 = Packet(0, 0, 1, [6])
-    p1 = Packet(1, 0, 2, [7])
-    p2 = Packet(2, 0, 1, [8])
-    p3 = Packet(3, 0, 2, [9])
+    P0 = pacman02.packets_by_qubit[0][0]
+    P1 = pacman02.packets_by_qubit[0][1]
+    P2 = pacman02.packets_by_qubit[0][2]
+    P3 = pacman02.packets_by_qubit[0][3]
 
     assert pacman02.neighbouring_packets == {
-        0: [(p0, p2), (p1, p3)],
+        0: [(P0, P2), (P1, P3)],
         1: [],
         2: [],
         3: [],
@@ -168,12 +187,11 @@ def test_identify_hopping_packets_03():
     pacman03 = PacMan(h_circ03, placement03)
 
     # Reference Packets
-    p0 = Packet(0, 0, 1, [6])
-    # p1 = Packet(1, 0, 1, [7])
-    p2 = Packet(2, 0, 1, [8])
+    P0 = pacman03.packets_by_qubit[0][0]
+    P2 = pacman03.packets_by_qubit[0][2]
 
     assert pacman03.hopping_packets == {
-        0: [(p0, p2)],
+        0: [(P0, P2)],
         1: [],
         2: [],
         3: [],
@@ -211,11 +229,11 @@ def test_identify_hopping_packets_04():
     # Pass into PacMan
     pacman04 = PacMan(h_circ04, placement04)
 
-    p0 = Packet(0, 0, 1, [6])
-    p3 = Packet(3, 0, 1, [9])
+    P0 = pacman04.packets_by_qubit[0][0]
+    P3 = pacman04.packets_by_qubit[0][3]
 
     assert pacman04.hopping_packets == {
-        0: [(p0, p3)],
+        0: [(P0, P3)],
         1: [],
         2: [],
         3: [],
@@ -256,11 +274,11 @@ def test_identify_hopping_packets_05():
     # Pass into PacMan
     pacman05 = PacMan(h_circ05, placement05)
 
-    p0 = Packet(0, 0, 1, [6])
-    p3 = Packet(3, 0, 1, [9])
+    P0 = pacman05.packets_by_qubit[0][0]
+    P3 = pacman05.packets_by_qubit[0][3]
 
     assert pacman05.hopping_packets == {
-        0: [(p0, p3)],
+        0: [(P0, P3)],
         1: [],
         2: [],
         3: [],
@@ -300,11 +318,11 @@ def test_identify_hopping_packets_06():
     # Pass into PacMan
     pacman06 = PacMan(h_circ06, placement06)
 
-    p0 = Packet(0, 0, 1, [6])
-    p3 = Packet(3, 0, 1, [9])
+    P0 = pacman06.packets_by_qubit[0][0]
+    P3 = pacman06.packets_by_qubit[0][3]
 
     assert pacman06.hopping_packets == {
-        0: [(p0, p3)],
+        0: [(P0, P3)],
         1: [],
         2: [],
         3: [],
@@ -344,11 +362,11 @@ def test_identify_hopping_packets_07():
     # Pass into PacMan
     pacman07 = PacMan(h_circ07, placement07)
 
-    p0 = Packet(0, 0, 1, [6])
-    p3 = Packet(3, 0, 1, [9])
+    P0 = pacman07.packets_by_qubit[0][0]
+    P3 = pacman07.packets_by_qubit[0][3]
 
     assert pacman07.hopping_packets == {
-        0: [(p0, p3)],
+        0: [(P0, P3)],
         1: [],
         2: [],
         3: [],
@@ -392,11 +410,11 @@ def test_identify_hopping_packets_08():
     # Pass into PacMan
     pacman08 = PacMan(h_circ08, placement08)
 
-    p0 = Packet(0, 0, 1, [6])
-    p3 = Packet(3, 0, 1, [9])
+    P0 = pacman08.packets_by_qubit[0][0]
+    P3 = pacman08.packets_by_qubit[0][3]
 
     assert pacman08.hopping_packets == {
-        0: [(p0, p3)],
+        0: [(P0, P3)],
         1: [],
         2: [],
         3: [],
@@ -502,85 +520,39 @@ def test_merge_packets():
     pacman = PacMan(big_h_circ, Placement(big_placement))
 
     # Reference Packets
-    P0 = Packet(0, 0, 1, [6])
-    P1 = Packet(1, 0, 1, [7, 8])
-    P2 = Packet(2, 0, 1, [9, 10])
-    P3 = Packet(3, 0, 2, [11])
-    P4 = Packet(4, 0, 1, [12, 14])
-    P5 = Packet(5, 0, 2, [13])
-    P6 = Packet(6, 0, 1, [15])
-    P7 = Packet(7, 0, 1, [16, 17])
-    P8 = Packet(8, 0, 1, [18])
-    P9 = Packet(9, 0, 1, [19])
-    P10 = Packet(10, 0, 1, [20, 21])
-    P11 = Packet(11, 0, 1, [22])
-    P12 = Packet(12, 0, 1, [23])
-    P13 = Packet(13, 0, 1, [24, 25])
-    P14 = Packet(14, 0, 1, [26])
-    P15 = Packet(15, 0, 1, [27])
-    P16 = Packet(16, 0, 1, [28, 29])
-    P17 = Packet(17, 0, 1, [30])
-    P18 = Packet(18, 0, 1, [31])
-    P19 = Packet(19, 0, 1, [32, 33])
-    P20 = Packet(20, 0, 1, [34])
-    P21 = Packet(21, 0, 1, [35])
-    P22 = Packet(22, 0, 1, [36, 37])
-    P23 = Packet(23, 0, 1, [38])
-    P24 = Packet(24, 0, 2, [39])
-    P25 = Packet(25, 0, 1, [40, 41])
-    P26 = Packet(26, 0, 1, [42])
-    P27 = Packet(27, 0, 1, [44])
-    P28 = Packet(
-        28,
-        2,
-        0,
-        [
-            6,
-            8,
-            10,
-            14,
-            16,
-            17,
-            18,
-            20,
-            21,
-            22,
-            24,
-            25,
-            26,
-            28,
-            29,
-            30,
-            32,
-            33,
-            34,
-            36,
-            37,
-            38,
-            40,
-            41,
-            42,
-            44,
-        ],
-    )
-    P29 = Packet(
-        29,
-        3,
-        0,
-        [
-            7,
-            9,
-            12,
-            15,
-            19,
-            23,
-            27,
-            31,
-            35,
-        ],
-    )
-    P30 = Packet(30, 4, 0, [11, 39])
-    P31 = Packet(31, 5, 0, [13])
+    P0 = pacman.packets_by_qubit[0][0]
+    P1 = pacman.packets_by_qubit[0][1]
+    P2 = pacman.packets_by_qubit[0][2]
+    P3 = pacman.packets_by_qubit[0][3]
+    P4 = pacman.packets_by_qubit[0][4]
+    P5 = pacman.packets_by_qubit[0][5]
+    P6 = pacman.packets_by_qubit[0][6]
+    P7 = pacman.packets_by_qubit[0][7]
+    P8 = pacman.packets_by_qubit[0][8]
+    P9 = pacman.packets_by_qubit[0][9]
+    P10 = pacman.packets_by_qubit[0][10]
+    P11 = pacman.packets_by_qubit[0][11]
+    P12 = pacman.packets_by_qubit[0][12]
+    P13 = pacman.packets_by_qubit[0][13]
+    P14 = pacman.packets_by_qubit[0][14]
+    P15 = pacman.packets_by_qubit[0][15]
+    P16 = pacman.packets_by_qubit[0][16]
+    P17 = pacman.packets_by_qubit[0][17]
+    P18 = pacman.packets_by_qubit[0][18]
+    P19 = pacman.packets_by_qubit[0][19]
+    P20 = pacman.packets_by_qubit[0][20]
+    P21 = pacman.packets_by_qubit[0][21]
+    P22 = pacman.packets_by_qubit[0][22]
+    P23 = pacman.packets_by_qubit[0][23]
+    P24 = pacman.packets_by_qubit[0][24]
+    P25 = pacman.packets_by_qubit[0][25]
+    P26 = pacman.packets_by_qubit[0][26]
+    P27 = pacman.packets_by_qubit[0][27]
+
+    P28 = pacman.packets_by_qubit[2][0]
+    P29 = pacman.packets_by_qubit[3][0]
+    P30 = pacman.packets_by_qubit[4][0]
+    P31 = pacman.packets_by_qubit[5][0]
 
     merged_packets_ref = {
         0: [
@@ -618,14 +590,14 @@ def test_intertwining_embeddings_0():
     hyp_circ = HypergraphCircuit(circ)
     pacman = PacMan(hyp_circ, placement)
 
-    P0 = Packet(0, 0, 1, [5])
-    P1 = Packet(1, 0, 1, [6])
-    P2 = Packet(2, 0, 1, [7])
-    P3 = Packet(3, 0, 1, [8])
-    P4 = Packet(4, 1, 0, [5])
-    P5 = Packet(5, 2, 0, [6])
-    P6 = Packet(6, 3, 0, [7])
-    P7 = Packet(7, 4, 0, [8])
+    P0 = pacman.packets_by_qubit[0][0]
+    P1 = pacman.packets_by_qubit[0][1]
+    P2 = pacman.packets_by_qubit[0][2]
+    P3 = pacman.packets_by_qubit[0][3]
+    P4 = pacman.packets_by_qubit[1][0]
+    P5 = pacman.packets_by_qubit[2][0]
+    P6 = pacman.packets_by_qubit[3][0]
+    P7 = pacman.packets_by_qubit[4][0]
 
     merged_packets_ref = {
         0: [(P0, P2), (P1, P3)],
@@ -661,16 +633,16 @@ def test_intertwining_embeddings_1():
     hyp_circ = HypergraphCircuit(circ)
     pacman = PacMan(hyp_circ, placement)
 
-    P0 = Packet(0, 0, 1, [6])
-    P1 = Packet(1, 0, 1, [7])
-    P2 = Packet(2, 0, 1, [8])
-    P3 = Packet(3, 0, 1, [9])
-    P4 = Packet(4, 0, 1, [10])
-    P5 = Packet(5, 1, 0, [6])
-    P6 = Packet(6, 2, 0, [7])
-    P7 = Packet(7, 3, 0, [8])
-    P8 = Packet(8, 4, 0, [9])
-    P9 = Packet(9, 5, 0, [10])
+    P0 = pacman.packets_by_qubit[0][0]
+    P1 = pacman.packets_by_qubit[0][1]
+    P2 = pacman.packets_by_qubit[0][2]
+    P3 = pacman.packets_by_qubit[0][3]
+    P4 = pacman.packets_by_qubit[0][4]
+    P5 = pacman.packets_by_qubit[1][0]
+    P6 = pacman.packets_by_qubit[2][0]
+    P7 = pacman.packets_by_qubit[3][0]
+    P8 = pacman.packets_by_qubit[4][0]
+    P9 = pacman.packets_by_qubit[5][0]
 
     merged_packets_ref = {
         0: [(P0, P2, P4), (P1, P3)],
