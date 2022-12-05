@@ -1031,30 +1031,12 @@ class PacMan:
 
         # Iterate through each packet that can be embedded in a hopping packet
         for qubit_vertex in self.hypergraph_circuit.get_qubit_vertices():
-            for (
-                embedded_packets
-            ) in self.get_all_embedded_packets_for_qubit_vertex(
-                qubit_vertex
-            ).values():
-                for embedded_packet in embedded_packets:
-                    # Find the connected packet(s) to the embedded packet
-                    connected_packets = self.get_connected_packets(
-                        embedded_packet
-                    )
-                    for connected_packet in connected_packets:
-                        # If this connected packet has already
-                        # been dealt with we can skip it
-                        if connected_packet in checked_hopping_packets:
-                            continue
-
-                        # Only care if the connected packet is also embedded
-                        if self.is_packet_embedded(connected_packet):
-                            potential_conflict_edges.add(
-                                self.get_conflict_edge(
-                                    embedded_packet, connected_packet
-                                )
-                            )
-                        checked_hopping_packets.append(embedded_packet)
+            for hopping_packet in self.hopping_packets[qubit_vertex]:
+                for conflict_hopping in self.get_conflict_hoppings(hopping_packet):
+                    if conflict_hopping in checked_hopping_packets:
+                        continue
+                    potential_conflict_edges.add((hopping_packet, conflict_hopping))
+                checked_hopping_packets.append(hopping_packet)
         graph.add_edges_from(potential_conflict_edges)
         bipartitions = self.assign_bipartitions(graph)
         assert self.is_bipartite_predicate(
