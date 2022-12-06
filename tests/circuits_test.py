@@ -1199,6 +1199,7 @@ def test_to_pytket_circuit_M_P_choice_collision():
         network=network,
     )
     assert distribution.is_valid()
+    assert distribution.cost() == 5
 
     circ_with_dist = distribution.to_pytket_circuit()
     assert check_equivalence(
