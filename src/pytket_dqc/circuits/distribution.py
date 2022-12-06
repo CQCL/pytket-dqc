@@ -463,6 +463,7 @@ class Distribution:
             cu1_count = 0
             currently_h_embedding = False
             linkman = LinkManager(hyperedge, self.network.get_server_list())
+            carry_phase = 0  # Phase pushed around within H-embedding
 
             # Iterate over the commands of `circ`
             commands = circ.get_commands()
@@ -497,8 +498,34 @@ class Distribution:
                     continue
                 # fmt: on
 
+                #~ Rz gate ~#
+                if cmd.op.type == OpType.Rz:
+                    q = cmd.qubits[0]
+                    phase = cmd.op.params[0]
+                    # Append the gate
+                    new_circ.Rz(phase, q)
+
+                    # If not H-embedding, nothing needs to be done; otherwise:
+                    if currently_h_embedding:
+                        # The phase must be multiple of pi (either I or Z gate)
+                        if isclose(phase % 1, 0) or isclose(phase % 1, 1):
+                            # Apply it to all connected servers
+                            for server in linkman.connected_servers():
+                                link_qubit = linkman.link_qubit_dict[server]
+                                new_circ.Rz(phase, link_qubit)
+                        else:
+                            # If it is not, we can try to fix it by carrying
+                            # it after the next CU1 gate and try to cancel it.
+                            #
+                            # NOTE: We are assumming that this hyperedge can
+                            #   be implemented using hopping packets; which
+                            #   is something we check via PacMan. Hence, if
+                            #   PacMan told us this is packing is valid, we
+                            #   are guaranteed to be able to cancel this phase
+                            carry_phase += phase
+
                 #~ H gate ~#
-                if cmd.op.type == OpType.H:
+                elif cmd.op.type == OpType.H:
                     q = cmd.qubits[0]
                     # The presence of an H gate indicates the beginning or end
                     # of an H-embedding on the qubit
@@ -519,7 +546,16 @@ class Distribution:
                             elif g.op.type == OpType.H and q in g.qubits:
                                 break
 
-                        if found_embedded_cmd is not None:  # (Case 2)
+                        if found_embedded_cmd is None:  # (Case 1)
+                            # Trivial: we simply need to apply H gate on the
+                            # open link qubits
+                            for server in linkman.connected_servers():
+                                link_qubit = linkman.link_qubit_dict[server]
+                                new_circ.H(link_qubit)
+                            # Switch the value of the flag
+                            currently_h_embedding = True
+
+                        else:  # (Case 2)
                             # All connections to servers must be closed, except
                             # that of the remote server the CU1 gate acts on.
                             #
@@ -547,35 +583,56 @@ class Distribution:
                                     [ejpp_end.from_qubit, ejpp_end.to_qubit],
                                 )
 
-                    # Both (Case 1) from above and the case where the H gate
-                    # is closing the embedding unit are trivial, in the sense
-                    # that the only thing we must do is apply H gates on every
-                    # link qubit and on the original qubit.
-                    # This must also be done for (Case 2) above on the
-                    # surviving link qubits.
-                    for server in linkman.connected_servers():
-                        link_qubit = linkman.link_qubit_dict[server]
-                        new_circ.H(link_qubit)
+                            # Apply an H gate on the surviving link qubits
+                            for server in linkman.connected_servers():
+                                link_qubit = linkman.link_qubit_dict[server]
+                                new_circ.H(link_qubit)
+                            # Switch the value of the flag
+                            currently_h_embedding = True
+
+                    else:  # Currently embedding
+                        # There are two cases two consider:
+                        #
+                        # (Case A) `carry_phase` is multiple of pi,
+                        # (Case B) it is not.
+
+                        # I gate, no need to apply Euler decomposition
+                        if isclose(1 + carry_phase % 2, 1):  # (Case A)
+                            # This means that H should end the embedding
+                            currently_h_embedding = False
+                            # Apply an H gate on all open link qubits
+                            for server in linkman.connected_servers():
+                                link_qubit = linkman.link_qubit_dict[server]
+                                new_circ.H(link_qubit)
+
+                        # Z gate, no need to apply Euler decomposition
+                        elif isclose(carry_phase % 2, 1):  # (Case A)
+                            # Apply it to all connected servers
+                            for server in linkman.connected_servers():
+                                link_qubit = linkman.link_qubit_dict[server]
+                                new_circ.Rz(carry_phase, link_qubit)
+                                new_circ.H(link_qubit)
+                            # Reset carry phase to zero
+                            carry_phase = 0
+
+                        # S or S' gate, apply Euler decomposition of H
+                        elif isclose(carry_phase % 1, 0.5):  # (Case B)
+                            # Replace HS with S'HS'H
+                            for server in linkman.connected_servers():
+                                link_qubit = linkman.link_qubit_dict[server]
+                                new_circ.H(link_qubit)
+                                new_circ.Rz(-carry_phase, link_qubit)
+                                new_circ.H(link_qubit)
+                            # The remaining S' is kept in carry_phase
+                            carry_phase = -carry_phase
+
+                        # Other phases cannot be cancelled
+                        else:
+                            raise Exception("Hopping packet failed, rogue "+
+                                f"phase {carry_phase} could not be cancelled")
+
                     # Append the original gate
                     new_circ.H(q)
-                    # Switch the value of the flag
-                    currently_h_embedding = not currently_h_embedding
-
-                #~ Rz gate ~#
-                elif cmd.op.type == OpType.Rz:
-                    q = cmd.qubits[0]
-                    phase = cmd.op.params[0]
-                    # Append the gate
-                    new_circ.Rz(phase, q)
-
-                    # If not H-embedding, nothing needs to be done; otherwise:
-                    if currently_h_embedding:
-                        # The phase must be multiple of pi (either I or Z gate)
-                        assert isclose(phase % 1, 0) or isclose(phase % 1, 1)
-                        # Apply it to all connected servers
-                        for server in linkman.connected_servers():
-                            link_qubit = linkman.link_qubit_dict[server]
-                            new_circ.Rz(phase, link_qubit)
 
                 #~ CU1 gate ~#
                 elif cmd.op.type == OpType.CU1:
