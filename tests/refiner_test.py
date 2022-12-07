@@ -11,7 +11,6 @@ from pytket_dqc.refiners import (
     RepeatRefiner,
     SequenceRefiner,
 )
-import pytest
 
 
 intertwined_test_network = NISQNetwork(
@@ -70,10 +69,6 @@ intertwined_test_placement = Placement(
 )
 
 
-@pytest.mark.xfail(
-    reason="Known bug in circuit generation. " +
-    "This should work once the bug is repaired."
-)
 def test_to_pytket_backwards_meregable():
 
     test_hyp_circuit = HypergraphCircuit(intertwined_test_circuit)
