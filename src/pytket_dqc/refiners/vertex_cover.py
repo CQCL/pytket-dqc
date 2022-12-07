@@ -52,6 +52,8 @@ class VertexCover(Refiner):
         elif vertex_cover_alg == "networkx":
             self.networkx_refine(distribution)
 
+        assert distribution.is_valid()
+
     def exhaustive_refine(self, distribution: Distribution):
         """Refinement where all minimum vertex covers are found exhaustively.
 
