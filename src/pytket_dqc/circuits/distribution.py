@@ -595,6 +595,10 @@ class Distribution:
                         #
                         # (Case A) `carry_phase` is multiple of pi,
                         # (Case B) it is not.
+                        #
+                        # NOTE: In here we only worry about the link qubits.
+                        # the 1-qubit operations on the original qubit are
+                        # left unchanged.
 
                         # I gate, no need to apply Euler decomposition
                         if isclose(1 + carry_phase % 2, 1):  # (Case A)
@@ -604,6 +608,8 @@ class Distribution:
                             for server in linkman.connected_servers():
                                 link_qubit = linkman.link_qubit_dict[server]
                                 new_circ.H(link_qubit)
+                            # Switch the value of the flag
+                            currently_h_embedding = False
 
                         # Z gate, no need to apply Euler decomposition
                         elif isclose(carry_phase % 2, 1):  # (Case A)
@@ -614,17 +620,22 @@ class Distribution:
                                 new_circ.H(link_qubit)
                             # Reset carry phase to zero
                             carry_phase = 0
+                            # Switch the value of the flag
+                            currently_h_embedding = False
 
                         # S or S' gate, apply Euler decomposition of H
                         elif isclose(carry_phase % 1, 0.5):  # (Case B)
                             # Replace HS with S'HS'H
-                            for server in linkman.connected_servers():
-                                link_qubit = linkman.link_qubit_dict[server]
-                                new_circ.H(link_qubit)
-                                new_circ.Rz(-carry_phase, link_qubit)
-                                new_circ.H(link_qubit)
-                            # The remaining S' is kept in carry_phase
+                            # The middle S' is outside of an embedding unit
+                            # since it is sandwiched by H gates. Hence, we
+                            # must not copy it to the link qubit.
+                            # Then, in the link qubit the H gates are
+                            # contiguous, so they cancel each other.
+                            # Consequently, we only need to carry the phase
+                            # of the S' and push it later in the circuit
                             carry_phase = -carry_phase
+                            # We are still embedding (we applied two H)
+                            currently_h_embedding = True
 
                         # Other phases cannot be cancelled
                         else:
@@ -778,9 +789,9 @@ class Distribution:
 
         # Final sanity checks
         assert all_cu1_local(final_circ)
-        assert check_equivalence(
-            self.circuit.get_circuit(), final_circ, qubit_mapping
-        )
+        #assert check_equivalence(
+        #    self.circuit.get_circuit(), final_circ, qubit_mapping
+        #)
         assert _cost_from_circuit(final_circ) == self.cost()
 
         return final_circ
