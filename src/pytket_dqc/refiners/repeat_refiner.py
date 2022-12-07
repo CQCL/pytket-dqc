@@ -15,7 +15,7 @@ class RepeatRefiner(Refiner):
 
         self.refiner = refiner
 
-    def refine(self, distribution: Distribution) -> bool:
+    def refine(self, distribution: Distribution, **kwargs) -> bool:
         """Repeat given :class:`.Refiner` until it makes no more refinements.
 
         :param distribution: Distribution to be refined.

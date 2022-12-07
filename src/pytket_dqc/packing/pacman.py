@@ -118,7 +118,8 @@ class PacMan:
         self.hypergraph_circuit: HypergraphCircuit = hypergraph_circuit
         self.placement: Placement = placement
         self.packets_by_qubit: dict[Vertex, list[Packet]] = dict()
-        self.neighbouring_packets: dict[            Vertex, list[NeighbouringPacket]
+        self.neighbouring_packets: dict[
+            Vertex, list[NeighbouringPacket]
         ] = dict()
         self.hopping_packets: dict[Vertex, list[HoppingPacket]] = dict()
         self.merged_packets: dict[Vertex, list[MergedPacket]] = dict()
@@ -887,6 +888,29 @@ class PacMan:
 
         return connected_merged_packets
 
+    def get_split_packets(
+        self, merged_packet: MergedPacket, conflict_packet: HoppingPacket
+    ) -> tuple[MergedPacket, MergedPacket]:
+        """Given a merged packet and a conflicting hopping packet within it,
+        split ``merged_packet`` into two merged packets so that each side of
+        ``conflict_packet`` is on one side of the split.
+        :param merged_packet: The merged packet to be split in two
+        :type merged_packet: MergedPacket
+        :param conflict_packet: The hopping packet in conflict
+        :type conflict_packet: HoppingPacket
+        :return: The two merged packets resulting after splitting
+        :rtype: tuple[MergedPacket, MergedPacket]
+        """
+        c_pac_a, c_pac_b = conflict_packet
+        assert c_pac_a.packet_index < c_pac_b.packet_index
+        packet_a = tuple(
+            p for p in merged_packet if p.packet_index <= c_pac_a.packet_index
+        )
+        packet_b = tuple(
+            p for p in merged_packet if p.packet_index >= c_pac_b.packet_index
+        )
+        return packet_a, packet_b
+
     def get_embedded_packets(
         self, hopping_packet: HoppingPacket
     ) -> set[Packet]:
@@ -986,7 +1010,11 @@ class PacMan:
         :rtype: set[HoppingPacket]
         """
         hoppings_within: set[HoppingPacket] = set()
-        all_hopping_packets = [hop_packet for packet_list in self.hopping_packets.values() for hop_packet in packet_list]
+        all_hopping_packets = [
+            hop_packet
+            for packet_list in self.hopping_packets.values()
+            for hop_packet in packet_list
+        ]
         for (p0, p1) in all_hopping_packets:
             # Try to find a merged packet that contains both p0 and p1
             for merged_packet in merged_packets:

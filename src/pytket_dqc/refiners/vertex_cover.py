@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import networkx as nx  # type: ignore
 from pytket_dqc.refiners import Refiner
-from pytket_dqc.packing import PacMan, MergedPacket, HoppingPacket
+from pytket_dqc.packing import PacMan, MergedPacket
 from pytket_dqc.placement import Placement
 from pytket_dqc.circuits import Hyperedge
 
@@ -40,11 +40,11 @@ class VertexCover(Refiner):
             "networkx",
         ]:
             raise Exception(
-                f"You must provide a vertex_cover_alg. Either:\n"
+                "You must provide a vertex_cover_alg. Either:\n"
                 + "\t\t\"all_brute_force\" -> "
                 + "exhaustive search of all minimum vertex covers\n"
                 + "\t\t\"networkx\" -> "
-                + "use NetworkX's approximate algorithm to find a single vertex cover\n"
+                + "use NetworkX's approximate alg. to find a vertex cover\n"
             )
 
         if vertex_cover_alg == "all_brute_force":
@@ -70,7 +70,9 @@ class VertexCover(Refiner):
         ]:
 
             # Step 1. Find all minimum vertex coverings of subgraph
-            min_covers: list[set[MergedPacket]] = get_min_covers(list(subgraph.edges))
+            min_covers: list[set[MergedPacket]] = get_min_covers(
+                list(subgraph.edges)
+            )
 
             # Find the best way to remove conflicts for each cover
             best_cover = None
@@ -183,17 +185,21 @@ def get_min_covers(edges: list[tuple[Any, Any]]) -> list[set[Any]]:
             covers_w_v0 = get_covers(
                 [e for e in edges if e[0] != v0 and e[1] != v0]
             )
-            for c in covers_w_v0: c.add(v0)
+            for c in covers_w_v0:
+                c.add(v0)
             # Omit all edges covered by v1 in recursive call
             covers_w_v1 = get_covers(
                 [e for e in edges if e[0] != v1 and e[1] != v1]
             )
-            for c in covers_w_v1: c.add(v1)
+            for c in covers_w_v1:
+                c.add(v1)
             # Return the union
             # NOTE: I'm not using set[set[Any]] instead of list[set[Any]]
             # due to set not being hashable -> I'd need set[frozenset[Any]]
             # but then it'd be a mess of types and I'd rather do this
-            return covers_w_v0 + [c for c in covers_w_v1 if c not in covers_w_v0]
+            return covers_w_v0 + [
+                c for c in covers_w_v1 if c not in covers_w_v0
+            ]
 
     # Filter out the covers that are not optimal
     covers = get_covers(edges)

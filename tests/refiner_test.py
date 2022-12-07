@@ -1,4 +1,3 @@
-import pytest
 import json  # type: ignore
 from pytket import Circuit, OpType  # type: ignore
 from pytket_dqc import Distribution
@@ -21,7 +20,7 @@ from pytket_dqc.refiners.vertex_cover import (
 
 intertwined_test_network = NISQNetwork(
     server_coupling=[[0, 1], [1, 2], [1, 3]],
-    server_qubits={0: [0], 1: [1], 2: [2], 3: [3]}
+    server_qubits={0: [0], 1: [1], 2: [2], 3: [3]},
 )
 
 intertwined_test_circuit = Circuit(4)
@@ -271,7 +270,7 @@ def test_neighbouring_merge_d_type_intertwined():
 
     test_network = NISQNetwork(
         server_coupling=[[0, 1], [1, 2]],
-        server_qubits={0: [0], 1: [1], 2: [2]}
+        server_qubits={0: [0], 1: [1], 2: [2]},
     )
 
     test_circuit = Circuit(3)
@@ -310,7 +309,7 @@ def test_neighbouring_merge_d_type_intertwined():
     distribution = Distribution(
         circuit=test_hyp_circuit,
         placement=test_placement,
-        network=test_network
+        network=test_network,
     )
 
     assert distribution.cost() == 6
@@ -325,7 +324,7 @@ def test_neighbouring_merge_d_type_intertwined():
         Hyperedge(vertices=[0, 3, 6], weight=1),
         Hyperedge(vertices=[1, 3, 4, 6], weight=1),
         Hyperedge(vertices=[1, 5], weight=1),
-        Hyperedge(vertices=[2, 4, 5], weight=1)
+        Hyperedge(vertices=[2, 4, 5], weight=1),
     ]
 
     assert distribution.circuit.hyperedge_list == ideal_hyperedge_list
@@ -335,7 +334,7 @@ def test_neighbouring_merge_d_type_complex_circuit():
 
     test_network = NISQNetwork(
         server_coupling=[[0, 1], [1, 2], [1, 3]],
-        server_qubits={0: [0], 1: [1], 2: [2], 3: [3]}
+        server_qubits={0: [0], 1: [1], 2: [2], 3: [3]},
     )
     test_circuit = Circuit(4)
 
@@ -391,14 +390,27 @@ def test_neighbouring_merge_d_type_complex_circuit():
         test_hyp_circuit.add_hyperedge(new_hyperedge)
 
     test_placement = Placement(
-        {0: 0, 1: 1, 2: 2, 3: 3, 4: 2, 5: 1, 6: 2,
-            7: 2, 8: 1, 9: 3, 10: 0, 11: 2, 12: 3}
+        {
+            0: 0,
+            1: 1,
+            2: 2,
+            3: 3,
+            4: 2,
+            5: 1,
+            6: 2,
+            7: 2,
+            8: 1,
+            9: 3,
+            10: 0,
+            11: 2,
+            12: 3,
+        }
     )
 
     distribution = Distribution(
         circuit=test_hyp_circuit,
         placement=test_placement,
-        network=test_network
+        network=test_network,
     )
 
     assert distribution.cost() == 12
@@ -417,7 +429,7 @@ def test_neighbouring_merge_d_type_complex_circuit():
         Hyperedge(vertices=[2, 4, 7, 11], weight=1),
         Hyperedge(vertices=[2, 6], weight=1),
         Hyperedge(vertices=[3, 6, 8, 9, 12], weight=1),
-        Hyperedge(vertices=[3, 11], weight=1)
+        Hyperedge(vertices=[3, 11], weight=1),
     ]
     assert distribution.circuit.hyperedge_list == ideal_hyperedge_list
 
@@ -426,7 +438,7 @@ def test_neighbouring_merge_d_type_only_CZ():
 
     network = NISQNetwork(
         server_coupling=[[0, 1], [1, 2]],
-        server_qubits={0: [0], 1: [1], 2: [2]}
+        server_qubits={0: [0], 1: [1], 2: [2]},
     )
 
     circ = Circuit(3)
@@ -445,10 +457,7 @@ def test_neighbouring_merge_d_type_only_CZ():
 
     hyp_circ.split_hyperedge(
         old_hyperedge=old_hyperedge,
-        new_hyperedge_list=[
-            new_hyperedge_one,
-            new_hyperedge_two
-        ]
+        new_hyperedge_list=[new_hyperedge_one, new_hyperedge_two],
     )
 
     distribution = Distribution(
@@ -467,7 +476,7 @@ def test_neighbouring_merge_d_type_no_new_hyperedges():
 
     network = NISQNetwork(
         server_coupling=[[0, 1], [1, 2]],
-        server_qubits={0: [0], 1: [1], 2: [2]}
+        server_qubits={0: [0], 1: [1], 2: [2]},
     )
 
     circ = Circuit(3)
@@ -480,22 +489,10 @@ def test_neighbouring_merge_d_type_no_new_hyperedges():
     hyp_circ = HypergraphCircuit(circ)
 
     hyperedge_list = [
-        Hyperedge(
-            vertices=[0, 3, 4],
-            weight=1
-        ),
-        Hyperedge(
-            vertices=[0, 5, 6],
-            weight=1
-        ),
-        Hyperedge(
-            vertices=[1, 4],
-            weight=1
-        ),
-        Hyperedge(
-            vertices=[2, 3, 5, 6],
-            weight=1
-        )
+        Hyperedge(vertices=[0, 3, 4], weight=1),
+        Hyperedge(vertices=[0, 5, 6], weight=1),
+        Hyperedge(vertices=[1, 4], weight=1),
+        Hyperedge(vertices=[2, 3, 5, 6], weight=1),
     ]
 
     placement = Placement({0: 0, 1: 1, 2: 2, 3: 2, 4: 1, 5: 2, 6: 2})
@@ -514,29 +511,29 @@ def test_neighbouring_merge_d_type_no_new_hyperedges():
 
 
 def test_min_covers():
-    edges = [(0,1), (0,2), (0,5), (1,3), (1,4), (2,5), (3,4), (4,5)]
+    edges = [(0, 1), (0, 2), (0, 5), (1, 3), (1, 4), (2, 5), (3, 4), (4, 5)]
     covers = [
-        {0,1,2,4},
-        {0,1,5,3},
-        {0,1,5,4},
-        {0,3,4,2},
-        {0,3,4,5},
-        {1,2,5,3},
-        {1,2,5,4},
+        {0, 1, 2, 4},
+        {0, 1, 5, 3},
+        {0, 1, 5, 4},
+        {0, 3, 4, 2},
+        {0, 3, 4, 5},
+        {1, 2, 5, 3},
+        {1, 2, 5, 4},
     ]
     assert sorted(covers) == sorted(get_min_covers(edges))
 
-    edges = [(0,1), (0,2), (0,5), (1,3), (1,4), (2,4), (3,4), (4,5)]
+    edges = [(0, 1), (0, 2), (0, 5), (1, 3), (1, 4), (2, 4), (3, 4), (4, 5)]
     covers = [
-        {0,1,4},
-        {0,3,4},
+        {0, 1, 4},
+        {0, 3, 4},
     ]
     assert sorted(covers) == sorted(get_min_covers(edges))
 
 
 def test_vertex_cover_refiner_empty():
 
-    network = NISQNetwork([[0,1]], {0: [0, 1], 1: [2]})
+    network = NISQNetwork([[0, 1]], {0: [0, 1], 1: [2]})
 
     circ = Circuit(2)
 
@@ -544,7 +541,8 @@ def test_vertex_cover_refiner_empty():
     placement = Placement({0: 0, 1: 0, 2: 0})
 
     distribution = Distribution(
-        circuit=hyp_circ, placement=placement, network=network)
+        circuit=hyp_circ, placement=placement, network=network
+    )
 
     VertexCover().refine(distribution, vertex_cover_alg="all_brute_force")
 
@@ -557,7 +555,7 @@ def test_vertex_cover_refiner_empty():
 
 def test_vertex_cover_refiner_trivial():
 
-    network = NISQNetwork([[0,1]], {0: [0, 1], 1: [2]})
+    network = NISQNetwork([[0, 1]], {0: [0, 1], 1: [2]})
 
     circ = Circuit(2)
     circ.add_gate(OpType.CU1, 1.0, [0, 1])
@@ -566,7 +564,8 @@ def test_vertex_cover_refiner_trivial():
     placement = Placement({0: 0, 1: 0, 2: 0})
 
     distribution = Distribution(
-        circuit=hyp_circ, placement=placement, network=network)
+        circuit=hyp_circ, placement=placement, network=network
+    )
 
     VertexCover().refine(distribution, vertex_cover_alg="all_brute_force")
 
@@ -594,7 +593,8 @@ def test_vertex_cover_refiner_simple():
     hyp_circ = HypergraphCircuit(circ)
     placement = Placement({0: 0, 1: 4, 2: 4})
     distribution = Distribution(
-        circuit=hyp_circ, placement=placement, network=network)
+        circuit=hyp_circ, placement=placement, network=network
+    )
 
     VertexCover().refine(distribution, vertex_cover_alg="all_brute_force")
 
@@ -609,7 +609,7 @@ def test_vertex_cover_refiner_complex_1():
 
     network = NISQNetwork(
         server_coupling=[[0, 1], [1, 2], [1, 3]],
-        server_qubits={0: [0], 1: [1], 2: [2], 3: [3]}
+        server_qubits={0: [0], 1: [1], 2: [2], 3: [3]},
     )
 
     circ = Circuit(4)
@@ -628,7 +628,8 @@ def test_vertex_cover_refiner_complex_1():
     hyp_circ = HypergraphCircuit(circ)
     placement = Placement({0: 0, 1: 1, 2: 2, 3: 3})
     distribution = Distribution(
-        circuit=hyp_circ, placement=placement, network=network)
+        circuit=hyp_circ, placement=placement, network=network
+    )
 
     VertexCover().refine(distribution, vertex_cover_alg="all_brute_force")
 
@@ -662,7 +663,8 @@ def test_vertex_cover_refiner_complex_2():
     hyp_circ = HypergraphCircuit(circ)
     placement = Placement({0: 1, 1: 1, 2: 2, 3: 4})
     distribution = Distribution(
-        circuit=hyp_circ, placement=placement, network=network)
+        circuit=hyp_circ, placement=placement, network=network
+    )
 
     VertexCover().refine(distribution, vertex_cover_alg="all_brute_force")
 
@@ -688,9 +690,12 @@ def test_vertex_cover_refiner_pauli_circ():
     )
 
     hyp_circ = HypergraphCircuit(circ)
-    placement = Placement({0: 0, 1: 0, 2: 0, 3: 1, 4: 1, 5: 2, 6: 2, 7: 2, 8: 3, 9: 4})
+    placement = Placement(
+        {0: 0, 1: 0, 2: 0, 3: 1, 4: 1, 5: 2, 6: 2, 7: 2, 8: 3, 9: 4}
+    )
     distribution = Distribution(
-        circuit=hyp_circ, placement=placement, network=network)
+        circuit=hyp_circ, placement=placement, network=network
+    )
 
     VertexCover().refine(distribution, vertex_cover_alg="all_brute_force")
 
@@ -718,7 +723,8 @@ def test_vertex_cover_refiner_random_circ():
     hyp_circ = HypergraphCircuit(circ)
     placement = Placement({0: 0, 1: 4, 2: 3, 3: 2, 4: 1, 5: 2})
     distribution = Distribution(
-        circuit=hyp_circ, placement=placement, network=network)
+        circuit=hyp_circ, placement=placement, network=network
+    )
 
     VertexCover().refine(distribution, vertex_cover_alg="all_brute_force")
 
@@ -744,9 +750,12 @@ def test_vertex_cover_refiner_frac_CZ_circ():
     )
 
     hyp_circ = HypergraphCircuit(circ)
-    placement = Placement({0: 0, 1: 0, 2: 0, 3: 1, 4: 1, 5: 2, 6: 2, 7: 2, 8: 3, 9: 4})
+    placement = Placement(
+        {0: 0, 1: 0, 2: 0, 3: 1, 4: 1, 5: 2, 6: 2, 7: 2, 8: 3, 9: 4}
+    )
     distribution = Distribution(
-        circuit=hyp_circ, placement=placement, network=network)
+        circuit=hyp_circ, placement=placement, network=network
+    )
 
     VertexCover().refine(distribution, vertex_cover_alg="all_brute_force")
 
