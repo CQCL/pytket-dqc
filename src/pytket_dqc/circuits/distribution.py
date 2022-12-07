@@ -3,9 +3,12 @@ from pytket_dqc.placement import Placement
 from pytket_dqc.networks import NISQNetwork
 from pytket_dqc.utils import steiner_tree, check_equivalence
 from pytket_dqc.utils.gateset import start_proc, end_proc
-from pytket_dqc.utils.circuit_analysis import all_cu1_local, _cost_from_circuit
+from pytket_dqc.utils.circuit_analysis import (
+    all_cu1_local,
+    _cost_from_circuit,
+    get_server_id,
+)
 from pytket import Circuit, OpType, Qubit
-from pytket.passes import RemoveRedundancies  # type: ignore
 import networkx as nx  # type: ignore
 from numpy import isclose  # type: ignore
 from typing import NamedTuple
@@ -86,6 +89,7 @@ class Distribution:
         :return: The cost of the hyperedge.
         :rtype: int
         """
+
         tree = kwargs.get("server_tree", None)
         requires_h_embedded_cu1 = kwargs.get("requires_h_embedded_cu1", None)
 
@@ -268,9 +272,13 @@ class Distribution:
         class LinkManager:
             """An internal class dedicated to managing the hardware qubits
             that store the ebits (i.e. link qubits).
+
+            NOTE: This is meant to be used for a single hyperedge at a time.
             """
 
-            def __init__(self, servers: list[int]):
+            def __init__(self, hyperedge: Hyperedge, servers: list[int]):
+
+                self.hyperedge: Hyperedge = hyperedge
                 # A dictionary of serverId to list of available link qubits.
                 self.available: dict[int, list[Qubit]] = {
                     s: [] for s in servers
@@ -279,11 +287,13 @@ class Distribution:
                 self.occupied: dict[int, list[Qubit]] = {
                     s: [] for s in servers
                 }
-                # A dictionary matching a (hyperedge, server) pair with the
-                # qubit in ``server`` that has a "copy" of the data in the
-                # hyperedge's qubit. The list of its values never contains
-                # duplicates; i.e. no two hyperedges share a link qubit
-                self.link_qubit_dict: dict[tuple[Hyperedge, int], Qubit] = {}
+                # A dictionary of serverId to the link qubit holding the info
+                # relevant to the hyperedge currently being implemented
+                self.link_qubit_dict: dict[int, Qubit] = dict()
+                # A dictionary of link qubits to link qubits. Its purpose is
+                # to map the ID of link qubits from a previous iteration to
+                # the ID of the same link qubit in the current iteration
+                self.link_qubit_id_update: dict[Qubit, Qubit] = dict()
 
             def request_link_qubit(self, server: int) -> Qubit:
                 """Returns an available link qubit in ``server``. If there are
@@ -303,53 +313,16 @@ class Distribution:
                 """Releases ``link_qubit``, making it available again.
                 """
 
-                # Retrieve the server ``link_qubit`` is in, along with
-                # the ``hyperedge`` it is being used by
-                keys = [
-                    key
-                    for key, q in self.link_qubit_dict.items()
-                    if q == link_qubit
-                ]
-                assert len(keys) == 1
-                (hyperedge, server) = keys[0]
+                # Retrieve the server ``link_qubit`` is in
+                server = get_server_id(link_qubit)
 
                 # Make the link_qubit available
                 self.occupied[server].remove(link_qubit)
                 self.available[server].append(link_qubit)
 
-                # Delete its entry from the dictionary
-                del self.link_qubit_dict[(hyperedge, server)]
-
-            def connected_servers(self, hyperedge: Hyperedge) -> list[int]:
-                """Return the list of servers currently holding a copy of the
-                qubit in ``hyperedge``. Does not include its home server.
-                """
-                return [
-                    s
-                    for hedge, s in self.link_qubit_dict.keys()
-                    if hedge == hyperedge
-                ]
-
-            def get_link_qubit(
-                self, hyperedge: Hyperedge, server: int
-            ) -> Qubit:
-                """If ``server`` is the home server of the hyperedge's qubit,
-                the HW qubit corresponding to it is returned. Otherwise,
-                we query ``link_qubit_dict`` to retrieve the appropriate link
-                qubit.
-                """
-                q_vertex = hyp_circ.get_qubit_vertex(hyperedge)
-                circ_qubit = hyp_circ.get_qubit_of_vertex(q_vertex)
-                if placement_map[q_vertex] == server:
-                    return qubit_mapping[circ_qubit]
-                else:
-                    return self.link_qubit_dict[(hyperedge, server)]
-
-            def start_link(
-                self, hyperedge: Hyperedge, target: int
-            ) -> list[EjppAction]:
+            def start_link(self, target: int) -> list[EjppAction]:
                 """Find sequence of StartingProcesses required to share the
-                qubit of ``hyperedge`` with ``target`` server.
+                qubit of ``self.hyperedge`` with ``target`` server.
                 """
                 # NOTE: If all of the ``hyp_servers`` are to be connected,
                 # then the routine below will "grow" the tree branch by
@@ -357,6 +330,7 @@ class Distribution:
                 # other, the ordering of how it is "grown" does not matter.
 
                 # Extract hyperedge data
+                hyperedge = self.hyperedge
                 q_vertex = hyp_circ.get_qubit_vertex(hyperedge)
                 home_server = placement_map[q_vertex]
                 hyp_servers = [placement_map[v] for v in hyperedge.vertices]
@@ -366,7 +340,7 @@ class Distribution:
                 # For each server connected to the qubit in ``hyperedge``,
                 # find the shortest path to the target server and use the
                 # one that is shortest among them
-                connected_servers = self.connected_servers(hyperedge)
+                connected_servers = self.connected_servers()
                 connected_servers.append(home_server)
                 best_path = None
                 for c_server in connected_servers:
@@ -391,10 +365,11 @@ class Distribution:
                 # starting EjppActions
                 starting_actions = []
                 source = best_path.pop(0)
-                last_link_qubit = self.get_link_qubit(hyperedge, source)
+                last_link_qubit = self.get_link_qubit(source)
                 for next_server in best_path:
                     # Retrieve an available link qubit to populate
                     this_link_qubit = self.request_link_qubit(next_server)
+                    self.link_qubit_dict[next_server] = this_link_qubit
                     # Add the EjppAction to create the connection
                     starting_actions.append(
                         EjppAction(
@@ -402,23 +377,18 @@ class Distribution:
                             to_qubit=this_link_qubit,
                         )
                     )
-                    # Add the link qubit to the dictionary
-                    self.link_qubit_dict[
-                        (hyperedge, next_server)
-                    ] = this_link_qubit
                     last_link_qubit = this_link_qubit
 
                 return starting_actions
 
-            def end_links(
-                self, hyperedge: Hyperedge, targets: list[int]
-            ) -> list[EjppAction]:
+            def end_links(self, targets: list[int]) -> list[EjppAction]:
                 """Find the sequence of EndingProcesses required to end the
                 connection of the qubit in ``hyperedge`` to each server in
                 ``targets``.
                 """
 
                 # Find the HW qubit holding the qubit in ``Hyperedge``
+                hyperedge = self.hyperedge
                 q_vertex = hyp_circ.get_qubit_vertex(hyperedge)
                 circ_qubit = hyp_circ.get_qubit_of_vertex(q_vertex)
                 home_link = qubit_mapping[circ_qubit]
@@ -427,237 +397,308 @@ class Distribution:
                 ending_actions = []
                 for target in targets:
                     # Find the corresponding HW qubit
-                    target_link = self.get_link_qubit(hyperedge, target)
+                    target_link = self.get_link_qubit(target)
                     # Disconnect ``target_link``
                     ending_actions.append(
                         EjppAction(from_qubit=target_link, to_qubit=home_link)
                     )
                     # Release the HW qubit acting as ``target_link``
                     self.release_link_qubit(target_link)
+                    del self.link_qubit_dict[target]
 
                 return ending_actions
 
-        #
-        # -- CIRCUIT PREPARATION -- #
-        #
-        def update_hyperedge_subcircuit(
-            orig_circ: Circuit, hedge: Hyperedge
+            def connected_servers(self) -> list[int]:
+                return list(self.link_qubit_dict.keys())
+
+            def get_link_qubit(self, server: int) -> Qubit:
+                """If ``server`` is the home server of the hyperedge's qubit,
+                its hardware qubit is returned. Otherwise, we query the dict
+                ``link_qubit_dict`` to retrieve the appropriate link qubit.
+                """
+                q_vertex = hyp_circ.get_qubit_vertex(self.hyperedge)
+                circ_qubit = hyp_circ.get_qubit_of_vertex(q_vertex)
+                if placement_map[q_vertex] == server:
+                    return qubit_mapping[circ_qubit]
+                else:
+                    return self.link_qubit_dict[server]
+
+            def update_occupation(self, link_qubit: Qubit, starting: bool):
+                """Update `self.occupied` and `self.available` according
+                to the EJPP action received. The flag `starting` indicates
+                whether it is a starting or ending process.
+                A link qubit is requested/released as usual, in order to
+                make sure that the LinkManager is aware of all link qubits
+                in the circuit and, hence, avoids collisions of IDs.
+                This may mean that the ID of the link qubit is changed;
+                this information is added to `link_qubit_id_update`.
+                """
+                if starting:
+                    server = get_server_id(link_qubit)
+                    new_link_qubit = self.request_link_qubit(server)
+                    self.link_qubit_id_update[link_qubit] = new_link_qubit
+                else:
+                    new_link_qubit = self.link_qubit_id_update[link_qubit]
+                    self.release_link_qubit(new_link_qubit)
+
+            def get_updated_name(self, qubit: Qubit) -> Qubit:
+                """Interface for `link_qubit_id_update`.
+                """
+                if qubit in self.link_qubit_id_update.keys():
+                    return self.link_qubit_id_update[qubit]
+                else:
+                    return qubit
+
+        def to_pytket_circuit_one_hyperedge(
+            hyperedge: Hyperedge, circ: Circuit
         ) -> Circuit:
-            """Return a circuit equivalent to ``orig_circ`` that replaces the
-            1-qubit gates embedded within ``hedge`` with the necessary ones
-            to satisfy embeddability.
-
-            NOTE: ``orig_circ`` is equivalent to ``hyp_circ._circuit``, but
-            not necessarily the same circuit; it may have been altered already
+            """Given a circuit equivalent to the original one, but with some
+            of its non-local gates already distributed, implement those of the
+            given hyperedge and return the new equivalent circuit.
             """
-            qubit_vertex = hyp_circ.get_qubit_vertex(hedge)
-            hyp_qubit = hyp_circ.get_qubit_of_vertex(qubit_vertex)
-            gate_vertices = hyp_circ.get_gate_vertices(hedge)
-            first_gate_vertex = hyp_circ.get_first_gate_vertex(gate_vertices)
-            last_gate_vertex = hyp_circ.get_last_gate_vertex(gate_vertices)
+            new_circ = Circuit()
+            for hw_qubit in qubit_mapping.values():
+                new_circ.add_qubit(hw_qubit)
 
-            orig_circ_cmds = orig_circ.get_commands()
-            # Find the indices in ``orig_circ_cmds`` corresponding to the
-            # first and last gate vertices in ``hedge``
-            first_gate_idx = None
-            last_gate_idx = None
-            # Do so using the guarantee given by the ``_vertex_id_predicate``
-            assert hyp_circ._vertex_id_predicate()
-            next_gate_vertex = len(orig_circ.qubits)
-            for idx, cmd in enumerate(orig_circ_cmds):
+            # Extract hyperedge data
+            q_vertex = hyp_circ.get_qubit_vertex(hyperedge)
+            src_qubit = qubit_mapping[hyp_circ.get_qubit_of_vertex(q_vertex)]
+
+            # Data to keep around during iterations
+            cu1_count = 0
+            currently_h_embedding = False
+            linkman = LinkManager(hyperedge, self.network.get_server_list())
+            carry_phase = 0  # Phase pushed around within H-embedding
+
+            # Iterate over the commands of `circ`
+            commands = circ.get_commands()
+            for cmd_idx, cmd in enumerate(commands):
+                # Keep track of how many of the original CU1 we've seen so far
                 if cmd.op.type == OpType.CU1:
-                    if next_gate_vertex == first_gate_vertex:
-                        first_gate_idx = idx
-                    if next_gate_vertex == last_gate_vertex:
-                        last_gate_idx = idx
-                    next_gate_vertex += 1
-            # Sanity check: the indices where found
-            assert first_gate_idx is not None
-            assert last_gate_idx is not None
+                    cu1_count += 1
+                # Keep track of the occupation of link qubits
+                if cmd.op.get_name() == "starting_process":
+                    linkman.update_occupation(cmd.qubits[1], starting=True)
+                    remote_qubit = linkman.get_updated_name(cmd.qubits[1])
+                    if remote_qubit not in new_circ.qubits:
+                        new_circ.add_qubit(remote_qubit)
+                if cmd.op.get_name() == "ending_process":
+                    linkman.update_occupation(cmd.qubits[0], starting=False)
 
-            # Split the list of commands in ``orig_circ`` into three segments:
-            cmds_before_hedge = orig_circ_cmds[:first_gate_idx]
-            cmds_during_hedge = orig_circ_cmds[
-                first_gate_idx : last_gate_idx + 1  # noqa: E203
-            ]
-            cmds_after_hedge = orig_circ_cmds[
-                last_gate_idx + 1 :  # noqa: E203
-            ]
-            # Get the subcircuit commands with the updated 1-qubit gates
-            hedge_commands = hyp_circ.get_hyperedge_subcircuit(hedge)
-
-            # Build the circuit
-            altered_circ = Circuit()
-            # Add the qubits to the circuit
-            for q in orig_circ.qubits:
-                altered_circ.add_qubit(q)
-            # Append all commands before the hyperedge without change
-            for cmd in cmds_before_hedge:
-                altered_circ.add_gate(cmd.op, cmd.qubits)
-
-            # Weave the commands in ``cmds_during_hedge`` and those
-            # in ``hedge_commands`` together
-            for hedge_cmd in hedge_commands:
-                # If ``hedge_cmd`` is a 1-qubit gate, we append it to the
-                # ``altered_circ`` since these are the commands that we
-                # want to replace.
-                if len(hedge_cmd.qubits) == 1:
-                    assert hedge_cmd.qubits == [hyp_qubit]
-                    altered_circ.add_gate(hedge_cmd.op, hedge_cmd.qubits)
-
-                # If ``hedge_cmd`` is a 2-qubit gate, add in all commands
-                # from ``cmds_during_hedge`` until reaching a gate acting
-                # on the same qubits (which will be ``hedge_cmd``)
-                elif hedge_cmd.op.type == OpType.CU1:
-                    next_cmd = cmds_during_hedge.pop(0)
-                    while next_cmd.qubits != hedge_cmd.qubits:
-                        # Append if it is not a 1-qubit gate on ``hyp_qubit``
-                        # and, if it is, ignore it since its equivalent has
-                        # already been appended as a ``hedge_cmd``.
-                        if next_cmd.qubits != [hyp_qubit]:
-                            altered_circ.add_gate(next_cmd.op, next_cmd.qubits)
-                        next_cmd = cmds_during_hedge.pop(0)
-                    # And add the ``hedge_cmd`` itself
-                    assert next_cmd.op == hedge_cmd.op
-                    altered_circ.add_gate(hedge_cmd.op, hedge_cmd.qubits)
-
-                # Command not recognised
-                else:
-                    raise Exception(f"Command {hedge_cmd} not supported.")
-            # Sanity check: the whole ``cmds_during_hedge`` has been exhausted
-            assert not cmds_during_hedge
-
-            # Append all commands after the hyperedge without change
-            for cmd in cmds_after_hedge:
-                altered_circ.add_gate(cmd.op, cmd.qubits)
-
-            # Remove consecutive Hadamards and Rz gates with phase 0
-            RemoveRedundancies().apply(altered_circ)
-            return altered_circ
-
-        # For each hyperedge of the circuit that requires a CU1 to be
-        # H-embedded, some of its embedded Hadamards may need to be
-        # decomposed into Euler form and its embedded Rz gates squashed.
-        prep_circ = hyp_circ.get_circuit()
-        hedges_to_update = [
-            hedge
-            for hedge in hyp_circ.hyperedge_list
-            if hyp_circ.requires_h_embedded_cu1(hedge)
-        ]
-        for hedge in hedges_to_update:
-            prep_circ = update_hyperedge_subcircuit(prep_circ, hedge)
-
-        #
-        # -- CIRCUIT GENERATION -- #
-        #
-        new_circ = Circuit()
-        # Add the qubits to the circuit
-        for hw_qubit in qubit_mapping.values():
-            new_circ.add_qubit(hw_qubit)
-
-        # Read the original circuit from left to right and, as we go:
-        #   (1) add the required EJPP processes
-        #   (2) distribute nonlocal gates
-        #   (3) add the correction gates required for embedding
-        # Some data to keep around while iterating over the commands:
-        #
-        # Map from qubits (from the original circuit) to hyperedges that
-        # act on it and are currently being implemented
-        current_hyperedges: dict[Qubit, set[Hyperedge]] = {
-            q: set() for q in qubit_mapping.keys()
-        }
-        # Map from qubits (from the original circuit) to a boolean flag
-        # indicating whether we currently are within an H-embedding unit
-        currently_h_embedding = {q: False for q in qubit_mapping.keys()}
-        # The LinkManager that will deal with the link qubits
-        linkman = LinkManager(self.network.get_server_list())
-
-        # Iterate over the commands of the prepared circuit
-        commands = prep_circ.get_commands()
-        orig_cu1_count = 0
-        for cmd_idx, cmd in enumerate(commands):
-
-            if cmd.op.type == OpType.H:
-                q = cmd.qubits[0]
-                # The presence of an H gate indicates the beginning or end
-                # of an H-embedding on the qubit
-                #
-                # Whether this H is the beginning or end of an H-embedding
-                # unit, there are three cases to consider:
-                #
-                # (Case 0) There are no hyperedges currently being implemented
-                # on this qubit.
-                # (Case 1) There is no CU1 gate that acts on this qubit within
-                # the H-embedding unit.
-                # (Case 2) There is at least one CU1 gate.
-
-                # Case 0: nothing else to do
-                if not current_hyperedges[q]:
-                    # Sanity check: No link qubits to ``q`` currently exist
-                    hedges_with_link = [
-                        hedge for (hedge, _) in linkman.link_qubit_dict.keys()
-                    ]
-                    for hedge in hedges_with_link:
-                        q_vertex = hyp_circ.get_qubit_vertex(hedge)
-                        assert q != hyp_circ.get_qubit_of_vertex(q_vertex)
-
-                # Case 1: apply the H gate to all link qubits, don't end links
-                elif all(
-                    not hyp_circ.requires_h_embedded_cu1(hedge)
-                    for hedge in current_hyperedges[q]
+                # Trivial for every command that is not in the hyperedge's
+                # subcircuit
+                v_gate = cu1_count + len(qubit_mapping) - 1
+                gate_vertices = hyp_circ.get_gate_vertices(hyperedge)
+                # fmt: off
+                if (
+                    v_gate < min(gate_vertices) or  # Before hyperedge
+                    v_gate >= max(gate_vertices) and cmd.op.type != OpType.CU1
+                    or src_qubit not in cmd.qubits  # Not acting on qubit
                 ):
-                    # No embedding of CU1 implies a single hyperedge at a time
-                    assert len(current_hyperedges[q]) == 1
-                    currently_h_embedding[q] = not currently_h_embedding[q]
-                    # Append the H gate to the link qubits
-                    for hedge in current_hyperedges[q]:
-                        for server in linkman.connected_servers(hedge):
-                            new_circ.H(linkman.get_link_qubit(hedge, server))
+                    qs = [linkman.get_updated_name(q) for q in cmd.qubits]
+                    if cmd.op.type == OpType.Barrier:
+                        new_circ.add_barrier(qs)
+                    else:
+                        new_circ.add_gate(cmd.op, qs)
+                    continue
+                # fmt: on
 
-                # Case 2: action depends on whether we are embedding or not
-                else:
-                    if not currently_h_embedding[q]:  # Starts embedding unit
-                        currently_h_embedding[q] = True
+                # ~ Rz gate ~#
+                if cmd.op.type == OpType.Rz:
+                    q = cmd.qubits[0]
+                    phase = cmd.op.params[0]
+                    # Append the gate
+                    new_circ.Rz(phase, q)
 
-                        # All connections to servers must be closed, except
-                        # that of the remote server the CU1 gate acts on.
+                    # If not H-embedding, nothing needs to be done; otherwise:
+                    if currently_h_embedding:
+                        # The phase must be multiple of pi (either I or Z gate)
+                        if isclose(phase % 1, 0) or isclose(phase % 1, 1):
+                            # Apply it to all connected servers
+                            for server in linkman.connected_servers():
+                                link_qubit = linkman.link_qubit_dict[server]
+                                new_circ.Rz(phase, link_qubit)
+                        else:
+                            # If it is not, we can try to fix it by carrying
+                            # it after the next CU1 gate and try to cancel it.
+                            #
+                            # NOTE: We are assumming that this hyperedge can
+                            #   be implemented using hopping packets; which
+                            #   is something we check via PacMan. Hence, if
+                            #   PacMan told us this is packing is valid, we
+                            #   are guaranteed to be able to cancel this phase
+                            carry_phase += phase
+
+                # ~ H gate ~#
+                elif cmd.op.type == OpType.H:
+                    q = cmd.qubits[0]
+                    # The presence of an H gate indicates the beginning or end
+                    # of an H-embedding on the qubit
+
+                    if not currently_h_embedding:  # Starts an embedding unit
+                        # There are two cases to consider:
                         #
-                        # NOTE: According to the conditions of embeddability,
-                        # the embedded CU1 gates all act on the same servers
+                        # (Case 1) There is no CU1 gate or EJPP process that
+                        # acts on this qubit within the H-embedding unit.
+                        # (Case 2) There is at least one.
 
-                        # Find the CU1 gate
-                        found_CU1_gate = None
+                        found_embedded_cmd = None
                         for g in commands[(cmd_idx + 1) :]:  # noqa: E203
-                            if g.op.type == OpType.CU1 and q in g.qubits:
-                                found_CU1_gate = g
+                            if (
+                                g.op.type == OpType.CU1
+                                or g.op.type == OpType.CustomGate
+                            ) and q in g.qubits:
+                                found_embedded_cmd = g
                                 break
                             # Otherwise, stop when finding an H gate on q
                             elif g.op.type == OpType.H and q in g.qubits:
                                 break
-                        assert found_CU1_gate is not None
 
-                        remote_qubit = [
-                            rq for rq in found_CU1_gate.qubits if rq != q
-                        ][0]
-                        remote_vertex = hyp_circ.get_vertex_of_qubit(
-                            remote_qubit
-                        )
-                        remote_server = placement_map[remote_vertex]
-                        # All servers but ``remote_server`` must be
-                        # disconnected.
-                        for hedge in current_hyperedges[q]:
+                        if found_embedded_cmd is None:  # (Case 1)
+                            # Trivial: we simply need to apply H gate on the
+                            # open link qubits
+                            for server in linkman.connected_servers():
+                                link_qubit = linkman.link_qubit_dict[server]
+                                new_circ.H(link_qubit)
+                            # Switch the value of the flag
+                            currently_h_embedding = True
+
+                        else:  # (Case 2)
+                            # All connections to servers must be closed, except
+                            # that of the remote server the CU1 gate acts on.
+                            #
+                            # NOTE: Due to the conditions of embeddability,
+                            # embedded CU1 gates all act on the same servers
+
+                            remote_qubit = [
+                                rq
+                                for rq in found_embedded_cmd.qubits
+                                if rq != q
+                            ][0]
+                            remote_server = get_server_id(remote_qubit)
+                            # All servers but ``remote_server`` must be
+                            # disconnected.
                             # Notice that it is not guaranteed nor necessary
                             # that ``remote_server`` is in the list of
                             # connected servers.
                             end_servers = [
                                 s
-                                for s in linkman.connected_servers(hedge)
+                                for s in linkman.connected_servers()
                                 if s != remote_server
                             ]
 
                             # Close the connections
+                            for ejpp_end in linkman.end_links(end_servers):
+                                new_circ.add_custom_gate(
+                                    end_proc,
+                                    [],
+                                    [ejpp_end.from_qubit, ejpp_end.to_qubit],
+                                )
+
+                            # Apply an H gate on the surviving link qubits
+                            for server in linkman.connected_servers():
+                                link_qubit = linkman.link_qubit_dict[server]
+                                new_circ.H(link_qubit)
+                            # Switch the value of the flag
+                            currently_h_embedding = True
+
+                    else:  # Currently embedding
+                        # There are two cases two consider:
+                        #
+                        # (Case A) `carry_phase` is multiple of pi,
+                        # (Case B) it is not.
+                        #
+                        # NOTE: In here we only worry about the link qubits.
+                        # the 1-qubit operations on the original qubit are
+                        # left unchanged.
+
+                        # I gate, no need to apply Euler decomposition
+                        if isclose(1 + carry_phase % 2, 1):  # (Case A)
+                            # This means that H should end the embedding
+                            currently_h_embedding = False
+                            # Apply an H gate on all open link qubits
+                            for server in linkman.connected_servers():
+                                link_qubit = linkman.link_qubit_dict[server]
+                                new_circ.H(link_qubit)
+                            # Switch the value of the flag
+                            currently_h_embedding = False
+
+                        # Z gate, no need to apply Euler decomposition
+                        elif isclose(carry_phase % 2, 1):  # (Case A)
+                            # Apply it to all connected servers
+                            for server in linkman.connected_servers():
+                                link_qubit = linkman.link_qubit_dict[server]
+                                new_circ.Rz(carry_phase, link_qubit)
+                                new_circ.H(link_qubit)
+                            # Reset carry phase to zero
+                            carry_phase = 0
+                            # Switch the value of the flag
+                            currently_h_embedding = False
+
+                        # S or S' gate, apply Euler decomposition of H
+                        elif isclose(carry_phase % 1, 0.5):  # (Case B)
+                            # Replace HS with S'HS'H
+                            # The middle S' is outside of an embedding unit
+                            # since it is sandwiched by H gates. Hence, we
+                            # must not copy it to the link qubit.
+                            # Then, in the link qubit the H gates are
+                            # contiguous, so they cancel each other.
+                            # Consequently, we only need to carry the phase
+                            # of the S' and push it later in the circuit
+                            carry_phase = -carry_phase
+                            # We are still embedding (we applied two H)
+                            currently_h_embedding = True
+
+                        # Other phases cannot be cancelled
+                        else:
+                            raise Exception(
+                                "Hopping packet failed, rogue "
+                                + f"phase {carry_phase} could not be cancelled"
+                            )
+
+                    # Append the original gate
+                    new_circ.H(q)
+
+                # ~ CU1 gate ~#
+                elif cmd.op.type == OpType.CU1:
+                    phase = cmd.op.params[0]
+                    rmt_candidates = [q for q in cmd.qubits if q != src_qubit]
+                    assert len(rmt_candidates) == 1
+                    rmt_qubit = rmt_candidates.pop()
+
+                    # Check whether the gate is part of this hyperedge
+                    if v_gate in hyperedge.vertices:  # Distribute it
+                        # Sanity check: Not currently H embedding
+                        assert not currently_h_embedding
+                        # Find the server where the gate should be implemented
+                        target_server = placement_map[v_gate]
+
+                        # Add the required starting processes (if any)
+                        start_actions = linkman.start_link(target_server)
+                        for ejpp_start in start_actions:
+                            if ejpp_start.to_qubit not in new_circ.qubits:
+                                new_circ.add_qubit(ejpp_start.to_qubit)
+                            new_circ.add_custom_gate(
+                                start_proc,
+                                [],
+                                [ejpp_start.from_qubit, ejpp_start.to_qubit],
+                            )
+
+                        # Append the gate to the circuit
+                        new_circ.add_gate(
+                            OpType.CU1,
+                            phase,
+                            [
+                                linkman.get_link_qubit(target_server),
+                                linkman.get_updated_name(rmt_qubit),
+                            ],
+                        )
+
+                        # If this gate is the last gate in the hyperedge,
+                        # end all connections.
+                        if v_gate == max(hyperedge.vertices):
                             for ejpp_end in linkman.end_links(
-                                hedge, end_servers
+                                linkman.connected_servers()
                             ):
                                 new_circ.add_custom_gate(
                                     end_proc,
@@ -665,157 +706,112 @@ class Distribution:
                                     [ejpp_end.from_qubit, ejpp_end.to_qubit],
                                 )
 
-                    else:  # Ends embedding unit
-                        currently_h_embedding[q] = False
+                    else:
+                        qs = [linkman.get_updated_name(q) for q in cmd.qubits]
+                        new_circ.add_gate(cmd.op, qs)
 
-                    # Finally, apply an H gate to every server still connected
-                    for hedge in current_hyperedges[q]:
-                        for server in linkman.connected_servers(hedge):
-                            q_link = linkman.get_link_qubit(hedge, server)
-                            new_circ.H(q_link)
-
-                # Append the original gate to ``new_circ``
-                new_circ.H(qubit_mapping[q])
-
-            elif cmd.op.type == OpType.Rz:
-                q = cmd.qubits[0]
-                phase = cmd.op.params[0]
-                # Append the gate to ``new_circ``
-                new_circ.Rz(phase, qubit_mapping[q])
-
-                # If not H-embedding, nothing needs to be done; otherwise:
-                if currently_h_embedding[q]:
-                    # The phase must be multiple of pi (either I or Z gate)
-                    assert isclose(phase % 1, 0) or isclose(phase % 1, 1)
-                    # Apply it to all connected servers
-                    for hedge in current_hyperedges[q]:
-                        for server in linkman.connected_servers(hedge):
-                            q_link = linkman.get_link_qubit(hedge, server)
-                            new_circ.Rz(phase, q_link)
-
-            elif cmd.op.type == OpType.CU1:
-                phase = cmd.op.params[0]
-                q0 = cmd.qubits[0]
-                q1 = cmd.qubits[1]
-                # Find the vertices of these
-                v_q0 = hyp_circ.get_vertex_of_qubit(q0)
-                v_q1 = hyp_circ.get_vertex_of_qubit(q1)
-                v_gate = orig_cu1_count + len(qubit_mapping)
-                # Find the server where the gate should be implemented
-                target_server = placement_map[v_gate]
-                # Find the hyperedges of these
-                hyps0 = hyp_circ.get_hyperedges_containing([v_gate, v_q0])
-                assert len(hyps0) == 1
-                hyp0 = hyps0[0]
-                hyps1 = hyp_circ.get_hyperedges_containing([v_gate, v_q1])
-                assert len(hyps1) == 1
-                hyp1 = hyps1[0]
-                # Add them to the set of current hyperedges (may already be)
-                current_hyperedges[q0].add(hyp0)
-                current_hyperedges[q1].add(hyp1)
-
-                # Add the required starting processes (if any)
-                start_actions = linkman.start_link(
-                    hyp0, target_server
-                ) + linkman.start_link(hyp1, target_server)
-                for ejpp_start in start_actions:
-                    if ejpp_start.to_qubit not in new_circ.qubits:
-                        new_circ.add_qubit(ejpp_start.to_qubit)
-                    new_circ.add_custom_gate(
-                        start_proc,
-                        [],
-                        [ejpp_start.from_qubit, ejpp_start.to_qubit],
-                    )
-
-                # Append the gate to the circuit
-                new_circ.add_gate(
-                    OpType.CU1,
-                    phase,
-                    [
-                        linkman.get_link_qubit(hyp0, target_server),
-                        linkman.get_link_qubit(hyp1, target_server),
-                    ],
-                )
-                # Append correction gates if within an H-embedding unit.
-                # A correction gate must be applied on on every link
-                # qubit currently alive.
-                # With the exception of link qubits used to implement
-                # any gate in the hyperedge the the current gate
-                # corresponds to: recall that the corrections are needed
-                # for the hyperedges that contain an embedding, not
-                # the embedded hyperedges themselves!
-                if currently_h_embedding[q0]:
-                    for hedge in current_hyperedges[q0]:
-                        # Skip the hyperedge that contains the current gate
-                        if hedge == hyp0:
-                            continue
-                        for server in linkman.connected_servers(hedge):
-                            q_link = linkman.get_link_qubit(hedge, server)
-                            new_circ.add_gate(
-                                OpType.CU1, phase, [q_link, qubit_mapping[q1]]
+                        # Correction gates might need to be added
+                        if currently_h_embedding:
+                            # The phase must be multiple of pi
+                            assert isclose(phase % 1, 0) or isclose(
+                                phase % 1, 1
                             )
-                if currently_h_embedding[q1]:
-                    for hedge in current_hyperedges[q1]:
-                        # Skip the hyperedge that contains the current gate
-                        if hedge == hyp1:
-                            continue
-                        for server in linkman.connected_servers(hedge):
-                            q_link = linkman.get_link_qubit(hedge, server)
-                            new_circ.add_gate(
-                                OpType.CU1, phase, [qubit_mapping[q0], q_link]
-                            )
+                            # A correction gate must be applied on every link
+                            # qubit that is currently alive and has been used
+                            # to implement this hyperedge.
+                            for server in linkman.connected_servers():
+                                link_qubit = linkman.get_link_qubit(server)
+                                new_circ.add_gate(
+                                    OpType.CZ,
+                                    [
+                                        link_qubit,
+                                        linkman.get_updated_name(rmt_qubit),
+                                    ],
+                                )
+                            # CZ gates are used here to distinguish from CU1
+                            # gates and, hence, do not mess with the
+                            # `cu1_count` in future calls to this function
 
-                # If this gate is the last gate in the hyperedge, end links
-                if v_gate >= max(hyp0.vertices):
-                    # End connections and release the link qubits of
-                    # this hyperedge only
-                    for ejpp_end in linkman.end_links(
-                        hyp0, linkman.connected_servers(hyp0)
-                    ):
-                        new_circ.add_custom_gate(
-                            end_proc,
-                            [],
-                            [ejpp_end.from_qubit, ejpp_end.to_qubit],
-                        )
-                    # This hyperedge has been fully implemented
-                    current_hyperedges[q0].remove(hyp0)
-                if v_gate >= max(hyp1.vertices):
-                    # End connections and release the link qubits of
-                    # this hyperedge only
-                    for ejpp_end in linkman.end_links(
-                        hyp1, linkman.connected_servers(hyp1)
-                    ):
-                        new_circ.add_custom_gate(
-                            end_proc,
-                            [],
-                            [ejpp_end.from_qubit, ejpp_end.to_qubit],
-                        )
-                    # This hyperedge has been fully implemented
-                    current_hyperedges[q1].remove(hyp1)
+                # ~ EJPP process ~#
+                elif cmd.op.type == OpType.CustomGate:
+                    # Retrieve qubit information
+                    if cmd.op.get_name() == "starting_process":
+                        remote_qubit = cmd.qubits[1]
+                    elif cmd.op.get_name() == "ending_process":
+                        remote_qubit = cmd.qubits[0]
+                    remote_qubit = linkman.get_updated_name(remote_qubit)
+                    server = get_server_id(remote_qubit)
 
-                # Count increases by one; we only count CU1 in the original
-                # circuit because we use this to derive the gate vertex id
-                orig_cu1_count += 1
+                    if cmd.op.get_name() == "starting_process":
+                        # Apply the command
+                        qs = [linkman.get_updated_name(q) for q in cmd.qubits]
+                        new_circ.add_gate(cmd.op, qs)
 
-        # Sanity check: this is guaranteed by the fact that an H-embedding
-        # unit is always defined between two CU1 gates, so it cannot possibly
-        # be that at the end of the circuit an H-embedding unit has not yet
-        # reached its ending Hadamard.
-        assert all(not currently_h_embedding[q] for q in qubit_mapping.keys())
-        # Finally, close all remaining connections
-        for q in qubit_mapping.keys():
-            for hedge in current_hyperedges[q]:
-                servers = linkman.connected_servers(hedge)
-                for ejpp_end in linkman.end_links(hedge, servers):
-                    new_circ.add_custom_gate(
-                        end_proc, [], [ejpp_end.from_qubit, ejpp_end.to_qubit],
-                    )
+                    if currently_h_embedding:
+                        # A correction gate must be applied on every link
+                        # qubit that is currently alive and has been used
+                        # to implement this hyperedge.
+                        for server in linkman.connected_servers():
+                            link_qubit = linkman.get_link_qubit(server)
+                            new_circ.H(remote_qubit)
+                            new_circ.CZ(remote_qubit, link_qubit)
+                            new_circ.H(remote_qubit)
+
+                    if cmd.op.get_name() == "ending_process":
+                        # Apply the command
+                        qs = [linkman.get_updated_name(q) for q in cmd.qubits]
+                        new_circ.add_gate(cmd.op, qs)
+
+                # ~ Extra stuff ~#
+                elif cmd.op.type == OpType.CZ:
+                    # Apply the command
+                    qs = [linkman.get_updated_name(q) for q in cmd.qubits]
+                    new_circ.add_gate(cmd.op, qs)
+                elif cmd.op.type == OpType.Barrier:
+                    # Apply the command
+                    qs = [linkman.get_updated_name(q) for q in cmd.qubits]
+                    new_circ.add_barrier(qs)
+                else:
+                    raise Exception(f"Command {cmd.op} not supported.")
+
+            return new_circ
+
+        # ~ Main body ~#
+        # Rename the circuit's qubits
+        new_circ = Circuit()
+        for hw_qubit in qubit_mapping.values():
+            new_circ.add_qubit(hw_qubit)
+        # Add barriers after each CU1 gate. This avoids issues with
+        # pytket changing the order of CU1 gates as we modify the
+        # circuit, which would be problematic for our gate vertex
+        # numbering system.
+        for cmd in hyp_circ._circuit.get_commands():
+            qs = [qubit_mapping[q] for q in cmd.qubits]
+            new_circ.add_gate(cmd.op, qs)
+            if cmd.op.type == OpType.CU1:
+                new_circ.add_barrier(list(qubit_mapping.values()))
+
+        # Implement the hyperedges one by one
+        for hedge in hyp_circ.hyperedge_list:
+            new_circ = to_pytket_circuit_one_hyperedge(hedge, new_circ)
+
+        # Turn every CZ (correction) gate to CU1; remove barriers
+        final_circ = Circuit()
+        for q in new_circ.qubits:
+            final_circ.add_qubit(q)
+        for cmd in new_circ.get_commands():
+            if cmd.op.type == OpType.Barrier:
+                continue
+            elif cmd.op.type == OpType.CZ:
+                final_circ.add_gate(OpType.CU1, 1.0, cmd.qubits)
+            else:
+                final_circ.add_gate(cmd.op, cmd.qubits)
 
         # Final sanity checks
-        assert all_cu1_local(new_circ)
+        assert all_cu1_local(final_circ)
         assert check_equivalence(
-            self.circuit.get_circuit(), new_circ, qubit_mapping
+            self.circuit.get_circuit(), final_circ, qubit_mapping
         )
-        assert _cost_from_circuit(new_circ) == self.cost()
+        assert _cost_from_circuit(final_circ) == self.cost()
 
-        return new_circ
+        return final_circ
