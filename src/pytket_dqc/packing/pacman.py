@@ -711,6 +711,31 @@ class PacMan:
 
         return current_index, packets
 
+    def get_hypergraph_from_packets(self) -> HypergraphCircuit:
+        """Return a fresh instance of HypergraphCircuit whose hypergraph is
+        generated from scratch using the information from the dictionary
+        ``self.packets_by_qubit``. One hyperedge per packet.
+        :return: A new HypergraphCircuit on the same circuit but with
+        a new hypergraph.
+        :rtype: HypergraphCircuit
+        """
+        # Create a new instance of HyperedgeCircuit
+        circ = self.hypergraph_circuit.get_circuit()
+        hyp_circ = HypergraphCircuit(circ)
+        qubit_vertices = hyp_circ.get_qubit_vertices()
+        # Empty all dictionaries
+        hyp_circ.hyperedge_list = []
+        hyp_circ.hyperedge_dict = {v: [] for v in hyp_circ.vertex_list}
+        hyp_circ.vertex_neighbours = {v: set() for v in hyp_circ.vertex_list}
+        # Add each hyperedge, one per packet
+        for qubit_vertex in qubit_vertices:
+            for packet in self.packets_by_qubit[qubit_vertex]:
+                hyp_circ.add_hyperedge([qubit_vertex] + packet.gate_vertices)
+
+        assert hyp_circ._vertex_id_predicate()
+        assert hyp_circ._sorted_hedges_predicate()
+        return hyp_circ
+
     def get_intermediate_commands(
         self, first_packet: Packet, second_packet: Packet
     ) -> list[Command]:
@@ -950,6 +975,26 @@ class PacMan:
                 break
         return hopping_packet
 
+    def get_hopping_packets_within(
+        self, merged_packets: set[MergedPacket]
+    ) -> set[HoppingPacket]:
+        """Given a set of merged packets, find all the hopping packets that
+        are contained in them.
+        :param merged_packets: The set of merged packets to look into
+        :type merged_packets: set[MergedPacket]
+        :return: The set of hopping packets contained in ``merged_packets``
+        :rtype: set[HoppingPacket]
+        """
+        hoppings_within: set[HoppingPacket] = set()
+        all_hopping_packets = [hop_packet for packet_list in self.hopping_packets.values() for hop_packet in packet_list]
+        for (p0, p1) in all_hopping_packets:
+            # Try to find a merged packet that contains both p0 and p1
+            for merged_packet in merged_packets:
+                if p0 in merged_packet and p1 in merged_packet:
+                    hoppings_within.add((p0, p1))
+
+        return hoppings_within
+
     def is_packet_embedded(self, packet: Packet) -> bool:
         """Checks if a ``Packet`` is embedded
 
@@ -1045,18 +1090,7 @@ class PacMan:
         )
         return graph, bipartitions[1]
 
-    def get_mvc_merged_graph(self) -> set[MergedPacket]:
-        """Get the minimum vertex cover of the merged graph."""
-        g, topnodes = self.get_nx_graph_merged()
-        matching = bipartite.maximum_matching(g, top_nodes=topnodes)
-        return bipartite.to_vertex_cover(g, matching, top_nodes=topnodes)
-
-    def get_mvc_neighbouring_graph(self) -> set[NeighbouringPacket]:
-        """Get the minimum vertex cover of the neighbouring graph."""
-        g, topnodes = self.get_nx_graph_neighbouring()
-        matching = bipartite.maximum_matching(g, top_nodes=topnodes)
-        return bipartite.to_vertex_cover(g, matching, top_nodes=topnodes)
-
+    # TODO: Consider whether keep or remove
     def get_conflict_edges_given_mvc(
         self,
         potential_conflict_edges: set[frozenset[HoppingPacket]],
@@ -1090,21 +1124,6 @@ class PacMan:
                 true_conflicts.add((u, v))
 
         return true_conflicts
-
-    def get_conflict_edge(
-        self, embedded_packet1: Packet, embedded_packet2: Packet
-    ) -> tuple[HoppingPacket, HoppingPacket]:
-        """Given two embedded packets, return a ``frozenset``
-        that has the hopping packets that embed the packets as elements.
-
-        This is a very specific function to replace
-        long lines of code in `get_nx_graph_conflict()`
-        that failed flake8 line length checks.
-        """
-        return (
-            self.get_hopping_packet_from_embedded_packet(embedded_packet1),
-            self.get_hopping_packet_from_embedded_packet(embedded_packet2),
-        )
 
     def assign_bipartitions(
         self, graph: nx.Graph

@@ -8,7 +8,7 @@ class Refiner(ABC):
     """
 
     @abstractmethod
-    def refine(self, distribution: Distribution) -> bool:
+    def refine(self, distribution: Distribution, **kwargs) -> bool:
         """Perform in place refinement of a :class:`.Distribution`.
 
         :param distribution: Distribution to be refined.

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import networkx as nx  # type: ignore
 from pytket_dqc.refiners import Refiner
-from pytket_dqc.packing import PacMan, Packet
+from pytket_dqc.packing import PacMan, MergedPacket, HoppingPacket
 from pytket_dqc.placement import Placement
 from pytket_dqc.circuits import Hyperedge
 
@@ -20,7 +20,7 @@ class VertexCover(Refiner):
     NOTE: Any prior gate placement is ignored.
     """
 
-    def refine(self, distribution: Distribution, **kwargs):
+    def refine(self, distribution: Distribution, **kwargs) -> bool:
         """Updates the given distribution with a chosen allocation of qubits
         to choose a gate placement that minimises ebit count. Any prior gate
         placement is ignored.
@@ -63,14 +63,14 @@ class VertexCover(Refiner):
         conflict_graph, _ = pacman.get_nx_graph_conflict()
 
         # Find the vertex covers of each connected component separately
-        full_valid_cover: list[tuple[Packet, ...]] = []
+        full_valid_cover: list[MergedPacket] = []
         for subgraph in [
             merged_graph.subgraph(c)
             for c in nx.connected_components(merged_graph)
         ]:
 
             # Step 1. Find all minimum vertex coverings of subgraph
-            min_covers = get_min_covers(list(subgraph.edges))
+            min_covers: list[set[MergedPacket]] = get_min_covers(list(subgraph.edges))
 
             # Find the best way to remove conflicts for each cover
             best_cover = None
