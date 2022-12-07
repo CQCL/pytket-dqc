@@ -1,4 +1,15 @@
 import numpy as np
+from pytket.circuit import OpType  # type: ignore
+
+distributable_1q_op_types = [
+    OpType.Rz,
+    OpType.X,
+    OpType.Z
+]
+
+distributable_op_types = distributable_1q_op_types + [
+    OpType.CU1,
+]
 
 
 def is_diagonal(op):
@@ -20,3 +31,7 @@ def is_antidiagonal(op):
     i, j = array.shape
     test = array.reshape(-1)[:-1].reshape(i - 1, j + 1)
     return ~np.any(test[:, 1:])
+
+
+def is_distributable(op):
+    return is_antidiagonal(op) or is_diagonal(op)

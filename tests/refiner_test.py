@@ -5,46 +5,78 @@ from pytket_dqc import HypergraphCircuit
 from pytket_dqc.placement import Placement
 from pytket_dqc.circuits.distribution import Distribution
 from pytket_dqc.circuits.hypergraph import Hyperedge
-from pytket_dqc.refiners import SequentialDTypeMerge
+from pytket_dqc.refiners import (
+    NeighbouringDTypeMerge,
+    IntertwinedDTypeMerge,
+    RepeatRefiner,
+    SequenceRefiner,
+)
+import pytest
 
 
-def test_sequential_merge_d_type_backwards_meregable():
-    # Note that this test identifies the limits of SequentialDTypeMerge.
-    # In particular there are hyperedges which could be merged
-    # but are missed by this greedy approach.
+intertwined_test_network = NISQNetwork(
+    server_coupling=[[0, 1], [1, 2], [1, 3]],
+    server_qubits={0: [0], 1: [1], 2: [2], 3: [3]}
+)
 
-    ideal_hyperedge_list = [
-        Hyperedge(vertices=[0, 4, 7, 8, 11], weight=1),
-        Hyperedge(vertices=[1, 4, 7], weight=1),
-        Hyperedge(vertices=[1, 6, 10], weight=1),
-        Hyperedge(vertices=[1, 8, 11], weight=1),
-        Hyperedge(vertices=[1, 9], weight=1),
-        Hyperedge(vertices=[2, 9], weight=1),
-        Hyperedge(vertices=[3, 5, 6, 10], weight=1),
-    ]
+intertwined_test_circuit = Circuit(4)
+intertwined_test_circuit.add_gate(OpType.CU1, 1.0, [0, 1])
+intertwined_test_circuit.H(1)
+intertwined_test_circuit.add_gate(OpType.CU1, 1.0, [1, 3])
+intertwined_test_circuit.H(1)
+intertwined_test_circuit.add_gate(OpType.CU1, 1.0, [1, 3])
+intertwined_test_circuit.add_gate(OpType.CU1, 1.0, [0, 1])
+intertwined_test_circuit.H(1)
+intertwined_test_circuit.add_gate(OpType.CU1, 1.0, [0, 1])
+intertwined_test_circuit.H(1)
+intertwined_test_circuit.add_gate(OpType.CU1, 1.0, [1, 2])
+intertwined_test_circuit.add_gate(OpType.CU1, 1.0, [1, 3])
+intertwined_test_circuit.H(1)
+intertwined_test_circuit.add_gate(OpType.CU1, 1.0, [0, 1])
+intertwined_test_circuit.add_gate(OpType.CU1, 1.0, [0, 1])
 
-    test_network = NISQNetwork(
-        server_coupling=[[0, 1], [1, 2], [1, 3]],
-        server_qubits={0: [0], 1: [1], 2: [2], 3: [3]}
-    )
+intertwined_hyperedge_vertex_list = [
+    [0, 4, 7, 8, 11, 12],
+    [1, 4, 7],
+    [1, 5],
+    [1, 6, 10],
+    [1, 8, 11],
+    [1, 9],
+    [1, 12],
+    [2, 9],
+    [3, 5, 6, 10],
+]
+intertwined_hyperedge_list = [
+    Hyperedge(vertices=vertices, weight=1)
+    for vertices in intertwined_hyperedge_vertex_list
+]
 
-    test_circuit = Circuit(4)
+intertwined_test_placement = Placement(
+    {
+        0: 0,
+        1: 1,
+        2: 2,
+        3: 3,
+        4: 0,
+        5: 3,
+        6: 3,
+        7: 0,
+        8: 0,
+        9: 2,
+        10: 3,
+        11: 0,
+        12: 0,
+    }
+)
 
-    test_circuit.add_gate(OpType.CU1, 1.0, [0, 1])
-    test_circuit.H(1)
-    test_circuit.add_gate(OpType.CU1, 1.0, [1, 3])
-    test_circuit.H(1)
-    test_circuit.add_gate(OpType.CU1, 1.0, [1, 3])
-    test_circuit.add_gate(OpType.CU1, 1.0, [0, 1])
-    test_circuit.H(1)
-    test_circuit.add_gate(OpType.CU1, 1.0, [0, 1])
-    test_circuit.H(1)
-    test_circuit.add_gate(OpType.CU1, 1.0, [1, 2])
-    test_circuit.add_gate(OpType.CU1, 1.0, [1, 3])
-    test_circuit.H(1)
-    test_circuit.add_gate(OpType.CU1, 1.0, [0, 1])
 
-    test_hyp_circuit = HypergraphCircuit(test_circuit)
+@pytest.mark.xfail(
+    reason="Known bug in circuit generation. " +
+    "This should work once the bug is repaired."
+)
+def test_to_pytket_backwards_meregable():
+
+    test_hyp_circuit = HypergraphCircuit(intertwined_test_circuit)
 
     test_hyp_circuit.vertex_neighbours = {
         i: set() for i in test_hyp_circuit.vertex_list
@@ -54,53 +86,187 @@ def test_sequential_merge_d_type_backwards_meregable():
         i: [] for i in test_hyp_circuit.vertex_list
     }
 
-    new_hyperedge_list = [
-        [0, 4, 7, 8, 11],
-        [1, 4, 7],
-        [1, 6, 10],
-        [1, 8, 11],
-        [1, 9],
-        [2, 9],
-        [3, 5, 6, 10],
-    ]
-
-    for new_hyperedge in new_hyperedge_list:
+    for new_hyperedge in intertwined_hyperedge_vertex_list:
         test_hyp_circuit.add_hyperedge(new_hyperedge)
-
-    test_placement = Placement(
-        {
-            0: 0,
-            1: 1,
-            2: 2,
-            3: 3,
-            4: 0,
-            5: 3,
-            6: 3,
-            7: 0,
-            8: 0,
-            9: 2,
-            10: 3,
-            11: 0
-        }
-    )
 
     distribution = Distribution(
         circuit=test_hyp_circuit,
-        placement=test_placement,
-        network=test_network,
+        placement=intertwined_test_placement,
+        network=intertwined_test_network,
     )
 
-    assert distribution.cost() == 7
-    assert distribution.circuit.hyperedge_list == ideal_hyperedge_list
-
-    refiner = SequentialDTypeMerge()
-    refiner.refine(distribution)
-
-    assert distribution.cost() == 7
-    assert distribution.circuit.hyperedge_list == ideal_hyperedge_list
+    assert distribution.cost() == 9
+    assert distribution.circuit.hyperedge_list == intertwined_hyperedge_list
+    distribution.to_pytket_circuit()
 
 
-def test_sequential_merge_d_type_intertwined():
+def test_sequence_merge_d_type_backwards_meregable():
+
+    test_hyp_circuit = HypergraphCircuit(intertwined_test_circuit)
+
+    test_hyp_circuit.vertex_neighbours = {
+        i: set() for i in test_hyp_circuit.vertex_list
+    }
+    test_hyp_circuit.hyperedge_list = []
+    test_hyp_circuit.hyperedge_dict = {
+        i: [] for i in test_hyp_circuit.vertex_list
+    }
+
+    for new_hyperedge in intertwined_hyperedge_vertex_list:
+        test_hyp_circuit.add_hyperedge(new_hyperedge)
+
+    distribution = Distribution(
+        circuit=test_hyp_circuit,
+        placement=intertwined_test_placement,
+        network=intertwined_test_network,
+    )
+
+    refiner_list = [
+        NeighbouringDTypeMerge(),
+        IntertwinedDTypeMerge(),
+    ]
+    refiner = SequenceRefiner(refiner_list)
+    refiner = RepeatRefiner(refiner)
+    refinement_made = refiner.refine(distribution)
+    assert refinement_made
+
+    assert distribution.cost() == 8
+    # Note that sequencing and repeating results in fewer
+    # remaining hyperedges than does using the intertwined refiner
+    # and the sequential refiner only once.
+    assert distribution.circuit.hyperedge_list == [
+        Hyperedge(vertices=[0, 4, 7, 8, 11, 12], weight=1),
+        Hyperedge(vertices=[1, 4, 6, 7, 9, 10], weight=1),
+        Hyperedge(vertices=[1, 5], weight=1),
+        Hyperedge(vertices=[1, 8, 11, 12], weight=1),
+        Hyperedge(vertices=[2, 9], weight=1),
+        Hyperedge(vertices=[3, 5, 6, 10], weight=1),
+    ]
+
+
+def test_repeat_merge_d_type_backwards_mergeable():
+
+    test_hyp_circuit = HypergraphCircuit(intertwined_test_circuit)
+
+    test_hyp_circuit.vertex_neighbours = {
+        i: set() for i in test_hyp_circuit.vertex_list
+    }
+    test_hyp_circuit.hyperedge_list = []
+    test_hyp_circuit.hyperedge_dict = {
+        i: [] for i in test_hyp_circuit.vertex_list
+    }
+
+    for new_hyperedge in intertwined_hyperedge_vertex_list:
+        test_hyp_circuit.add_hyperedge(new_hyperedge)
+
+    distribution = Distribution(
+        circuit=test_hyp_circuit,
+        placement=intertwined_test_placement,
+        network=intertwined_test_network,
+    )
+
+    refiner = IntertwinedDTypeMerge()
+    refiner = RepeatRefiner(refiner)
+    refinement_made = refiner.refine(distribution)
+    assert refinement_made
+
+    assert distribution.cost() == 9
+    # Note that repeating the intertwined refiner results in fewer
+    # remaining hyperedges than does using the intertwined refiner
+    # only once. This is because hyperedges which are intertwined and merged
+    # are not themselves merged with packets which are intertwined with them.
+    assert distribution.circuit.hyperedge_list == [
+        Hyperedge(vertices=[0, 4, 7, 8, 11, 12], weight=1),
+        Hyperedge(vertices=[1, 4, 6, 7, 9, 10], weight=1),
+        Hyperedge(vertices=[1, 5], weight=1),
+        Hyperedge(vertices=[1, 8, 11], weight=1),
+        Hyperedge(vertices=[1, 12], weight=1),
+        Hyperedge(vertices=[2, 9], weight=1),
+        Hyperedge(vertices=[3, 5, 6, 10], weight=1),
+    ]
+
+
+def test_intertwined_merge_d_type_backwards_meregable():
+
+    test_hyp_circuit = HypergraphCircuit(intertwined_test_circuit)
+
+    test_hyp_circuit.vertex_neighbours = {
+        i: set() for i in test_hyp_circuit.vertex_list
+    }
+    test_hyp_circuit.hyperedge_list = []
+    test_hyp_circuit.hyperedge_dict = {
+        i: [] for i in test_hyp_circuit.vertex_list
+    }
+
+    for new_hyperedge in intertwined_hyperedge_vertex_list:
+        test_hyp_circuit.add_hyperedge(new_hyperedge)
+
+    distribution = Distribution(
+        circuit=test_hyp_circuit,
+        placement=intertwined_test_placement,
+        network=intertwined_test_network,
+    )
+
+    refiner = IntertwinedDTypeMerge()
+    refinement_made = refiner.refine(distribution)
+    assert refinement_made
+
+    assert distribution.cost() == 9
+    assert distribution.circuit.hyperedge_list == [
+        Hyperedge(vertices=[0, 4, 7, 8, 11, 12], weight=1),
+        Hyperedge(vertices=[1, 4, 6, 7, 10], weight=1),
+        Hyperedge(vertices=[1, 5], weight=1),
+        Hyperedge(vertices=[1, 8, 11], weight=1),
+        Hyperedge(vertices=[1, 9], weight=1),
+        Hyperedge(vertices=[1, 12], weight=1),
+        Hyperedge(vertices=[2, 9], weight=1),
+        Hyperedge(vertices=[3, 5, 6, 10], weight=1),
+    ]
+
+
+def test_neighbouring_merge_d_type_backwards_mergeable():
+    # Note that this test identifies the limits of NeighbouringDTypeMerge.
+    # In particular there are hyperedges which could be merged
+    # but are missed by this greedy approach.
+
+    test_hyp_circuit = HypergraphCircuit(intertwined_test_circuit)
+
+    test_hyp_circuit.vertex_neighbours = {
+        i: set() for i in test_hyp_circuit.vertex_list
+    }
+    test_hyp_circuit.hyperedge_list = []
+    test_hyp_circuit.hyperedge_dict = {
+        i: [] for i in test_hyp_circuit.vertex_list
+    }
+
+    for new_hyperedge in intertwined_hyperedge_vertex_list:
+        test_hyp_circuit.add_hyperedge(new_hyperedge)
+
+    distribution = Distribution(
+        circuit=test_hyp_circuit,
+        placement=intertwined_test_placement,
+        network=intertwined_test_network,
+    )
+
+    refiner = NeighbouringDTypeMerge()
+    refinement_made = refiner.refine(distribution)
+    assert refinement_made
+
+    # Only the last hyperedge is merges with the second last.
+    assert distribution.cost() == 8
+    assert distribution.circuit.hyperedge_list == [
+        Hyperedge(vertices=[0, 4, 7, 8, 11, 12], weight=1),
+        Hyperedge(vertices=[1, 4, 7], weight=1),
+        Hyperedge(vertices=[1, 5], weight=1),
+        Hyperedge(vertices=[1, 6, 10], weight=1),
+        Hyperedge(vertices=[1, 8, 11, 12], weight=1),
+        Hyperedge(vertices=[1, 9], weight=1),
+        Hyperedge(vertices=[2, 9], weight=1),
+        Hyperedge(vertices=[3, 5, 6, 10], weight=1),
+    ]
+
+
+def test_neighbouring_merge_d_type_intertwined():
 
     test_network = NISQNetwork(
         server_coupling=[[0, 1], [1, 2]],
@@ -148,8 +314,9 @@ def test_sequential_merge_d_type_intertwined():
 
     assert distribution.cost() == 6
 
-    refiner = SequentialDTypeMerge()
-    refiner.refine(distribution)
+    refiner = NeighbouringDTypeMerge()
+    refinement_made = refiner.refine(distribution)
+    assert refinement_made
 
     assert distribution.cost() == 5
 
@@ -163,7 +330,7 @@ def test_sequential_merge_d_type_intertwined():
     assert distribution.circuit.hyperedge_list == ideal_hyperedge_list
 
 
-def test_sequential_merge_d_type_complex_circuit():
+def test_neighbouring_merge_d_type_complex_circuit():
 
     test_network = NISQNetwork(
         server_coupling=[[0, 1], [1, 2], [1, 3]],
@@ -235,8 +402,9 @@ def test_sequential_merge_d_type_complex_circuit():
 
     assert distribution.cost() == 12
 
-    refiner = SequentialDTypeMerge()
-    refiner.refine(distribution)
+    refiner = NeighbouringDTypeMerge()
+    refinement_made = refiner.refine(distribution)
+    assert refinement_made
 
     assert distribution.cost() == 10
 
@@ -253,7 +421,7 @@ def test_sequential_merge_d_type_complex_circuit():
     assert distribution.circuit.hyperedge_list == ideal_hyperedge_list
 
 
-def test_sequential_merge_d_type_only_CZ():
+def test_neighbouring_merge_d_type_only_CZ():
 
     network = NISQNetwork(
         server_coupling=[[0, 1], [1, 2]],
@@ -287,13 +455,14 @@ def test_sequential_merge_d_type_only_CZ():
     )
     assert distribution.cost() == 4
 
-    refiner = SequentialDTypeMerge()
-    refiner.refine(distribution)
+    refiner = NeighbouringDTypeMerge()
+    refinement_made = refiner.refine(distribution)
+    assert refinement_made
 
     assert distribution.cost() == 2
 
 
-def test_sequential_merge_d_type_no_new_hyperedges():
+def test_neighbouring_merge_d_type_no_new_hyperedges():
 
     network = NISQNetwork(
         server_coupling=[[0, 1], [1, 2]],
@@ -336,7 +505,8 @@ def test_sequential_merge_d_type_no_new_hyperedges():
 
     assert distribution.circuit.hyperedge_list == hyperedge_list
 
-    refiner = SequentialDTypeMerge()
-    refiner.refine(distribution)
+    refiner = NeighbouringDTypeMerge()
+    refinement_made = refiner.refine(distribution)
+    assert not refinement_made
 
     assert distribution.circuit.hyperedge_list == hyperedge_list

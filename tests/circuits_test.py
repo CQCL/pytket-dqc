@@ -1662,3 +1662,72 @@ def test_requires_h_embedded_cu1():
     assert hyp_circ.requires_h_embedded_cu1(hyp_0)
     assert hyp_circ.requires_h_embedded_cu1(hyp_2)
     assert not hyp_circ.requires_h_embedded_cu1(hyp_3)
+
+
+def test_get_vertex_to_command_index_map():
+    test_circuit = Circuit(6)
+    # This test circuit is comprised of sections
+    # designed to test various things
+
+    # Test that hyperedges on different servers are split
+    # Test that hyperedges split by (anti)diagonal gates
+    # are merged
+    cz = Op.create(OpType.CU1, 1)
+    test_circuit.add_gate(cz, [0, 2])
+    test_circuit.add_gate(cz, [0, 4])
+    test_circuit.Z(0).X(0)
+    test_circuit.add_gate(cz, [0, 5])
+    test_circuit.add_gate(cz, [0, 3])
+
+    # Test we can embed two CU1s with no Hadamard
+    # one Hadamard and two Hadamards
+    # S gates inserted to ensure angle of phase gates
+    # sum to integer
+    test_circuit.H(0)
+    test_circuit.Rz(0.5, 0)
+    test_circuit.add_gate(cz, [0, 2])
+    test_circuit.Rz(0.5, 0)  # 0 H
+    test_circuit.add_gate(cz, [0, 3])
+    test_circuit.H(0)  # 1 H
+    test_circuit.add_gate(cz, [0, 2])  # NOT mergeable
+    test_circuit.Rz(0.5, 0)
+    test_circuit.H(0)  # 2 H
+    test_circuit.Rz(0.27, 0)  # Random phase that should have no effect
+    test_circuit.H(0)
+    test_circuit.add_gate(cz, [0, 2])
+    test_circuit.H(0)
+    test_circuit.add_gate(cz, [0, 3])  # This gate is mergeable
+
+    # Test that local and 3rd party server CU1s break embeddability
+    test_circuit.H(0)
+    test_circuit.add_gate(cz, [0, 1])  # Local CU1
+    test_circuit.H(0)
+    test_circuit.add_gate(cz, [0, 2])  # NOT mergeable
+    test_circuit.H(0)
+    test_circuit.add_gate(cz, [0, 4])  # 3rd party CU1
+    test_circuit.H(0)
+    test_circuit.add_gate(cz, [0, 2])  # NOT mergeable
+
+    # Test that conflicts are identified correctly
+    test_circuit.H(0).H(2)
+    test_circuit.add_gate(cz, [0, 2])
+    test_circuit.H(0).H(2)
+    test_circuit.add_gate(cz, [0, 2])
+
+    DQCPass().apply(test_circuit)
+
+    hypergraph_circuit = HypergraphCircuit(test_circuit)
+    commands = test_circuit.get_commands()
+    cu1_command_indices = [
+        i
+        for i, command in enumerate(commands)
+        if command.op.type == OpType.CU1
+    ]
+    vertex_to_command_index_reference = {
+        i + len(test_circuit.qubits): cu1_command_indices[i]
+        for i in range(len(cu1_command_indices))
+    }
+    assert (
+        hypergraph_circuit.get_vertex_to_command_index_map()
+        == vertex_to_command_index_reference
+    )

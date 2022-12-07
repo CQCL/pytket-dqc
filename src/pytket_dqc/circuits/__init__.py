@@ -4,7 +4,11 @@ from .hypergraph_circuit import (  # noqa:F401
     CyclicHypergraphCircuit,
     RegularGraphHypergraphCircuit,
 )
-from .hypergraph import Hypergraph, Hyperedge  # noqa:F401
+from .hypergraph import (  # noqa:F401
+    Hypergraph,
+    Hyperedge,
+    Vertex
+)
 
 from .bipartite_circuit import BipartiteCircuit  # noqa:F401
 
