@@ -7,5 +7,8 @@ from .packing import (  # noqa:F401
 
 from .pacman import (  # noqa:F401
     PacMan,
-    Packet
+    Packet,
+    MergedPacket,
+    HoppingPacket,
+    NeighbouringPacket,
 )

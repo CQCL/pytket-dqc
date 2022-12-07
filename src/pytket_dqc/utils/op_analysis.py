@@ -4,13 +4,11 @@ from pytket.circuit import OpType  # type: ignore
 distributable_1q_op_types = [
     OpType.Rz,
     OpType.X,
-    OpType.U1,
+    OpType.Z
 ]
 
 distributable_op_types = distributable_1q_op_types + [
     OpType.CU1,
-    OpType.CRz,
-    OpType.CZ,
 ]
 
 

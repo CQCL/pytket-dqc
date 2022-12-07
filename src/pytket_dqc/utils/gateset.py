@@ -110,11 +110,7 @@ def to_euler_with_two_hadamards(ops: list[Op]) -> list[Op]:
     it with an equivalent list (up to global phase)
     that is of the form [Rz, H, Rz, H, Rz].
 
-    Warnings:
-    - Global Phases are not preserved
-    - If the input list contains two Hs already
-    then the list is returned as is.
-
+    NOTE: Global Phases are not preserved.
     """
 
     hadamard_indices = [
