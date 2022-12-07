@@ -507,7 +507,7 @@ def test_q_control_box_circuits():
     assert dist_circ.vertex_list == [0, 2, 3, 4, 5, 6, 1]
 
 
-def test_to_pytket_circ_CRz():
+def test_to_pytket_circuit_CRz():
 
     network = NISQNetwork([[0, 1], [1, 2], [0, 2]], {0: [0], 1: [1], 2: [2]})
 
@@ -535,11 +535,11 @@ def test_to_pytket_circ_CRz():
 
     test_circ.add_custom_gate(start_proc, [], [server_1[0], server_0_link[0]])
     test_circ.add_custom_gate(start_proc, [], [server_2[0], server_0_link[1]])
-    test_circ.add_gate(OpType.CU1, 0.3, [server_0_link[0], server_0_link[1]])
+    test_circ.add_gate(OpType.CU1, 0.3, [server_0_link[1], server_0_link[0]])
     test_circ.add_custom_gate(end_proc, [], [server_0_link[0], server_1[0]])
     test_circ.H(server_1[0])
     test_circ.add_custom_gate(start_proc, [], [server_1[0], server_0_link[0]])
-    test_circ.add_gate(OpType.CU1, 1.0, [server_0_link[0], server_0_link[1]])
+    test_circ.add_gate(OpType.CU1, 1.0, [server_0_link[1], server_0_link[0]])
     test_circ.add_gate(OpType.CU1, 0.3, [server_0_link[1], server_0_link[0]])
     test_circ.add_custom_gate(end_proc, [], [server_0_link[0], server_1[0]])
     test_circ.add_custom_gate(end_proc, [], [server_0_link[1], server_2[0]])
@@ -599,12 +599,12 @@ def test_to_pytket_circuit_detached_gate():
     test_circ.add_custom_gate(
         start_proc, [], [server_1_link[0], server_0_link[1]]
     )
-    test_circ.add_gate(OpType.CU1, 1.0, [server_0_link[0], server_0_link[1]])
+    test_circ.add_gate(OpType.CU1, 1.0, [server_0_link[1], server_0_link[0]])
     test_circ.add_custom_gate(end_proc, [], [server_0_link[0], server_1[0]])
     test_circ.add_custom_gate(end_proc, [], [server_1_link[0], server_2[0]])
     test_circ.H(server_1[0])
     test_circ.add_custom_gate(start_proc, [], [server_1[0], server_0_link[0]])
-    test_circ.add_gate(OpType.CU1, 1.0, [server_0_link[0], server_0_link[1]])
+    test_circ.add_gate(OpType.CU1, 1.0, [server_0_link[1], server_0_link[0]])
     test_circ.add_custom_gate(end_proc, [], [server_0_link[0], server_1[0]])
     test_circ.add_custom_gate(end_proc, [], [server_0_link[1], server_2[0]])
 
@@ -669,12 +669,12 @@ def test_to_pytket_circuit_gates_on_different_servers():
     test_circ.add_custom_gate(
         start_proc, [], [server_1_link[0], server_0_link[1]]
     )
-    test_circ.add_gate(OpType.CU1, 1.0, [server_0_link[0], server_0_link[1]])
+    test_circ.add_gate(OpType.CU1, 1.0, [server_0_link[1], server_0_link[0]])
     test_circ.add_custom_gate(end_proc, [], [server_1_link[0], server_2[0]])
     test_circ.add_custom_gate(end_proc, [], [server_0_link[1], server_2[0]])
     test_circ.H(server_2[0])
     test_circ.add_custom_gate(start_proc, [], [server_2[0], server_1_link[0]])
-    test_circ.add_gate(OpType.CU1, 1.0, [server_1[0], server_1_link[0]])
+    test_circ.add_gate(OpType.CU1, 1.0, [server_1_link[0], server_1[0]])
     test_circ.add_custom_gate(end_proc, [], [server_0_link[0], server_1[0]])
     test_circ.add_custom_gate(end_proc, [], [server_1_link[0], server_2[0]])
 
@@ -740,9 +740,9 @@ def test_to_pytket_circuit_with_branching_distribution_tree():
     test_circ.add_custom_gate(
         start_proc, [], [server_1_link[0], server_3_link[0]]
     )
-    test_circ.add_gate(OpType.CU1, 1.0, [server_2_link[0], server_2[0]])
+    test_circ.add_gate(OpType.CU1, 1.0, [server_2[0], server_2_link[0]])
     test_circ.add_custom_gate(end_proc, [], [server_1_link[0], server_0[0]])
-    test_circ.add_gate(OpType.CU1, 1.0, [server_3_link[0], server_3[0]])
+    test_circ.add_gate(OpType.CU1, 1.0, [server_3[0], server_3_link[0]])
     test_circ.add_custom_gate(end_proc, [], [server_2_link[0], server_0[0]])
     test_circ.add_custom_gate(end_proc, [], [server_3_link[0], server_0[0]])
 
@@ -752,8 +752,6 @@ def test_to_pytket_circuit_with_branching_distribution_tree():
     circ_with_dist_command_names = [
         command.op.get_name() for command in circ_with_dist.get_commands()
     ]
-
-    print(circ_with_dist.get_commands())
 
     assert test_circ_command_names == circ_with_dist_command_names
 
@@ -1145,9 +1143,9 @@ def test_to_pytket_circuit_M_P_choice_collision():
     circ.add_gate(OpType.CU1, 1.0, [0, 1])  # Gate: 3
     circ.H(1).Rz(-0.5, 0)
     circ.add_gate(OpType.CU1, 1.0, [0, 1])  # Gate: 4
-    circ.H(1).H(0).Rz(-0.5, 0)  #  Hedge A wants this to be M, but B wants P
+    circ.H(1).H(0).Rz(-0.5, 0)  # Hedge A wants this to be M, but B wants P
     circ.add_gate(OpType.CU1, 1.0, [0, 1])  # Gate: 5
-    circ.H(1).H(0)  #  Hedge A wants this to be P, but B wants M
+    circ.H(1).H(0)  # Hedge A wants this to be P, but B wants M
     circ.add_gate(OpType.CU1, 1.0, [0, 1])  # Gate: 6
     circ.H(1).Rz(-0.5, 0)
     circ.add_gate(OpType.CU1, 1.0, [0, 1])  # Gate: 7
