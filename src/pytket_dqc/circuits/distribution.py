@@ -3,9 +3,12 @@ from pytket_dqc.placement import Placement
 from pytket_dqc.networks import NISQNetwork
 from pytket_dqc.utils import steiner_tree, check_equivalence
 from pytket_dqc.utils.gateset import start_proc, end_proc
-from pytket_dqc.utils.circuit_analysis import all_cu1_local, _cost_from_circuit, get_server_id
+from pytket_dqc.utils.circuit_analysis import (
+    all_cu1_local,
+    _cost_from_circuit,
+    get_server_id,
+)
 from pytket import Circuit, OpType, Qubit
-from pytket.passes import RemoveRedundancies  # type: ignore
 import networkx as nx  # type: ignore
 from numpy import isclose  # type: ignore
 from typing import NamedTuple
@@ -314,9 +317,7 @@ class Distribution:
                 self.occupied[server].remove(link_qubit)
                 self.available[server].append(link_qubit)
 
-            def start_link(
-                self, target: int
-            ) -> list[EjppAction]:
+            def start_link(self, target: int) -> list[EjppAction]:
                 """Find sequence of StartingProcesses required to share the
                 qubit of ``self.hyperedge`` with ``target`` server.
                 """
@@ -374,9 +375,7 @@ class Distribution:
 
                 return starting_actions
 
-            def end_links(
-                self, targets: list[int]
-            ) -> list[EjppAction]:
+            def end_links(self, targets: list[int]) -> list[EjppAction]:
                 """Find the sequence of EndingProcesses required to end the
                 connection of the qubit in ``hyperedge`` to each server in
                 ``targets``.
@@ -406,9 +405,7 @@ class Distribution:
             def connected_servers(self) -> list[int]:
                 return list(self.link_qubit_dict.keys())
 
-            def get_link_qubit(
-                self, server: int
-            ) -> Qubit:
+            def get_link_qubit(self, server: int) -> Qubit:
                 """If ``server`` is the home server of the hyperedge's qubit,
                 its hardware qubit is returned. Otherwise, we query the dict
                 ``link_qubit_dict`` to retrieve the appropriate link qubit.
@@ -446,7 +443,9 @@ class Distribution:
                 else:
                     return qubit
 
-        def to_pytket_circuit_one_hyperedge(hyperedge: Hyperedge, circ: Circuit) -> Circuit:
+        def to_pytket_circuit_one_hyperedge(
+            hyperedge: Hyperedge, circ: Circuit
+        ) -> Circuit:
             """Given a circuit equivalent to the original one, but with some
             of its non-local gates already distributed, implement those of the
             given hyperedge and return the new equivalent circuit.
@@ -498,7 +497,7 @@ class Distribution:
                     continue
                 # fmt: on
 
-                #~ Rz gate ~#
+                # ~ Rz gate ~#
                 if cmd.op.type == OpType.Rz:
                     q = cmd.qubits[0]
                     phase = cmd.op.params[0]
@@ -524,7 +523,7 @@ class Distribution:
                             #   are guaranteed to be able to cancel this phase
                             carry_phase += phase
 
-                #~ H gate ~#
+                # ~ H gate ~#
                 elif cmd.op.type == OpType.H:
                     q = cmd.qubits[0]
                     # The presence of an H gate indicates the beginning or end
@@ -539,7 +538,10 @@ class Distribution:
 
                         found_embedded_cmd = None
                         for g in commands[(cmd_idx + 1) :]:  # noqa: E203
-                            if (g.op.type == OpType.CU1 or g.op.type == OpType.CustomGate) and q in g.qubits:
+                            if (
+                                g.op.type == OpType.CU1
+                                or g.op.type == OpType.CustomGate
+                            ) and q in g.qubits:
                                 found_embedded_cmd = g
                                 break
                             # Otherwise, stop when finding an H gate on q
@@ -559,10 +561,14 @@ class Distribution:
                             # All connections to servers must be closed, except
                             # that of the remote server the CU1 gate acts on.
                             #
-                            # NOTE: According to the conditions of embeddability,
-                            # the embedded CU1 gates all act on the same servers
+                            # NOTE: Due to the conditions of embeddability,
+                            # embedded CU1 gates all act on the same servers
 
-                            remote_qubit = [rq for rq in found_embedded_cmd.qubits if rq != q][0]
+                            remote_qubit = [
+                                rq
+                                for rq in found_embedded_cmd.qubits
+                                if rq != q
+                            ][0]
                             remote_server = get_server_id(remote_qubit)
                             # All servers but ``remote_server`` must be
                             # disconnected.
@@ -639,13 +645,15 @@ class Distribution:
 
                         # Other phases cannot be cancelled
                         else:
-                            raise Exception("Hopping packet failed, rogue "+
-                                f"phase {carry_phase} could not be cancelled")
+                            raise Exception(
+                                "Hopping packet failed, rogue "
+                                + f"phase {carry_phase} could not be cancelled"
+                            )
 
                     # Append the original gate
                     new_circ.H(q)
 
-                #~ CU1 gate ~#
+                # ~ CU1 gate ~#
                 elif cmd.op.type == OpType.CU1:
                     phase = cmd.op.params[0]
                     rmt_candidates = [q for q in cmd.qubits if q != src_qubit]
@@ -699,20 +707,26 @@ class Distribution:
                         # Correction gates might need to be added
                         if currently_h_embedding:
                             # The phase must be multiple of pi
-                            assert isclose(phase % 1, 0) or isclose(phase % 1, 1)
+                            assert isclose(phase % 1, 0) or isclose(
+                                phase % 1, 1
+                            )
                             # A correction gate must be applied on every link
                             # qubit that is currently alive and has been used
                             # to implement this hyperedge.
                             for server in linkman.connected_servers():
                                 link_qubit = linkman.get_link_qubit(server)
                                 new_circ.add_gate(
-                                    OpType.CZ, [link_qubit, linkman.get_updated_name(rmt_qubit)]
+                                    OpType.CZ,
+                                    [
+                                        link_qubit,
+                                        linkman.get_updated_name(rmt_qubit),
+                                    ],
                                 )
                             # CZ gates are used here to distinguish from CU1
                             # gates and, hence, do not mess with the
                             # `cu1_count` in future calls to this function
 
-                #~ EJPP process ~#
+                # ~ EJPP process ~#
                 elif cmd.op.type == OpType.CustomGate:
                     # Retrieve qubit information
                     if cmd.op.get_name() == "starting_process":
@@ -742,7 +756,7 @@ class Distribution:
                         qs = [linkman.get_updated_name(q) for q in cmd.qubits]
                         new_circ.add_gate(cmd.op, qs)
 
-                #~ Extra stuff ~#
+                # ~ Extra stuff ~#
                 elif cmd.op.type == OpType.CZ:
                     # Apply the command
                     qs = [linkman.get_updated_name(q) for q in cmd.qubits]
@@ -756,7 +770,7 @@ class Distribution:
 
             return new_circ
 
-        #~ Main body ~#
+        # ~ Main body ~#
         # Rename the circuit's qubits
         new_circ = Circuit()
         for hw_qubit in qubit_mapping.values():
@@ -789,9 +803,9 @@ class Distribution:
 
         # Final sanity checks
         assert all_cu1_local(final_circ)
-        #assert check_equivalence(
-        #    self.circuit.get_circuit(), final_circ, qubit_mapping
-        #)
+        assert check_equivalence(
+            self.circuit.get_circuit(), final_circ, qubit_mapping
+        )
         assert _cost_from_circuit(final_circ) == self.cost()
 
         return final_circ
