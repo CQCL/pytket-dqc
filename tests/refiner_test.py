@@ -510,3 +510,50 @@ def test_neighbouring_merge_d_type_no_new_hyperedges():
     assert not refinement_made
 
     assert distribution.circuit.hyperedge_list == hyperedge_list
+
+
+def test_greedy_merge():
+    circ = Circuit(6)
+    network = NISQNetwork(
+        server_coupling=[[0, 1], [0, 2], [1, 2]],
+        server_qubits={
+            0: [0, 1],
+            1: [2, 3, 4],
+            2: [5]
+        }
+    )
+    circ.add_gate(OpType.CU1, 1.0, [0, 2])
+    circ.add_gate(OpType.CU1, 1.0, [0, 5])
+    circ.add_gate(OpType.CU1, 1.0, [1, 3])
+    circ.H(1).H(2)
+    circ.add_gate(OpType.CU1, 1.0, [1, 2])
+    circ.H(1).H(2)
+    circ.add_gate(OpType.CU1, 1.0, [0, 2])
+    circ.add_gate(OpType.CU1, 1.0, [1, 4])
+    circ.add_gate(OpType.CU1, 1.0, [1, 5])
+    hyp_circ = HypergraphCircuit(circ)
+
+    placement_dict = {
+        0: 0, 1: 0, 2: 1, 3: 1, 4: 1, 5: 3  # Qubits
+    }
+    for i, cu1 in enumerate([
+        command for command in circ.get_commands()
+        if command.op.type == OpType.CU1
+    ]):
+        placement_dict[i + 6] = placement_dict[cu1.args[0].index[0]]
+
+    distribution = Distribution(hyp_circ, Placement(placement_dict), network)
+
+    hyperedge_list = [
+        Hyperedge([0, 6, 7, 8], 1),
+        Hyperedge([1, 9, ], 1),
+        Hyperedge([1, 10, ], 1),
+        Hyperedge([1, 11, 12, ], 1),
+        Hyperedge([2, 7, ], 1),
+        Hyperedge([2, 10, ], 1),
+        Hyperedge([2, 8, ], 1),
+        Hyperedge([3, 9, ], 1),
+        Hyperedge([4, 11, ], 1),
+        Hyperedge([5, 6, 12, ], 1),
+    ]
+    assert distribution.circuit.hyperedge_list == hyperedge_list
