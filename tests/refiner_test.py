@@ -10,7 +10,7 @@ from pytket_dqc.refiners import (
     IntertwinedDTypeMerge,
     RepeatRefiner,
     SequenceRefiner,
-    DHTypeGreedyMerge
+    NHTypeGreedyMerge
 )
 import pytest
 
@@ -513,7 +513,7 @@ def test_neighbouring_merge_d_type_no_new_hyperedges():
     assert distribution.circuit.hyperedge_list == hyperedge_list
 
 
-def test_greedy_merge():
+def test_n_h_type_greedy_merge():
     circ = Circuit(6)
     network = NISQNetwork(
         server_coupling=[[0, 1], [0, 2], [1, 2]],
@@ -542,7 +542,7 @@ def test_greedy_merge():
         command for command in circ.get_commands()
         if command.op.type == OpType.CU1
     ]):
-        placement_dict[i + 6] = 0
+        placement_dict[i + 6] = 1
 
     distribution = Distribution(hyp_circ, Placement(placement_dict), network)
 
@@ -561,4 +561,21 @@ def test_greedy_merge():
     ]
     assert distribution.circuit.hyperedge_list == hyperedge_list
 
-    DHTypeGreedyMerge().refine(distribution)
+    refinement_made = NHTypeGreedyMerge().refine(distribution)
+    assert refinement_made
+
+    new_hyperedge_list = [
+        Hyperedge([0, 6, 8, 10, ], 1),
+        Hyperedge([1, 7, 11, 12, ], 1),
+        Hyperedge([1, 9, ], 1),
+        # Should NOT merge with 10 because 7, 11, 12 merging
+        # is a conflict
+        Hyperedge([2, 6, ], 1),
+        Hyperedge([2, 9, ], 1),
+        Hyperedge([2, 10, ], 1),
+        Hyperedge([3, 7, ], 1),
+        Hyperedge([4, 11, ], 1),
+        Hyperedge([5, 8, 12, ], 1),
+    ]
+
+    assert distribution.circuit.hyperedge_list == new_hyperedge_list
