@@ -47,20 +47,60 @@ class VertexCover(Refiner):
                 + "use NetworkX's approximate alg. to find a vertex cover\n"
             )
 
+        pacman = PacMan(distribution.circuit, distribution.placement)
+        # Decide on a cover using either approach
         if vertex_cover_alg == "all_brute_force":
-            self.exhaustive_refine(distribution)
+            cover = self.exhaustive_refine(distribution, pacman)
         elif vertex_cover_alg == "networkx":
-            self.networkx_refine(distribution)
+            cover = self.networkx_refine(distribution, pacman)
+
+        # Obtain a fresh HypergraphCircuit where no hyperedges are merged
+        new_hyp_circ = pacman.get_hypergraph_from_packets()
+        # Then, merge as required by ``cover``
+        for merged_packet in cover:
+            # Skip if empty
+            if len(merged_packet) == 0:
+                continue
+            # Otherwise gather all hyperedges
+            qubit_vertex = merged_packet[0].qubit_vertex
+            hyperedges: list[Hyperedge] = []
+            for packet in merged_packet:
+                assert qubit_vertex == packet.qubit_vertex
+                hyperedges.append(
+                    Hyperedge([qubit_vertex] + packet.gate_vertices)
+                )
+            # And merge them
+            new_hyp_circ.merge_hyperedge(hyperedges)
+        # Update the hypergraph in ``distribution``
+        distribution.circuit = new_hyp_circ
+
+        # Create a fresh placement dict with all qubits placed as originally
+        new_placement = {
+            q: distribution.placement.placement[q]
+            for q in distribution.circuit.get_qubit_vertices()
+        }
+        # Place gate vertices according to the packets in ``cover``
+        for merged_packet in cover:
+            for packet in merged_packet:
+                server = packet.connected_server_index
+                for vertex in packet.gate_vertices:
+                    new_placement[vertex] = server
+        # Update the placement in ``distribution``
+        distribution.placement = Placement(new_placement)
 
         assert distribution.is_valid()
+        return True
 
-    def exhaustive_refine(self, distribution: Distribution):
+    def exhaustive_refine(self, distribution: Distribution, pacman: PacMan) -> list[MergedPacket]:
         """Refinement where all minimum vertex covers are found exhaustively.
 
         :param distribution: The distribution to be updated
         :type distribution: Distribution
+        :param pacman: The packet manager used during refinement
+        :type pacman: PacMan
+        :return: The list of selected merged packets to implement
+        :rtype: list[MergedPacket]
         """
-        pacman = PacMan(distribution.circuit, distribution.placement)
         merged_graph, _ = pacman.get_nx_graph_merged()
         conflict_graph, _ = pacman.get_nx_graph_conflict()
 
@@ -119,51 +159,19 @@ class VertexCover(Refiner):
             # Include the cover of this subgraph in the full cover
             full_valid_cover += best_cover
 
-        # Obtain a fresh HypergraphCircuit where no hyperedges are merged
-        new_hyp_circ = pacman.get_hypergraph_from_packets()
-        # Then, merge as required by ``full_valid_cover``
-        for merged_packet in full_valid_cover:
-            # Skip if empty
-            if len(merged_packet) == 0:
-                continue
-            # Otherwise gather all hyperedges
-            qubit_vertex = merged_packet[0].qubit_vertex
-            hyperedges: list[Hyperedge] = []
-            for packet in merged_packet:
-                assert qubit_vertex == packet.qubit_vertex
-                hyperedges.append(
-                    Hyperedge([qubit_vertex] + packet.gate_vertices)
-                )
-            # And merge them
-            new_hyp_circ.merge_hyperedge(hyperedges)
-        # Update the hypergraph in ``distribution``
-        distribution.circuit = new_hyp_circ
+        return full_valid_cover
 
-        # Create a fresh placement dict with all qubits placed as originally
-        new_placement = {
-            q: distribution.placement.placement[q]
-            for q in distribution.circuit.get_qubit_vertices()
-        }
-        # Place gate vertices according to the packets in ``full_valid_cover``
-        for merged_packet in full_valid_cover:
-            for packet in merged_packet:
-                server = packet.connected_server_index
-                for vertex in packet.gate_vertices:
-                    new_placement[vertex] = server
-        # Update the placement in ``distribution``
-        distribution.placement = Placement(new_placement)
-
-        # Sanity check
-        distribution.is_valid()
-
-    def networkx_refine(self, distribution: Distribution):
+    def networkx_refine(self, distribution: Distribution, pacman: PacMan) -> list[MergedPacket]:
         """Refinement where the vertex covers are found using NetworkX's
         approximate algorithm. Only one vertex cover is found.
 
         :param distribution: The distribution to be updated
         :type distribution: Distribution
+        :param pacman: The packet manager used during refinement
+        :type pacman: PacMan
+        :return: The list of selected merged packets to implement
+        :rtype: list[MergedPacket]
         """
-        pacman = PacMan(distribution.circuit, distribution.placement)
 
         raise Exception("Not implemented.")
 
