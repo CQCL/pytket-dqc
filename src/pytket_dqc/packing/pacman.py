@@ -1118,7 +1118,21 @@ class PacMan:
         )
         return graph, bipartitions[1]
 
-    # TODO: Consider whether keep or remove
+    # TODO: Deprecated. Remove once Tim has finished helping Junyi
+    def get_mvc_merged_graph(self) -> set[MergedPacket]:
+        """Get the minimum vertex cover of the merged graph."""
+        g, topnodes = self.get_nx_graph_merged()
+        matching = bipartite.maximum_matching(g, top_nodes=topnodes)
+        return bipartite.to_vertex_cover(g, matching, top_nodes=topnodes)
+
+    # TODO: Deprecated. Remove once Tim has finished helping Junyi
+    def get_mvc_neighbouring_graph(self) -> set[NeighbouringPacket]:
+        """Get the minimum vertex cover of the neighbouring graph."""
+        g, topnodes = self.get_nx_graph_neighbouring()
+        matching = bipartite.maximum_matching(g, top_nodes=topnodes)
+        return bipartite.to_vertex_cover(g, matching, top_nodes=topnodes)
+
+    # TODO: Deprecated. Remove once Tim has finished helping Junyi
     def get_conflict_edges_given_mvc(
         self,
         potential_conflict_edges: set[frozenset[HoppingPacket]],
