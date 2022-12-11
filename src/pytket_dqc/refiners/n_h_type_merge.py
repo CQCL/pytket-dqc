@@ -17,12 +17,9 @@ class NHTypeGreedyMerge(Refiner):
         pacman = PacMan(distribution.circuit, distribution.placement)
 
         already_done_hoppings: list[HoppingPacket] = list()
-        all_hedges_to_merge: list[list[Hyperedge]] = list()
+        all_hedges_to_merge: list[set[Hyperedge]] = list()
         currently_merging_hedges: set[Hyperedge] = set()
 
-        # QUESTION: Is it preferable to call this via gain_mgr than just
-        # through distribution.circuit directly?
-        # (Currently this mirrors approaches in other refiners)
         for qubit_vertex in gain_mgr.distribution.circuit.get_qubit_vertices():
             qubit_packets = copy(pacman.packets_by_qubit[qubit_vertex])
             if qubit_packets:
@@ -42,16 +39,13 @@ class NHTypeGreedyMerge(Refiner):
 
                     if end_merging_hedges:
                         current_packet = qubit_packets[0]
-                        # It might be the case that we have already
-                        # considered the parent hedge but the derived
-                        # `Packet`s were not mergeable
-                        # This ensures that mutually mergeable hedges
-                        # are put together
+                        # If the parent_hedge of this packet is already 
+                        # part of a list of `Hyperedge`s to merge, 
+                        # then retrieve and add further mergeable 
+                        # `Hyperedge`s to that list instead of a new one
                         if any(
                             current_packet.parent_hedge in merging_hedges
-                            for merging_hedges in all_hedges_to_merge[
-                                qubit_vertex
-                            ]
+                            for merging_hedges in all_hedges_to_merge
                         ):
                             currently_merging_hedges = set(
                                 [
@@ -73,6 +67,8 @@ class NHTypeGreedyMerge(Refiner):
                         current_packet
                     )
                     if next_neighbour is not None:
+                        assert next_hopper is None,\
+                            "This does not behave as expected."
                         current_packet = next_neighbour
                         currently_merging_hedges.add(
                             current_packet.parent_hedge
@@ -101,14 +97,22 @@ class NHTypeGreedyMerge(Refiner):
                     # End the merging and make a new one
                     if end_merging_hedges:
                         all_hedges_to_merge.append(
-                            list(currently_merging_hedges)
+                            currently_merging_hedges
                         )
                         currently_merging_hedges = set()
 
         for merging_hedges in all_hedges_to_merge:
             if len(merging_hedges) > 1:
-                assert (gain_mgr.merge_hyperedge_gain(merging_hedges)) >= 0
-                gain_mgr.merge_hyperedge(merging_hedges)
+                # This merger resolves the conflict edges by
+                # construction - hence any merged hyperedges
+                # should only require local correcting gates.
+                # So the gain should be at least 1 if hyperedges
+                # have been merged - it is only 0 in the case
+                # that the placement does not make this merged
+                # hyperedge non-local
+                # (i.e all the gates are made local).
+                assert (gain_mgr.merge_hyperedge_gain(list(merging_hedges))) >= 0
+                gain_mgr.merge_hyperedge(list(merging_hedges))
                 refinement_made = True
 
         assert gain_mgr.distribution.is_valid()
