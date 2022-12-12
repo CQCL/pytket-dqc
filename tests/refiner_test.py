@@ -634,6 +634,61 @@ def test_vertex_cover_refiner_simple():
     )
 
 
+def test_vertex_cover_refiner_intertwined():
+
+    # Test "all_brute_force" option
+    test_hyp_circuit = HypergraphCircuit(intertwined_test_circuit)
+
+    test_hyp_circuit.vertex_neighbours = {
+        i: set() for i in test_hyp_circuit.vertex_list
+    }
+    test_hyp_circuit.hyperedge_list = []
+    test_hyp_circuit.hyperedge_dict = {
+        i: [] for i in test_hyp_circuit.vertex_list
+    }
+
+    for new_hyperedge in intertwined_hyperedge_vertex_list:
+        test_hyp_circuit.add_hyperedge(new_hyperedge)
+
+    distribution = Distribution(
+        circuit=test_hyp_circuit,
+        placement=intertwined_test_placement,
+        network=intertwined_test_network,
+    )
+    VertexCover().refine(distribution, vertex_cover_alg="all_brute_force")
+
+    pytket_circ = distribution.to_pytket_circuit()
+    assert check_equivalence(
+        intertwined_test_circuit, pytket_circ, distribution.get_qubit_mapping()
+    )
+
+    # Test "networkx" option
+    test_hyp_circuit = HypergraphCircuit(intertwined_test_circuit)
+
+    test_hyp_circuit.vertex_neighbours = {
+        i: set() for i in test_hyp_circuit.vertex_list
+    }
+    test_hyp_circuit.hyperedge_list = []
+    test_hyp_circuit.hyperedge_dict = {
+        i: [] for i in test_hyp_circuit.vertex_list
+    }
+
+    for new_hyperedge in intertwined_hyperedge_vertex_list:
+        test_hyp_circuit.add_hyperedge(new_hyperedge)
+
+    distribution = Distribution(
+        circuit=test_hyp_circuit,
+        placement=intertwined_test_placement,
+        network=intertwined_test_network,
+    )
+    VertexCover().refine(distribution, vertex_cover_alg="networkx")
+
+    pytket_circ = distribution.to_pytket_circuit()
+    assert check_equivalence(
+        intertwined_test_circuit, pytket_circ, distribution.get_qubit_mapping()
+    )
+
+
 def test_vertex_cover_refiner_complex_1():
 
     network = NISQNetwork(
