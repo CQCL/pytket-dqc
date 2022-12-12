@@ -667,7 +667,8 @@ class Distribution:
 
                         # Other phases cannot be cancelled
                         else:
-                            raise Exception("Implementation of hyperedge "
+                            raise Exception(
+                                "Implementation of hyperedge "
                                 + f"{hyperedge.vertices} failed. It contains"
                                 + "an H-type embedding with an internal phase"
                                 + f"{carry_phase} that cannot be cancelled."
