@@ -23,14 +23,18 @@ class NHTypeGreedyMerge(Refiner):
         for qubit_vertex in gain_mgr.distribution.circuit.get_qubit_vertices():
             qubit_packets = copy(pacman.packets_by_qubit[qubit_vertex])
             if qubit_packets:
-                # Given a `Packet`, chain neighbouring and hoppable packets
+                # Given a `Packet`, chain neighbouring and hoppable `Packet`s
                 # together and add their parent hedges to a list of commonly
-                # mergeable edge, removing the packets as we go.
-                # If the chain stops then take the next packet in the list.
+                # mergeable `Hyperedge`s, removing the `Packet`s as we go.
+                # If the chain stops then take the next `Packet`` in the list.
                 #
-                # Since packets by qubit is in circuit chronological order
-                # (in theory by construction TODO: NOT verified)
-                # then each all possible mergings should be done.
+                # `PacMan.packets_by_qubit[qubit_vertex]` generates a list of
+                # `Packet`s such that `Packet`s which are connected to the same
+                # server are in chronological order.
+                # Therefore starting the chain from the first `Packet` in the list
+                # will find all the `Packet`s that can be merged with the first
+                # since `Packet` mergings aren't allowed for `Packet`s connected
+                # to different servers.
 
                 # Initial `Packet` to start with
                 current_packet: Packet = qubit_packets[
