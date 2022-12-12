@@ -1122,7 +1122,11 @@ def test_to_pytket_circuit_circ_with_intertwined_embeddings_2():
 
     assert distribution.cost() == 8
     assert distribution.circuit.hyperedge_list == ideal_hyperedge_list
-    distribution.to_pytket_circuit()
+
+    circ_with_dist = distribution.to_pytket_circuit()
+    assert check_equivalence(
+        test_circuit, circ_with_dist, distribution.get_qubit_mapping()
+    )
 
 
 def test_to_pytket_circuit_M_P_choice_collision():
