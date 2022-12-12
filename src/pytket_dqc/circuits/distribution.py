@@ -538,7 +538,7 @@ class Distribution:
                             # If it is not, we can try to fix it by carrying
                             # it after the next CU1 gate and try to cancel it.
                             #
-                            # NOTE: We are assumming that this hyperedge can
+                            # NOTE: We are assuming that this hyperedge can
                             #   be implemented using hopping packets; which
                             #   is something we check via PacMan. Hence, if
                             #   PacMan told us this is packing is valid, we
@@ -619,7 +619,7 @@ class Distribution:
                             currently_h_embedding = True
 
                     else:  # Currently embedding
-                        # There are two cases two consider:
+                        # There are two cases to consider:
                         #
                         # (Case A) `carry_phase` is multiple of pi,
                         # (Case B) it is not.
@@ -785,14 +785,14 @@ class Distribution:
                 # Extra CZ gates and Barriers are added to the circuit during
                 # the circuit generation routine. These were not present in
                 # the circuit the user inputted and they are removed or
-                # replaced accordingly at the end of `to_pytke_circuit`.
+                # replaced accordingly at the end of `to_pytket_circuit`.
                 #
                 # CZ gates correspond to correction gates due to H-embedding.
                 # We use CZ instead of CU1 to make sure that `cu1_count` is
                 # only considering the CU1 gates originally in the circuit.
                 # They will be replaced with CU1 gates on the final circuit.
                 #
-                # Barriers are added at the beginning of `to_pytke_circuit`
+                # Barriers are added at the beginning of `to_pytket_circuit`
                 # after each CU1 gate, with the intention that the ordering
                 # of the CU1 gates remains unchanged throughout the routine.
                 # If it changed, it would mess up the numbering of gate
