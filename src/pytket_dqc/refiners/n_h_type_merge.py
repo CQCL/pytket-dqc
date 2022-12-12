@@ -31,35 +31,18 @@ class NHTypeGreedyMerge(Refiner):
                 # Since packets by qubit is in circuit chronological order
                 # (in theory by construction TODO: NOT verified)
                 # then each all possible mergings should be done.
+
+                # Initial `Packet` to start with
                 current_packet: Packet = qubit_packets[
                     0
-                ]  # Initial packet to start with
+                ]
+                currently_merging_hedges = {current_packet.parent_hedge}
+                all_hedges_to_merge.append(currently_merging_hedges)
                 end_merging_hedges = False
                 while qubit_packets:  # Keep going until list is empty
-
-                    if end_merging_hedges:
-                        current_packet = qubit_packets[0]
-                        # If the parent_hedge of this packet is already 
-                        # part of a list of `Hyperedge`s to merge, 
-                        # then retrieve and add further mergeable 
-                        # `Hyperedge`s to that list instead of a new one
-                        if any(
-                            current_packet.parent_hedge in merging_hedges
-                            for merging_hedges in all_hedges_to_merge
-                        ):
-                            currently_merging_hedges = set(
-                                [
-                                    merging_hedges
-                                    for merging_hedges in all_hedges_to_merge
-                                    if current_packet.parent_hedge
-                                    in merging_hedges
-                                ][0]
-                            )
-
-                        end_merging_hedges = False
-
-                    currently_merging_hedges.add(current_packet.parent_hedge)
                     qubit_packets.remove(current_packet)
+
+                    # Identify the next mergeable `Packet`
                     next_neighbour = pacman.get_subsequent_neighbouring_packet(
                         current_packet
                     )
@@ -89,17 +72,36 @@ class NHTypeGreedyMerge(Refiner):
                                 hopping_packet
                             )  # Make a note that the hopping has now been done
                             current_packet = next_hopper
+                            currently_merging_hedges.add(
+                                current_packet.parent_hedge
+                            )
                         else:
                             end_merging_hedges = True
                     else:
                         end_merging_hedges = True
 
-                    # End the merging and make a new one
-                    if end_merging_hedges:
-                        all_hedges_to_merge.append(
-                            currently_merging_hedges
-                        )
-                        currently_merging_hedges = set()
+                    # If no more `Hyperedge`s could be found to
+                    # merge with, and there are still `Packet`s
+                    # left to check, then start the search again
+                    # from the next `Packet` in the list.
+                    if end_merging_hedges and qubit_packets:
+                        current_packet = qubit_packets[0]
+                        # If the parent_hedge of this `Packet` is already
+                        # part of a set of mergeable `Hyperedge`s,
+                        # retrieve and append to that set
+                        potential_merging_hedges_list = [
+                            merging_hedges
+                            for merging_hedges in all_hedges_to_merge
+                            if current_packet.parent_hedge in merging_hedges
+                        ]
+                        assert len(potential_merging_hedges_list) <= 1,\
+                            "There should only be up to one merging_hedges for any hedge"
+                        if potential_merging_hedges_list:
+                            currently_merging_hedges = potential_merging_hedges_list[0]
+                        else:
+                            currently_merging_hedges = {current_packet.parent_hedge}
+                            all_hedges_to_merge.append(currently_merging_hedges)
+                        end_merging_hedges = False
 
         for merging_hedges in all_hedges_to_merge:
             if len(merging_hedges) > 1:
