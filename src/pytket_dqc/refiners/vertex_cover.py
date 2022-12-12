@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import networkx as nx  # type: ignore
+from networkx.algorithms import bipartite  # type: ignore
 from pytket_dqc.refiners import Refiner
 from pytket_dqc.packing import PacMan, MergedPacket
 from pytket_dqc.placement import Placement
@@ -91,7 +92,9 @@ class VertexCover(Refiner):
         assert distribution.is_valid()
         return True
 
-    def exhaustive_refine(self, distribution: Distribution, pacman: PacMan) -> list[MergedPacket]:
+    def exhaustive_refine(
+        self, distribution: Distribution, pacman: PacMan
+    ) -> list[MergedPacket]:
         """Refinement where all minimum vertex covers are found exhaustively.
 
         :param distribution: The distribution to be updated
@@ -161,7 +164,9 @@ class VertexCover(Refiner):
 
         return full_valid_cover
 
-    def networkx_refine(self, distribution: Distribution, pacman: PacMan) -> list[MergedPacket]:
+    def networkx_refine(
+        self, distribution: Distribution, pacman: PacMan
+    ) -> list[MergedPacket]:
         """Refinement where the vertex covers are found using NetworkX's
         approximate algorithm. Only one vertex cover is found.
 
@@ -172,8 +177,46 @@ class VertexCover(Refiner):
         :return: The list of selected merged packets to implement
         :rtype: list[MergedPacket]
         """
+        merged_graph, m_topnodes = pacman.get_nx_graph_merged()
+        conflict_graph, c_topnodes = pacman.get_nx_graph_conflict()
 
-        raise Exception("Not implemented.")
+        # Find a vertex cover
+        matching = bipartite.maximum_matching(
+            merged_graph, top_nodes=m_topnodes
+        )
+        cover = bipartite.to_vertex_cover(
+            merged_graph, matching, top_nodes=m_topnodes
+        )
+        # Find all of the hopping packets in ``cover``
+        hop_packets = pacman.get_hopping_packets_within(cover)
+
+        # Find a way to remove the conflicts on ``cover``
+        true_conflict_graph = conflict_graph.subgraph(hop_packets)
+        tc_topnodes = {
+            node for node in true_conflict_graph.nodes if node in c_topnodes
+        }
+        matching = bipartite.maximum_matching(
+            true_conflict_graph, top_nodes=tc_topnodes
+        )
+        conflict_removal = bipartite.to_vertex_cover(
+            true_conflict_graph, matching, top_nodes=tc_topnodes
+        )
+
+        # Update ``cover`` by splitting according to ``conflict_removal``
+        for (p0, p1) in conflict_removal:
+            # Retrieve the merged packet containing this conflict
+            merged_packet = pacman.get_containing_merged_packet(p0)
+            assert merged_packet == pacman.get_containing_merged_packet(p1)
+            # Split the packet
+            packet_a, packet_b = pacman.get_split_packets(
+                merged_packet, (p0, p1)
+            )
+            # Update ``cover``
+            cover.remove(merged_packet)
+            cover.add(packet_a)
+            cover.add(packet_b)
+
+        return cover
 
 
 def get_min_covers(edges: list[tuple[Any, Any]]) -> list[set[Any]]:

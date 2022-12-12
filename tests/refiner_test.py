@@ -537,17 +537,26 @@ def test_vertex_cover_refiner_empty():
 
     circ = Circuit(2)
 
-    hyp_circ = HypergraphCircuit(circ)
     placement = Placement({0: 0, 1: 0, 2: 0})
 
+    # Test "all_brute_force" option
     distribution = Distribution(
-        circuit=hyp_circ, placement=placement, network=network
+        circuit=HypergraphCircuit(circ), placement=placement, network=network
     )
-
     VertexCover().refine(distribution, vertex_cover_alg="all_brute_force")
 
     pytket_circ = distribution.to_pytket_circuit()
+    assert check_equivalence(
+        circ, pytket_circ, distribution.get_qubit_mapping()
+    )
 
+    # Test "networkx" option
+    distribution = Distribution(
+        circuit=HypergraphCircuit(circ), placement=placement, network=network
+    )
+    VertexCover().refine(distribution, vertex_cover_alg="networkx")
+
+    pytket_circ = distribution.to_pytket_circuit()
     assert check_equivalence(
         circ, pytket_circ, distribution.get_qubit_mapping()
     )
@@ -560,17 +569,26 @@ def test_vertex_cover_refiner_trivial():
     circ = Circuit(2)
     circ.add_gate(OpType.CU1, 1.0, [0, 1])
 
-    hyp_circ = HypergraphCircuit(circ)
     placement = Placement({0: 0, 1: 0, 2: 0})
 
+    # Test "all_brute_force" option
     distribution = Distribution(
-        circuit=hyp_circ, placement=placement, network=network
+        circuit=HypergraphCircuit(circ), placement=placement, network=network
     )
-
     VertexCover().refine(distribution, vertex_cover_alg="all_brute_force")
 
     pytket_circ = distribution.to_pytket_circuit()
+    assert check_equivalence(
+        circ, pytket_circ, distribution.get_qubit_mapping()
+    )
 
+    # Test "networkx" option
+    distribution = Distribution(
+        circuit=HypergraphCircuit(circ), placement=placement, network=network
+    )
+    VertexCover().refine(distribution, vertex_cover_alg="networkx")
+
+    pytket_circ = distribution.to_pytket_circuit()
     assert check_equivalence(
         circ, pytket_circ, distribution.get_qubit_mapping()
     )
@@ -590,16 +608,27 @@ def test_vertex_cover_refiner_simple():
         .H(0)
         .add_gate(OpType.CU1, 0.8, [0, 2])
     )
-    hyp_circ = HypergraphCircuit(circ)
-    placement = Placement({0: 0, 1: 4, 2: 4})
-    distribution = Distribution(
-        circuit=hyp_circ, placement=placement, network=network
-    )
 
+    placement = Placement({0: 0, 1: 4, 2: 4})
+
+    # Test "all_brute_force" option
+    distribution = Distribution(
+        circuit=HypergraphCircuit(circ), placement=placement, network=network
+    )
     VertexCover().refine(distribution, vertex_cover_alg="all_brute_force")
 
     pytket_circ = distribution.to_pytket_circuit()
+    assert check_equivalence(
+        circ, pytket_circ, distribution.get_qubit_mapping()
+    )
 
+    # Test "networkx" option
+    distribution = Distribution(
+        circuit=HypergraphCircuit(circ), placement=placement, network=network
+    )
+    VertexCover().refine(distribution, vertex_cover_alg="networkx")
+
+    pytket_circ = distribution.to_pytket_circuit()
     assert check_equivalence(
         circ, pytket_circ, distribution.get_qubit_mapping()
     )
@@ -625,16 +654,26 @@ def test_vertex_cover_refiner_complex_1():
     circ.H(0)
     circ.add_gate(OpType.CU1, 1.0, [1, 0])
 
-    hyp_circ = HypergraphCircuit(circ)
     placement = Placement({0: 0, 1: 1, 2: 2, 3: 3})
-    distribution = Distribution(
-        circuit=hyp_circ, placement=placement, network=network
-    )
 
+    # Test "all_brute_force" option
+    distribution = Distribution(
+        circuit=HypergraphCircuit(circ), placement=placement, network=network
+    )
     VertexCover().refine(distribution, vertex_cover_alg="all_brute_force")
 
     pytket_circ = distribution.to_pytket_circuit()
+    assert check_equivalence(
+        circ, pytket_circ, distribution.get_qubit_mapping()
+    )
 
+    # Test "networkx" option
+    distribution = Distribution(
+        circuit=HypergraphCircuit(circ), placement=placement, network=network
+    )
+    VertexCover().refine(distribution, vertex_cover_alg="networkx")
+
+    pytket_circ = distribution.to_pytket_circuit()
     assert check_equivalence(
         circ, pytket_circ, distribution.get_qubit_mapping()
     )
@@ -660,16 +699,26 @@ def test_vertex_cover_refiner_complex_2():
     circ.add_gate(OpType.CU1, 0.1234, [0, 3])
     circ.add_gate(OpType.CU1, 1.0, [1, 2])
 
-    hyp_circ = HypergraphCircuit(circ)
     placement = Placement({0: 1, 1: 1, 2: 2, 3: 4})
-    distribution = Distribution(
-        circuit=hyp_circ, placement=placement, network=network
-    )
 
+    # Test "all_brute_force" option
+    distribution = Distribution(
+        circuit=HypergraphCircuit(circ), placement=placement, network=network
+    )
     VertexCover().refine(distribution, vertex_cover_alg="all_brute_force")
 
     pytket_circ = distribution.to_pytket_circuit()
+    assert check_equivalence(
+        circ, pytket_circ, distribution.get_qubit_mapping()
+    )
 
+    # Test "networkx" option
+    distribution = Distribution(
+        circuit=HypergraphCircuit(circ), placement=placement, network=network
+    )
+    VertexCover().refine(distribution, vertex_cover_alg="networkx")
+
+    pytket_circ = distribution.to_pytket_circuit()
     assert check_equivalence(
         circ, pytket_circ, distribution.get_qubit_mapping()
     )
@@ -689,18 +738,28 @@ def test_vertex_cover_refiner_pauli_circ():
         {0: [0, 1, 2], 1: [3, 4], 2: [5, 6, 7], 3: [8], 4: [9]},
     )
 
-    hyp_circ = HypergraphCircuit(circ)
     placement = Placement(
         {0: 0, 1: 0, 2: 0, 3: 1, 4: 1, 5: 2, 6: 2, 7: 2, 8: 3, 9: 4}
     )
-    distribution = Distribution(
-        circuit=hyp_circ, placement=placement, network=network
-    )
 
+    # Test "all_brute_force" option
+    distribution = Distribution(
+        circuit=HypergraphCircuit(circ), placement=placement, network=network
+    )
     VertexCover().refine(distribution, vertex_cover_alg="all_brute_force")
 
     pytket_circ = distribution.to_pytket_circuit()
+    assert check_equivalence(
+        circ, pytket_circ, distribution.get_qubit_mapping()
+    )
 
+    # Test "networkx" option
+    distribution = Distribution(
+        circuit=HypergraphCircuit(circ), placement=placement, network=network
+    )
+    VertexCover().refine(distribution, vertex_cover_alg="networkx")
+
+    pytket_circ = distribution.to_pytket_circuit()
     assert check_equivalence(
         circ, pytket_circ, distribution.get_qubit_mapping()
     )
@@ -720,16 +779,26 @@ def test_vertex_cover_refiner_random_circ():
         {0: [0, 1, 2], 1: [3, 4], 2: [5, 6, 7], 3: [8], 4: [9]},
     )
 
-    hyp_circ = HypergraphCircuit(circ)
     placement = Placement({0: 0, 1: 4, 2: 3, 3: 2, 4: 1, 5: 2})
-    distribution = Distribution(
-        circuit=hyp_circ, placement=placement, network=network
-    )
 
+    # Test "all_brute_force" option
+    distribution = Distribution(
+        circuit=HypergraphCircuit(circ), placement=placement, network=network
+    )
     VertexCover().refine(distribution, vertex_cover_alg="all_brute_force")
 
     pytket_circ = distribution.to_pytket_circuit()
+    assert check_equivalence(
+        circ, pytket_circ, distribution.get_qubit_mapping()
+    )
 
+    # Test "networkx" option
+    distribution = Distribution(
+        circuit=HypergraphCircuit(circ), placement=placement, network=network
+    )
+    VertexCover().refine(distribution, vertex_cover_alg="networkx")
+
+    pytket_circ = distribution.to_pytket_circuit()
     assert check_equivalence(
         circ, pytket_circ, distribution.get_qubit_mapping()
     )
@@ -749,18 +818,28 @@ def test_vertex_cover_refiner_frac_CZ_circ():
         {0: [0, 1, 2], 1: [3, 4], 2: [5, 6, 7], 3: [8], 4: [9]},
     )
 
-    hyp_circ = HypergraphCircuit(circ)
     placement = Placement(
         {0: 0, 1: 0, 2: 0, 3: 1, 4: 1, 5: 2, 6: 2, 7: 2, 8: 3, 9: 4}
     )
-    distribution = Distribution(
-        circuit=hyp_circ, placement=placement, network=network
-    )
 
+    # Test "all_brute_force" option
+    distribution = Distribution(
+        circuit=HypergraphCircuit(circ), placement=placement, network=network
+    )
     VertexCover().refine(distribution, vertex_cover_alg="all_brute_force")
 
     pytket_circ = distribution.to_pytket_circuit()
+    assert check_equivalence(
+        circ, pytket_circ, distribution.get_qubit_mapping()
+    )
 
+    # Test "networkx" option
+    distribution = Distribution(
+        circuit=HypergraphCircuit(circ), placement=placement, network=network
+    )
+    VertexCover().refine(distribution, vertex_cover_alg="networkx")
+
+    pytket_circ = distribution.to_pytket_circuit()
     assert check_equivalence(
         circ, pytket_circ, distribution.get_qubit_mapping()
     )
