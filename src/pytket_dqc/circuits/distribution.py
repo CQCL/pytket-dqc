@@ -269,8 +269,18 @@ class Distribution:
         class LinkManager:
             """An internal class dedicated to managing the hardware qubits
             that store the ebits (i.e. link qubits).
+            This class has been designed for it to be used within
+            `to_pytket_circuit_one_hyperedge` and a new instance of
+            `LinkManager` should be created per call to it.
+            The key methods LinkManager provides are:
 
-            NOTE: This is meant to be used for a single hyperedge at a time.
+            `start_link` which creates a link qubit and returns
+            the starting EJPP processes required to entangle it,
+            `end_links` which releases link qubits and returns the
+            corresponding ending EJPP processes,
+            `update_occupation` to be used when encountering an EJPP
+            process while reading a circuit, so that the status of the
+            corresponding link qubits is updated appropriately.
             """
 
             def __init__(self, hyperedge: Hyperedge, servers: list[int]):
@@ -284,17 +294,26 @@ class Distribution:
                 self.occupied: dict[int, list[Qubit]] = {
                     s: [] for s in servers
                 }
-                # A dictionary of serverId to the link qubit holding the info
-                # relevant to the hyperedge currently being implemented
+                # A dictionary of serverId to the link qubit holding a copy
+                # of the qubit of ``hyperedge``.
                 self.link_qubit_dict: dict[int, Qubit] = dict()
-                # A dictionary of link qubits to link qubits. Its purpose is
-                # to map the ID of link qubits from a previous iteration to
-                # the ID of the same link qubit in the current iteration
+                # A dictionary of link qubits to link qubits. Whenever the
+                # method `update_occupation` is called, the ID of the
+                # input link qubit may change in order to avoid collision of
+                # IDs. This dictionary keeps track of these changes,
+                # mapping the old link qubit to the new one.
+                #
+                # NOTE: The entries of this dictionary may change within
+                # the same call to `to_pytket_circuit_one_hyperedge`. This
+                # is due to the fact that link qubits are reused and, at
+                # different times in the circuit, different IDs may need
+                # to be assigned in order to avoid collisions.
                 self.link_qubit_id_update: dict[Qubit, Qubit] = dict()
 
-            def request_link_qubit(self, server: int) -> Qubit:
+            def _request_link_qubit(self, server: int) -> Qubit:
                 """Returns an available link qubit in ``server``. If there are
                 none, it creates a new one.
+                Do not call this function outside the LinkManager class.
                 """
                 if not self.available[server]:
                     next_id = len(self.occupied[server])
@@ -306,8 +325,9 @@ class Distribution:
 
                 return qubit
 
-            def release_link_qubit(self, link_qubit: Qubit):
+            def _release_link_qubit(self, link_qubit: Qubit):
                 """Releases ``link_qubit``, making it available again.
+                Do not call this function outside the LinkManager class.
                 """
 
                 # Retrieve the server ``link_qubit`` is in
@@ -362,7 +382,7 @@ class Distribution:
                 last_link_qubit = self.get_link_qubit(source)
                 for next_server in best_path:
                     # Retrieve an available link qubit to populate
-                    this_link_qubit = self.request_link_qubit(next_server)
+                    this_link_qubit = self._request_link_qubit(next_server)
                     self.link_qubit_dict[next_server] = this_link_qubit
                     # Add the EjppAction to create the connection
                     starting_actions.append(
@@ -397,7 +417,7 @@ class Distribution:
                         EjppAction(from_qubit=target_link, to_qubit=home_link)
                     )
                     # Release the HW qubit acting as ``target_link``
-                    self.release_link_qubit(target_link)
+                    self._release_link_qubit(target_link)
                     del self.link_qubit_dict[target]
 
                 return ending_actions
@@ -418,9 +438,11 @@ class Distribution:
                     return self.link_qubit_dict[server]
 
             def update_occupation(self, link_qubit: Qubit, starting: bool):
-                """Update `self.occupied` and `self.available` according
-                to the EJPP action received. The flag `starting` indicates
-                whether it is a starting or ending process.
+                """Update the status of `self.occupied` and `self.available`
+                for ``link_qubit``. This is meant to be used whenever an
+                EJPP on ``link_qubit`` is encountered when scanning the
+                circuit within `to_pytket_circuit_one_hyperedge`. The flag
+                `starting` indicates if it is a starting or ending process.
                 A link qubit is requested/released as usual, in order to
                 make sure that the LinkManager is aware of all link qubits
                 in the circuit and, hence, avoids collisions of IDs.
@@ -429,11 +451,11 @@ class Distribution:
                 """
                 if starting:
                     server = get_server_id(link_qubit)
-                    new_link_qubit = self.request_link_qubit(server)
+                    new_link_qubit = self._request_link_qubit(server)
                     self.link_qubit_id_update[link_qubit] = new_link_qubit
                 else:
                     new_link_qubit = self.link_qubit_id_update[link_qubit]
-                    self.release_link_qubit(new_link_qubit)
+                    self._release_link_qubit(new_link_qubit)
 
             def get_updated_name(self, qubit: Qubit) -> Qubit:
                 """Interface for `link_qubit_id_update`.
@@ -645,9 +667,11 @@ class Distribution:
 
                         # Other phases cannot be cancelled
                         else:
-                            raise Exception(
-                                "Hopping packet failed, rogue "
-                                + f"phase {carry_phase} could not be cancelled"
+                            raise Exception("Implementation of hyperedge "
+                                + f"{hyperedge.vertices} failed. It contains"
+                                + "an H-type embedding with an internal phase"
+                                + f"{carry_phase} that cannot be cancelled."
+                                + "You should split this hyperedge into two."
                             )
 
                     # Append the original gate
@@ -757,6 +781,24 @@ class Distribution:
                         new_circ.add_gate(cmd.op, qs)
 
                 # ~ Extra stuff ~#
+                # Extra CZ gates and Barriers are added to the circuit during
+                # the circuit generation routine. These were not present in
+                # the circuit the user inputted and they are removed or
+                # replaced accordingly at the end of `to_pytke_circuit`.
+                #
+                # CZ gates correspond to correction gates due to H-embedding.
+                # We use CZ instead of CU1 to make sure that `cu1_count` is
+                # only considering the CU1 gates originally in the circuit.
+                # They will be replaced with CU1 gates on the final circuit.
+                #
+                # Barriers are added at the beginning of `to_pytke_circuit`
+                # after each CU1 gate, with the intention that the ordering
+                # of the CU1 gates remains unchanged throughout the routine.
+                # If it changed, it would mess up the numbering of gate
+                # vertices. Without barriers, every time we generate a new
+                # equivalent circuit the ordering of parallel gates may
+                # change (even though we insert them in the same order) due
+                # to the internal workings of `pytket.Circuit`.
                 elif cmd.op.type == OpType.CZ:
                     # Apply the command
                     qs = [linkman.get_updated_name(q) for q in cmd.qubits]
