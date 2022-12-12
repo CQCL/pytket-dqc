@@ -86,6 +86,23 @@ class VertexCover(Refiner):
                 server = packet.connected_server_index
                 for vertex in packet.gate_vertices:
                     new_placement[vertex] = server
+        # Local gates are not considered above because packets for these
+        # are not considered by `PacMan`. However, they must also be placed
+        for vertex in new_hyp_circ.vertex_list:
+            if vertex not in new_placement.keys():
+                gate = new_hyp_circ.get_gate_of_vertex(vertex)
+                q_vertices = [
+                    new_hyp_circ.get_vertex_of_qubit(q) for q in gate.qubits
+                ]
+
+                # Sanity check: it is a local gate
+                assert (
+                    new_placement[q_vertices[0]]
+                    == new_placement[q_vertices[1]]
+                )
+                # Place it in the local server
+                new_placement[vertex] = new_placement[q_vertices[0]]
+
         # Update the placement in ``distribution``
         distribution.placement = Placement(new_placement)
 

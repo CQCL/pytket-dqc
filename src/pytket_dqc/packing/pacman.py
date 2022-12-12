@@ -399,7 +399,7 @@ class PacMan:
         command = command_dict["command"]
         assert (
             type(command) == Command
-        )  # This is for mypy check - is there a better way?
+        )
         qubits = command.qubits
         qubit_vertex_candidates = [
             self.hypergraph_circuit.get_vertex_of_qubit(qubit)
@@ -728,10 +728,52 @@ class PacMan:
         hyp_circ.hyperedge_list = []
         hyp_circ.hyperedge_dict = {v: [] for v in hyp_circ.vertex_list}
         hyp_circ.vertex_neighbours = {v: set() for v in hyp_circ.vertex_list}
-        # Add each hyperedge, one per packet
+
+        # Create a hyperedge per packet
+        hedges_to_add = []
         for qubit_vertex in qubit_vertices:
             for packet in self.packets_by_qubit[qubit_vertex]:
-                hyp_circ.add_hyperedge([qubit_vertex] + packet.gate_vertices)
+                hedges_to_add.append([qubit_vertex] + packet.gate_vertices)
+
+        # `PacMan` does not consider packets for local gates, but these
+        # must still have their hyperedges in the returned hypergraph
+        for vertex in hyp_circ.vertex_list:
+            if not hyp_circ.is_qubit_vertex(vertex):
+                # Find the hyperedges added so far containing this gate vertex
+                hedges = [hedge for hedge in hedges_to_add if vertex in hedge]
+                if len(hedges) > 0:
+                    # Hyperedges always come in pairs for a given gate vertex
+                    assert len(hedges) == 2
+                # If no hyperedge has been added for this vertex yet, it must
+                # be that it is a local gate. We add trivial hyperedges.
+                else:
+                    gate = hyp_circ.get_gate_of_vertex(vertex)
+                    q_vertices = [
+                        hyp_circ.get_vertex_of_qubit(q) for q in gate.qubits
+                    ]
+
+                    # Sanity check: the gate is local
+                    assert (
+                        self.placement.placement[q_vertices[0]]
+                        == self.placement.placement[q_vertices[1]]
+                    )
+
+                    # Since the gate is local, these hyperedges won't be cut
+                    # but we still need to include them for the hypergraph
+                    # and its distribution to pass their validity predicates.
+                    for q in q_vertices:
+                        hedges_to_add.append([q, vertex])
+
+        # We want to add the hyperedges in the appropriate order that will
+        # satisfy `_sorted_hedges_predicate()`.
+        hedges_to_add.sort(
+            key=lambda vertices: min(
+                v for v in vertices if not hyp_circ.is_qubit_vertex(v)
+            )
+        )
+        # Add the hyperedges
+        for hedge in hedges_to_add:
+            hyp_circ.add_hyperedge(hedge)
 
         assert hyp_circ._vertex_id_predicate()
         assert hyp_circ._sorted_hedges_predicate()
