@@ -636,11 +636,11 @@ class Distribution:
                             for server in linkman.connected_servers():
                                 link_qubit = linkman.link_qubit_dict[server]
                                 new_circ.H(link_qubit)
-                            # Switch the value of the flag
-                            currently_h_embedding = False
 
                         # Z gate, no need to apply Euler decomposition
                         elif isclose(carry_phase % 2, 1):  # (Case A)
+                            # This means that H should end the embedding
+                            currently_h_embedding = False
                             # Apply it to all connected servers
                             for server in linkman.connected_servers():
                                 link_qubit = linkman.link_qubit_dict[server]
@@ -648,8 +648,6 @@ class Distribution:
                                 new_circ.H(link_qubit)
                             # Reset carry phase to zero
                             carry_phase = 0
-                            # Switch the value of the flag
-                            currently_h_embedding = False
 
                         # S or S' gate, apply Euler decomposition of H
                         elif isclose(carry_phase % 1, 0.5):  # (Case B)
