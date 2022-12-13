@@ -487,6 +487,7 @@ class Distribution:
             currently_h_embedding = False
             linkman = LinkManager(hyperedge, self.network.get_server_list())
             carry_phase = 0  # Phase pushed around within H-embedding
+            correction_gate_ok = True  # For sanity check
 
             # Iterate over the commands of `circ`
             commands = circ.get_commands()
@@ -741,13 +742,7 @@ class Distribution:
                             for server in linkman.connected_servers():
                                 link_qubit = linkman.get_link_qubit(server)
                                 if get_server_id(rmt_qubit) != server:
-                                    raise Exception(
-                                        "Non-local gate correction required "
-                                        + "to implement the H-embedding of "
-                                        + f"hyperedge {hyperedge.vertices}. "
-                                        + "Consider splitting the hyperedge "
-                                        + "into two."
-                                    )
+                                    correction_gate_ok = False
                                 new_circ.add_gate(
                                     OpType.CZ,
                                     [
@@ -780,13 +775,7 @@ class Distribution:
                         for server in linkman.connected_servers():
                             link_qubit = linkman.get_link_qubit(server)
                             if get_server_id(remote_qubit) != server:
-                                raise Exception(
-                                    "Non-local gate correction required "
-                                    + "to implement the H-embedding of "
-                                    + f"hyperedge {hyperedge.vertices}. "
-                                    + "Consider splitting the hyperedge "
-                                    + "into two."
-                                )
+                                correction_gate_ok = False
                             new_circ.H(remote_qubit)
                             new_circ.CZ(remote_qubit, link_qubit)
                             new_circ.H(remote_qubit)
@@ -839,7 +828,7 @@ class Distribution:
                 cost_ok = new_cost - prev_cost == self.hyperedge_cost(
                     hyperedge
                 )
-                if not (equivalence_ok and cost_ok):
+                if not (equivalence_ok and cost_ok and correction_gate_ok):
                     # Dump relevant data to file. Retrieve via pickle.load(f)
                     # in the same order as dumped.
                     with open("tests/fail_data", "wb") as f:
@@ -847,6 +836,11 @@ class Distribution:
                         pickle.dump(new_circ, f)
                         pickle.dump(hyperedge.vertices, f)
                         pickle.dump(placement_map, f)
+                    raise Exception(
+                        "Error while generating the circuit. Failed to "
+                        + f"implement hyperedge {hyperedge.vertices}. "
+                        + "Current state saved in tests/failed_data."
+                    )
 
             return new_circ
 
