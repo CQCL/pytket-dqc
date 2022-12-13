@@ -267,9 +267,9 @@ def test_distribution_cost_with_embedding():
         dist_circ.vertex_neighbours[vertex] = set()
     # New hyperedges: some are the same, some are merged
     new_hyperedges = []
-    new_hyperedges.append(Hyperedge([0, 11, 12]))
     new_hyperedges.append(Hyperedge([0, 5, 7]))
     new_hyperedges.append(Hyperedge([0, 8, 9]))
+    new_hyperedges.append(Hyperedge([0, 11, 12]))
     new_hyperedges.append(Hyperedge([1, 4, 10, 11, 13]))
     new_hyperedges.append(Hyperedge([2, 4, 5, 6, 13]))  # Merged hyperedge
     new_hyperedges.append(Hyperedge([2, 8, 10]))
@@ -281,11 +281,11 @@ def test_distribution_cost_with_embedding():
     distribution = Distribution(dist_circ, placement, network)
 
     assert not dist_circ.requires_h_embedded_cu1(new_hyperedges[0])
-    assert distribution.hyperedge_cost(new_hyperedges[0]) == 3
+    assert distribution.hyperedge_cost(new_hyperedges[0]) == 4
     assert not dist_circ.requires_h_embedded_cu1(new_hyperedges[1])
     assert distribution.hyperedge_cost(new_hyperedges[1]) == 4
     assert not dist_circ.requires_h_embedded_cu1(new_hyperedges[2])
-    assert distribution.hyperedge_cost(new_hyperedges[2]) == 4
+    assert distribution.hyperedge_cost(new_hyperedges[2]) == 3
     assert not dist_circ.requires_h_embedded_cu1(new_hyperedges[3])
     assert distribution.hyperedge_cost(new_hyperedges[3]) == 2
     assert dist_circ.requires_h_embedded_cu1(new_hyperedges[4])
@@ -295,5 +295,5 @@ def test_distribution_cost_with_embedding():
     assert not dist_circ.requires_h_embedded_cu1(new_hyperedges[6])
     assert distribution.hyperedge_cost(new_hyperedges[6]) == 0
 
-    assert distribution.cost() == 3 + 4 + 4 + 2 + 6 + 1 + 0
+    assert distribution.cost() == 4 + 4 + 3 + 2 + 6 + 1 + 0
     assert distribution.is_valid()

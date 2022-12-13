@@ -886,9 +886,9 @@ def test_to_pytket_circuit_circ_with_embeddings_1():
     hyp_circ.hyperedge_dict = {v: [] for v in hyp_circ.vertex_list}
     hyp_circ.vertex_neighbours = {v: set() for v in hyp_circ.vertex_list}
 
-    hyp_circ.add_hyperedge([0, 11, 12])
     hyp_circ.add_hyperedge([0, 5, 7])
     hyp_circ.add_hyperedge([0, 8, 9])
+    hyp_circ.add_hyperedge([0, 11, 12])
     hyp_circ.add_hyperedge([1, 4, 10, 11, 13])
     hyp_circ.add_hyperedge([2, 4, 5, 6, 13])  # Merged hyperedge
     hyp_circ.add_hyperedge([2, 8, 10])
@@ -1167,8 +1167,8 @@ def test_to_pytket_circuit_M_P_choice_collision():
 
     new_hedge_list = [
         [0, 2, 6],  # Hedge A
-        [0, 4, 8],  # Hedge B
         [0, 3],
+        [0, 4, 8],  # Hedge B
         [0, 5],
         [0, 7],
         [1, 2],
