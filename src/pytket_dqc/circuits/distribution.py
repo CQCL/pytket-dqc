@@ -842,7 +842,7 @@ class Distribution:
                 if not (equivalence_ok and cost_ok):
                     # Dump relevant data to file. Retrieve via pickle.load(f)
                     # in the same order as dumped.
-                    with open("debugging/fail_data", "wb") as f:
+                    with open("tests/fail_data", "wb") as f:
                         pickle.dump(circ, f)
                         pickle.dump(new_circ, f)
                         pickle.dump(hyperedge.vertices, f)
