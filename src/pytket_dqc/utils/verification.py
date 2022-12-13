@@ -137,6 +137,8 @@ def to_pyzx(circuit: Circuit, mask: list[Qubit]) -> zx.Graph:
                 raise Exception(
                     f"CustomGate {command.op.get_name()} not supported!"
                 )
+        elif command.op.type == OpType.Barrier:
+            continue
         else:
             if not all(q in qubit_dict.keys() for q in command.qubits):
                 raise Exception("Attempting to act on a discarded qubit")

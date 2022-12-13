@@ -1,16 +1,14 @@
 from pytket import Circuit, OpType  # type: ignore
 
 
-def all_cu1_local(circ: Circuit) -> bool:
-    """Checks that all of the CU1 gates in the circuit are local.
+def all_gates_local(circ: Circuit) -> bool:
+    """Checks that all of the gates in the circuit are local.
     """
-    cu1_gates = [
-        gate for gate in circ.get_commands() if gate.op.type == OpType.CU1
-    ]
-    for gate in cu1_gates:
-        q0 = gate.qubits[0]
-        q1 = gate.qubits[1]
-        if get_server_id(q0) != get_server_id(q1):
+    for cmd in circ.get_commands():
+        if cmd.op.type in [OpType.CustomGate, OpType.Barrier]:
+            continue
+        server = get_server_id(cmd.qubits[0])
+        if any(get_server_id(q) != server for q in cmd.qubits):
             return False
     return True
 

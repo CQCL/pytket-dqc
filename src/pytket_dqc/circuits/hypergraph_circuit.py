@@ -41,8 +41,7 @@ class HypergraphCircuit(Hypergraph):
         """
 
         self.reset(circuit)
-        assert self._vertex_id_predicate()
-        assert self._sorted_hedges_predicate()
+        assert self.is_valid()
 
     def __str__(self):
         out_string = super().__str__()
@@ -73,6 +72,15 @@ class HypergraphCircuit(Hypergraph):
 
     def get_circuit(self):
         return self._circuit.copy()
+
+    def is_valid(self):
+        """Test all predicates.
+        """
+        return (
+            self._vertex_id_predicate()
+            and self._sorted_hedges_predicate()
+            and self._two_hedges_per_gate_predicate()
+        )
 
     def add_hyperedge(
         self,
@@ -629,6 +637,18 @@ class HypergraphCircuit(Hypergraph):
                 ),
             ):
                 return False
+
+        return True
+
+    def _two_hedges_per_gate_predicate(self) -> bool:
+        """Tests that each gate vertex is connected to exactly two hyperedges.
+        """
+        for vertex in self.vertex_list:
+            if not self.is_qubit_vertex(vertex):
+                # Find the hyperedges containing this gate vertex
+                hedges = self.get_hyperedges_containing([vertex])
+                if len(hedges) != 2:
+                    return False
 
         return True
 

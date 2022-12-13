@@ -4,14 +4,16 @@ from pytket_dqc.networks import NISQNetwork
 from pytket_dqc.utils import steiner_tree, check_equivalence
 from pytket_dqc.utils.gateset import start_proc, end_proc
 from pytket_dqc.utils.circuit_analysis import (
-    all_cu1_local,
+    all_gates_local,
     _cost_from_circuit,
     get_server_id,
+    is_link_qubit,
 )
 from pytket import Circuit, OpType, Qubit
 import networkx as nx  # type: ignore
 from numpy import isclose  # type: ignore
 from typing import NamedTuple
+import pickle
 
 
 class Distribution:
@@ -46,9 +48,9 @@ class Distribution:
         """Check that this distribution can be implemented.
         """
 
-        # TODO: There may be some other checks that we want to do here to check
-        # that the hypergraph is not totally nonsensical.
-        return self.placement.is_valid(self.circuit, self.network)
+        hypergraph_ok = self.circuit.is_valid()
+        placement_ok = self.placement.is_valid(self.circuit, self.network)
+        return hypergraph_ok and placement_ok
 
     def cost(self) -> int:
         """Return the number of ebits required for this distribution.
@@ -246,7 +248,7 @@ class Distribution:
 
         return qubit_map
 
-    def to_pytket_circuit(self) -> Circuit:
+    def to_pytket_circuit(self, debugging=False) -> Circuit:
         if not self.is_valid():
             raise Exception("The distribution of the circuit is not valid!")
 
@@ -738,6 +740,14 @@ class Distribution:
                             # to implement this hyperedge.
                             for server in linkman.connected_servers():
                                 link_qubit = linkman.get_link_qubit(server)
+                                if get_server_id(rmt_qubit) != server:
+                                    raise Exception(
+                                        "Non-local gate correction required "
+                                        + "to implement the H-embedding of "
+                                        + f"hyperedge {hyperedge.vertices}. "
+                                        + "Consider splitting the hyperedge "
+                                        + "into two."
+                                    )
                                 new_circ.add_gate(
                                     OpType.CZ,
                                     [
@@ -757,7 +767,6 @@ class Distribution:
                     elif cmd.op.get_name() == "ending_process":
                         remote_qubit = cmd.qubits[0]
                     remote_qubit = linkman.get_updated_name(remote_qubit)
-                    server = get_server_id(remote_qubit)
 
                     if cmd.op.get_name() == "starting_process":
                         # Apply the command
@@ -770,6 +779,14 @@ class Distribution:
                         # to implement this hyperedge.
                         for server in linkman.connected_servers():
                             link_qubit = linkman.get_link_qubit(server)
+                            if get_server_id(remote_qubit) != server:
+                                raise Exception(
+                                    "Non-local gate correction required "
+                                    + "to implement the H-embedding of "
+                                    + f"hyperedge {hyperedge.vertices}. "
+                                    + "Consider splitting the hyperedge "
+                                    + "into two."
+                                )
                             new_circ.H(remote_qubit)
                             new_circ.CZ(remote_qubit, link_qubit)
                             new_circ.H(remote_qubit)
@@ -809,6 +826,28 @@ class Distribution:
                 else:
                     raise Exception(f"Command {cmd.op} not supported.")
 
+            # If debugging flag is on, do some sanity checks and store
+            # current state if they fail.
+            if debugging:
+                equivalence_ok = check_equivalence(
+                    circ,
+                    new_circ,
+                    {q: q for q in circ.qubits if not is_link_qubit(q)},
+                )
+                prev_cost = _cost_from_circuit(circ)
+                new_cost = _cost_from_circuit(new_circ)
+                cost_ok = new_cost - prev_cost == self.hyperedge_cost(
+                    hyperedge
+                )
+                if not (equivalence_ok and cost_ok):
+                    # Dump relevant data to file. Retrieve via pickle.load(f)
+                    # in the same order as dumped.
+                    with open("debugging/fail_data", "wb") as f:
+                        pickle.dump(circ, f)
+                        pickle.dump(new_circ, f)
+                        pickle.dump(hyperedge.vertices, f)
+                        pickle.dump(placement_map, f)
+
             return new_circ
 
         # ~ Main body ~#
@@ -843,7 +882,7 @@ class Distribution:
                 final_circ.add_gate(cmd.op, cmd.qubits)
 
         # Final sanity checks
-        assert all_cu1_local(final_circ)
+        assert all_gates_local(final_circ)
         assert check_equivalence(
             self.circuit.get_circuit(), final_circ, qubit_mapping
         )
