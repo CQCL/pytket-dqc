@@ -1129,6 +1129,68 @@ def test_to_pytket_circuit_circ_with_intertwined_embeddings_2():
     )
 
 
+def test_to_pytket_circuit_circ_with_intertwined_embeddings_3():
+    # As `intertwined_embeddings_1` but the servers are not adjacent
+    network = NISQNetwork(
+        server_coupling=[[0, 1], [1, 2]],
+        server_qubits={0: [0], 1: [1], 2: [2, 3, 4, 5]}
+    )
+
+    circ = Circuit(5)
+    circ.add_gate(OpType.CU1, 1.0, [0, 1])
+    circ.H(0)
+    circ.add_gate(OpType.CU1, 1.0, [0, 2])
+    circ.H(0)
+    circ.add_gate(OpType.CU1, 1.0, [0, 3])
+    circ.H(0)
+    circ.add_gate(OpType.CU1, 1.0, [0, 4])
+
+    hyp_circ = HypergraphCircuit(circ)
+    hyp_circ.vertex_neighbours = {
+        i: set() for i in hyp_circ.vertex_list
+    }
+    hyp_circ.hyperedge_list = []
+    hyp_circ.hyperedge_dict = {
+        i: [] for i in hyp_circ.vertex_list
+    }
+
+    new_hedge_list = [
+        [0, 5, 7],
+        [0, 6, 8],
+        [1, 5],
+        [2, 6],
+        [3, 7],
+        [4, 8],
+    ]
+
+    for new_hedge in new_hedge_list:
+        hyp_circ.add_hyperedge(new_hedge)
+
+    placement = Placement({
+        0: 0,
+        1: 2,
+        2: 2,
+        3: 2,
+        4: 2,
+        5: 0,
+        6: 2,
+        7: 2,
+        8: 2,
+    })
+
+    distribution = Distribution(
+        circuit=hyp_circ,
+        placement=placement,
+        network=network,
+    )
+    assert distribution.is_valid()
+
+    circ_with_dist = distribution.to_pytket_circuit()
+    assert check_equivalence(
+        circ, circ_with_dist, distribution.get_qubit_mapping()
+    )
+
+
 def test_to_pytket_circuit_M_P_choice_collision():
     # This is the case of a circuit whose chosen distribution has
     # intertwined packets and, moreover, the packets require different
