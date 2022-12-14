@@ -533,16 +533,16 @@ def test_to_pytket_circuit_CRz():
 
     server_0_link = test_circ.add_q_register("server_0_link_register", 2)
 
-    test_circ.add_custom_gate(start_proc, [], [server_1[0], server_0_link[0]])
-    test_circ.add_custom_gate(start_proc, [], [server_2[0], server_0_link[1]])
+    test_circ.add_custom_gate(start_proc(), [], [server_1[0], server_0_link[0]])
+    test_circ.add_custom_gate(start_proc(), [], [server_2[0], server_0_link[1]])
     test_circ.add_gate(OpType.CU1, 0.3, [server_0_link[1], server_0_link[0]])
-    test_circ.add_custom_gate(end_proc, [], [server_0_link[0], server_1[0]])
+    test_circ.add_custom_gate(end_proc(), [], [server_0_link[0], server_1[0]])
     test_circ.H(server_1[0])
-    test_circ.add_custom_gate(start_proc, [], [server_1[0], server_0_link[0]])
+    test_circ.add_custom_gate(start_proc(), [], [server_1[0], server_0_link[0]])
     test_circ.add_gate(OpType.CU1, 1.0, [server_0_link[1], server_0_link[0]])
     test_circ.add_gate(OpType.CU1, 0.3, [server_0_link[1], server_0_link[0]])
-    test_circ.add_custom_gate(end_proc, [], [server_0_link[0], server_1[0]])
-    test_circ.add_custom_gate(end_proc, [], [server_0_link[1], server_2[0]])
+    test_circ.add_custom_gate(end_proc(), [], [server_0_link[0], server_1[0]])
+    test_circ.add_custom_gate(end_proc(), [], [server_0_link[1], server_2[0]])
 
     test_circ_command_names = [
         command.op.get_name() for command in test_circ.get_commands()
@@ -594,19 +594,19 @@ def test_to_pytket_circuit_detached_gate():
     server_0_link = test_circ.add_q_register("server_0_link_register", 2)
     server_1_link = test_circ.add_q_register("server_1_link_register", 1)
 
-    test_circ.add_custom_gate(start_proc, [], [server_1[0], server_0_link[0]])
-    test_circ.add_custom_gate(start_proc, [], [server_2[0], server_1_link[0]])
+    test_circ.add_custom_gate(start_proc(), [], [server_1[0], server_0_link[0]])
+    test_circ.add_custom_gate(start_proc(), [], [server_2[0], server_1_link[0]])
     test_circ.add_custom_gate(
-        start_proc, [], [server_1_link[0], server_0_link[1]]
+        start_proc(), [], [server_1_link[0], server_0_link[1]]
     )
     test_circ.add_gate(OpType.CU1, 1.0, [server_0_link[1], server_0_link[0]])
-    test_circ.add_custom_gate(end_proc, [], [server_0_link[0], server_1[0]])
-    test_circ.add_custom_gate(end_proc, [], [server_1_link[0], server_2[0]])
+    test_circ.add_custom_gate(end_proc(), [], [server_0_link[0], server_1[0]])
+    test_circ.add_custom_gate(end_proc(), [], [server_1_link[0], server_2[0]])
     test_circ.H(server_1[0])
-    test_circ.add_custom_gate(start_proc, [], [server_1[0], server_0_link[0]])
+    test_circ.add_custom_gate(start_proc(), [], [server_1[0], server_0_link[0]])
     test_circ.add_gate(OpType.CU1, 1.0, [server_0_link[1], server_0_link[0]])
-    test_circ.add_custom_gate(end_proc, [], [server_0_link[0], server_1[0]])
-    test_circ.add_custom_gate(end_proc, [], [server_0_link[1], server_2[0]])
+    test_circ.add_custom_gate(end_proc(), [], [server_0_link[0], server_1[0]])
+    test_circ.add_custom_gate(end_proc(), [], [server_0_link[1], server_2[0]])
 
     # TODO: Ideally we would compare the circuits directly here, rather than
     # checking the command names. This is prevented by a feature of TKET
@@ -664,19 +664,19 @@ def test_to_pytket_circuit_gates_on_different_servers():
     server_0_link = test_circ.add_q_register("server_0_link_register", 2)
     server_1_link = test_circ.add_q_register("server_1_link_register", 1)
 
-    test_circ.add_custom_gate(start_proc, [], [server_1[0], server_0_link[0]])
-    test_circ.add_custom_gate(start_proc, [], [server_2[0], server_1_link[0]])
+    test_circ.add_custom_gate(start_proc(), [], [server_1[0], server_0_link[0]])
+    test_circ.add_custom_gate(start_proc(), [], [server_2[0], server_1_link[0]])
     test_circ.add_custom_gate(
-        start_proc, [], [server_1_link[0], server_0_link[1]]
+        start_proc(), [], [server_1_link[0], server_0_link[1]]
     )
     test_circ.add_gate(OpType.CU1, 1.0, [server_0_link[1], server_0_link[0]])
-    test_circ.add_custom_gate(end_proc, [], [server_1_link[0], server_2[0]])
-    test_circ.add_custom_gate(end_proc, [], [server_0_link[1], server_2[0]])
+    test_circ.add_custom_gate(end_proc(), [], [server_1_link[0], server_2[0]])
+    test_circ.add_custom_gate(end_proc(), [], [server_0_link[1], server_2[0]])
     test_circ.H(server_2[0])
-    test_circ.add_custom_gate(start_proc, [], [server_2[0], server_1_link[0]])
+    test_circ.add_custom_gate(start_proc(), [], [server_2[0], server_1_link[0]])
     test_circ.add_gate(OpType.CU1, 1.0, [server_1_link[0], server_1[0]])
-    test_circ.add_custom_gate(end_proc, [], [server_0_link[0], server_1[0]])
-    test_circ.add_custom_gate(end_proc, [], [server_1_link[0], server_2[0]])
+    test_circ.add_custom_gate(end_proc(), [], [server_0_link[0], server_1[0]])
+    test_circ.add_custom_gate(end_proc(), [], [server_1_link[0], server_2[0]])
 
     test_circ_command_names = [
         command.op.get_name() for command in test_circ.get_commands()
@@ -733,18 +733,18 @@ def test_to_pytket_circuit_with_branching_distribution_tree():
     server_2_link = test_circ.add_q_register("server_2_link_register", 1)
     server_3_link = test_circ.add_q_register("server_3_link_register", 1)
 
-    test_circ.add_custom_gate(start_proc, [], [server_0[0], server_1_link[0]])
+    test_circ.add_custom_gate(start_proc(), [], [server_0[0], server_1_link[0]])
     test_circ.add_custom_gate(
-        start_proc, [], [server_1_link[0], server_2_link[0]]
+        start_proc(), [], [server_1_link[0], server_2_link[0]]
     )
     test_circ.add_custom_gate(
-        start_proc, [], [server_1_link[0], server_3_link[0]]
+        start_proc(), [], [server_1_link[0], server_3_link[0]]
     )
     test_circ.add_gate(OpType.CU1, 1.0, [server_2[0], server_2_link[0]])
-    test_circ.add_custom_gate(end_proc, [], [server_1_link[0], server_0[0]])
+    test_circ.add_custom_gate(end_proc(), [], [server_1_link[0], server_0[0]])
     test_circ.add_gate(OpType.CU1, 1.0, [server_3[0], server_3_link[0]])
-    test_circ.add_custom_gate(end_proc, [], [server_2_link[0], server_0[0]])
-    test_circ.add_custom_gate(end_proc, [], [server_3_link[0], server_0[0]])
+    test_circ.add_custom_gate(end_proc(), [], [server_2_link[0], server_0[0]])
+    test_circ.add_custom_gate(end_proc(), [], [server_3_link[0], server_0[0]])
 
     test_circ_command_names = [
         command.op.get_name() for command in test_circ.get_commands()
@@ -1503,29 +1503,29 @@ def test_to_pytket_circuit_with_teleportation():
     server_2_link_1 = test_circ.add_q_register("server_2_link_edge_1", 1)
 
     test_circ.add_custom_gate(
-        start_proc, [], [server_1[0], server_0_link_0[0]]
+        start_proc(), [], [server_1[0], server_0_link_0[0]]
     )
     test_circ.add_custom_gate(
-        start_proc, [], [server_2[0], server_1_link_2[0]]
+        start_proc(), [], [server_2[0], server_1_link_2[0]]
     )
     test_circ.add_custom_gate(
-        start_proc, [], [server_1_link_2[0], server_0_link_2[0]]
+        start_proc(), [], [server_1_link_2[0], server_0_link_2[0]]
     )
     test_circ.add_gate(
         OpType.CU1, 1.0, [server_0_link_0[0], server_0_link_2[0]]
     )
-    test_circ.add_custom_gate(end_proc, [], [server_0_link_0[0], server_1[0]])
+    test_circ.add_custom_gate(end_proc(), [], [server_0_link_0[0], server_1[0]])
     test_circ.add_custom_gate(
-        end_proc, [], [server_0_link_2[0], server_1_link_2[0]]
+        end_proc(), [], [server_0_link_2[0], server_1_link_2[0]]
     )
-    test_circ.add_custom_gate(end_proc, [], [server_1_link_2[0], server_2[0]])
+    test_circ.add_custom_gate(end_proc(), [], [server_1_link_2[0], server_2[0]])
     test_circ.H(server_2[0])
     test_circ.add_custom_gate(
-        telep_proc, [], [server_1[0], server_2_link_1[0]]
+        telep_proc(), [], [server_1[0], server_2_link_1[0]]
     )
     test_circ.CX(server_2[0], server_2_link_1[0])
     test_circ.add_custom_gate(
-        telep_proc, [], [server_2_link_1[0], server_1[0]]
+        telep_proc(), [], [server_2_link_1[0], server_1[0]]
     )
 
     test_circ_command_names = [

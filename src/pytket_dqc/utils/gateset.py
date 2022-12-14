@@ -7,7 +7,7 @@ from pytket.predicates import (  # type: ignore
     UserDefinedPredicate,
 )
 
-from pytket import OpType, Circuit
+from pytket import OpType, Circuit, Qubit  # type: ignore
 from pytket.passes import (  # type: ignore
     EulerAngleReduction,
     RebaseCustom,
@@ -16,7 +16,8 @@ from pytket.passes import (  # type: ignore
     SequencePass,
     BasePass,
 )
-from pytket.circuit import CustomGateDef, Op  # type: ignore
+from pytket.circuit import CustomGateDef, Op, Command  # type: ignore
+from typing import Optional
 
 logging.basicConfig(level=logging.INFO)
 
@@ -218,6 +219,46 @@ def DQCPass() -> BasePass:
 def_circ = Circuit(2)
 def_circ.add_barrier([0, 1])
 
-start_proc = CustomGateDef.define("starting_process", def_circ, [])
-end_proc = CustomGateDef.define("ending_process", def_circ, [])
-telep_proc = CustomGateDef.define("teleportation", def_circ, [])
+
+def start_proc(origin: Optional[Qubit]=None) -> CustomGateDef:
+    if origin is None:
+        name = "starting_process"
+    else:
+        qubit_str = "starting_process_"+str(origin)
+    return CustomGateDef.define(name, def_circ, [])
+
+
+def end_proc() -> CustomGateDef:
+    return CustomGateDef.define("ending_process", def_circ, [])
+
+
+def telep_proc() -> CustomGateDef:
+    return CustomGateDef.define("teleportation", def_circ, [])
+
+
+def is_start_proc(cmd: Command) -> bool:
+    if cmd.op.type == OpType.CustomGate:
+        if cmd.op.get_name().startswith("starting_process"):
+            return True
+    return False
+
+def is_end_proc(cmd: Command) -> bool:
+    if cmd.op.type == OpType.CustomGate:
+        if cmd.op.get_name().startswith("ending_process"):
+            return True
+    return False
+
+def is_telep_proc(cmd: Command) -> bool:
+    if cmd.op.type == OpType.CustomGate:
+        if cmd.op.get_name().startswith("teleportation"):
+            return True
+    return False
+
+def origin_of_start_proc(cmd: Command) -> Optional[Qubit]:
+    assert is_start_proc(cmd)
+    name = cmd.op.get_name()
+    if name.startswith("starting_process_"):
+        qubit_str = name[len("starting_process_"):]
+        return Qubit(qubit_str)
+    else:
+        return None

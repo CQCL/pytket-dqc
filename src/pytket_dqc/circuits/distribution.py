@@ -606,7 +606,7 @@ class Distribution:
                             # Close the connections
                             for ejpp_end in linkman.end_links(end_servers):
                                 new_circ.add_custom_gate(
-                                    end_proc,
+                                    end_proc(),
                                     [],
                                     [ejpp_end.from_qubit, ejpp_end.to_qubit],
                                 )
@@ -696,7 +696,7 @@ class Distribution:
                             if ejpp_start.to_qubit not in new_circ.qubits:
                                 new_circ.add_qubit(ejpp_start.to_qubit)
                             new_circ.add_custom_gate(
-                                start_proc,
+                                start_proc(),
                                 [],
                                 [ejpp_start.from_qubit, ejpp_start.to_qubit],
                             )
@@ -718,7 +718,7 @@ class Distribution:
                                 linkman.connected_servers()
                             ):
                                 new_circ.add_custom_gate(
-                                    end_proc,
+                                    end_proc(),
                                     [],
                                     [ejpp_end.from_qubit, ejpp_end.to_qubit],
                                 )

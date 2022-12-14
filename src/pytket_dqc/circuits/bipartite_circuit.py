@@ -307,7 +307,7 @@ class BipartiteCircuit:
                     link_qubit = extended_qubit.in_use_link_qubits[0]
                     link_qubit.end_packing()
                     circuit.add_custom_gate(
-                        end_proc,
+                        end_proc(),
                         [],
                         [
                             link_qubit.qubit,
@@ -355,7 +355,7 @@ class BipartiteCircuit:
                     link_qubit = LinkQubit(link_fake_register[0], vertex)
                     link_qubit.start_packing()
                     circuit.add_custom_gate(
-                        start_proc,
+                        start_proc(),
                         [],
                         [
                             link_qubit.get_origin_extended_qubit().qubit,
@@ -400,7 +400,7 @@ class BipartiteCircuit:
                 link_qubit = vertex.link_qubit
                 link_qubit.end_packing()
                 circuit.add_custom_gate(
-                    end_proc,
+                    end_proc(),
                     [],
                     [
                         link_qubit.qubit,
