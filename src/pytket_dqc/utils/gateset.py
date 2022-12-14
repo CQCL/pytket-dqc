@@ -224,7 +224,7 @@ def start_proc(origin: Optional[Qubit]=None) -> CustomGateDef:
     if origin is None:
         name = "starting_process"
     else:
-        qubit_str = "starting_process_"+str(origin)
+        name = "starting_process_"+str(origin)
     return CustomGateDef.define(name, def_circ, [])
 
 

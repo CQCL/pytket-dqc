@@ -2,7 +2,7 @@ from pytket_dqc.circuits import HypergraphCircuit, Hyperedge
 from pytket_dqc.placement import Placement
 from pytket_dqc.networks import NISQNetwork
 from pytket_dqc.utils import steiner_tree, check_equivalence
-from pytket_dqc.utils.gateset import start_proc, end_proc
+from pytket_dqc.utils.gateset import start_proc, is_start_proc, end_proc, is_end_proc
 from pytket_dqc.utils.circuit_analysis import (
     all_cu1_local,
     _cost_from_circuit,
@@ -493,12 +493,12 @@ class Distribution:
                 if cmd.op.type == OpType.CU1:
                     cu1_count += 1
                 # Keep track of the occupation of link qubits
-                if cmd.op.get_name() == "starting_process":
+                if is_start_proc(cmd):
                     linkman.update_occupation(cmd.qubits[1], starting=True)
                     remote_qubit = linkman.get_updated_name(cmd.qubits[1])
                     if remote_qubit not in new_circ.qubits:
                         new_circ.add_qubit(remote_qubit)
-                if cmd.op.get_name() == "ending_process":
+                if is_end_proc(cmd):
                     linkman.update_occupation(cmd.qubits[0], starting=False)
 
                 # Trivial for every command that is not in the hyperedge's
@@ -696,7 +696,7 @@ class Distribution:
                             if ejpp_start.to_qubit not in new_circ.qubits:
                                 new_circ.add_qubit(ejpp_start.to_qubit)
                             new_circ.add_custom_gate(
-                                start_proc(),
+                                start_proc(origin=src_qubit),
                                 [],
                                 [ejpp_start.from_qubit, ejpp_start.to_qubit],
                             )
@@ -752,14 +752,14 @@ class Distribution:
                 # ~ EJPP process ~#
                 elif cmd.op.type == OpType.CustomGate:
                     # Retrieve qubit information
-                    if cmd.op.get_name() == "starting_process":
+                    if is_start_proc(cmd):
                         remote_qubit = cmd.qubits[1]
-                    elif cmd.op.get_name() == "ending_process":
+                    elif is_end_proc(cmd):
                         remote_qubit = cmd.qubits[0]
                     remote_qubit = linkman.get_updated_name(remote_qubit)
                     server = get_server_id(remote_qubit)
 
-                    if cmd.op.get_name() == "starting_process":
+                    if is_start_proc(cmd):
                         # Apply the command
                         qs = [linkman.get_updated_name(q) for q in cmd.qubits]
                         new_circ.add_gate(cmd.op, qs)
@@ -774,7 +774,7 @@ class Distribution:
                             new_circ.CZ(remote_qubit, link_qubit)
                             new_circ.H(remote_qubit)
 
-                    if cmd.op.get_name() == "ending_process":
+                    if is_end_proc(cmd):
                         # Apply the command
                         qs = [linkman.get_updated_name(q) for q in cmd.qubits]
                         new_circ.add_gate(cmd.op, qs)
@@ -831,6 +831,7 @@ class Distribution:
             new_circ = to_pytket_circuit_one_hyperedge(hedge, new_circ)
 
         # Turn every CZ (correction) gate to CU1; remove barriers
+        # Remove the origin qubit from the name of each start_proc
         final_circ = Circuit()
         for q in new_circ.qubits:
             final_circ.add_qubit(q)
@@ -839,6 +840,8 @@ class Distribution:
                 continue
             elif cmd.op.type == OpType.CZ:
                 final_circ.add_gate(OpType.CU1, 1.0, cmd.qubits)
+            elif is_start_proc(cmd):
+                final_circ.add_custom_gate(start_proc(), [], cmd.qubits)
             else:
                 final_circ.add_gate(cmd.op, cmd.qubits)
 
