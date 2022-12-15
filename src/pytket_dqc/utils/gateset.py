@@ -254,11 +254,23 @@ def is_telep_proc(cmd: Command) -> bool:
             return True
     return False
 
-def origin_of_start_proc(cmd: Command) -> Optional[Qubit]:
+def origin_of_start_proc(cmd: Command, all_qubits: list[Qubit]) -> Qubit:
+    """Not the `cmd.qubits[0]` of the start_proc, but the qubit that
+    originally held the information being "copied" by this start_proc.
+    NOTE: Since the qubit ID is stored as a string within the name of the
+    CustomGate describing the start_proc, we need ``all_qubits`` from the
+    circuit to find out which among them has the same ID and return that it.
+    """
+
     assert is_start_proc(cmd)
     name = cmd.op.get_name()
-    if name.startswith("starting_process_"):
-        qubit_str = name[len("starting_process_"):]
-        return Qubit(qubit_str)
-    else:
-        return None
+
+    # Assume this is called only when the origin qubit has been
+    # recorded when constructing this start_proc.
+    assert name.startswith("starting_process_")
+
+    qubit_str = name[len("starting_process_"):]
+    potential_qubits = [q for q in all_qubits if str(q) == qubit_str]
+
+    assert len(potential_qubits) == 1
+    return potential_qubits[0]
