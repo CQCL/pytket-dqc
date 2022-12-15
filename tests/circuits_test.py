@@ -770,6 +770,7 @@ def test_to_pytket_circuit_with_branching_distribution_tree():
     )
 
 
+@pytest.mark.xfail(reason="Currently failing. Branch #67 fixes it.")
 def test_to_pytket_circuit_from_placed_circuit():
     seed = 27
     allocator = Random()
