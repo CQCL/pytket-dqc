@@ -205,9 +205,6 @@ class Distribution:
                             # the one that is shortest among them
                             best_path = None
                             for c_server in connected_servers:
-                                # Skip if c_server is not in the Steiner tree
-                                if c_server not in tree.nodes:
-                                    continue
                                 connection_path = nx.shortest_path(
                                     tree, c_server, gate_server
                                 )
@@ -364,9 +361,6 @@ class Distribution:
                 connected_servers.append(home_server)
                 best_path = None
                 for c_server in connected_servers:
-                    # Skip if c_server is not in the Steiner tree
-                    if c_server not in tree.nodes:
-                        continue
                     connection_path = nx.shortest_path(tree, c_server, target)
                     # fmt: off
                     if (
