@@ -2,7 +2,13 @@ from pytket_dqc.circuits import HypergraphCircuit, Hyperedge
 from pytket_dqc.placement import Placement
 from pytket_dqc.networks import NISQNetwork
 from pytket_dqc.utils import steiner_tree, check_equivalence
-from pytket_dqc.utils.gateset import start_proc, is_start_proc, end_proc, is_end_proc, origin_of_start_proc
+from pytket_dqc.utils.gateset import (
+    start_proc,
+    is_start_proc,
+    end_proc,
+    is_end_proc,
+    origin_of_start_proc
+)
 from pytket_dqc.utils.circuit_analysis import (
     all_cu1_local,
     _cost_from_circuit,
@@ -624,10 +630,21 @@ class Distribution:
                             if g.op.type == OpType.CU1 and q in g.qubits:
                                 found_embedded_cmd = g
                                 break
-                            elif is_start_proc(g) and q == origin_of_start_proc(g, new_circ.qubits) and requires_embedding_start_proc(commands[i:]):
+                            elif (
+                                is_start_proc(g)
+                                and q
+                                == origin_of_start_proc(g, new_circ.qubits)
+                                and requires_embedding_start_proc(commands[i:])
+                            ):
                                 found_embedded_cmd = g
                                 break
-                            elif is_end_proc(g) and q == g.qubits[1] and requires_embedding_end_proc(commands[:(i+1)]):
+                            elif (
+                                is_end_proc(g)
+                                and q == g.qubits[1]
+                                and requires_embedding_end_proc(
+                                    commands[: (i + 1)]
+                                )
+                            ):
                                 found_embedded_cmd = g
                                 break
                             # Otherwise, stop when finding an H gate on q

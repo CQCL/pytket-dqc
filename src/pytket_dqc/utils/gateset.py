@@ -220,7 +220,7 @@ def_circ = Circuit(2)
 def_circ.add_barrier([0, 1])
 
 
-def start_proc(origin: Optional[Qubit]=None) -> CustomGateDef:
+def start_proc(origin: Optional[Qubit] = None) -> CustomGateDef:
     if origin is None:
         name = "starting_process"
     else:
@@ -242,17 +242,20 @@ def is_start_proc(cmd: Command) -> bool:
             return True
     return False
 
+
 def is_end_proc(cmd: Command) -> bool:
     if cmd.op.type == OpType.CustomGate:
         if cmd.op.get_name().startswith("ending_process"):
             return True
     return False
 
+
 def is_telep_proc(cmd: Command) -> bool:
     if cmd.op.type == OpType.CustomGate:
         if cmd.op.get_name().startswith("teleportation"):
             return True
     return False
+
 
 def origin_of_start_proc(cmd: Command, all_qubits: list[Qubit]) -> Qubit:
     """Not the `cmd.qubits[0]` of the start_proc, but the qubit that
