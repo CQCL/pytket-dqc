@@ -472,6 +472,9 @@ class Distribution:
             of its non-local gates already distributed, implement those of the
             given hyperedge and return the new equivalent circuit.
             """
+            if len(hyperedge.vertices) == 1:  # Edge case: no gate vertices
+                return circ
+
             new_circ = Circuit()
             for hw_qubit in qubit_mapping.values():
                 new_circ.add_qubit(hw_qubit)
