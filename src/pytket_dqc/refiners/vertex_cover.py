@@ -32,7 +32,7 @@ class VertexCover(Refiner):
         :key vertex_cover_alg: The choice of algorithm to be used to find the
         vertex covers that decide the placement of gates. Either:
             "all_brute_force" -> exhaustive search of all min vertex covers
-            "networkx" -> use NetworkX's approximate algorithm to find a
+            "networkx" -> use NetworkX's algorithm to find a
                           single vertex cover
         """
         vertex_cover_alg = kwargs.get("vertex_cover_alg", None)
@@ -45,7 +45,7 @@ class VertexCover(Refiner):
                 + "\t\t\"all_brute_force\" -> "
                 + "exhaustive search of all minimum vertex covers\n"
                 + "\t\t\"networkx\" -> "
-                + "use NetworkX's approximate alg. to find a vertex cover\n"
+                + "use NetworkX's algorithm to find a vertex cover\n"
             )
 
         pacman = PacMan(distribution.circuit, distribution.placement)
@@ -185,7 +185,7 @@ class VertexCover(Refiner):
         self, distribution: Distribution, pacman: PacMan
     ) -> list[MergedPacket]:
         """Refinement where the vertex covers are found using NetworkX's
-        approximate algorithm. Only one vertex cover is found.
+        algorithm. Only one vertex cover is found.
 
         :param distribution: The distribution to be updated
         :type distribution: Distribution
