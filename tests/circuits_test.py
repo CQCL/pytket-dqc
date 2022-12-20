@@ -8,7 +8,6 @@ from pytket_dqc.circuits import (
     HypergraphCircuit,
     Hypergraph,
     Hyperedge,
-    BipartiteCircuit,
     Distribution,
 )
 from pytket_dqc.circuits.hypergraph import Vertex
@@ -771,6 +770,32 @@ def test_to_pytket_circuit_with_branching_distribution_tree():
     )
 
 
+@pytest.mark.xfail(reason="Currently failing. Branch #67 fixes it.")
+def test_to_pytket_circuit_from_placed_circuit():
+    seed = 27
+    allocator = Random()
+
+    for i in range(6):
+        with open(
+            f"tests/test_circuits/packing/networks/network{i}.pickle", "rb"
+        ) as f:
+            network_tuple = pickle.load(f)
+        with open(
+            "tests/test_circuits/packing/"
+            + f"rebased_circuits/rebased_circuit{i}.pickle",
+            "rb",
+        ) as f:
+            rebased_circuit = pickle.load(f)
+        DQCPass().apply(rebased_circuit)
+        network = NISQNetwork(network_tuple[0], network_tuple[1])
+        distribution = allocator.allocate(rebased_circuit, network, seed=seed)
+        circ_with_dist = distribution.to_pytket_circuit()
+
+        assert check_equivalence(
+            rebased_circuit, circ_with_dist, distribution.get_qubit_mapping()
+        )
+
+
 def test_to_pytket_circuit_with_embedding_1q():
 
     network = NISQNetwork(
@@ -1515,44 +1540,6 @@ def test_to_relabeled_registers():
     assert circ_with_dist == test_circ
 
 
-def test_from_placed_circuit():
-    """Tests that generation of BipartiteCircuit.from_placed_circuit() method
-    functions as it should.
-
-    Test circuits were manually verified in the packed_examples.ipynb
-    example Jupyter Notebook to be correct.
-    """
-    seed = 27
-    allocator = Random()
-
-    for i in range(6):
-        with open(
-            f"tests/test_circuits/packing/networks/network{i}.pickle", "rb"
-        ) as f:
-            network_tuple = pickle.load(f)
-        with open(
-            "tests/test_circuits/packing/"
-            + f"rebased_circuits/rebased_circuit{i}.pickle",
-            "rb",
-        ) as f:
-            rebased_circuit = pickle.load(f)
-        DQCPass().apply(rebased_circuit)
-        network = NISQNetwork(network_tuple[0], network_tuple[1])
-        distribution = allocator.allocate(rebased_circuit, network, seed=seed)
-        bp_circuit = BipartiteCircuit(rebased_circuit, distribution.placement)
-
-        with open(
-            "tests/test_circuits/packing/"
-            + f"qubit_mappings/qubit_mapping{i}.pickle",
-            "rb",
-        ) as f:
-            mapping = pickle.load(f)
-
-        assert check_equivalence(
-            rebased_circuit, bp_circuit.packed_circuit, mapping
-        )
-
-
 def test_distribution_initialisation():
 
     circ = Circuit(3)
@@ -1679,7 +1666,7 @@ def test_get_vertex_to_command_index_map():
     cz = Op.create(OpType.CU1, 1)
     test_circuit.add_gate(cz, [0, 2])
     test_circuit.add_gate(cz, [0, 4])
-    test_circuit.Z(0).X(0)
+    test_circuit.Rz(1.0, 0).H(0).Rz(1.0, 0).H(0)
     test_circuit.add_gate(cz, [0, 5])
     test_circuit.add_gate(cz, [0, 3])
 
@@ -1717,8 +1704,6 @@ def test_get_vertex_to_command_index_map():
     test_circuit.add_gate(cz, [0, 2])
     test_circuit.H(0).H(2)
     test_circuit.add_gate(cz, [0, 2])
-
-    DQCPass().apply(test_circuit)
 
     hypergraph_circuit = HypergraphCircuit(test_circuit)
     commands = test_circuit.get_commands()

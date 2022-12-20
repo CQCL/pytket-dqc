@@ -16,7 +16,7 @@ class SequenceRefiner(Refiner):
 
         self.refiner_list = refiner_list
 
-    def refine(self, distribution: Distribution) -> bool:
+    def refine(self, distribution: Distribution, **kwargs) -> bool:
         """Perform each of the refinements in the provided sequence.
 
         :param distribution: Distribution to be refined.
