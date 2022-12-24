@@ -760,48 +760,6 @@ class HypergraphCircuit(Hypergraph):
             or np.isclose(command.op.params[0] % 1, 1)
         )
 
-    def to_relabeled_registers(self, placement: Placement) -> Circuit:
-        """Relabel qubits to match their placement.
-
-        :param placement: Placement of hypergraph vertices onto servers.
-        :type placement: Placement
-        :raises Exception: Raised if the placement is not valid.
-        :return: Circuit with qubits relabeled to match servers.
-        :rtype: Circuit
-        """
-
-        if not self.is_placement(placement):
-            raise Exception("This is not a valid placement for this circuit.")
-
-        server_to_vertex_dict = self._get_server_to_qubit_vertex(placement)
-
-        circ = Circuit()
-        # Map from servers to the qubit registers it contains.
-        server_to_register = {}
-        # Add registers to new circuit.
-        for server, vertex_list in server_to_vertex_dict.items():
-            server_to_register[server] = circ.add_q_register(
-                f"server_{server}", len(vertex_list)
-            )
-
-        # Build map from circuit qubits to server registers
-        qubit_qubit_map = {}
-        for server, register in server_to_register.items():
-            for i, qubit_vertex in enumerate(server_to_vertex_dict[server]):
-                qubit_qubit_map[
-                    self._vertex_circuit_map[qubit_vertex]["node"]
-                ] = register[i]
-
-        # Rebuild circuit using mapping from circuit qubits to server
-        # registers.
-        for gate in self._circuit.get_commands():
-            circ.add_gate(
-                gate.op,
-                [qubit_qubit_map[orig_qubit] for orig_qubit in gate.args],
-            )
-
-        return circ
-
 
 class RandomHypergraphCircuit(HypergraphCircuit):
     """Generates circuit to be distributed, where the circuit is a random

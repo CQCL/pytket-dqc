@@ -11,7 +11,7 @@ class NeighbouringDTypeMerge(Refiner):
     will attempt to merge packets appearing consecutively in that ordering.
     """
 
-    def refine(self, distribution: Distribution) -> bool:
+    def refine(self, distribution: Distribution, **kwargs) -> bool:
         """Merges neighbouring packets when no Hadamard acts between them.
 
         :param distribution: Distribution whose packets should be merged.

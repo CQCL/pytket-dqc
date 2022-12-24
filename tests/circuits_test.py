@@ -8,7 +8,6 @@ from pytket_dqc.circuits import (
     HypergraphCircuit,
     Hypergraph,
     Hyperedge,
-    BipartiteCircuit,
     Distribution,
 )
 from pytket_dqc.circuits.hypergraph import Vertex
@@ -507,7 +506,7 @@ def test_q_control_box_circuits():
     assert dist_circ.vertex_list == [0, 2, 3, 4, 5, 6, 1]
 
 
-def test_to_pytket_circ_CRz():
+def test_to_pytket_circuit_CRz():
 
     network = NISQNetwork([[0, 1], [1, 2], [0, 2]], {0: [0], 1: [1], 2: [2]})
 
@@ -535,11 +534,11 @@ def test_to_pytket_circ_CRz():
 
     test_circ.add_custom_gate(start_proc, [], [server_1[0], server_0_link[0]])
     test_circ.add_custom_gate(start_proc, [], [server_2[0], server_0_link[1]])
-    test_circ.add_gate(OpType.CU1, 0.3, [server_0_link[0], server_0_link[1]])
+    test_circ.add_gate(OpType.CU1, 0.3, [server_0_link[1], server_0_link[0]])
     test_circ.add_custom_gate(end_proc, [], [server_0_link[0], server_1[0]])
     test_circ.H(server_1[0])
     test_circ.add_custom_gate(start_proc, [], [server_1[0], server_0_link[0]])
-    test_circ.add_gate(OpType.CU1, 1.0, [server_0_link[0], server_0_link[1]])
+    test_circ.add_gate(OpType.CU1, 1.0, [server_0_link[1], server_0_link[0]])
     test_circ.add_gate(OpType.CU1, 0.3, [server_0_link[1], server_0_link[0]])
     test_circ.add_custom_gate(end_proc, [], [server_0_link[0], server_1[0]])
     test_circ.add_custom_gate(end_proc, [], [server_0_link[1], server_2[0]])
@@ -599,12 +598,12 @@ def test_to_pytket_circuit_detached_gate():
     test_circ.add_custom_gate(
         start_proc, [], [server_1_link[0], server_0_link[1]]
     )
-    test_circ.add_gate(OpType.CU1, 1.0, [server_0_link[0], server_0_link[1]])
+    test_circ.add_gate(OpType.CU1, 1.0, [server_0_link[1], server_0_link[0]])
     test_circ.add_custom_gate(end_proc, [], [server_0_link[0], server_1[0]])
     test_circ.add_custom_gate(end_proc, [], [server_1_link[0], server_2[0]])
     test_circ.H(server_1[0])
     test_circ.add_custom_gate(start_proc, [], [server_1[0], server_0_link[0]])
-    test_circ.add_gate(OpType.CU1, 1.0, [server_0_link[0], server_0_link[1]])
+    test_circ.add_gate(OpType.CU1, 1.0, [server_0_link[1], server_0_link[0]])
     test_circ.add_custom_gate(end_proc, [], [server_0_link[0], server_1[0]])
     test_circ.add_custom_gate(end_proc, [], [server_0_link[1], server_2[0]])
 
@@ -669,12 +668,12 @@ def test_to_pytket_circuit_gates_on_different_servers():
     test_circ.add_custom_gate(
         start_proc, [], [server_1_link[0], server_0_link[1]]
     )
-    test_circ.add_gate(OpType.CU1, 1.0, [server_0_link[0], server_0_link[1]])
+    test_circ.add_gate(OpType.CU1, 1.0, [server_0_link[1], server_0_link[0]])
     test_circ.add_custom_gate(end_proc, [], [server_1_link[0], server_2[0]])
     test_circ.add_custom_gate(end_proc, [], [server_0_link[1], server_2[0]])
     test_circ.H(server_2[0])
     test_circ.add_custom_gate(start_proc, [], [server_2[0], server_1_link[0]])
-    test_circ.add_gate(OpType.CU1, 1.0, [server_1[0], server_1_link[0]])
+    test_circ.add_gate(OpType.CU1, 1.0, [server_1_link[0], server_1[0]])
     test_circ.add_custom_gate(end_proc, [], [server_0_link[0], server_1[0]])
     test_circ.add_custom_gate(end_proc, [], [server_1_link[0], server_2[0]])
 
@@ -740,9 +739,9 @@ def test_to_pytket_circuit_with_branching_distribution_tree():
     test_circ.add_custom_gate(
         start_proc, [], [server_1_link[0], server_3_link[0]]
     )
-    test_circ.add_gate(OpType.CU1, 1.0, [server_2_link[0], server_2[0]])
+    test_circ.add_gate(OpType.CU1, 1.0, [server_2[0], server_2_link[0]])
     test_circ.add_custom_gate(end_proc, [], [server_1_link[0], server_0[0]])
-    test_circ.add_gate(OpType.CU1, 1.0, [server_3_link[0], server_3[0]])
+    test_circ.add_gate(OpType.CU1, 1.0, [server_3[0], server_3_link[0]])
     test_circ.add_custom_gate(end_proc, [], [server_2_link[0], server_0[0]])
     test_circ.add_custom_gate(end_proc, [], [server_3_link[0], server_0[0]])
 
@@ -752,8 +751,6 @@ def test_to_pytket_circuit_with_branching_distribution_tree():
     circ_with_dist_command_names = [
         command.op.get_name() for command in circ_with_dist.get_commands()
     ]
-
-    print(circ_with_dist.get_commands())
 
     assert test_circ_command_names == circ_with_dist_command_names
 
@@ -771,6 +768,32 @@ def test_to_pytket_circuit_with_branching_distribution_tree():
     assert check_equivalence(
         circ, circ_with_dist, distribution.get_qubit_mapping()
     )
+
+
+@pytest.mark.xfail(reason="Currently failing. Branch #67 fixes it.")
+def test_to_pytket_circuit_from_placed_circuit():
+    seed = 27
+    allocator = Random()
+
+    for i in range(6):
+        with open(
+            f"tests/test_circuits/packing/networks/network{i}.pickle", "rb"
+        ) as f:
+            network_tuple = pickle.load(f)
+        with open(
+            "tests/test_circuits/packing/"
+            + f"rebased_circuits/rebased_circuit{i}.pickle",
+            "rb",
+        ) as f:
+            rebased_circuit = pickle.load(f)
+        DQCPass().apply(rebased_circuit)
+        network = NISQNetwork(network_tuple[0], network_tuple[1])
+        distribution = allocator.allocate(rebased_circuit, network, seed=seed)
+        circ_with_dist = distribution.to_pytket_circuit()
+
+        assert check_equivalence(
+            rebased_circuit, circ_with_dist, distribution.get_qubit_mapping()
+        )
 
 
 def test_to_pytket_circuit_with_embedding_1q():
@@ -984,6 +1007,228 @@ def test_to_pytket_circuit_circ_with_embeddings_2():
 
     circ_with_dist = distribution.to_pytket_circuit()
 
+    assert check_equivalence(
+        circ, circ_with_dist, distribution.get_qubit_mapping()
+    )
+
+
+def test_to_pytket_circuit_circ_with_intertwined_embeddings_1():
+    network = NISQNetwork(
+        server_coupling=[[0, 1]],
+        server_qubits={0: [0], 1: [1, 2, 3, 4]}
+    )
+
+    circ = Circuit(5)
+    circ.add_gate(OpType.CU1, 1.0, [0, 1])
+    circ.H(0)
+    circ.add_gate(OpType.CU1, 1.0, [0, 2])
+    circ.H(0)
+    circ.add_gate(OpType.CU1, 1.0, [0, 3])
+    circ.H(0)
+    circ.add_gate(OpType.CU1, 1.0, [0, 4])
+
+    hyp_circ = HypergraphCircuit(circ)
+    hyp_circ.vertex_neighbours = {
+        i: set() for i in hyp_circ.vertex_list
+    }
+    hyp_circ.hyperedge_list = []
+    hyp_circ.hyperedge_dict = {
+        i: [] for i in hyp_circ.vertex_list
+    }
+
+    new_hedge_list = [
+        [0, 5, 7],
+        [0, 6, 8],
+        [1, 5],
+        [2, 6],
+        [3, 7],
+        [4, 8],
+    ]
+
+    for new_hedge in new_hedge_list:
+        hyp_circ.add_hyperedge(new_hedge)
+
+    placement = Placement({
+        0: 0,
+        1: 1,
+        2: 1,
+        3: 1,
+        4: 1,
+        5: 1,
+        6: 1,
+        7: 1,
+        8: 1,
+    })
+
+    distribution = Distribution(
+        circuit=hyp_circ,
+        placement=placement,
+        network=network,
+    )
+    assert distribution.is_valid()
+
+    circ_with_dist = distribution.to_pytket_circuit()
+    assert check_equivalence(
+        circ, circ_with_dist, distribution.get_qubit_mapping()
+    )
+
+
+def test_to_pytket_circuit_circ_with_intertwined_embeddings_2():
+    test_network = NISQNetwork(
+        server_coupling=[[0, 1], [1, 2], [1, 3]],
+        server_qubits={0: [0], 1: [1], 2: [2], 3: [3]}
+    )
+
+    test_circuit = Circuit(4)
+
+    test_circuit.add_gate(OpType.CU1, 1.0, [0, 1])
+    test_circuit.H(1)
+    test_circuit.add_gate(OpType.CU1, 1.0, [1, 3])
+    test_circuit.H(1)
+    test_circuit.add_gate(OpType.CU1, 1.0, [1, 3])
+    test_circuit.add_gate(OpType.CU1, 1.0, [0, 1])
+    test_circuit.H(1)
+    test_circuit.add_gate(OpType.CU1, 1.0, [0, 1])
+    test_circuit.H(1)
+    test_circuit.add_gate(OpType.CU1, 1.0, [1, 2])
+    test_circuit.add_gate(OpType.CU1, 1.0, [1, 3])
+    test_circuit.H(1)
+    test_circuit.add_gate(OpType.CU1, 1.0, [0, 1])
+
+    test_hyp_circuit = HypergraphCircuit(test_circuit)
+
+    test_hyp_circuit.vertex_neighbours = {
+        i: set() for i in test_hyp_circuit.vertex_list
+    }
+    test_hyp_circuit.hyperedge_list = []
+    test_hyp_circuit.hyperedge_dict = {
+        i: [] for i in test_hyp_circuit.vertex_list
+    }
+
+    new_hyperedge_list = [
+        [0, 4, 7, 8, 11],
+        [1, 4, 7],
+        [1, 5],
+        [1, 6, 10],
+        [1, 8, 11],
+        [1, 9],
+        [2, 9],
+        [3, 5, 6, 10],
+    ]
+    ideal_hyperedge_list = [
+        Hyperedge(vertices=vertices, weight=1)
+        for vertices in new_hyperedge_list
+    ]
+    for new_hyperedge in new_hyperedge_list:
+        test_hyp_circuit.add_hyperedge(new_hyperedge)
+
+    test_placement = Placement(
+        {
+            0: 0,
+            1: 1,
+            2: 2,
+            3: 3,
+            4: 0,
+            5: 3,
+            6: 3,
+            7: 0,
+            8: 0,
+            9: 2,
+            10: 3,
+            11: 0
+        }
+    )
+
+    distribution = Distribution(
+        circuit=test_hyp_circuit,
+        placement=test_placement,
+        network=test_network,
+    )
+
+    assert distribution.cost() == 8
+    assert distribution.circuit.hyperedge_list == ideal_hyperedge_list
+
+    circ_with_dist = distribution.to_pytket_circuit()
+    assert check_equivalence(
+        test_circuit, circ_with_dist, distribution.get_qubit_mapping()
+    )
+
+
+def test_to_pytket_circuit_M_P_choice_collision():
+    # This is the case of a circuit whose chosen distribution has
+    # intertwined packets and, moreover, the packets require different
+    # choices of M and P decompositions of the single qubit gates between
+    # the CU1 gates.
+    # Note: The circuit CAN be distributed, but it's subtle.
+
+    network = NISQNetwork(
+        server_coupling=[[0, 1]],
+        server_qubits={0: [0], 1: [1]}
+    )
+
+    circ = Circuit(2)
+    circ.add_gate(OpType.CU1, 1.0, [0, 1])  # Gate: 2
+    circ.H(1).H(0)
+    circ.add_gate(OpType.CU1, 1.0, [0, 1])  # Gate: 3
+    circ.H(1).Rz(-0.5, 0)
+    circ.add_gate(OpType.CU1, 1.0, [0, 1])  # Gate: 4
+    circ.H(1).H(0).Rz(-0.5, 0)  # Hedge A wants this to be M, but B wants P
+    circ.add_gate(OpType.CU1, 1.0, [0, 1])  # Gate: 5
+    circ.H(1).H(0)  # Hedge A wants this to be P, but B wants M
+    circ.add_gate(OpType.CU1, 1.0, [0, 1])  # Gate: 6
+    circ.H(1).Rz(-0.5, 0)
+    circ.add_gate(OpType.CU1, 1.0, [0, 1])  # Gate: 7
+    circ.H(1).H(0)
+    circ.add_gate(OpType.CU1, 1.0, [0, 1])  # Gate: 8
+
+    hyp_circ = HypergraphCircuit(circ)
+    hyp_circ.vertex_neighbours = {
+        i: set() for i in hyp_circ.vertex_list
+    }
+    hyp_circ.hyperedge_list = []
+    hyp_circ.hyperedge_dict = {
+        i: [] for i in hyp_circ.vertex_list
+    }
+
+    new_hedge_list = [
+        [0, 2, 6],  # Hedge A
+        [0, 4, 8],  # Hedge B
+        [0, 3],
+        [0, 5],
+        [0, 7],
+        [1, 2],
+        [1, 3],
+        [1, 4],
+        [1, 5],
+        [1, 6],
+        [1, 7],
+        [1, 8],
+    ]
+
+    for new_hedge in new_hedge_list:
+        hyp_circ.add_hyperedge(new_hedge)
+
+    placement = Placement({
+        0: 0,
+        1: 1,
+        2: 1,
+        3: 1,
+        4: 1,
+        5: 1,
+        6: 1,
+        7: 1,
+        8: 1,
+    })
+
+    distribution = Distribution(
+        circuit=hyp_circ,
+        placement=placement,
+        network=network,
+    )
+    assert distribution.is_valid()
+    assert distribution.cost() == 5
+
+    circ_with_dist = distribution.to_pytket_circuit()
     assert check_equivalence(
         circ, circ_with_dist, distribution.get_qubit_mapping()
     )
@@ -1295,44 +1540,6 @@ def test_to_relabeled_registers():
     assert circ_with_dist == test_circ
 
 
-def test_from_placed_circuit():
-    """Tests that generation of BipartiteCircuit.from_placed_circuit() method
-    functions as it should.
-
-    Test circuits were manually verified in the packed_examples.ipynb
-    example Jupyter Notebook to be correct.
-    """
-    seed = 27
-    allocator = Random()
-
-    for i in range(6):
-        with open(
-            f"tests/test_circuits/packing/networks/network{i}.pickle", "rb"
-        ) as f:
-            network_tuple = pickle.load(f)
-        with open(
-            "tests/test_circuits/packing/"
-            + f"rebased_circuits/rebased_circuit{i}.pickle",
-            "rb",
-        ) as f:
-            rebased_circuit = pickle.load(f)
-        DQCPass().apply(rebased_circuit)
-        network = NISQNetwork(network_tuple[0], network_tuple[1])
-        distribution = allocator.allocate(rebased_circuit, network, seed=seed)
-        bp_circuit = BipartiteCircuit(rebased_circuit, distribution.placement)
-
-        with open(
-            "tests/test_circuits/packing/"
-            + f"qubit_mappings/qubit_mapping{i}.pickle",
-            "rb",
-        ) as f:
-            mapping = pickle.load(f)
-
-        assert check_equivalence(
-            rebased_circuit, bp_circuit.packed_circuit, mapping
-        )
-
-
 def test_distribution_initialisation():
 
     circ = Circuit(3)
@@ -1459,7 +1666,7 @@ def test_get_vertex_to_command_index_map():
     cz = Op.create(OpType.CU1, 1)
     test_circuit.add_gate(cz, [0, 2])
     test_circuit.add_gate(cz, [0, 4])
-    test_circuit.Z(0).X(0)
+    test_circuit.Rz(1.0, 0).H(0).Rz(1.0, 0).H(0)
     test_circuit.add_gate(cz, [0, 5])
     test_circuit.add_gate(cz, [0, 3])
 
@@ -1497,8 +1704,6 @@ def test_get_vertex_to_command_index_map():
     test_circuit.add_gate(cz, [0, 2])
     test_circuit.H(0).H(2)
     test_circuit.add_gate(cz, [0, 2])
-
-    DQCPass().apply(test_circuit)
 
     hypergraph_circuit = HypergraphCircuit(test_circuit)
     commands = test_circuit.get_commands()
