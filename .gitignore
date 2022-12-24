@@ -133,7 +133,3 @@ dmypy.json
 
 # VSCode Settings
 .vscode
-
-# Specific Files
-examples/RandomStuff.ipynb
-examples/Jun-Yi_UCC.ipynb
