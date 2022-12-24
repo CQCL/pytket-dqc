@@ -10,9 +10,12 @@ from pytket_dqc.refiners import (
     IntertwinedDTypeMerge,
     RepeatRefiner,
     SequenceRefiner,
-    NHTypeGreedyMerge
+    EagerHTypeMerge
 )
+from pytket_dqc.allocators import HypergraphPartitioning
+from pytket_dqc.utils import DQCPass
 import pytest
+import json
 
 
 intertwined_test_network = NISQNetwork(
@@ -513,69 +516,354 @@ def test_neighbouring_merge_d_type_no_new_hyperedges():
     assert distribution.circuit.hyperedge_list == hyperedge_list
 
 
-def test_n_h_type_greedy_merge():
-    circ = Circuit(6)
+def test_eager_h_type_merge_00():
+    # Should merge 0th and 2nd hyperedges on qubit 0
+
     network = NISQNetwork(
-        server_coupling=[[0, 1], [0, 2], [1, 2]],
-        server_qubits={
-            0: [0, 1],
-            1: [2, 3, 4],
-            2: [5]
-        }
+        server_coupling = [[0, 1]],
+        server_qubits = {0: [0], 1: [1, 2, 3]}
     )
-    circ.add_gate(OpType.CU1, 1.0, [0, 2])
-    circ.add_gate(OpType.CU1, 1.0, [0, 5])
-    circ.Rz(1, 0)
-    circ.add_gate(OpType.CU1, 1.0, [1, 3])
-    circ.H(1).H(2)
-    circ.add_gate(OpType.CU1, 1.0, [1, 2])
-    circ.H(1).H(2)
-    circ.add_gate(OpType.CU1, 1.0, [0, 2])
-    circ.add_gate(OpType.CU1, 1.0, [1, 4])
-    circ.add_gate(OpType.CU1, 1.0, [1, 5])
+
+    circ = Circuit(4)
+    circ.add_gate(OpType.CU1, 1, [0, 1])
+    circ.H(0).add_gate(OpType.CU1, 1, [0, 2]).H(0)
+    circ.add_gate(OpType.CU1, 1, [0, 3])
+
     hyp_circ = HypergraphCircuit(circ)
 
-    placement_dict = {
-        0: 0, 1: 0, 2: 1, 3: 1, 4: 1, 5: 2  # Qubits
-    }
-    for i, cu1 in enumerate([
-        command for command in circ.get_commands()
-        if command.op.type == OpType.CU1
-    ]):
-        placement_dict[i + 6] = 1
+    placement = Placement(
+        {0: 0, 1: 1, 2: 1, 3: 1, 4: 1, 5: 0, 6: 1}
+    )
 
-    distribution = Distribution(hyp_circ, Placement(placement_dict), network)
+    distribution = Distribution(
+        circuit = hyp_circ,
+        placement = placement,
+        network = network
+    )
 
-    hyperedge_list = [
-        Hyperedge([0, 6, 8, ], 1),
-        Hyperedge([0, 10, ], 1),
-        Hyperedge([1, 7, ], 1),
-        Hyperedge([1, 9, ], 1),
-        Hyperedge([1, 11, 12, ], 1),
-        Hyperedge([2, 6, ], 1),
-        Hyperedge([2, 9, ], 1),
-        Hyperedge([2, 10, ], 1),
-        Hyperedge([3, 7, ], 1),
-        Hyperedge([4, 11, ], 1),
-        Hyperedge([5, 8, 12, ], 1),
-    ]
-    assert distribution.circuit.hyperedge_list == hyperedge_list
-
-    refinement_made = NHTypeGreedyMerge().refine(distribution)
+    refiner = EagerHTypeMerge()
+    refinement_made = refiner.refine(distribution)
     assert refinement_made
 
-    new_hyperedge_list = [
-        Hyperedge([0, 6, 8, 10, ], 1),
-        Hyperedge([1, 7, 11, 12, ], 1),
-        Hyperedge([1, 9, ], 1),
-        # Should NOT merge with 10 because 7, 11, 12 merging
-        # is a conflict
-        Hyperedge([2, 6, ], 1),
-        Hyperedge([2, 9, ], 1),
-        Hyperedge([2, 10, ], 1),
-        Hyperedge([3, 7, ], 1),
-        Hyperedge([4, 11, ], 1),
-        Hyperedge([5, 8, 12, ], 1),
+    hyperedge_list = [
+        Hyperedge(
+            vertices = [0, 4, 6],
+            weight = 1
+        ),
+        Hyperedge(
+            vertices = [0, 5],
+            weight = 1
+        ),
+        Hyperedge(
+            vertices = [1, 4],
+            weight = 1
+        ),
+        Hyperedge(
+            vertices = [2, 5],
+            weight = 1
+        ),
+        Hyperedge(
+            vertices = [3, 6],
+            weight = 1
+        ),
     ]
 
-    assert distribution.circuit.hyperedge_list == new_hyperedge_list
+    assert distribution.circuit.hyperedge_list == hyperedge_list
+
+def test_eager_h_type_merge_01():
+    # Should merge 0th and 2nd hyperedges on qubit 0
+    # Conflict prevents merging of 0th and 2nd
+    # hyperedges on qubit 1
+
+    network = NISQNetwork(
+        server_coupling = [[0, 1]],
+        server_qubits = {0: [0], 1: [1]}
+    )
+
+    circ = Circuit(2)
+    circ.add_gate(OpType.CU1, 1, [0, 1])
+    circ.H(0).H(1).add_gate(OpType.CU1, 1, [0, 1]).H(0).H(1)
+    circ.add_gate(OpType.CU1, 1, [0, 1])
+
+    hyp_circ = HypergraphCircuit(circ)
+
+    placement = Placement(
+        {0: 0, 1: 1, 2: 0, 3: 1, 4: 0}
+    )
+
+    distribution = Distribution(
+        circuit = hyp_circ,
+        placement = placement,
+        network = network
+    )
+
+    refiner = EagerHTypeMerge()
+    refinement_made = refiner.refine(distribution)
+    assert refinement_made
+
+    hyperedge_list = [
+        Hyperedge(
+            vertices = [0, 2, 4],
+            weight = 1
+        ),
+        Hyperedge(
+            vertices = [0, 3],
+            weight = 1
+        ),
+        Hyperedge(
+            vertices = [1, 2],
+            weight = 1
+        ),
+        Hyperedge(
+            vertices = [1, 3],
+            weight = 1
+        ),
+        Hyperedge(
+            vertices = [1, 4],
+            weight = 1
+        ),
+    ]
+
+    assert distribution.circuit.hyperedge_list == hyperedge_list
+
+
+def test_eager_h_type_merge_02():
+    # Hyperedges go to different servers
+    # no hopping should be done
+    network = NISQNetwork(
+        server_coupling = [[0, 1], [0, 2], [1, 2]],
+        server_qubits = {0: [0], 1: [1], 2: [2]}
+    )
+
+    circ = Circuit(3)
+    circ.add_gate(OpType.CU1, 1, [0, 1])
+    circ.H(0).add_gate(OpType.CU1, 1, [0, 1]).H(0)
+    circ.add_gate(OpType.CU1, 1, [0, 2])
+
+    hyp_circ = HypergraphCircuit(circ)
+
+    placement = Placement(
+        {0: 0, 1: 1, 2: 2, 3: 1, 4: 0, 5: 0}
+    )
+
+    distribution = Distribution(
+        circuit = hyp_circ,
+        placement = placement,
+        network = network
+    )
+
+    refiner = EagerHTypeMerge()
+    refinement_made = refiner.refine(distribution)
+    assert not refinement_made
+
+    hyperedge_list = [
+        Hyperedge(
+            vertices = [0, 3],
+            weight = 1
+        ),
+        Hyperedge(
+            vertices = [0, 4],
+            weight = 1
+        ),
+        Hyperedge(
+            vertices = [0, 5],
+            weight = 1
+        ),
+        Hyperedge(
+            vertices = [1, 3, 4],
+            weight = 1
+        ),
+        Hyperedge(
+            vertices = [2, 5],
+            weight = 1
+        ),
+    ]
+
+    assert distribution.circuit.hyperedge_list == hyperedge_list
+
+def test_eager_h_type_merge_03():
+    # CU1 in embedding goes to 3rd server
+    # so no embedding
+    network = NISQNetwork(
+        server_coupling = [[0, 1], [0, 2], [1, 2]],
+        server_qubits = {0: [0], 1: [1], 2: [2]}
+    )
+
+    circ = Circuit(3)
+    circ.add_gate(OpType.CU1, 1, [0, 1])
+    circ.H(0).add_gate(OpType.CU1, 1, [0, 2]).H(0)
+    circ.add_gate(OpType.CU1, 1, [0, 1])
+
+    hyp_circ = HypergraphCircuit(circ)
+
+    placement = Placement(
+        {0: 0, 1: 1, 2: 2, 3: 1, 4: 0, 5: 1}
+    )
+
+    distribution = Distribution(
+        circuit = hyp_circ,
+        placement = placement,
+        network = network
+    )
+
+    refiner = EagerHTypeMerge()
+    refinement_made = refiner.refine(distribution)
+    assert not refinement_made
+
+    hyperedge_list = [
+        Hyperedge(
+            vertices = [0, 3],
+            weight = 1
+        ),
+        Hyperedge(
+            vertices = [0, 4],
+            weight = 1
+        ),
+        Hyperedge(
+            vertices = [0, 5],
+            weight = 1
+        ),
+        Hyperedge(
+            vertices = [1, 3, 5],
+            weight = 1
+        ),
+        Hyperedge(
+            vertices = [2, 4],
+            weight = 1
+        ),
+    ]
+
+    assert distribution.circuit.hyperedge_list == hyperedge_list
+
+def test_eager_h_type_merge_04():
+    # Local hyperedges shouldn't affect merging
+    # no hopping should be done
+    network = NISQNetwork(
+        server_coupling = [[0, 1]],
+        server_qubits = {0: [0, 1], 1: [2]}
+    )
+
+    circ = Circuit(3)
+    circ.add_gate(OpType.CU1, 1, [0, 2])
+    circ.add_gate(OpType.CU1, 1, [0, 1])  # Local
+    circ.H(0).add_gate(OpType.CU1, 1, [0, 2]).H(0)
+    circ.add_gate(OpType.CU1, 1, [0, 1])  # Local
+    circ.add_gate(OpType.CU1, 1, [0, 2])
+
+    hyp_circ = HypergraphCircuit(circ)
+
+    placement = Placement(
+        {0: 0, 1: 0, 2: 1, 3: 1, 4: 0, 5: 0, 6: 0, 7: 1}
+    )
+
+    distribution = Distribution(
+        circuit = hyp_circ,
+        placement = placement,
+        network = network
+    )
+
+    refiner = EagerHTypeMerge()
+    refinement_made = refiner.refine(distribution)
+    assert not refinement_made
+
+    hyperedge_list = [
+        Hyperedge(
+            vertices = [0, 3, 4],
+            weight = 1
+        ),
+        Hyperedge(
+            vertices = [0, 5],
+            weight = 1
+        ),
+        Hyperedge(
+            vertices = [0, 6, 7],
+            weight = 1
+        ),
+        Hyperedge(
+            vertices = [1, 4, 6],
+            weight = 1
+        ),
+        Hyperedge(
+            vertices = [2, 3, 5, 7],
+            weight = 1
+        ),
+    ]
+
+    assert distribution.circuit.hyperedge_list == hyperedge_list
+
+def test_eager_h_type_merge_05():
+    # Local embedding so cannot hop
+    network = NISQNetwork(
+        server_coupling = [[0, 1]],
+        server_qubits = {0: [0, 1], 1: [2]}
+    )
+
+    circ = Circuit(3)
+    circ.add_gate(OpType.CU1, 1, [0, 2])
+    circ.H(0).add_gate(OpType.CU1, 1, [0, 1]).H(0)
+    circ.add_gate(OpType.CU1, 1, [0, 2])
+
+    hyp_circ = HypergraphCircuit(circ)
+
+    placement = Placement(
+        {0: 0, 1: 0, 2: 1, 3: 1, 4: 0, 5: 1}
+    )
+
+    distribution = Distribution(
+        circuit = hyp_circ,
+        placement = placement,
+        network = network
+    )
+
+    refiner = EagerHTypeMerge()
+    refinement_made = refiner.refine(distribution)
+    assert not refinement_made
+
+    hyperedge_list = [
+        Hyperedge(
+            vertices = [0, 3],
+            weight = 1
+        ),
+        Hyperedge(
+            vertices = [0, 4],
+            weight = 1
+        ),
+        Hyperedge(
+            vertices = [0, 5],
+            weight = 1
+        ),
+        Hyperedge(
+            vertices = [1, 4],
+            weight = 1
+        ),
+        Hyperedge(
+            vertices = [2, 3, 5],
+            weight = 1
+        ),
+    ]
+
+    assert distribution.circuit.hyperedge_list == hyperedge_list
+
+def test_eager_h_type_merge_06():
+    # Here, the refiner does nothing
+    with open(
+        "tests/test_circuits/to_pytket_circuit/frac_CZ_10.json", "r"
+    ) as fp:
+        circ = Circuit().from_dict(json.load(fp))
+
+    DQCPass().apply(circ)
+
+    network = NISQNetwork(
+        [[2, 1], [1, 0], [1, 3], [0, 4]],
+        {0: [0, 1, 2], 1: [3, 4], 2: [5, 6, 7], 3: [8], 4: [9]},
+    )
+
+    allocator = HypergraphPartitioning()
+    distribution = allocator.allocate(circ, network, num_rounds=0)
+    cost = distribution.cost()
+
+    refiner = EagerHTypeMerge()
+    refinement_made = refiner.refine(distribution)
+
+    assert distribution.is_valid()
+    assert distribution.cost() <= cost
