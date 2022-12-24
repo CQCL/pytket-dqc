@@ -6,9 +6,12 @@ from pytket_dqc.packing import Packet, PacMan, HoppingPacket
 from copy import copy
 
 
-class NHTypeGreedyMerge(Refiner):
+class EagerHTypeMerge(Refiner):
     """Scans circuit from left to right, merging hedges
-    as it finds them according to `PacMan` found packets.
+    via hoppings as it finds them according to `PacMan` found packets.
+
+    In the case of conflicts, the first found hopping is the one that is
+    used, and no calculation is made as to which might be better to implement.
     """
 
     def refine(self, distribution: Distribution):
@@ -23,7 +26,7 @@ class NHTypeGreedyMerge(Refiner):
         for qubit_vertex in gain_mgr.distribution.circuit.get_qubit_vertices():
             qubit_packets = copy(pacman.packets_by_qubit[qubit_vertex])
             if qubit_packets:
-                # Given a `Packet`, chain neighbouring and hoppable `Packet`s
+                # Given a `Packet`, chain hoppable `Packet`s
                 # together and add their parent hedges to a list of commonly
                 # mergeable `Hyperedge`s, removing the `Packet`s as we go.
                 # If the chain stops then take the next `Packet`` in the list.
@@ -46,21 +49,11 @@ class NHTypeGreedyMerge(Refiner):
                 while qubit_packets:  # Keep going until list is empty
                     qubit_packets.remove(current_packet)
 
-                    # Identify the next mergeable `Packet`
-                    next_neighbour = pacman.get_subsequent_neighbouring_packet(
-                        current_packet
-                    )
+                    # Identify the next mergeable `Packet` via hopping
                     next_hopper = pacman.get_subsequent_hopping_packet(
                         current_packet
                     )
-                    if next_neighbour is not None:
-                        assert next_hopper is None,\
-                            "This does not behave as expected."
-                        current_packet = next_neighbour
-                        currently_merging_hedges.add(
-                            current_packet.parent_hedge
-                        )
-                    elif next_hopper is not None:
+                    if next_hopper is not None:
                         hopping_packet = (current_packet, next_hopper)
                         # We only merge embeddings when there are no conflicts
                         # that have already been merged previously
@@ -72,9 +65,12 @@ class NHTypeGreedyMerge(Refiner):
                                 )
                             ]
                         ):
+                            # Make a note that the hopping has now been done
+                            # therefore we cannot do another hopping that
+                            # conflicts with this one.
                             already_done_hoppings.append(
                                 hopping_packet
-                            )  # Make a note that the hopping has now been done
+                            )
                             current_packet = next_hopper
                             currently_merging_hedges.add(
                                 current_packet.parent_hedge
@@ -109,7 +105,7 @@ class NHTypeGreedyMerge(Refiner):
 
         for merging_hedges in all_hedges_to_merge:
             if len(merging_hedges) > 1:
-                # This merger resolves the conflict edges by
+                # This merger resolves conflict edges by
                 # construction - hence any merged hyperedges
                 # should only require local correcting gates.
                 # So the gain should be at least 1 if hyperedges
