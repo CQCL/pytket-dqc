@@ -34,10 +34,10 @@ class EagerHTypeMerge(Refiner):
                 # `PacMan.packets_by_qubit[qubit_vertex]` generates a list of
                 # `Packet`s such that `Packet`s which are connected to the same
                 # server are in chronological order.
-                # Therefore starting the chain from the first `Packet` in the list
-                # will find all the `Packet`s that can be merged with the first
-                # since `Packet` mergings aren't allowed for `Packet`s connected
-                # to different servers.
+                # Therefore starting the chain from the first `Packet`
+                # in the list will find all the `Packet`s that can be
+                # merged with the first since `Packet` mergings aren't
+                # allowed for `Packet`s connected to different servers.
 
                 # Initial `Packet` to start with
                 current_packet: Packet = qubit_packets[
@@ -95,12 +95,18 @@ class EagerHTypeMerge(Refiner):
                             if current_packet.parent_hedge in merging_hedges
                         ]
                         assert len(potential_merging_hedges_list) <= 1,\
-                            "There should only be up to one merging_hedges for any hedge"
+                            "There should only be up to one merging_hedges " +\
+                            "for any hedge"
                         if potential_merging_hedges_list:
-                            currently_merging_hedges = potential_merging_hedges_list[0]
+                            currently_merging_hedges \
+                                = potential_merging_hedges_list[0]
                         else:
-                            currently_merging_hedges = {current_packet.parent_hedge}
-                            all_hedges_to_merge.append(currently_merging_hedges)
+                            currently_merging_hedges = {
+                                current_packet.parent_hedge
+                            }
+                            all_hedges_to_merge.append(
+                                currently_merging_hedges
+                            )
                         end_merging_hedges = False
 
         for merging_hedges in all_hedges_to_merge:
@@ -113,7 +119,9 @@ class EagerHTypeMerge(Refiner):
                 # that the placement does not make this merged
                 # hyperedge non-local
                 # (i.e all the gates are made local).
-                assert (gain_mgr.merge_hyperedge_gain(list(merging_hedges))) >= 0
+                assert (gain_mgr.merge_hyperedge_gain(
+                    list(merging_hedges)
+                )) >= 0
                 gain_mgr.merge_hyperedge(list(merging_hedges))
                 refinement_made = True
 
