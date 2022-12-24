@@ -14,7 +14,7 @@ class EagerHTypeMerge(Refiner):
     used, and no calculation is made as to which might be better to implement.
     """
 
-    def refine(self, distribution: Distribution):
+    def refine(self, distribution: Distribution, **kwargs):
         gain_mgr = GainManager(initial_distribution=distribution)
         refinement_made = False
         pacman = PacMan(distribution.circuit, distribution.placement)
