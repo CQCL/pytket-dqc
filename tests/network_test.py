@@ -4,6 +4,7 @@ from pytket_dqc.networks import (
     ScaleFreeNISQNetwork,
     SmallWorldNISQNetwork,
     RandomNISQNetwork,
+    AllToAll,
 )
 from pytket.placement import NoiseAwarePlacement  # type:ignore
 from pytket.architecture import Architecture  # type:ignore
@@ -12,6 +13,26 @@ import pytest
 from pytket_dqc.placement import Placement
 from pytket_dqc import HypergraphCircuit
 from pytket import Circuit, OpType
+
+
+def test_all_to_all_network():
+
+    network = AllToAll(n_servers=5, n_qubits=2)
+    assert network.server_coupling == [
+        [0, 1],
+        [0, 2],
+        [0, 3],
+        [0, 4],
+        [1, 2],
+        [1, 3],
+        [1, 4],
+        [2, 3],
+        [2, 4],
+        [3, 4]
+    ]
+    assert network.server_qubits == {
+        0: [0, 1], 1: [2, 3], 2: [4, 5], 3: [6, 7], 4: [8, 9]
+    }
 
 
 def test_random_network():

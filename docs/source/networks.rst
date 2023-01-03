@@ -26,3 +26,11 @@ Networks
 .. autoclass:: pytket_dqc.networks.nisq_network.SmallWorldNISQNetwork
 
     .. automethod:: SmallWorldNISQNetwork.__init__
+
+.. autoclass:: pytket_dqc.networks.nisq_network.AllToAll
+
+    .. automethod:: AllToAll.__init__
+
+.. autoclass:: pytket_dqc.networks.nisq_network.RandomNISQNetwork
+
+    .. automethod:: RandomNISQNetwork.__init__
