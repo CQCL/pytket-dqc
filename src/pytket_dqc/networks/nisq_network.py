@@ -274,3 +274,50 @@ class RandomNISQNetwork(NISQNetwork):
             server_qubits[server] = server_qubits[server] + [qubit]
 
         super().__init__(server_coupling, server_qubits)
+
+
+class ScaleFreeNISQNetwork(NISQNetwork):
+    """NISQNetwork with underlying server network that is scale-free. This is
+    to say one whose degree distribution follows a power law.
+    """
+
+    def __init__(self, n_servers: int, n_qubits: int, **kwargs):
+        """Initialisation method for scale-free network.
+
+        :param n_servers: The number of servers in the network.
+        :type n_servers: int
+        :param n_qubits: The total number of qubits. Qubits are assigned
+            randomly to each server, with at least one per server.
+        :type n_qubits: int
+        :raises Exception: Raised if the number of qubits is less than the
+            number of servers.
+        """
+
+        if n_qubits < n_servers:
+            raise Exception(
+                "The number of qubits must be greater ",
+                "than the number of servers.")
+
+        m = kwargs.get('m', 1)
+        seed = kwargs.get('seed', None)
+        initial_graph = kwargs.get('initial_graph', None)
+
+        random.seed(seed)
+
+        # Generate barabasi albert graph
+        graph = nx.barabasi_albert_graph(
+            n=n_servers,
+            m=m,
+            seed=seed,
+            initial_graph=initial_graph
+        )
+        server_coupling = graph.edges
+
+        # Assign at least one qubit to each server
+        server_qubits = {i: [i] for i in range(n_servers)}
+        # Assign remaining qubits randomly.
+        for qubit in range(n_servers, n_qubits):
+            server = random.randrange(n_servers)
+            server_qubits[server] = server_qubits[server] + [qubit]
+
+        super().__init__(server_coupling, server_qubits)

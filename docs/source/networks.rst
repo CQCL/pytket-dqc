@@ -18,3 +18,7 @@ Networks
     .. automethod:: NISQNetwork.get_qubit_list
 
     .. automethod:: NISQNetwork.draw_nisq_network
+
+.. autoclass:: pytket_dqc.networks.nisq_network.ScaleFreeNISQNetwork
+
+    .. automethod:: ScaleFreeNISQNetwork.__init__
