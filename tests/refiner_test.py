@@ -1,21 +1,27 @@
-from pytket_dqc.networks import NISQNetwork
-from pytket import Circuit
-from pytket.circuit import OpType  # type: ignore
-from pytket_dqc import HypergraphCircuit
-from pytket_dqc.placement import Placement
-from pytket_dqc.circuits.distribution import Distribution
+import pytest
+import json  # type: ignore
+from pytket import Circuit, OpType  # type: ignore
+from pytket_dqc import Distribution
+from pytket_dqc.circuits import HypergraphCircuit
 from pytket_dqc.circuits.hypergraph import Hyperedge
+from pytket_dqc.placement import Placement
+from pytket_dqc.utils import check_equivalence, DQCPass
+from pytket_dqc.networks import NISQNetwork
 from pytket_dqc.refiners import (
     NeighbouringDTypeMerge,
     IntertwinedDTypeMerge,
     RepeatRefiner,
     SequenceRefiner,
 )
+from pytket_dqc.refiners.vertex_cover import (
+    VertexCover,
+    get_min_covers,
+)
 
 
 intertwined_test_network = NISQNetwork(
     server_coupling=[[0, 1], [1, 2], [1, 3]],
-    server_qubits={0: [0], 1: [1], 2: [2], 3: [3]}
+    server_qubits={0: [0], 1: [1], 2: [2], 3: [3]},
 )
 
 intertwined_test_circuit = Circuit(4)
@@ -69,7 +75,7 @@ intertwined_test_placement = Placement(
 )
 
 
-def test_to_pytket_backwards_meregable():
+def test_to_pytket_backwards_mergeable():
 
     test_hyp_circuit = HypergraphCircuit(intertwined_test_circuit)
 
@@ -95,7 +101,7 @@ def test_to_pytket_backwards_meregable():
     distribution.to_pytket_circuit()
 
 
-def test_sequence_merge_d_type_backwards_meregable():
+def test_sequence_merge_d_type_backwards_mergeable():
 
     test_hyp_circuit = HypergraphCircuit(intertwined_test_circuit)
 
@@ -181,7 +187,7 @@ def test_repeat_merge_d_type_backwards_mergeable():
     ]
 
 
-def test_intertwined_merge_d_type_backwards_meregable():
+def test_intertwined_merge_d_type_backwards_mergeable():
 
     test_hyp_circuit = HypergraphCircuit(intertwined_test_circuit)
 
@@ -265,7 +271,7 @@ def test_neighbouring_merge_d_type_intertwined():
 
     test_network = NISQNetwork(
         server_coupling=[[0, 1], [1, 2]],
-        server_qubits={0: [0], 1: [1], 2: [2]}
+        server_qubits={0: [0], 1: [1], 2: [2]},
     )
 
     test_circuit = Circuit(3)
@@ -304,7 +310,7 @@ def test_neighbouring_merge_d_type_intertwined():
     distribution = Distribution(
         circuit=test_hyp_circuit,
         placement=test_placement,
-        network=test_network
+        network=test_network,
     )
 
     assert distribution.cost() == 6
@@ -319,7 +325,7 @@ def test_neighbouring_merge_d_type_intertwined():
         Hyperedge(vertices=[0, 3, 6], weight=1),
         Hyperedge(vertices=[1, 3, 4, 6], weight=1),
         Hyperedge(vertices=[1, 5], weight=1),
-        Hyperedge(vertices=[2, 4, 5], weight=1)
+        Hyperedge(vertices=[2, 4, 5], weight=1),
     ]
 
     assert distribution.circuit.hyperedge_list == ideal_hyperedge_list
@@ -329,7 +335,7 @@ def test_neighbouring_merge_d_type_complex_circuit():
 
     test_network = NISQNetwork(
         server_coupling=[[0, 1], [1, 2], [1, 3]],
-        server_qubits={0: [0], 1: [1], 2: [2], 3: [3]}
+        server_qubits={0: [0], 1: [1], 2: [2], 3: [3]},
     )
     test_circuit = Circuit(4)
 
@@ -385,14 +391,27 @@ def test_neighbouring_merge_d_type_complex_circuit():
         test_hyp_circuit.add_hyperedge(new_hyperedge)
 
     test_placement = Placement(
-        {0: 0, 1: 1, 2: 2, 3: 3, 4: 2, 5: 1, 6: 2,
-            7: 2, 8: 1, 9: 3, 10: 0, 11: 2, 12: 3}
+        {
+            0: 0,
+            1: 1,
+            2: 2,
+            3: 3,
+            4: 2,
+            5: 1,
+            6: 2,
+            7: 2,
+            8: 1,
+            9: 3,
+            10: 0,
+            11: 2,
+            12: 3,
+        }
     )
 
     distribution = Distribution(
         circuit=test_hyp_circuit,
         placement=test_placement,
-        network=test_network
+        network=test_network,
     )
 
     assert distribution.cost() == 12
@@ -411,7 +430,7 @@ def test_neighbouring_merge_d_type_complex_circuit():
         Hyperedge(vertices=[2, 4, 7, 11], weight=1),
         Hyperedge(vertices=[2, 6], weight=1),
         Hyperedge(vertices=[3, 6, 8, 9, 12], weight=1),
-        Hyperedge(vertices=[3, 11], weight=1)
+        Hyperedge(vertices=[3, 11], weight=1),
     ]
     assert distribution.circuit.hyperedge_list == ideal_hyperedge_list
 
@@ -420,7 +439,7 @@ def test_neighbouring_merge_d_type_only_CZ():
 
     network = NISQNetwork(
         server_coupling=[[0, 1], [1, 2]],
-        server_qubits={0: [0], 1: [1], 2: [2]}
+        server_qubits={0: [0], 1: [1], 2: [2]},
     )
 
     circ = Circuit(3)
@@ -439,10 +458,7 @@ def test_neighbouring_merge_d_type_only_CZ():
 
     hyp_circ.split_hyperedge(
         old_hyperedge=old_hyperedge,
-        new_hyperedge_list=[
-            new_hyperedge_one,
-            new_hyperedge_two
-        ]
+        new_hyperedge_list=[new_hyperedge_one, new_hyperedge_two],
     )
 
     distribution = Distribution(
@@ -461,7 +477,7 @@ def test_neighbouring_merge_d_type_no_new_hyperedges():
 
     network = NISQNetwork(
         server_coupling=[[0, 1], [1, 2]],
-        server_qubits={0: [0], 1: [1], 2: [2]}
+        server_qubits={0: [0], 1: [1], 2: [2]},
     )
 
     circ = Circuit(3)
@@ -474,22 +490,10 @@ def test_neighbouring_merge_d_type_no_new_hyperedges():
     hyp_circ = HypergraphCircuit(circ)
 
     hyperedge_list = [
-        Hyperedge(
-            vertices=[0, 3, 4],
-            weight=1
-        ),
-        Hyperedge(
-            vertices=[0, 5, 6],
-            weight=1
-        ),
-        Hyperedge(
-            vertices=[1, 4],
-            weight=1
-        ),
-        Hyperedge(
-            vertices=[2, 3, 5, 6],
-            weight=1
-        )
+        Hyperedge(vertices=[0, 3, 4], weight=1),
+        Hyperedge(vertices=[0, 5, 6], weight=1),
+        Hyperedge(vertices=[1, 4], weight=1),
+        Hyperedge(vertices=[2, 3, 5, 6], weight=1),
     ]
 
     placement = Placement({0: 0, 1: 1, 2: 2, 3: 2, 4: 1, 5: 2, 6: 2})
@@ -505,3 +509,394 @@ def test_neighbouring_merge_d_type_no_new_hyperedges():
     assert not refinement_made
 
     assert distribution.circuit.hyperedge_list == hyperedge_list
+
+
+def test_min_covers():
+    edges = [(0, 1), (0, 2), (0, 5), (1, 3), (1, 4), (2, 5), (3, 4), (4, 5)]
+    covers = [
+        {0, 1, 2, 4},
+        {0, 1, 5, 3},
+        {0, 1, 5, 4},
+        {0, 3, 4, 2},
+        {0, 3, 4, 5},
+        {1, 2, 5, 3},
+        {1, 2, 5, 4},
+    ]
+    assert sorted(covers) == sorted(get_min_covers(edges))
+
+    edges = [(0, 1), (0, 2), (0, 5), (1, 3), (1, 4), (2, 4), (3, 4), (4, 5)]
+    covers = [
+        {0, 1, 4},
+        {0, 3, 4},
+    ]
+    assert sorted(covers) == sorted(get_min_covers(edges))
+
+
+def test_vertex_cover_refiner_empty():
+
+    network = NISQNetwork([[0, 1]], {0: [0, 1], 1: [2]})
+
+    circ = Circuit(2)
+
+    placement = Placement({0: 0, 1: 0, 2: 0})
+
+    # Test "all_brute_force" option
+    distribution = Distribution(
+        circuit=HypergraphCircuit(circ), placement=placement, network=network
+    )
+    VertexCover().refine(distribution, vertex_cover_alg="all_brute_force")
+
+    pytket_circ = distribution.to_pytket_circuit()
+    assert check_equivalence(
+        circ, pytket_circ, distribution.get_qubit_mapping()
+    )
+
+    # Test "networkx" option
+    distribution = Distribution(
+        circuit=HypergraphCircuit(circ), placement=placement, network=network
+    )
+    VertexCover().refine(distribution, vertex_cover_alg="networkx")
+
+    pytket_circ = distribution.to_pytket_circuit()
+    assert check_equivalence(
+        circ, pytket_circ, distribution.get_qubit_mapping()
+    )
+
+
+def test_vertex_cover_refiner_trivial():
+
+    network = NISQNetwork([[0, 1]], {0: [0, 1], 1: [2]})
+
+    circ = Circuit(2)
+    circ.add_gate(OpType.CU1, 1.0, [0, 1])
+
+    placement = Placement({0: 0, 1: 0, 2: 0})
+
+    # Test "all_brute_force" option
+    distribution = Distribution(
+        circuit=HypergraphCircuit(circ), placement=placement, network=network
+    )
+    VertexCover().refine(distribution, vertex_cover_alg="all_brute_force")
+
+    pytket_circ = distribution.to_pytket_circuit()
+    assert check_equivalence(
+        circ, pytket_circ, distribution.get_qubit_mapping()
+    )
+
+    # Test "networkx" option
+    distribution = Distribution(
+        circuit=HypergraphCircuit(circ), placement=placement, network=network
+    )
+    VertexCover().refine(distribution, vertex_cover_alg="networkx")
+
+    pytket_circ = distribution.to_pytket_circuit()
+    assert check_equivalence(
+        circ, pytket_circ, distribution.get_qubit_mapping()
+    )
+
+
+def test_vertex_cover_refiner_simple():
+    network = NISQNetwork(
+        [[2, 1], [1, 0], [1, 3], [0, 4]],
+        {0: [0], 1: [1], 2: [2], 3: [3], 4: [4, 5]},
+    )
+
+    circ = (
+        Circuit(3)
+        .add_gate(OpType.CU1, 0.3, [0, 1])
+        .H(0)
+        .Rz(1.0, 0)
+        .H(0)
+        .add_gate(OpType.CU1, 0.8, [0, 2])
+    )
+
+    placement = Placement({0: 0, 1: 4, 2: 4})
+
+    # Test "all_brute_force" option
+    distribution = Distribution(
+        circuit=HypergraphCircuit(circ), placement=placement, network=network
+    )
+    VertexCover().refine(distribution, vertex_cover_alg="all_brute_force")
+
+    pytket_circ = distribution.to_pytket_circuit()
+    assert check_equivalence(
+        circ, pytket_circ, distribution.get_qubit_mapping()
+    )
+
+    # Test "networkx" option
+    distribution = Distribution(
+        circuit=HypergraphCircuit(circ), placement=placement, network=network
+    )
+    VertexCover().refine(distribution, vertex_cover_alg="networkx")
+
+    pytket_circ = distribution.to_pytket_circuit()
+    assert check_equivalence(
+        circ, pytket_circ, distribution.get_qubit_mapping()
+    )
+
+
+def test_vertex_cover_refiner_intertwined():
+
+    # Test "all_brute_force" option
+    test_hyp_circuit = HypergraphCircuit(intertwined_test_circuit)
+
+    test_hyp_circuit.vertex_neighbours = {
+        i: set() for i in test_hyp_circuit.vertex_list
+    }
+    test_hyp_circuit.hyperedge_list = []
+    test_hyp_circuit.hyperedge_dict = {
+        i: [] for i in test_hyp_circuit.vertex_list
+    }
+
+    for new_hyperedge in intertwined_hyperedge_vertex_list:
+        test_hyp_circuit.add_hyperedge(new_hyperedge)
+
+    distribution = Distribution(
+        circuit=test_hyp_circuit,
+        placement=intertwined_test_placement,
+        network=intertwined_test_network,
+    )
+    VertexCover().refine(distribution, vertex_cover_alg="all_brute_force")
+
+    pytket_circ = distribution.to_pytket_circuit()
+    assert check_equivalence(
+        intertwined_test_circuit, pytket_circ, distribution.get_qubit_mapping()
+    )
+
+    # Test "networkx" option
+    test_hyp_circuit = HypergraphCircuit(intertwined_test_circuit)
+
+    test_hyp_circuit.vertex_neighbours = {
+        i: set() for i in test_hyp_circuit.vertex_list
+    }
+    test_hyp_circuit.hyperedge_list = []
+    test_hyp_circuit.hyperedge_dict = {
+        i: [] for i in test_hyp_circuit.vertex_list
+    }
+
+    for new_hyperedge in intertwined_hyperedge_vertex_list:
+        test_hyp_circuit.add_hyperedge(new_hyperedge)
+
+    distribution = Distribution(
+        circuit=test_hyp_circuit,
+        placement=intertwined_test_placement,
+        network=intertwined_test_network,
+    )
+    VertexCover().refine(distribution, vertex_cover_alg="networkx")
+
+    pytket_circ = distribution.to_pytket_circuit()
+    assert check_equivalence(
+        intertwined_test_circuit, pytket_circ, distribution.get_qubit_mapping()
+    )
+
+
+def test_vertex_cover_refiner_complex_1():
+
+    network = NISQNetwork(
+        server_coupling=[[0, 1], [1, 2], [1, 3]],
+        server_qubits={0: [0], 1: [1], 2: [2], 3: [3]},
+    )
+
+    circ = Circuit(4)
+    circ.add_gate(OpType.CU1, 1.0, [0, 2])
+    circ.Rz(0.3, 0)
+    circ.add_gate(OpType.CU1, 1.0, [0, 1])
+    circ.H(2)
+    circ.add_gate(OpType.CU1, 1.0, [3, 2])
+    circ.H(2)
+    circ.H(0)
+    circ.add_gate(OpType.CU1, 1.0, [0, 2])
+    circ.add_gate(OpType.CU1, 1.0, [3, 0])
+    circ.H(0)
+    circ.add_gate(OpType.CU1, 1.0, [1, 0])
+
+    placement = Placement({0: 0, 1: 1, 2: 2, 3: 3})
+
+    # Test "all_brute_force" option
+    distribution = Distribution(
+        circuit=HypergraphCircuit(circ), placement=placement, network=network
+    )
+    VertexCover().refine(distribution, vertex_cover_alg="all_brute_force")
+
+    pytket_circ = distribution.to_pytket_circuit()
+    assert check_equivalence(
+        circ, pytket_circ, distribution.get_qubit_mapping()
+    )
+
+    # Test "networkx" option
+    distribution = Distribution(
+        circuit=HypergraphCircuit(circ), placement=placement, network=network
+    )
+    VertexCover().refine(distribution, vertex_cover_alg="networkx")
+
+    pytket_circ = distribution.to_pytket_circuit()
+    assert check_equivalence(
+        circ, pytket_circ, distribution.get_qubit_mapping()
+    )
+
+
+def test_vertex_cover_refiner_complex_2():
+    network = NISQNetwork(
+        [[0, 1], [0, 2], [0, 3], [3, 4]],
+        {0: [0], 1: [1, 2], 2: [3, 4], 3: [7], 4: [5, 6]},
+    )
+
+    circ = Circuit(4)
+    circ.add_gate(OpType.CU1, 0.1234, [1, 2])
+    circ.add_gate(OpType.CU1, 0.1234, [0, 2])
+    circ.add_gate(OpType.CU1, 0.1234, [2, 3])
+    circ.add_gate(OpType.CU1, 0.1234, [0, 3])
+    circ.H(0).H(2).Rz(0.1234, 3)
+    circ.add_gate(OpType.CU1, 1.0, [0, 2])
+    circ.add_gate(OpType.CU1, 1.0, [0, 3])
+    circ.add_gate(OpType.CU1, 1.0, [1, 2])
+    circ.H(0).H(2).Rz(0.1234, 0)
+    circ.add_gate(OpType.CU1, 0.1234, [0, 1])
+    circ.add_gate(OpType.CU1, 0.1234, [0, 3])
+    circ.add_gate(OpType.CU1, 1.0, [1, 2])
+
+    placement = Placement({0: 1, 1: 1, 2: 2, 3: 4})
+
+    # Test "all_brute_force" option
+    distribution = Distribution(
+        circuit=HypergraphCircuit(circ), placement=placement, network=network
+    )
+    VertexCover().refine(distribution, vertex_cover_alg="all_brute_force")
+
+    pytket_circ = distribution.to_pytket_circuit()
+    assert check_equivalence(
+        circ, pytket_circ, distribution.get_qubit_mapping()
+    )
+
+    # Test "networkx" option
+    distribution = Distribution(
+        circuit=HypergraphCircuit(circ), placement=placement, network=network
+    )
+    VertexCover().refine(distribution, vertex_cover_alg="networkx")
+
+    pytket_circ = distribution.to_pytket_circuit()
+    assert check_equivalence(
+        circ, pytket_circ, distribution.get_qubit_mapping()
+    )
+
+
+@pytest.mark.xfail(reason="Currently failing. Branch #66 fixes it.")
+def test_vertex_cover_refiner_pauli_circ():
+    # Randomly generated circuit of type pauli, depth 10 and 10 qubits
+    with open(
+        "tests/test_circuits/to_pytket_circuit/pauli_10.json", "r"
+    ) as fp:
+        circ = Circuit().from_dict(json.load(fp))
+
+    DQCPass().apply(circ)
+
+    network = NISQNetwork(
+        [[2, 1], [1, 0], [1, 3], [0, 4]],
+        {0: [0, 1, 2], 1: [3, 4], 2: [5, 6, 7], 3: [8], 4: [9]},
+    )
+
+    placement = Placement(
+        {0: 0, 1: 0, 2: 0, 3: 1, 4: 1, 5: 2, 6: 2, 7: 2, 8: 3, 9: 4}
+    )
+
+    # Test "all_brute_force" option
+    distribution = Distribution(
+        circuit=HypergraphCircuit(circ), placement=placement, network=network
+    )
+    VertexCover().refine(distribution, vertex_cover_alg="all_brute_force")
+
+    pytket_circ = distribution.to_pytket_circuit()
+    assert check_equivalence(
+        circ, pytket_circ, distribution.get_qubit_mapping()
+    )
+
+    # Test "networkx" option
+    distribution = Distribution(
+        circuit=HypergraphCircuit(circ), placement=placement, network=network
+    )
+    VertexCover().refine(distribution, vertex_cover_alg="networkx")
+
+    pytket_circ = distribution.to_pytket_circuit()
+    assert check_equivalence(
+        circ, pytket_circ, distribution.get_qubit_mapping()
+    )
+
+
+def test_vertex_cover_refiner_random_circ():
+    # Randomly generated circuit of type random, depth 6 and 6 qubits
+    with open(
+        "tests/test_circuits/to_pytket_circuit/random_6.json", "r"
+    ) as fp:
+        circ = Circuit().from_dict(json.load(fp))
+
+    DQCPass().apply(circ)
+
+    network = NISQNetwork(
+        [[2, 1], [1, 0], [1, 3], [0, 4]],
+        {0: [0, 1, 2], 1: [3, 4], 2: [5, 6, 7], 3: [8], 4: [9]},
+    )
+
+    placement = Placement({0: 0, 1: 4, 2: 3, 3: 2, 4: 1, 5: 2})
+
+    # Test "all_brute_force" option
+    distribution = Distribution(
+        circuit=HypergraphCircuit(circ), placement=placement, network=network
+    )
+    VertexCover().refine(distribution, vertex_cover_alg="all_brute_force")
+
+    pytket_circ = distribution.to_pytket_circuit()
+    assert check_equivalence(
+        circ, pytket_circ, distribution.get_qubit_mapping()
+    )
+
+    # Test "networkx" option
+    distribution = Distribution(
+        circuit=HypergraphCircuit(circ), placement=placement, network=network
+    )
+    VertexCover().refine(distribution, vertex_cover_alg="networkx")
+
+    pytket_circ = distribution.to_pytket_circuit()
+    assert check_equivalence(
+        circ, pytket_circ, distribution.get_qubit_mapping()
+    )
+
+
+def test_vertex_cover_refiner_frac_CZ_circ():
+    # Randomly generated circuit of type frac_CZ, depth 10 and 10 qubits
+    with open(
+        "tests/test_circuits/to_pytket_circuit/frac_CZ_10.json", "r"
+    ) as fp:
+        circ = Circuit().from_dict(json.load(fp))
+
+    DQCPass().apply(circ)
+
+    network = NISQNetwork(
+        [[2, 1], [1, 0], [1, 3], [0, 4]],
+        {0: [0, 1, 2], 1: [3, 4], 2: [5, 6, 7], 3: [8], 4: [9]},
+    )
+
+    placement = Placement(
+        {0: 0, 1: 0, 2: 0, 3: 1, 4: 1, 5: 2, 6: 2, 7: 2, 8: 3, 9: 4}
+    )
+
+    # Test "all_brute_force" option
+    distribution = Distribution(
+        circuit=HypergraphCircuit(circ), placement=placement, network=network
+    )
+    VertexCover().refine(distribution, vertex_cover_alg="all_brute_force")
+
+    pytket_circ = distribution.to_pytket_circuit()
+    assert check_equivalence(
+        circ, pytket_circ, distribution.get_qubit_mapping()
+    )
+
+    # Test "networkx" option
+    distribution = Distribution(
+        circuit=HypergraphCircuit(circ), placement=placement, network=network
+    )
+    VertexCover().refine(distribution, vertex_cover_alg="networkx")
+
+    pytket_circ = distribution.to_pytket_circuit()
+    assert check_equivalence(
+        circ, pytket_circ, distribution.get_qubit_mapping()
+    )
