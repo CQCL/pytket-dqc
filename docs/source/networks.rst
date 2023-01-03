@@ -22,3 +22,7 @@ Networks
 .. autoclass:: pytket_dqc.networks.nisq_network.ScaleFreeNISQNetwork
 
     .. automethod:: ScaleFreeNISQNetwork.__init__
+
+.. autoclass:: pytket_dqc.networks.nisq_network.SmallWorldNISQNetwork
+
+    .. automethod:: SmallWorldNISQNetwork.__init__

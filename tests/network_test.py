@@ -1,4 +1,10 @@
-from pytket_dqc.networks import NISQNetwork, ServerNetwork
+from pytket_dqc.networks import (
+    NISQNetwork,
+    ServerNetwork,
+    ScaleFreeNISQNetwork,
+    SmallWorldNISQNetwork,
+    RandomNISQNetwork,
+)
 from pytket.placement import NoiseAwarePlacement  # type:ignore
 from pytket.architecture import Architecture  # type:ignore
 from pytket.circuit import Node  # type:ignore
@@ -8,9 +14,36 @@ from pytket_dqc import HypergraphCircuit
 from pytket import Circuit, OpType
 
 
-def test_can_implement():
+def test_random_network():
 
-    from pytket_dqc import NISQNetwork
+    network = RandomNISQNetwork(n_servers=5, n_qubits=10, seed=0)
+    assert network.server_coupling == [
+        [0, 1], [1, 2], [0, 3], [2, 4], [1, 4], [0, 2], [2, 3], [0, 4]
+    ]
+    assert network.server_qubits == {
+        0: [0, 8], 1: [1], 2: [2, 5, 9], 3: [3, 6], 4: [4, 7]
+    }
+
+
+def test_small_world_network():
+
+    network = SmallWorldNISQNetwork(n_servers=5, n_qubits=10, seed=1, k=2)
+    assert network.server_coupling == [(0, 4), (0, 2), (0, 3), (1, 3), (1, 2)]
+    assert network.server_qubits == {
+        0: [0, 7, 9], 1: [1, 5], 2: [2, 8], 3: [3], 4: [4, 6]
+    }
+
+
+def test_scale_free_network():
+
+    network = ScaleFreeNISQNetwork(n_servers=5, n_qubits=10, seed=1, m=1)
+    assert network.server_coupling == [(0, 1), (0, 2), (0, 3), (0, 4)]
+    assert network.server_qubits == {
+        0: [0, 7, 9], 1: [1, 5], 2: [2, 8], 3: [3], 4: [4, 6]
+    }
+
+
+def test_can_implement():
 
     server_coupling = [[0, 1]]
     server_qubits = {
