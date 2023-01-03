@@ -237,24 +237,21 @@ def telep_proc() -> CustomGateDef:
 
 
 def is_start_proc(cmd: Command) -> bool:
-    if cmd.op.type == OpType.CustomGate:
-        if cmd.op.get_name().startswith("starting_process"):
-            return True
-    return False
+    return cmd.op.type == OpType.CustomGate and cmd.op.get_name().startswith(
+        "starting_process"
+    )
 
 
 def is_end_proc(cmd: Command) -> bool:
-    if cmd.op.type == OpType.CustomGate:
-        if cmd.op.get_name().startswith("ending_process"):
-            return True
-    return False
+    return cmd.op.type == OpType.CustomGate and cmd.op.get_name().startswith(
+        "ending_process"
+    )
 
 
 def is_telep_proc(cmd: Command) -> bool:
-    if cmd.op.type == OpType.CustomGate:
-        if cmd.op.get_name().startswith("teleportation"):
-            return True
-    return False
+    return cmd.op.type == OpType.CustomGate and cmd.op.get_name().startswith(
+        "teleportation"
+    )
 
 
 def origin_of_start_proc(cmd: Command, all_qubits: list[Qubit]) -> Qubit:
