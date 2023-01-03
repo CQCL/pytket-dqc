@@ -2,9 +2,6 @@ from .gateset import (  # noqa:F401
     dqc_gateset,
     dqc_gateset_predicate,
     DQCPass,
-    start_proc,
-    end_proc,
-    telep_proc,
     to_euler_with_two_hadamards
 )
 
