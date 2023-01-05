@@ -5,7 +5,7 @@ from pytket.placement import NoiseAwarePlacement  # type:ignore
 from pytket.architecture import Architecture  # type:ignore
 from pytket.circuit import Node  # type:ignore
 from pytket_dqc.circuits.hypergraph_circuit import HypergraphCircuit
-from typing import Tuple
+from typing import Tuple, Union
 import random
 
 
@@ -56,6 +56,15 @@ class NISQNetwork(ServerNetwork):
 
         # Check that the resulting network is connected.
         assert nx.is_connected(self.get_nisq_nx())
+
+    def to_dict(
+        self
+    ) -> dict[str, Union[list[list[int]], dict[int, list[int]]]]:
+
+        return {
+            'server_coupling': self.server_coupling,
+            'server_qubits': self.server_qubits,
+        }
 
     def can_implement(self, dist_circ: HypergraphCircuit) -> bool:
 

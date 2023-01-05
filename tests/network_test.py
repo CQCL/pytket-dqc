@@ -49,8 +49,13 @@ def test_random_network():
 def test_small_world_network():
 
     network = SmallWorldNISQNetwork(n_servers=5, n_qubits=10, seed=1, k=2)
-    assert network.server_coupling == [(0, 4), (0, 2), (0, 3), (1, 3), (1, 2)]
-    assert network.server_qubits == {
+    
+    network_dict = network.to_dict()
+    server_coupling = network_dict['server_coupling']
+    server_qubits = network_dict['server_qubits']
+
+    assert server_coupling == [(0, 4), (0, 2), (0, 3), (1, 3), (1, 2)]
+    assert server_qubits == {
         0: [0, 7, 9], 1: [1, 5], 2: [2, 8], 3: [3], 4: [4, 6]
     }
 
