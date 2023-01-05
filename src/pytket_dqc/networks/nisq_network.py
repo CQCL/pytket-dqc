@@ -1,3 +1,4 @@
+from __future__ import annotations
 from pytket_dqc.networks.server_network import ServerNetwork
 from itertools import combinations
 import networkx as nx  # type:ignore
@@ -65,6 +66,17 @@ class NISQNetwork(ServerNetwork):
             'server_coupling': self.server_coupling,
             'server_qubits': self.server_qubits,
         }
+
+    @classmethod
+    def from_dict(
+        cls,
+        network_dict: dict[str, Union[list[list[int]], dict[int, list[int]]]]
+    ) -> NISQNetwork:
+
+        return cls(
+            server_coupling=network_dict['server_coupling'],
+            server_qubits=network_dict['server_qubits']
+        )
 
     def can_implement(self, dist_circ: HypergraphCircuit) -> bool:
 
