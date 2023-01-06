@@ -1,7 +1,6 @@
-from .nisq_network import (  # noqa:F401
-    NISQNetwork,
+from .nisq_network import NISQNetwork, AllToAll  # noqa:F401
+from .random_networks import (  # noqa:F401
     RandomNISQNetwork,
-    AllToAll,
     ScaleFreeNISQNetwork,
     SmallWorldNISQNetwork
 )

@@ -19,18 +19,18 @@ Networks
 
     .. automethod:: NISQNetwork.draw_nisq_network
 
-.. autoclass:: pytket_dqc.networks.nisq_network.ScaleFreeNISQNetwork
-
-    .. automethod:: ScaleFreeNISQNetwork.__init__
-
-.. autoclass:: pytket_dqc.networks.nisq_network.SmallWorldNISQNetwork
-
-    .. automethod:: SmallWorldNISQNetwork.__init__
-
 .. autoclass:: pytket_dqc.networks.nisq_network.AllToAll
 
     .. automethod:: AllToAll.__init__
 
-.. autoclass:: pytket_dqc.networks.nisq_network.RandomNISQNetwork
+.. autoclass:: pytket_dqc.networks.random_networks.ScaleFreeNISQNetwork
+
+    .. automethod:: ScaleFreeNISQNetwork.__init__
+
+.. autoclass:: pytket_dqc.networks.random_networks.SmallWorldNISQNetwork
+
+    .. automethod:: SmallWorldNISQNetwork.__init__
+
+.. autoclass:: pytket_dqc.networks.random_networks.RandomNISQNetwork
 
     .. automethod:: RandomNISQNetwork.__init__
