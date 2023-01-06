@@ -19,8 +19,10 @@ from pytket_dqc.utils.gateset import (
 )
 from pytket_dqc.allocators import Brute, Random, HypergraphPartitioning
 from pytket_dqc.utils import check_equivalence, DQCPass
-from pytket_dqc.networks import NISQNetwork
+from pytket_dqc.networks import NISQNetwork, ScaleFreeNISQNetwork
 from pytket.circuit import QControlBox, Op, OpType  # type: ignore
+from pytket_dqc.allocators import Annealing
+from pytket.passes import DecomposeBoxes  # type: ignore
 
 # TODO: Test new circuit classes
 
@@ -1767,3 +1769,30 @@ def test_get_vertex_to_command_index_map():
         hypergraph_circuit.get_vertex_to_command_index_map()
         == vertex_to_command_index_reference
     )
+
+
+def test_distribution_to_dict(tmpdir_factory):
+
+    network = ScaleFreeNISQNetwork(n_servers=3, n_qubits=7, seed=0)
+
+    with open('tests/test_circuits/random_width_5_depth_5.json', 'r') as fp:
+        circuit = Circuit().from_dict(json.load(fp))
+
+    DecomposeBoxes().apply(circuit)
+    DQCPass().apply(circuit)
+
+    distribution = Annealing().allocate(circuit, network, seed=0)
+    distribution_dict = distribution.to_dict()
+
+    temp_dir = tmpdir_factory.mktemp("artifact")
+    file_name = temp_dir.join("/distribution.json")
+
+    with open(file_name, 'w') as fp:
+        json.dump(distribution_dict, fp)
+
+    with open(file_name, 'r') as fp:
+        retrieved_distribution_dict = json.load(fp)
+
+    new_distribution = distribution.from_dict(retrieved_distribution_dict)
+
+    assert new_distribution == distribution

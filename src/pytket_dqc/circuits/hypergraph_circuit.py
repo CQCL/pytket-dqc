@@ -51,6 +51,17 @@ class HypergraphCircuit(Hypergraph):
         out_string += "\nCircuit: " + self._circuit.__str__()
         return out_string
 
+    def __eq__(self, other):
+        """Overrides the default implementation"""
+        if isinstance(other, HypergraphCircuit):
+            return (
+                self._circuit == other._circuit and
+                self._vertex_circuit_map == other._vertex_circuit_map and
+                self._commands == other._commands and
+                super().__eq__(other)
+            )
+        return False
+
     def to_dict(self):
 
         hypergraph_circuit_dict = super().to_dict()

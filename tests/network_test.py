@@ -54,7 +54,7 @@ def test_small_world_network():
     server_coupling = network_dict['server_coupling']
     server_qubits = network_dict['server_qubits']
 
-    assert server_coupling == [(0, 4), (0, 2), (0, 3), (1, 3), (1, 2)]
+    assert server_coupling == [[0, 4], [0, 2], [0, 3], [1, 3], [1, 2]]
     assert server_qubits == {
         0: [0, 7, 9], 1: [1, 5], 2: [2, 8], 3: [3], 4: [4, 6]
     }
@@ -63,7 +63,7 @@ def test_small_world_network():
 def test_scale_free_network():
 
     network = ScaleFreeNISQNetwork(n_servers=5, n_qubits=10, seed=1, m=1)
-    assert network.server_coupling == [(0, 1), (0, 2), (0, 3), (0, 4)]
+    assert network.server_coupling == [[0, 1], [0, 2], [0, 3], [0, 4]]
     assert network.server_qubits == {
         0: [0, 7, 9], 1: [1, 5], 2: [2, 8], 3: [3], 4: [4, 6]
     }

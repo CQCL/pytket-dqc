@@ -35,7 +35,10 @@ class Placement:
 
     @classmethod
     def from_dict(cls, placement_dict):
-        return cls(placement=placement_dict)
+        placement = {
+            int(node): int(server) for node, server in placement_dict.items()
+        }
+        return cls(placement=placement)
 
     def is_valid(
         self,

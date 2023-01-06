@@ -73,6 +73,17 @@ class Hypergraph:
         out_string += f"\nVertices: {self.vertex_list}"
         return out_string
 
+    def __eq__(self, other):
+        """Overrides the default implementation"""
+        if isinstance(other, Hypergraph):
+            return (
+                self.vertex_list == other.vertex_list and
+                self.hyperedge_list == other.hyperedge_list and
+                self.hyperedge_dict == other.hyperedge_dict and
+                self.vertex_neighbours == other.vertex_neighbours
+            )
+        return False
+
     def to_dict(self):
         return {
             'vertex_list': self.vertex_list,

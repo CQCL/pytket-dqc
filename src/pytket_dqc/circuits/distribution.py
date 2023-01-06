@@ -50,6 +50,16 @@ class Distribution:
         self.placement = placement
         self.network = network
 
+    def __eq__(self, other):
+        """Overrides the default implementation"""
+        if isinstance(other, Distribution):
+            return (
+                self.circuit == other.circuit and
+                self.placement == other.placement and
+                self.network == other.network
+            )
+        return False
+
     def to_dict(self) -> dict[str, dict]:
         return {
             'circuit': self.circuit.to_dict(),

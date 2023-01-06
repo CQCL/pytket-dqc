@@ -58,6 +58,15 @@ class NISQNetwork(ServerNetwork):
         # Check that the resulting network is connected.
         assert nx.is_connected(self.get_nisq_nx())
 
+    def __eq__(self, other):
+        """Overrides the default implementation"""
+        if isinstance(other, NISQNetwork):
+            return (
+                self.server_qubits == other.server_qubits and
+                super().__eq__(other)
+            )
+        return False
+
     def to_dict(
         self
     ) -> dict[str, Union[list[list[int]], dict[int, list[int]]]]:
@@ -89,13 +98,24 @@ class NISQNetwork(ServerNetwork):
         :rtype: NISQNetwork
         """
 
+        server_coupling = cast(
+            list[list[int]], network_dict['server_coupling']
+        )
+        server_coupling = [
+            list(server_pair) for server_pair in server_coupling
+        ]
+
+        server_qubits = cast(
+            dict[int, list[int]], network_dict['server_qubits']
+        )
+        server_qubits = {
+            int(server): qubit_list
+            for server, qubit_list in server_qubits.items()
+        }
+
         return cls(
-            server_coupling=cast(
-                list[list[int]], network_dict['server_coupling']
-            ),
-            server_qubits=cast(
-                dict[int, list[int]], network_dict['server_qubits']
-            ),
+            server_coupling=server_coupling,
+            server_qubits=server_qubits,
         )
 
     def can_implement(self, dist_circ: HypergraphCircuit) -> bool:
@@ -356,7 +376,7 @@ class ScaleFreeNISQNetwork(NISQNetwork):
             seed=seed,
             initial_graph=initial_graph
         )
-        server_coupling = list(graph.edges)
+        server_coupling = [list(edge) for edge in graph.edges]
 
         random.seed(seed)
 
@@ -407,7 +427,7 @@ class SmallWorldNISQNetwork(NISQNetwork):
             seed=seed,
             tries=tries,
         )
-        server_coupling = list(graph.edges)
+        server_coupling = [list(edge) for edge in graph.edges]
 
         random.seed(seed)
 
