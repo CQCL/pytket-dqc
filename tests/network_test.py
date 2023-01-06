@@ -49,7 +49,7 @@ def test_random_network():
 def test_small_world_network():
 
     network = SmallWorldNISQNetwork(n_servers=5, n_qubits=10, seed=1, k=2)
-    
+
     network_dict = network.to_dict()
     server_coupling = network_dict['server_coupling']
     server_qubits = network_dict['server_qubits']

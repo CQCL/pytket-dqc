@@ -41,6 +41,7 @@ class HypergraphCircuit(Hypergraph):
         """
 
         self.reset(circuit)
+
         assert self._vertex_id_predicate()
         assert self._sorted_hedges_predicate()
 
@@ -49,6 +50,30 @@ class HypergraphCircuit(Hypergraph):
         out_string += f"\nVertex Circuit Map: {self._vertex_circuit_map}"
         out_string += "\nCircuit: " + self._circuit.__str__()
         return out_string
+
+    def to_dict(self):
+
+        hypergraph_circuit_dict = super().to_dict()
+        hypergraph_circuit_dict['circuit'] = self._circuit.to_dict()
+        return hypergraph_circuit_dict
+
+    @classmethod
+    def from_dict(cls, hypergraph_circuit_dict):
+        hypergraph_circuit = cls(
+            Circuit.from_dict(hypergraph_circuit_dict['circuit'])
+        )
+        hypergraph_circuit.vertex_list = []
+        hypergraph_circuit.hyperedge_list = []
+        hypergraph_circuit.hyperedge_dict = dict()
+        hypergraph_circuit.vertex_neighbours = dict()
+        hypergraph_circuit.add_vertices(hypergraph_circuit_dict['vertex_list'])
+        for hyperedge_dict in hypergraph_circuit_dict['hyperedge_list']:
+            hyperedge = Hyperedge.from_dict(hyperedge_dict)
+            hypergraph_circuit.add_hyperedge(
+                vertices=hyperedge.vertices,
+                weight=hyperedge.weight,
+            )
+        return hypergraph_circuit
 
     def place(self, placement: Placement):
 
@@ -737,7 +762,7 @@ class HypergraphCircuit(Hypergraph):
 
         A return value of ``False`` only proves it cannot be embedded.
         Since we do not check the 1q gates surrounding it,
-        a return value of ``True`` does not gurantee it is embeddable in
+        a return value of ``True`` does not guarantee it is embeddable in
         a H embedding unit.
         """
         assert command.op.type == OpType.CU1

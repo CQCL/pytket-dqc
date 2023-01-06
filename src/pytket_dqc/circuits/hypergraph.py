@@ -18,6 +18,19 @@ class Hyperedge(NamedTuple):
     def __hash__(self):
         return hash((frozenset(self.vertices), self.weight))
 
+    def to_dict(self):
+        return {
+            'vertices': self.vertices,
+            'weight': self.weight,
+        }
+
+    @classmethod
+    def from_dict(cls, hyperedge_dict):
+        return cls(
+            vertices=hyperedge_dict['vertices'],
+            weight=hyperedge_dict['weight'],
+        )
+
 
 class Hypergraph:
     """A representation of a hypergraph. Hypergraphs are represented by
@@ -36,7 +49,11 @@ class Hypergraph:
     :type vertex_neighbours: dict[Vertex, set[Vertex]]
     """
 
-    def __init__(self):
+    def __init__(
+        self,
+        vertex_list: list[Vertex] = [],
+        hyperedge_list: list[Hyperedge] = []
+    ):
         """Initialisation function. The hypergraph initialises as empty.
         """
         self.vertex_list: list[Vertex] = []
@@ -44,10 +61,35 @@ class Hypergraph:
         self.hyperedge_dict: dict[Vertex, list[Hyperedge]] = dict()
         self.vertex_neighbours: dict[Vertex, set[Vertex]] = dict()
 
+        self.add_vertices(vertex_list)
+        for hyperedge in hyperedge_list:
+            self.add_hyperedge(
+                vertices=hyperedge.vertices,
+                weight=hyperedge.weight,
+            )
+
     def __str__(self):
         out_string = f"Hyperedges: {self.hyperedge_list}"
         out_string += f"\nVertices: {self.vertex_list}"
         return out_string
+
+    def to_dict(self):
+        return {
+            'vertex_list': self.vertex_list,
+            'hyperedge_list': [
+                hyperedge.to_dict() for hyperedge in self.hyperedge_list
+            ],
+        }
+
+    @classmethod
+    def from_dict(cls, hypergraph_dict):
+        return Hypergraph(
+            vertex_list=hypergraph_dict['vertex_list'],
+            hyperedge_list=[
+                hyperedge.from_dict()
+                for hyperedge in hypergraph_dict['hyperedge_list']
+            ]
+        )
 
     def merge_hyperedge(
         self,

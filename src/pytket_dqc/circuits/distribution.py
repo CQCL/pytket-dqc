@@ -1,3 +1,4 @@
+from __future__ import annotations
 from pytket_dqc.circuits import HypergraphCircuit, Hyperedge
 from pytket_dqc.placement import Placement
 from pytket_dqc.networks import NISQNetwork
@@ -48,6 +49,21 @@ class Distribution:
         self.circuit = circuit
         self.placement = placement
         self.network = network
+
+    def to_dict(self) -> dict[str, dict]:
+        return {
+            'circuit': self.circuit.to_dict(),
+            'placement': self.placement.to_dict(),
+            'network': self.network.to_dict(),
+        }
+
+    @classmethod
+    def from_dict(cls, distribution_dict) -> Distribution:
+        return cls(
+            circuit=HypergraphCircuit.from_dict(distribution_dict['circuit']),
+            placement=Placement.from_dict(distribution_dict['placement']),
+            network=NISQNetwork.from_dict(distribution_dict['network']),
+        )
 
     def is_valid(self) -> bool:
         """Check that this distribution can be implemented.

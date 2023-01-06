@@ -6,7 +6,7 @@ from pytket.placement import NoiseAwarePlacement  # type:ignore
 from pytket.architecture import Architecture  # type:ignore
 from pytket.circuit import Node  # type:ignore
 from pytket_dqc.circuits.hypergraph_circuit import HypergraphCircuit
-from typing import Tuple, Union
+from typing import Tuple, Union, cast
 import random
 
 
@@ -61,6 +61,12 @@ class NISQNetwork(ServerNetwork):
     def to_dict(
         self
     ) -> dict[str, Union[list[list[int]], dict[int, list[int]]]]:
+        """Serialise NISQNetwork
+
+        :return: Dictionary serialisation of NISQNetwork. Dictionary has keys
+            'server_coupling' and 'server_qubits'.
+        :rtype: dict[str, Union[list[list[int]], dict[int, list[int]]]]
+        """
 
         return {
             'server_coupling': self.server_coupling,
@@ -72,10 +78,24 @@ class NISQNetwork(ServerNetwork):
         cls,
         network_dict: dict[str, Union[list[list[int]], dict[int, list[int]]]]
     ) -> NISQNetwork:
+        """Constructor for NISQNetwork using dictionary created by `to_dict`.
+
+        :param network_dict: Dictionary with keys
+            'server_coupling' and 'server_qubits'.
+        :type network_dict:
+            dict[str, Union[list[list[int]], dict[int, list[int]]]]
+        :return: NISQNetwork with variables corresponding to
+            dictionary values.
+        :rtype: NISQNetwork
+        """
 
         return cls(
-            server_coupling=network_dict['server_coupling'],
-            server_qubits=network_dict['server_qubits']
+            server_coupling=cast(
+                list[list[int]], network_dict['server_coupling']
+            ),
+            server_qubits=cast(
+                dict[int, list[int]], network_dict['server_qubits']
+            ),
         )
 
     def can_implement(self, dist_circ: HypergraphCircuit) -> bool:

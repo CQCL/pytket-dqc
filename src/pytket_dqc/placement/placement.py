@@ -30,6 +30,13 @@ class Placement:
     def __str__(self):
         return str(self.placement)
 
+    def to_dict(self):
+        return self.placement
+
+    @classmethod
+    def from_dict(cls, placement_dict):
+        return cls(placement=placement_dict)
+
     def is_valid(
         self,
         circuit: HypergraphCircuit,
