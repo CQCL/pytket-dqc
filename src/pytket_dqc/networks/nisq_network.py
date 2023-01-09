@@ -58,7 +58,7 @@ class NISQNetwork(ServerNetwork):
         assert nx.is_connected(self.get_nisq_nx())
 
     def __eq__(self, other):
-        """Overrides the default implementation"""
+        """Check equality based on equality of components"""
         if isinstance(other, NISQNetwork):
             return (
                 self.server_qubits == other.server_qubits and

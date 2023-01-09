@@ -50,8 +50,8 @@ class HypergraphCircuit(Hypergraph):
         out_string += "\nCircuit: " + self._circuit.__str__()
         return out_string
 
-    def __eq__(self, other):
-        """Overrides the default implementation"""
+    def __eq__(self, other) -> bool:
+        """Check equality based on equality of components"""
         if isinstance(other, HypergraphCircuit):
             return (
                 self._circuit == other._circuit and
@@ -61,14 +61,32 @@ class HypergraphCircuit(Hypergraph):
             )
         return False
 
-    def to_dict(self):
+    def to_dict(self) -> dict:
+        """Generate JSON serialisable dictionary representation of
+        `HypergraphCircuit`.
+
+        :return: JSON serialisable dictionary representation of
+            `HypergraphCircuit`
+        :rtype: dict[str, Union[list[Vertex], list[dict], dict]]
+        """
 
         hypergraph_circuit_dict = super().to_dict()
         hypergraph_circuit_dict['circuit'] = self._circuit.to_dict()
         return hypergraph_circuit_dict
 
     @classmethod
-    def from_dict(cls, hypergraph_circuit_dict):
+    def from_dict(cls, hypergraph_circuit_dict: dict) -> HypergraphCircuit:
+        """Construct HypergraphCircuit instance from JSON serialisable
+        dictionary representation of the HypergraphCircuit.
+
+        :param hypergraph_circuit_dict: JSON serialisable dictionary
+            representation of the HypergraphCircuit
+        :type hypergraph_circuit_dict: dict
+        :return: HypergraphCircuit instance constructed from
+            hypergraph_circuit_dict.
+        :rtype: HypergraphCircuit
+        """
+
         hypergraph_circuit = cls(
             Circuit.from_dict(hypergraph_circuit_dict['circuit'])
         )

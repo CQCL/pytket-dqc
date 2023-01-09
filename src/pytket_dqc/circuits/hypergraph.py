@@ -39,7 +39,7 @@ class Hyperedge(NamedTuple):
         dictionary representation of the Hyperedge.
 
         :param hyperedge_dict: JSON serialisable dictionary
-            representation of the Hyperedge
+            representation of the Hyperedge.
         :type hyperedge_dict: dict[str, Union[list[Vertex], int]]
         :return: Hyperedge instance constructed from hyperedge_dict.
         :rtype: Hyperedge
@@ -81,7 +81,7 @@ class Hypergraph:
         return out_string
 
     def __eq__(self, other):
-        """Overrides the default implementation"""
+        """Check equality based on equality of components"""
         if isinstance(other, Hypergraph):
             return (
                 self.vertex_list == other.vertex_list and
@@ -110,7 +110,12 @@ class Hypergraph:
         cls,
         hypergraph_dict: dict[
             str,
-            list[Union[Vertex, dict[str, Union[list[Vertex], int]]]]
+            list[
+                Union[
+                    Vertex,
+                    dict[str, Union[list[Vertex], int]]
+                ]
+            ]
         ],
     ) -> Hypergraph:
         """Construct Hypergraph instance from JSON serialisable
