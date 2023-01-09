@@ -51,7 +51,7 @@ class Distribution:
         self.network = network
 
     def __eq__(self, other):
-        """Overrides the default implementation"""
+        """Check equality based on equality of components"""
         if isinstance(other, Distribution):
             return (
                 self.circuit == other.circuit and
@@ -61,6 +61,12 @@ class Distribution:
         return False
 
     def to_dict(self) -> dict[str, dict]:
+        """Generate JSON serialisable dictionary representation of
+        `Distribution`.
+
+        :return: JSON serialisable dictionary representation of `Distribution`
+        :rtype: dict[str, dict]
+        """
         return {
             'circuit': self.circuit.to_dict(),
             'placement': self.placement.to_dict(),
@@ -68,7 +74,16 @@ class Distribution:
         }
 
     @classmethod
-    def from_dict(cls, distribution_dict) -> Distribution:
+    def from_dict(cls, distribution_dict: dict[str, dict]) -> Distribution:
+        """Construct Distribution instance from JSON serialisable
+        dictionary representation of the Distribution.
+
+        :param distribution_dict: JSON serialisable dictionary
+            representation of the Distribution
+        :type distribution_dict: dict[str, dict]
+        :return: Distribution instance constructed from distribution_dict.
+        :rtype: Distribution
+        """
         return cls(
             circuit=HypergraphCircuit.from_dict(distribution_dict['circuit']),
             placement=Placement.from_dict(distribution_dict['placement']),

@@ -41,7 +41,6 @@ class HypergraphCircuit(Hypergraph):
         """
 
         self.reset(circuit)
-
         assert self._vertex_id_predicate()
         assert self._sorted_hedges_predicate()
 
