@@ -17,7 +17,7 @@ from pytket import Circuit, OpType
 
 def test_all_to_all_network():
 
-    network = AllToAll(n_servers=5, n_qubits=2)
+    network = AllToAll(n_servers=5, qubits_per_server=2)
     assert network.server_coupling == [
         [0, 1],
         [0, 2],
@@ -39,10 +39,10 @@ def test_random_network():
 
     network = RandomNISQNetwork(n_servers=5, n_qubits=10, seed=0)
     assert network.server_coupling == [
-        [0, 1], [1, 2], [0, 3], [2, 4], [1, 4], [0, 2], [2, 3], [0, 4]
+        [0, 3], [0, 4], [1, 3], [2, 3], [2, 4]
     ]
     assert network.server_qubits == {
-        0: [0, 8], 1: [1], 2: [2, 5, 9], 3: [3, 6], 4: [4, 7]
+        0: [0, 7], 1: [1], 2: [2, 8], 3: [3, 5, 6], 4: [4, 9]
     }
 
 
