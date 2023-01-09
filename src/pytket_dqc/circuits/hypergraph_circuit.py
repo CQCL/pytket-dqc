@@ -100,7 +100,7 @@ class HypergraphCircuit(Hypergraph):
         hypergraph_circuit.hyperedge_list = []
         hypergraph_circuit.hyperedge_dict = dict()
         hypergraph_circuit.vertex_neighbours = dict()
-        
+
         hypergraph_circuit.add_vertices(
             cast(list[Vertex], hypergraph_circuit_dict['vertex_list'])
         )
