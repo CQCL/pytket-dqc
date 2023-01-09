@@ -80,7 +80,7 @@ class Hypergraph:
         out_string += f"\nVertices: {self.vertex_list}"
         return out_string
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         """Check equality based on equality of components"""
         if isinstance(other, Hypergraph):
             return (
@@ -91,7 +91,7 @@ class Hypergraph:
             )
         return False
 
-    def to_dict(self) -> dict[str, Union[list[Vertex], list[dict]]]:
+    def to_dict(self) -> dict[str, Union[list[Vertex], list[dict], dict]]:
         """Generate JSON serialisable dictionary representation of
         `Hypergraph`.
 
@@ -108,22 +108,14 @@ class Hypergraph:
     @classmethod
     def from_dict(
         cls,
-        hypergraph_dict: dict[
-            str,
-            list[
-                Union[
-                    Vertex,
-                    dict[str, Union[list[Vertex], int]]
-                ]
-            ]
-        ],
+        hypergraph_dict: dict[str, Union[list[Vertex], list[dict], dict]],
     ) -> Hypergraph:
         """Construct Hypergraph instance from JSON serialisable
         dictionary representation of the Hypergraph.
 
         :param hypergraph_dict: JSON serialisable dictionary
             representation of the Hypergraph
-        :type hypergraph_dict: dict[str, list[Union[Vertex, Hyperedge]]]
+        :type hypergraph_dict: dict[str, Union[list[Vertex], list[dict], dict]]
         :return: Hypergraph instance constructed from hypergraph_dict.
         :rtype: Hypergraph
         """

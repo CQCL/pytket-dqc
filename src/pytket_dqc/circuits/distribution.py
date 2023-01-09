@@ -50,7 +50,7 @@ class Distribution:
         self.placement = placement
         self.network = network
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         """Check equality based on equality of components"""
         if isinstance(other, Distribution):
             return (
@@ -64,7 +64,7 @@ class Distribution:
         """Generate JSON serialisable dictionary representation of
         `Distribution`.
 
-        :return: JSON serialisable dictionary representation of `Distribution`
+        :return: JSON serialisable dictionary representation of `Distribution`.
         :rtype: dict[str, dict]
         """
         return {

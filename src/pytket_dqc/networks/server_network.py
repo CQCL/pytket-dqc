@@ -35,7 +35,7 @@ class ServerNetwork:
             raise Exception("This server network is unconnected.")
 
     def __eq__(self, other):
-        """Overrides the default implementation"""
+        """Check equality based on equality of components"""
         if isinstance(other, ServerNetwork):
             return self.server_coupling == other.server_coupling
         return False

@@ -14,7 +14,7 @@ from pytket_dqc.utils import (
 )
 from pytket_dqc.utils.gateset import to_euler_with_two_hadamards
 
-from typing import TYPE_CHECKING, Union, Optional
+from typing import TYPE_CHECKING, Union, Optional, cast
 
 if TYPE_CHECKING:
     from pytket_dqc import Placement
@@ -61,7 +61,7 @@ class HypergraphCircuit(Hypergraph):
             )
         return False
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, Union[list[Vertex], list[dict], dict]]:
         """Generate JSON serialisable dictionary representation of
         `HypergraphCircuit`.
 
@@ -75,13 +75,19 @@ class HypergraphCircuit(Hypergraph):
         return hypergraph_circuit_dict
 
     @classmethod
-    def from_dict(cls, hypergraph_circuit_dict: dict) -> HypergraphCircuit:
+    def from_dict(
+        cls,
+        hypergraph_circuit_dict: dict[
+            str, Union[list[Vertex], list[dict], dict]
+        ]
+    ) -> HypergraphCircuit:
         """Construct HypergraphCircuit instance from JSON serialisable
         dictionary representation of the HypergraphCircuit.
 
         :param hypergraph_circuit_dict: JSON serialisable dictionary
             representation of the HypergraphCircuit
-        :type hypergraph_circuit_dict: dict
+        :type hypergraph_circuit_dict:
+            dict[str, Union[list[Vertex], list[dict], dict]]
         :return: HypergraphCircuit instance constructed from
             hypergraph_circuit_dict.
         :rtype: HypergraphCircuit
@@ -94,9 +100,12 @@ class HypergraphCircuit(Hypergraph):
         hypergraph_circuit.hyperedge_list = []
         hypergraph_circuit.hyperedge_dict = dict()
         hypergraph_circuit.vertex_neighbours = dict()
-        hypergraph_circuit.add_vertices(hypergraph_circuit_dict['vertex_list'])
+        
+        hypergraph_circuit.add_vertices(
+            cast(list[Vertex], hypergraph_circuit_dict['vertex_list'])
+        )
         for hyperedge_dict in hypergraph_circuit_dict['hyperedge_list']:
-            hyperedge = Hyperedge.from_dict(hyperedge_dict)
+            hyperedge = Hyperedge.from_dict(cast(dict, hyperedge_dict))
             hypergraph_circuit.add_hyperedge(
                 vertices=hyperedge.vertices,
                 weight=hyperedge.weight,
