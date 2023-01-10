@@ -505,14 +505,17 @@ class PacMan:
             f"Int ops {[command.op for command in intermediate_commands]}"
         )
 
-        # Find the indices of the first and last Hadamards in
+        # Find the indices of the Hadamards in
         # intermediate_commands.
-        # If there are any local CU1s before or after these
+        # If there are any local CU1s before/after the first/last
         # Hadamards they can be ignored.
         h_indices = [
             i for i, command in enumerate(intermediate_commands)
             if command.op.type == OpType.H
         ]
+        if len(h_indices) < 2:
+            logger.debug("Must have 2 Hadamards between the packets")
+            return False
 
         # Find and check that all the CU1 gates are embeddable
         # Store their indices in ``intermediate_commands`` so that
@@ -526,6 +529,9 @@ class PacMan:
                 # as they can commute past CU1s and single-qubit
                 # embeddable gates.
                 if i < h_indices[0] or i > h_indices[-1]:
+                    logger.debug(
+                        f"Ignoring {command} "
+                    )
                     continue
                 elif not self.hypergraph_circuit.is_h_embeddable_CU1(
                     command,
@@ -545,7 +551,11 @@ class PacMan:
                     return False
                 cu1_indices.append(i)
 
-        assert cu1_indices, "There must be CU1 gates between the two packets."
+        # If there are no CU1s between Hadamards
+        # then there is nothing to embed.
+        if not cu1_indices:
+            logger.debug("No CU1s that can be embedded")
+            return False
 
         # Add the ops at the start of the embedding
         ops_1q_list: list[list[Op]] = [
