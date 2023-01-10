@@ -1,3 +1,4 @@
+from __future__ import annotations
 from pytket_dqc.circuits import HypergraphCircuit, Hyperedge
 from pytket_dqc.placement import Placement
 from pytket_dqc.networks import NISQNetwork
@@ -48,6 +49,46 @@ class Distribution:
         self.circuit = circuit
         self.placement = placement
         self.network = network
+
+    def __eq__(self, other) -> bool:
+        """Check equality based on equality of components"""
+        if isinstance(other, Distribution):
+            return (
+                self.circuit == other.circuit and
+                self.placement == other.placement and
+                self.network == other.network
+            )
+        return False
+
+    def to_dict(self) -> dict[str, dict]:
+        """Generate JSON serialisable dictionary representation of
+        `Distribution`.
+
+        :return: JSON serialisable dictionary representation of `Distribution`.
+        :rtype: dict[str, dict]
+        """
+        return {
+            'circuit': self.circuit.to_dict(),
+            'placement': self.placement.to_dict(),
+            'network': self.network.to_dict(),
+        }
+
+    @classmethod
+    def from_dict(cls, distribution_dict: dict[str, dict]) -> Distribution:
+        """Construct Distribution instance from JSON serialisable
+        dictionary representation of the Distribution.
+
+        :param distribution_dict: JSON serialisable dictionary
+            representation of the Distribution
+        :type distribution_dict: dict[str, dict]
+        :return: Distribution instance constructed from distribution_dict.
+        :rtype: Distribution
+        """
+        return cls(
+            circuit=HypergraphCircuit.from_dict(distribution_dict['circuit']),
+            placement=Placement.from_dict(distribution_dict['placement']),
+            network=NISQNetwork.from_dict(distribution_dict['network']),
+        )
 
     def is_valid(self) -> bool:
         """Check that this distribution can be implemented.
