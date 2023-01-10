@@ -486,7 +486,12 @@ class PacMan:
         :return: Whether the packets can be packed by hopping packing.
         :rtype: bool
         """
+        # These should be guranteed by ``.get_next_packet()``
         assert first_packet.qubit_vertex == second_packet.qubit_vertex
+        assert (
+            first_packet.connected_server_index
+            == second_packet.connected_server_index
+        ), "Cannot pack packets connected to different servers"
 
         logger.debug(
             f"Are packets {first_packet} and "
@@ -500,6 +505,15 @@ class PacMan:
             f"Int ops {[command.op for command in intermediate_commands]}"
         )
 
+        # Find the indices of the first and last Hadamards in
+        # intermediate_commands.
+        # If there are any local CU1s before or after these
+        # Hadamards they can be ignored.
+        h_indices = [
+            i for i, command in enumerate(intermediate_commands)
+            if command.op.type == OpType.H
+        ]
+
         # Find and check that all the CU1 gates are embeddable
         # Store their indices in ``intermediate_commands`` so that
         # it can be sliced later into lists of 1 qubit gates between
@@ -507,11 +521,13 @@ class PacMan:
         cu1_indices = []
         for i, command in enumerate(intermediate_commands):
             if command.op.type == OpType.CU1:
-                assert (
-                    first_packet.connected_server_index
-                    == second_packet.connected_server_index
-                ), "Cannot pack packets connected to different servers"
-                if not self.hypergraph_circuit.is_h_embeddable_CU1(
+                # Ignore CU1s before or after the
+                # first or last H - these don't affect embedding
+                # as they can commute past CU1s and single-qubit
+                # embeddable gates.
+                if i < h_indices[0] or i > h_indices[-1]:
+                    continue
+                elif not self.hypergraph_circuit.is_h_embeddable_CU1(
                     command,
                     set(
                         [
