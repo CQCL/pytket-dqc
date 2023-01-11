@@ -486,7 +486,7 @@ class PacMan:
         :return: Whether the packets can be packed by hopping packing.
         :rtype: bool
         """
-        # These should be guranteed by ``.get_next_packet()``
+        # These should be guaranteed by ``.get_next_packet()``
         assert first_packet.qubit_vertex == second_packet.qubit_vertex
         assert (
             first_packet.connected_server_index
