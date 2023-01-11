@@ -1178,6 +1178,61 @@ def test_eager_h_type_merge_04():
 
 
 def test_eager_h_type_merge_05():
+    # CU1 in embedding is local
+    # so no embedding
+    network = NISQNetwork(
+        server_coupling=[[0, 1], ],
+        server_qubits={0: [0, 1], 1: [2]}
+    )
+
+    circ = Circuit(3)
+    circ.add_gate(OpType.CU1, 1, [0, 2])
+    circ.H(0).add_gate(OpType.CU1, 1, [0, 1]).H(0)
+    circ.add_gate(OpType.CU1, 1, [0, 2])
+
+    hyp_circ = HypergraphCircuit(circ)
+
+    placement = Placement(
+        {0: 0, 1: 0, 2: 1, 3: 0, 4: 0, 5: 0}
+    )
+
+    distribution = Distribution(
+        circuit=hyp_circ,
+        placement=placement,
+        network=network
+    )
+
+    refiner = EagerHTypeMerge()
+    refinement_made = refiner.refine(distribution)
+    assert not refinement_made
+
+    hyperedge_list = [
+        Hyperedge(
+            vertices=[0, 3],
+            weight=1
+        ),
+        Hyperedge(
+            vertices=[0, 4],
+            weight=1
+        ),
+        Hyperedge(
+            vertices=[0, 5],
+            weight=1
+        ),
+        Hyperedge(
+            vertices=[1, 4],
+            weight=1
+        ),
+        Hyperedge(
+            vertices=[2, 3, 5],
+            weight=1
+        ),
+    ]
+
+    assert distribution.circuit.hyperedge_list == hyperedge_list
+
+
+def test_eager_h_type_merge_06():
     # Here, the refiner does nothing
     with open(
         "tests/test_circuits/to_pytket_circuit/frac_CZ_10.json", "r"
