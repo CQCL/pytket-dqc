@@ -9,6 +9,7 @@ from pytket.predicates import (  # type: ignore
 
 from pytket import OpType, Circuit, Qubit  # type: ignore
 from pytket.passes import (  # type: ignore
+    CustomPass,
     EulerAngleReduction,
     RebaseCustom,
     SquashCustom,
@@ -41,6 +42,20 @@ def check_function(circ):
 
 #: Predicate for checking gateset is valid
 dqc_gateset_predicate = UserDefinedPredicate(check_function)
+
+
+def cz_to_cu1(circ: Circuit) -> Circuit:
+    """Convert all CZ gates in the circuit to CU1 gates.
+    """
+    new_circ = Circuit()
+    for q in circ.qubits:
+        new_circ.add_qubit(q)
+    for cmd in circ.get_commands():
+        if cmd.op.type == OpType.CZ:
+            new_circ.add_gate(OpType.CU1, 1.0, cmd.qubits)
+        else:
+            new_circ.add_gate(cmd.op, cmd.qubits)
+    return new_circ
 
 
 def tk2_to_cu1(a, b, c) -> Circuit:
@@ -207,6 +222,7 @@ def DQCPass() -> BasePass:
     # of functions that return BasePass
     return SequencePass(
         [
+            CustomPass(cz_to_cu1),
             RebaseCustom(dqc_gateset, tk2_to_cu1, tk1_to_euler),
             SquashCustom(dqc_1_qubit, tk1_to_euler),
             EulerAngleReduction(p=OpType.Rz, q=OpType.Rx),
