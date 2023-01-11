@@ -532,7 +532,6 @@ class PacMan:
                     logger.debug(
                         f"Ignoring {command} "
                     )
-                    continue
                 elif not self.hypergraph_circuit.is_h_embeddable_CU1(
                     command,
                     set(
@@ -549,7 +548,8 @@ class PacMan:
                         f"No, CU1 command {command} is not embeddable."
                     )
                     return False
-                cu1_indices.append(i)
+                else:
+                    cu1_indices.append(i)
 
         # If there are no CU1s between Hadamards
         # then there is nothing to embed.
