@@ -982,13 +982,24 @@ class Distribution:
                     hyperedge
                 )
                 if not (equivalence_ok and cost_ok and correction_gate_ok):
+                    subcircuit_cmds = hyp_circ.get_hyperedge_subcircuit(hyperedge)
+                    subcircuit = Circuit()
+                    for cmd in subcircuit_cmds:
+                        for q in cmd.qubits:
+                            if q not in subcircuit.qubits:
+                                subcircuit.add_qubit(q)
+                        subcircuit.add_gate(cmd.op, cmd.qubits)
                     # Dump relevant data to file. Retrieve via pickle.load(f)
                     # in the same order as dumped.
                     with open("tests/fail_data", "wb") as f:
                         pickle.dump(circ, f)
                         pickle.dump(new_circ, f)
+                        pickle.dump(hyp_circ.hyperedge_list, f)
                         pickle.dump(hyperedge.vertices, f)
                         pickle.dump(placement_map, f)
+                        pickle.dump(qubit_mapping, f)
+                        pickle.dump(subcircuit, f)
+                        pickle.dump((equivalence_ok, cost_ok, correction_gate_ok), f)
                     raise Exception(
                         "Error while generating the circuit. Failed to "
                         + f"implement hyperedge {hyperedge.vertices}. "

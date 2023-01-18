@@ -1,4 +1,5 @@
 from pytket import Circuit, OpType  # type: ignore
+from pytket_dqc.utils.gateset import is_start_proc, is_end_proc, is_telep_proc
 
 
 def all_gates_local(circ: Circuit) -> bool:
@@ -120,13 +121,13 @@ def _cost_from_circuit(circ: Circuit) -> int:
 
     for command in circ.get_commands():
 
-        if command.op.get_name() == "starting_process":
+        if is_start_proc(command):
             starting_count += 1
-        elif command.op.get_name() == "ending_process":
+        elif is_end_proc(command):
             ending_count += 1
-        elif command.op.get_name() == "teleportation":
+        elif is_telep_proc(command):
             telep_count += 1
 
-    assert starting_count == ending_count
+    assert starting_count == ending_count, f"{starting_count}, {ending_count}"
 
     return starting_count + telep_count
