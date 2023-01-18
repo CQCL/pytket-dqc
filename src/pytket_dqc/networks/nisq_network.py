@@ -1,3 +1,4 @@
+from __future__ import annotations
 from pytket_dqc.networks.server_network import ServerNetwork
 from itertools import combinations
 import networkx as nx  # type:ignore
@@ -5,8 +6,7 @@ from pytket.placement import NoiseAwarePlacement  # type:ignore
 from pytket.architecture import Architecture  # type:ignore
 from pytket.circuit import Node  # type:ignore
 from pytket_dqc.circuits.hypergraph_circuit import HypergraphCircuit
-from typing import Tuple
-import random
+from typing import Tuple, Union, cast
 
 
 class NISQNetwork(ServerNetwork):
@@ -56,6 +56,66 @@ class NISQNetwork(ServerNetwork):
 
         # Check that the resulting network is connected.
         assert nx.is_connected(self.get_nisq_nx())
+
+    def __eq__(self, other):
+        """Check equality based on equality of components"""
+        if isinstance(other, NISQNetwork):
+            return (
+                self.server_qubits == other.server_qubits and
+                super().__eq__(other)
+            )
+        return False
+
+    def to_dict(
+        self
+    ) -> dict[str, Union[list[list[int]], dict[int, list[int]]]]:
+        """Serialise NISQNetwork
+
+        :return: Dictionary serialisation of NISQNetwork. Dictionary has keys
+            'server_coupling' and 'server_qubits'.
+        :rtype: dict[str, Union[list[list[int]], dict[int, list[int]]]]
+        """
+
+        return {
+            'server_coupling': self.server_coupling,
+            'server_qubits': self.server_qubits,
+        }
+
+    @classmethod
+    def from_dict(
+        cls,
+        network_dict: dict[str, Union[list[list[int]], dict[int, list[int]]]]
+    ) -> NISQNetwork:
+        """Constructor for NISQNetwork using dictionary created by `to_dict`.
+
+        :param network_dict: Dictionary with keys
+            'server_coupling' and 'server_qubits'.
+        :type network_dict:
+            dict[str, Union[list[list[int]], dict[int, list[int]]]]
+        :return: NISQNetwork with variables corresponding to
+            dictionary values.
+        :rtype: NISQNetwork
+        """
+
+        server_coupling = cast(
+            list[list[int]], network_dict['server_coupling']
+        )
+        server_coupling = [
+            list(server_pair) for server_pair in server_coupling
+        ]
+
+        server_qubits = cast(
+            dict[int, list[int]], network_dict['server_qubits']
+        )
+        server_qubits = {
+            int(server): qubit_list
+            for server, qubit_list in server_qubits.items()
+        }
+
+        return cls(
+            server_coupling=server_coupling,
+            server_qubits=server_qubits,
+        )
 
     def can_implement(self, dist_circ: HypergraphCircuit) -> bool:
 
@@ -180,97 +240,28 @@ class NISQNetwork(ServerNetwork):
         )
 
 
-def random_connected_graph(n_nodes: int, edge_prob: float) -> list[list[int]]:
-    """Generate random connected graph.
-
-    :param n_nodes: The number of vertices in the graph.
-    :type n_nodes: int
-    :param edge_prob: The probability of an edge between two vertices.
-    :type edge_prob: float
-    :raises Exception: Raise if the probability is invalid.
-    :return: A coupling map, consisting of a list of pairs of vertices.
-    :rtype: list[list[int]]
-    """
-
-    if not (edge_prob >= 0 and edge_prob <= 1):
-        raise Exception("edge_prob must be between 0 and 1.")
-
-    edge_list = []
-
-    # Build connected graph. Add each node to the graph
-    # in sequence so that all are included in the graph.
-    for node in range(1, n_nodes):
-        edge_list.append({node, random.randrange(node)})
-
-    # Randomly add additional edges with given probability.
-    for node in range(n_nodes):
-        for connected_node in [i for i in range(n_nodes) if i != node]:
-            if random.random() < edge_prob:
-                if {node, connected_node} not in edge_list:
-                    edge_list.append({node, connected_node})
-
-    G = nx.Graph()
-    G.add_edges_from(edge_list)
-    assert nx.is_connected(G)
-
-    return [list(edge) for edge in edge_list]
-
-
 class AllToAll(NISQNetwork):
     """NISQNetwork consisting of uniformly sized, all to all connected servers.
     """
 
-    def __init__(self, n_server: int, n_qubits: int):
+    def __init__(self, n_servers: int, qubits_per_server: int):
         """Initialisation function
 
         :param n_server: Number of servers.
         :type n_server: int
-        :param n_qubits: Number of qubits per server
-        :type n_qubits: int
+        :param qubits_per_server: Number of qubits per server
+        :type qubits_per_server: int
         """
 
         server_coupling = [list(combination) for combination in combinations(
-            [i for i in range(n_server)], 2)]
+            [i for i in range(n_servers)], 2)]
 
-        qubits = [i for i in range(n_server*n_qubits)]
-        server_qubits_list = [qubits[i:i + n_qubits]
-                              for i in range(0, len(qubits), n_qubits)]
+        qubits = [i for i in range(n_servers*qubits_per_server)]
+        server_qubits_list = [
+            qubits[i:i + qubits_per_server]
+            for i in range(0, len(qubits), qubits_per_server)
+        ]
         server_qubits = {i: qubits_list for i,
                          qubits_list in enumerate(server_qubits_list)}
-
-        super().__init__(server_coupling, server_qubits)
-
-
-class RandomNISQNetwork(NISQNetwork):
-    """NISQNetwok with underlying server network that is random but connected.
-    """
-
-    def __init__(self, n_servers: int, n_qubits: int, edge_prob: float = 0.5):
-        """Initialisation function.
-
-        :param n_servers: The number of servers.
-        :type n_servers: int
-        :param n_qubits: The total number of qubits.
-        :type n_qubits: int
-        :param edge_prob: The probability of an edge between two servers,
-            defaults to 0.5
-        :type edge_prob: float, optional
-        :raises Exception: Raised if the number of qubits is less than the
-            number of servers.
-        """
-
-        if n_qubits < n_servers:
-            raise Exception(
-                "The number of qubits must be greater ",
-                "than the number of servers.")
-
-        server_coupling = random_connected_graph(n_servers, edge_prob)
-
-        # Assign at least one qubit to each server
-        server_qubits = {i: [i] for i in range(n_servers)}
-        # Assign remaining qubits randomly.
-        for qubit in range(n_servers, n_qubits):
-            server = random.randrange(n_servers)
-            server_qubits[server] = server_qubits[server] + [qubit]
 
         super().__init__(server_coupling, server_qubits)

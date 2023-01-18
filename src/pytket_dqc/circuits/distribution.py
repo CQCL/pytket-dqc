@@ -1,15 +1,23 @@
+from __future__ import annotations
 from pytket_dqc.circuits import HypergraphCircuit, Hyperedge
 from pytket_dqc.placement import Placement
 from pytket_dqc.networks import NISQNetwork
 from pytket_dqc.utils import steiner_tree, check_equivalence
-from pytket_dqc.utils.gateset import start_proc, end_proc
+from pytket_dqc.utils.gateset import (
+    start_proc,
+    is_start_proc,
+    end_proc,
+    is_end_proc,
+    origin_of_start_proc
+)
 from pytket_dqc.utils.circuit_analysis import (
     all_gates_local,
     _cost_from_circuit,
     get_server_id,
     is_link_qubit,
 )
-from pytket import Circuit, OpType, Qubit
+from pytket import Circuit, OpType, Qubit  # type: ignore
+from pytket.circuit import Command  # type: ignore
 import networkx as nx  # type: ignore
 from numpy import isclose  # type: ignore
 from typing import NamedTuple
@@ -43,6 +51,46 @@ class Distribution:
         self.circuit = circuit
         self.placement = placement
         self.network = network
+
+    def __eq__(self, other) -> bool:
+        """Check equality based on equality of components"""
+        if isinstance(other, Distribution):
+            return (
+                self.circuit == other.circuit and
+                self.placement == other.placement and
+                self.network == other.network
+            )
+        return False
+
+    def to_dict(self) -> dict[str, dict]:
+        """Generate JSON serialisable dictionary representation of
+        `Distribution`.
+
+        :return: JSON serialisable dictionary representation of `Distribution`.
+        :rtype: dict[str, dict]
+        """
+        return {
+            'circuit': self.circuit.to_dict(),
+            'placement': self.placement.to_dict(),
+            'network': self.network.to_dict(),
+        }
+
+    @classmethod
+    def from_dict(cls, distribution_dict: dict[str, dict]) -> Distribution:
+        """Construct Distribution instance from JSON serialisable
+        dictionary representation of the Distribution.
+
+        :param distribution_dict: JSON serialisable dictionary
+            representation of the Distribution
+        :type distribution_dict: dict[str, dict]
+        :return: Distribution instance constructed from distribution_dict.
+        :rtype: Distribution
+        """
+        return cls(
+            circuit=HypergraphCircuit.from_dict(distribution_dict['circuit']),
+            placement=Placement.from_dict(distribution_dict['placement']),
+            network=NISQNetwork.from_dict(distribution_dict['network']),
+        )
 
     def is_valid(self) -> bool:
         """Check that this distribution can be implemented.
@@ -467,6 +515,54 @@ class Distribution:
                 else:
                     return qubit
 
+        def requires_embedding_start_proc(commands: list[Command]) -> bool:
+            """Given a list of ``commands`` starting at a start_proc, check
+            whether the start_proc's target link qubit has a CU1 gate acting
+            on it before its end_proc.
+            Otherwise, this start_proc is simply assisting entanglement
+            swapping and does not need to be considered while embedding.
+            """
+            start_proc = commands[0]
+            assert is_start_proc(start_proc)
+
+            target_link = start_proc.qubits[1]
+            requires_embedding = None
+            for g in commands:
+                if g.op.type == OpType.CU1 and target_link in g.qubits:
+                    requires_embedding = True
+                    break
+                # Otherwise, stop when finding its end_proc
+                elif is_end_proc(g) and target_link == g.qubits[0]:
+                    requires_embedding = False
+                    break
+
+            assert requires_embedding is not None
+            return requires_embedding
+
+        def requires_embedding_end_proc(commands: list[Command]) -> bool:
+            """Given a list of ``commands`` ending at an end_proc, check
+            whether the end_proc's source link qubit has a CU1 gate acting
+            on it after its start_proc.
+            Otherwise, this end_proc is simply assisting entanglement
+            swapping and does not need to be considered while embedding.
+            """
+            end_proc = commands[-1]
+            assert is_end_proc(end_proc)
+
+            source_link = end_proc.qubits[0]
+            requires_embedding = None
+            for g in reversed(commands):
+                if g.op.type == OpType.CU1 and source_link in g.qubits:
+                    requires_embedding = True
+                    break
+                # Otherwise, stop when finding its start_proc
+                elif is_start_proc(g) and source_link == g.qubits[1]:
+                    requires_embedding = False
+                    break
+
+            assert requires_embedding is not None
+            return requires_embedding
+
         def to_pytket_circuit_one_hyperedge(
             hyperedge: Hyperedge, circ: Circuit
         ) -> Circuit:
@@ -474,6 +570,9 @@ class Distribution:
             of its non-local gates already distributed, implement those of the
             given hyperedge and return the new equivalent circuit.
             """
+            if len(hyperedge.vertices) == 1:  # Edge case: no gate vertices
+                return circ
+
             new_circ = Circuit()
             for hw_qubit in qubit_mapping.values():
                 new_circ.add_qubit(hw_qubit)
@@ -496,12 +595,12 @@ class Distribution:
                 if cmd.op.type == OpType.CU1:
                     cu1_count += 1
                 # Keep track of the occupation of link qubits
-                if cmd.op.get_name() == "starting_process":
+                if is_start_proc(cmd):
                     linkman.update_occupation(cmd.qubits[1], starting=True)
                     remote_qubit = linkman.get_updated_name(cmd.qubits[1])
                     if remote_qubit not in new_circ.qubits:
                         new_circ.add_qubit(remote_qubit)
-                if cmd.op.get_name() == "ending_process":
+                if is_end_proc(cmd):
                     linkman.update_occupation(cmd.qubits[0], starting=False)
 
                 # Trivial for every command that is not in the hyperedge's
@@ -512,7 +611,6 @@ class Distribution:
                 if (
                     v_gate < min(gate_vertices) or  # Before hyperedge
                     v_gate >= max(gate_vertices) and cmd.op.type != OpType.CU1
-                    or src_qubit not in cmd.qubits  # Not acting on qubit
                 ):
                     qs = [linkman.get_updated_name(q) for q in cmd.qubits]
                     if cmd.op.type == OpType.Barrier:
@@ -524,6 +622,12 @@ class Distribution:
 
                 # ~ Rz gate ~#
                 if cmd.op.type == OpType.Rz:
+                    # Trivial if not acting on `src_qubit`
+                    if src_qubit not in cmd.qubits:
+                        qs = [linkman.get_updated_name(q) for q in cmd.qubits]
+                        new_circ.add_gate(cmd.op, qs)
+                        continue
+
                     q = cmd.qubits[0]
                     phase = cmd.op.params[0]
                     # Append the gate
@@ -550,6 +654,12 @@ class Distribution:
 
                 # ~ H gate ~#
                 elif cmd.op.type == OpType.H:
+                    # Trivial if not acting on `src_qubit`
+                    if src_qubit not in cmd.qubits:
+                        qs = [linkman.get_updated_name(q) for q in cmd.qubits]
+                        new_circ.add_gate(cmd.op, qs)
+                        continue
+
                     q = cmd.qubits[0]
                     # The presence of an H gate indicates the beginning or end
                     # of an H-embedding on the qubit
@@ -558,20 +668,36 @@ class Distribution:
                         # There are two cases to consider:
                         #
                         # (Case 1) There is no CU1 gate or EJPP process that
-                        # acts on this qubit within the H-embedding unit.
+                        # needs to be embedded.
                         # (Case 2) There is at least one.
 
                         found_embedded_cmd = None
+                        i = cmd_idx + 1
                         for g in commands[(cmd_idx + 1) :]:  # noqa: E203
-                            if (
-                                g.op.type == OpType.CU1
-                                or g.op.type == OpType.CustomGate
-                            ) and q in g.qubits:
+                            if g.op.type == OpType.CU1 and q in g.qubits:
+                                found_embedded_cmd = g
+                                break
+                            elif (
+                                is_start_proc(g)
+                                and q
+                                == origin_of_start_proc(g, new_circ.qubits)
+                                and requires_embedding_start_proc(commands[i:])
+                            ):
+                                found_embedded_cmd = g
+                                break
+                            elif (
+                                is_end_proc(g)
+                                and q == g.qubits[1]
+                                and requires_embedding_end_proc(
+                                    commands[: (i + 1)]
+                                )
+                            ):
                                 found_embedded_cmd = g
                                 break
                             # Otherwise, stop when finding an H gate on q
                             elif g.op.type == OpType.H and q in g.qubits:
                                 break
+                            i += 1
 
                         if found_embedded_cmd is None:  # (Case 1)
                             # Trivial: we simply need to apply H gate on the
@@ -589,11 +715,14 @@ class Distribution:
                             # NOTE: Due to the conditions of embeddability,
                             # embedded CU1 gates all act on the same servers
 
-                            remote_qubit = [
-                                rq
-                                for rq in found_embedded_cmd.qubits
-                                if rq != q
-                            ][0]
+                            if is_start_proc(found_embedded_cmd):
+                                remote_qubit = found_embedded_cmd.qubits[1]
+                            else:
+                                remote_qubit = [
+                                    rq
+                                    for rq in found_embedded_cmd.qubits
+                                    if rq != q
+                                ][0]
                             remote_server = get_server_id(remote_qubit)
                             # All servers but ``remote_server`` must be
                             # disconnected.
@@ -609,7 +738,7 @@ class Distribution:
                             # Close the connections
                             for ejpp_end in linkman.end_links(end_servers):
                                 new_circ.add_custom_gate(
-                                    end_proc,
+                                    end_proc(),
                                     [],
                                     [ejpp_end.from_qubit, ejpp_end.to_qubit],
                                 )
@@ -681,6 +810,12 @@ class Distribution:
 
                 # ~ CU1 gate ~#
                 elif cmd.op.type == OpType.CU1:
+                    # Trivial if not acting on `src_qubit`
+                    if src_qubit not in cmd.qubits:
+                        qs = [linkman.get_updated_name(q) for q in cmd.qubits]
+                        new_circ.add_gate(cmd.op, qs)
+                        continue
+
                     phase = cmd.op.params[0]
                     rmt_candidates = [q for q in cmd.qubits if q != src_qubit]
                     assert len(rmt_candidates) == 1
@@ -699,7 +834,7 @@ class Distribution:
                             if ejpp_start.to_qubit not in new_circ.qubits:
                                 new_circ.add_qubit(ejpp_start.to_qubit)
                             new_circ.add_custom_gate(
-                                start_proc,
+                                start_proc(origin=src_qubit),
                                 [],
                                 [ejpp_start.from_qubit, ejpp_start.to_qubit],
                             )
@@ -721,7 +856,7 @@ class Distribution:
                                 linkman.connected_servers()
                             ):
                                 new_circ.add_custom_gate(
-                                    end_proc,
+                                    end_proc(),
                                     [],
                                     [ejpp_end.from_qubit, ejpp_end.to_qubit],
                                 )
@@ -754,36 +889,54 @@ class Distribution:
                             # gates and, hence, do not mess with the
                             # `cu1_count` in future calls to this function
 
-                # ~ EJPP process ~#
-                elif cmd.op.type == OpType.CustomGate:
+                # ~ EJPP starting process ~#
+                elif is_start_proc(cmd):
                     # Retrieve qubit information
-                    if cmd.op.get_name() == "starting_process":
-                        remote_qubit = cmd.qubits[1]
-                    elif cmd.op.get_name() == "ending_process":
-                        remote_qubit = cmd.qubits[0]
-                    remote_qubit = linkman.get_updated_name(remote_qubit)
+                    orig_qubit = origin_of_start_proc(cmd, new_circ.qubits)
+                    old_rmt_qubit = cmd.qubits[1]
+                    remote_qubit = linkman.get_updated_name(old_rmt_qubit)
+                    server = get_server_id(remote_qubit)
 
-                    if cmd.op.get_name() == "starting_process":
-                        # Apply the command
-                        qs = [linkman.get_updated_name(q) for q in cmd.qubits]
-                        new_circ.add_gate(cmd.op, qs)
+                    # Apply the command
+                    qs = [linkman.get_updated_name(q) for q in cmd.qubits]
+                    new_circ.add_gate(cmd.op, qs)
 
-                    if currently_h_embedding:
-                        # A correction gate must be applied on every link
-                        # qubit that is currently alive and has been used
-                        # to implement this hyperedge.
-                        for server in linkman.connected_servers():
-                            link_qubit = linkman.get_link_qubit(server)
-                            if get_server_id(remote_qubit) != server:
-                                correction_gate_ok = False
-                            new_circ.H(remote_qubit)
-                            new_circ.CZ(remote_qubit, link_qubit)
-                            new_circ.H(remote_qubit)
+                    if currently_h_embedding and src_qubit == orig_qubit:
+                        # A correction gate must be applied only if the
+                        # start_proc must be considered when embedding.
+                        if requires_embedding_start_proc(commands[cmd_idx:]):
+                            # A correction gate must be applied on every link
+                            # qubit that is currently alive and has been used
+                            # to implement this hyperedge.
+                            for server in linkman.connected_servers():
+                                link_qubit = linkman.get_link_qubit(server)
+                                new_circ.H(remote_qubit)
+                                new_circ.CZ(remote_qubit, link_qubit)
+                                new_circ.H(remote_qubit)
 
-                    if cmd.op.get_name() == "ending_process":
-                        # Apply the command
-                        qs = [linkman.get_updated_name(q) for q in cmd.qubits]
-                        new_circ.add_gate(cmd.op, qs)
+                # ~ EJPP ending process ~#
+                elif is_end_proc(cmd):
+                    # Retrieve qubit information
+                    orig_qubit = linkman.get_updated_name(cmd.qubits[1])
+                    remote_qubit = linkman.get_updated_name(cmd.qubits[0])
+                    server = get_server_id(remote_qubit)
+
+                    if currently_h_embedding and src_qubit == orig_qubit:
+                        # A correction gate must be applied only if the
+                        # start_proc must be considered when embedding.
+                        if requires_embedding_end_proc(commands[:(cmd_idx+1)]):
+                            # A correction gate must be applied on every link
+                            # qubit that is currently alive and has been used
+                            # to implement this hyperedge.
+                            for server in linkman.connected_servers():
+                                link_qubit = linkman.get_link_qubit(server)
+                                new_circ.H(remote_qubit)
+                                new_circ.CZ(remote_qubit, link_qubit)
+                                new_circ.H(remote_qubit)
+
+                    # Apply the command
+                    qs = [linkman.get_updated_name(q) for q in cmd.qubits]
+                    new_circ.add_gate(cmd.op, qs)
 
                 # ~ Extra stuff ~#
                 # Extra CZ gates and Barriers are added to the circuit during
@@ -864,6 +1017,7 @@ class Distribution:
             new_circ = to_pytket_circuit_one_hyperedge(hedge, new_circ)
 
         # Turn every CZ (correction) gate to CU1; remove barriers
+        # Remove the origin qubit from the name of each start_proc
         final_circ = Circuit()
         for q in new_circ.qubits:
             final_circ.add_qubit(q)
@@ -872,6 +1026,8 @@ class Distribution:
                 continue
             elif cmd.op.type == OpType.CZ:
                 final_circ.add_gate(OpType.CU1, 1.0, cmd.qubits)
+            elif is_start_proc(cmd):
+                final_circ.add_custom_gate(start_proc(), [], cmd.qubits)
             else:
                 final_circ.add_gate(cmd.op, cmd.qubits)
 

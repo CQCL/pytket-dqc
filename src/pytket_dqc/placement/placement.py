@@ -22,13 +22,25 @@ class Placement:
         self.placement = placement
 
     def __eq__(self, other):
-        """Overrides the default implementation"""
+        """Check equality based on equality of components"""
         if isinstance(other, Placement):
             return self.placement == other.placement
         return False
 
     def __str__(self):
         return str(self.placement)
+
+    def to_dict(self) -> dict[int, int]:
+        """Generate JSON serialisable dictionary for Placement"""
+        return self.placement
+
+    @classmethod
+    def from_dict(cls, placement_dict: dict[int, int]):
+        """Generate Placement instance from JSON serialisable dictionary"""
+        placement = {
+            int(node): int(server) for node, server in placement_dict.items()
+        }
+        return cls(placement=placement)
 
     def is_valid(
         self,

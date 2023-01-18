@@ -14,7 +14,7 @@ from pytket_dqc.utils import (
 )
 from pytket_dqc.utils.gateset import to_euler_with_two_hadamards
 
-from typing import TYPE_CHECKING, Union, Optional
+from typing import TYPE_CHECKING, Union, Optional, cast
 
 if TYPE_CHECKING:
     from pytket_dqc import Placement
@@ -48,6 +48,68 @@ class HypergraphCircuit(Hypergraph):
         out_string += f"\nVertex Circuit Map: {self._vertex_circuit_map}"
         out_string += "\nCircuit: " + self._circuit.__str__()
         return out_string
+
+    def __eq__(self, other) -> bool:
+        """Check equality based on equality of components"""
+        if isinstance(other, HypergraphCircuit):
+            return (
+                self._circuit == other._circuit and
+                self._vertex_circuit_map == other._vertex_circuit_map and
+                self._commands == other._commands and
+                super().__eq__(other)
+            )
+        return False
+
+    def to_dict(self) -> dict[str, Union[list[Vertex], list[dict], dict]]:
+        """Generate JSON serialisable dictionary representation of
+        `HypergraphCircuit`.
+
+        :return: JSON serialisable dictionary representation of
+            `HypergraphCircuit`
+        :rtype: dict[str, Union[list[Vertex], list[dict], dict]]
+        """
+
+        hypergraph_circuit_dict = super().to_dict()
+        hypergraph_circuit_dict['circuit'] = self._circuit.to_dict()
+        return hypergraph_circuit_dict
+
+    @classmethod
+    def from_dict(
+        cls,
+        hypergraph_circuit_dict: dict[
+            str, Union[list[Vertex], list[dict], dict]
+        ]
+    ) -> HypergraphCircuit:
+        """Construct HypergraphCircuit instance from JSON serialisable
+        dictionary representation of the HypergraphCircuit.
+
+        :param hypergraph_circuit_dict: JSON serialisable dictionary
+            representation of the HypergraphCircuit
+        :type hypergraph_circuit_dict:
+            dict[str, Union[list[Vertex], list[dict], dict]]
+        :return: HypergraphCircuit instance constructed from
+            hypergraph_circuit_dict.
+        :rtype: HypergraphCircuit
+        """
+
+        hypergraph_circuit = cls(
+            Circuit.from_dict(hypergraph_circuit_dict['circuit'])
+        )
+        hypergraph_circuit.vertex_list = []
+        hypergraph_circuit.hyperedge_list = []
+        hypergraph_circuit.hyperedge_dict = dict()
+        hypergraph_circuit.vertex_neighbours = dict()
+
+        hypergraph_circuit.add_vertices(
+            cast(list[Vertex], hypergraph_circuit_dict['vertex_list'])
+        )
+        for hyperedge_dict in hypergraph_circuit_dict['hyperedge_list']:
+            hyperedge = Hyperedge.from_dict(cast(dict, hyperedge_dict))
+            hypergraph_circuit.add_hyperedge(
+                vertices=hyperedge.vertices,
+                weight=hyperedge.weight,
+            )
+        return hypergraph_circuit
 
     def place(self, placement: Placement):
 
@@ -757,7 +819,7 @@ class HypergraphCircuit(Hypergraph):
 
         A return value of ``False`` only proves it cannot be embedded.
         Since we do not check the 1q gates surrounding it,
-        a return value of ``True`` does not gurantee it is embeddable in
+        a return value of ``True`` does not guarantee it is embeddable in
         a H embedding unit.
         """
         assert command.op.type == OpType.CU1
@@ -779,48 +841,6 @@ class HypergraphCircuit(Hypergraph):
             np.isclose(command.op.params[0] % 1, 0)
             or np.isclose(command.op.params[0] % 1, 1)
         )
-
-    def to_relabeled_registers(self, placement: Placement) -> Circuit:
-        """Relabel qubits to match their placement.
-
-        :param placement: Placement of hypergraph vertices onto servers.
-        :type placement: Placement
-        :raises Exception: Raised if the placement is not valid.
-        :return: Circuit with qubits relabeled to match servers.
-        :rtype: Circuit
-        """
-
-        if not self.is_placement(placement):
-            raise Exception("This is not a valid placement for this circuit.")
-
-        server_to_vertex_dict = self._get_server_to_qubit_vertex(placement)
-
-        circ = Circuit()
-        # Map from servers to the qubit registers it contains.
-        server_to_register = {}
-        # Add registers to new circuit.
-        for server, vertex_list in server_to_vertex_dict.items():
-            server_to_register[server] = circ.add_q_register(
-                f"server_{server}", len(vertex_list)
-            )
-
-        # Build map from circuit qubits to server registers
-        qubit_qubit_map = {}
-        for server, register in server_to_register.items():
-            for i, qubit_vertex in enumerate(server_to_vertex_dict[server]):
-                qubit_qubit_map[
-                    self._vertex_circuit_map[qubit_vertex]["node"]
-                ] = register[i]
-
-        # Rebuild circuit using mapping from circuit qubits to server
-        # registers.
-        for gate in self._circuit.get_commands():
-            circ.add_gate(
-                gate.op,
-                [qubit_qubit_map[orig_qubit] for orig_qubit in gate.args],
-            )
-
-        return circ
 
 
 class RandomHypergraphCircuit(HypergraphCircuit):

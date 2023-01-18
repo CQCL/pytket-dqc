@@ -3,7 +3,7 @@ from pytket.passes import auto_rebase_pass
 
 from pytket.extensions.pyzx import tk_to_pyzx  # type: ignore
 import pyzx as zx  # type: ignore
-from .gateset import start_proc, end_proc
+from .gateset import is_start_proc, is_end_proc
 
 
 def check_equivalence(
@@ -90,7 +90,7 @@ def to_pyzx(circuit: Circuit, mask: list[Qubit]) -> zx.Graph:
     ancillas = set()
     for command in circuit.get_commands():
         if command.op.type == OpType.CustomGate:
-            if command.op.get_name() == start_proc.name:
+            if is_start_proc(command):
                 ancillas.add(command.qubits[1])
                 n_ebits += 1
     if set(circuit.qubits) - set(mask) != ancillas:
@@ -101,7 +101,7 @@ def to_pyzx(circuit: Circuit, mask: list[Qubit]) -> zx.Graph:
     for command in circuit.get_commands():
         if command.op.type == OpType.CustomGate:
 
-            if command.op.get_name() == start_proc.name:
+            if is_start_proc(command):
                 # Identify the qubit to share and create a new ancilla qubit
                 if command.qubits[0] not in qubit_dict.keys():
                     raise Exception("Attempting to act on a discarded qubit")
@@ -114,7 +114,7 @@ def to_pyzx(circuit: Circuit, mask: list[Qubit]) -> zx.Graph:
                 # Update the qubit_dict to include the newly created ancilla
                 qubit_dict[command.qubits[1]] = new_ancilla_qubit
 
-            elif command.op.get_name() == end_proc.name:
+            elif is_end_proc(command):
                 # Identify the qubits
                 if not all(q in qubit_dict.keys() for q in command.qubits):
                     raise Exception("Attempting to act on a discarded qubit")

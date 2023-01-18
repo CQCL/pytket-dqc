@@ -561,10 +561,9 @@ def test_merge_packets():
             (P6, P8, P9, P11, P12, P14),
             (P15, P17),
             (P18, P20),
-            (P21, P23),
+            (P21, P23, P26),
             (P24,),
             (P25,),
-            (P26,),
             (P27,),
         ],
         1: [],
@@ -573,7 +572,6 @@ def test_merge_packets():
         4: [(P30,)],
         5: [(P31,)],
     }
-
     assert merged_packets_ref == pacman.merged_packets
 
 

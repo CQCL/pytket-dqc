@@ -7,8 +7,9 @@ from pytket.predicates import (  # type: ignore
     UserDefinedPredicate,
 )
 
-from pytket import OpType, Circuit
+from pytket import OpType, Circuit, Qubit  # type: ignore
 from pytket.passes import (  # type: ignore
+    CustomPass,
     EulerAngleReduction,
     RebaseCustom,
     SquashCustom,
@@ -16,7 +17,8 @@ from pytket.passes import (  # type: ignore
     SequencePass,
     BasePass,
 )
-from pytket.circuit import CustomGateDef, Op  # type: ignore
+from pytket.circuit import CustomGateDef, Op, Command  # type: ignore
+from typing import Optional
 
 logging.basicConfig(level=logging.INFO)
 
@@ -40,6 +42,20 @@ def check_function(circ):
 
 #: Predicate for checking gateset is valid
 dqc_gateset_predicate = UserDefinedPredicate(check_function)
+
+
+def cz_to_cu1(circ: Circuit) -> Circuit:
+    """Convert all CZ gates in the circuit to CU1 gates.
+    """
+    new_circ = Circuit()
+    for q in circ.qubits:
+        new_circ.add_qubit(q)
+    for cmd in circ.get_commands():
+        if cmd.op.type == OpType.CZ:
+            new_circ.add_gate(OpType.CU1, 1.0, cmd.qubits)
+        else:
+            new_circ.add_gate(cmd.op, cmd.qubits)
+    return new_circ
 
 
 def tk2_to_cu1(a, b, c) -> Circuit:
@@ -206,6 +222,7 @@ def DQCPass() -> BasePass:
     # of functions that return BasePass
     return SequencePass(
         [
+            CustomPass(cz_to_cu1),
             RebaseCustom(dqc_gateset, tk2_to_cu1, tk1_to_euler),
             SquashCustom(dqc_1_qubit, tk1_to_euler),
             EulerAngleReduction(p=OpType.Rz, q=OpType.Rx),
@@ -218,6 +235,58 @@ def DQCPass() -> BasePass:
 def_circ = Circuit(2)
 def_circ.add_barrier([0, 1])
 
-start_proc = CustomGateDef.define("starting_process", def_circ, [])
-end_proc = CustomGateDef.define("ending_process", def_circ, [])
-telep_proc = CustomGateDef.define("teleportation", def_circ, [])
+
+def start_proc(origin: Optional[Qubit] = None) -> CustomGateDef:
+    if origin is None:
+        name = "starting_process"
+    else:
+        name = "starting_process_"+str(origin)
+    return CustomGateDef.define(name, def_circ, [])
+
+
+def end_proc() -> CustomGateDef:
+    return CustomGateDef.define("ending_process", def_circ, [])
+
+
+def telep_proc() -> CustomGateDef:
+    return CustomGateDef.define("teleportation", def_circ, [])
+
+
+def is_start_proc(cmd: Command) -> bool:
+    return cmd.op.type == OpType.CustomGate and cmd.op.get_name().startswith(
+        "starting_process"
+    )
+
+
+def is_end_proc(cmd: Command) -> bool:
+    return cmd.op.type == OpType.CustomGate and cmd.op.get_name().startswith(
+        "ending_process"
+    )
+
+
+def is_telep_proc(cmd: Command) -> bool:
+    return cmd.op.type == OpType.CustomGate and cmd.op.get_name().startswith(
+        "teleportation"
+    )
+
+
+def origin_of_start_proc(cmd: Command, all_qubits: list[Qubit]) -> Qubit:
+    """Not the `cmd.qubits[0]` of the start_proc, but the qubit that
+    originally held the information being "copied" by this start_proc.
+    NOTE: Since the qubit ID is stored as a string within the name of the
+    CustomGate describing the start_proc, we need ``all_qubits`` from the
+    circuit to find out which among them has the same ID and return that it.
+    """
+
+    assert is_start_proc(cmd)
+    name = cmd.op.get_name()
+
+    # Assume this is called only when the origin qubit has been
+    # recorded when constructing this start_proc.
+    assert name.startswith("starting_process_")
+
+    qubit_str = name[len("starting_process_"):]
+    potential_qubits = [q for q in all_qubits if str(q) == qubit_str]
+
+    assert len(potential_qubits) == 1
+    return potential_qubits[0]

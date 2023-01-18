@@ -34,6 +34,12 @@ class ServerNetwork:
         if not nx.is_connected(self.get_server_nx()):
             raise Exception("This server network is unconnected.")
 
+    def __eq__(self, other):
+        """Check equality based on equality of components"""
+        if isinstance(other, ServerNetwork):
+            return self.server_coupling == other.server_coupling
+        return False
+
     def is_placement(self, placement: Placement) -> bool:
         """Checks that placement is valid for this network. In particular
         check that all of the servers used by the placement are indeed in

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hypernetx as hnx  # type: ignore
 
-from typing import TYPE_CHECKING, Tuple, NamedTuple, Optional
+from typing import TYPE_CHECKING, Tuple, NamedTuple, Optional, Union, cast
 
 if TYPE_CHECKING:
     from pytket_dqc.placement import Placement
@@ -17,6 +17,37 @@ class Hyperedge(NamedTuple):
 
     def __hash__(self):
         return hash((frozenset(self.vertices), self.weight))
+
+    def to_dict(self) -> dict[str, Union[list[Vertex], int]]:
+        """Generate JSON serialisable dictionary representation of
+        `Hyperedge`.
+
+        :return: JSON serialisable dictionary representation of `Hyperedge`
+        :rtype: dict[str, Union[list[Vertex], int]]
+        """
+        return {
+            'vertices': self.vertices,
+            'weight': self.weight,
+        }
+
+    @classmethod
+    def from_dict(
+        cls,
+        hyperedge_dict: dict[str, Union[list[Vertex], int]]
+    ) -> Hyperedge:
+        """Construct Hyperedge instance from JSON serialisable
+        dictionary representation of the Hyperedge.
+
+        :param hyperedge_dict: JSON serialisable dictionary
+            representation of the Hyperedge.
+        :type hyperedge_dict: dict[str, Union[list[Vertex], int]]
+        :return: Hyperedge instance constructed from hyperedge_dict.
+        :rtype: Hyperedge
+        """
+        return cls(
+            vertices=cast(list[Vertex], hyperedge_dict['vertices']),
+            weight=cast(int, hyperedge_dict['weight']),
+        )
 
 
 class Hypergraph:
@@ -48,6 +79,65 @@ class Hypergraph:
         out_string = f"Hyperedges: {self.hyperedge_list}"
         out_string += f"\nVertices: {self.vertex_list}"
         return out_string
+
+    def __eq__(self, other) -> bool:
+        """Check equality based on equality of components"""
+        if isinstance(other, Hypergraph):
+            return (
+                self.vertex_list == other.vertex_list and
+                self.hyperedge_list == other.hyperedge_list and
+                self.hyperedge_dict == other.hyperedge_dict and
+                self.vertex_neighbours == other.vertex_neighbours
+            )
+        return False
+
+    def to_dict(self) -> dict[str, Union[list[Vertex], list[dict], dict]]:
+        """Generate JSON serialisable dictionary representation of
+        `Hypergraph`.
+
+        :return: JSON serialisable dictionary representation of `Hypergraph`
+        :rtype: dict[str, Union[list[Vertex], list[dict]]]
+        """
+        return {
+            'vertex_list': self.vertex_list,
+            'hyperedge_list': [
+                hyperedge.to_dict() for hyperedge in self.hyperedge_list
+            ],
+        }
+
+    @classmethod
+    def from_dict(
+        cls,
+        hypergraph_dict: dict[str, Union[list[Vertex], list[dict], dict]],
+    ) -> Hypergraph:
+        """Construct Hypergraph instance from JSON serialisable
+        dictionary representation of the Hypergraph.
+
+        :param hypergraph_dict: JSON serialisable dictionary
+            representation of the Hypergraph
+        :type hypergraph_dict: dict[str, Union[list[Vertex], list[dict], dict]]
+        :return: Hypergraph instance constructed from hypergraph_dict.
+        :rtype: Hypergraph
+        """
+
+        hypergraph = Hypergraph()
+
+        vertex_list = hypergraph_dict['vertex_list']
+        hyperedge_list = [
+            Hyperedge.from_dict(
+                cast(dict[str, Union[list[Vertex], int]], hyperedge)
+            )
+            for hyperedge in hypergraph_dict['hyperedge_list']
+        ]
+
+        hypergraph.add_vertices(cast(list[Vertex], vertex_list))
+        for hyperedge in hyperedge_list:
+            hypergraph.add_hyperedge(
+                vertices=hyperedge.vertices,
+                weight=hyperedge.weight,
+            )
+
+        return hypergraph
 
     def merge_hyperedge(
         self,

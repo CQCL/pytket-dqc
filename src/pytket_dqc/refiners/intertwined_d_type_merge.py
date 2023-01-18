@@ -10,7 +10,7 @@ class IntertwinedDTypeMerge(Refiner):
     intermittent between gates in the first.
     """
 
-    def refine(self, distribution: Distribution) -> bool:
+    def refine(self, distribution: Distribution, **kwargs) -> bool:
         """Merge intertwined packets.
 
         :param distribution: Distribution whose intertwined packets should

@@ -203,6 +203,10 @@ def test_verification_rebase_simple():
     orig_c = c.copy()
     DQCPass().apply(c)
 
+    # Check that the DQCPass turned CZ into CU1
+    cmds = c.get_commands()
+    assert len(cmds) == 1 and cmds[0].op.type == OpType.CU1
+
     # Check equivalence of unitaries explicitly
     assert np.allclose(orig_c.get_unitary(), c.get_unitary())
     # Check equivalence via PyZX

@@ -10,6 +10,4 @@ from .hypergraph import (  # noqa:F401
     Vertex
 )
 
-from .bipartite_circuit import BipartiteCircuit  # noqa:F401
-
 from .distribution import Distribution  # noqa:F401

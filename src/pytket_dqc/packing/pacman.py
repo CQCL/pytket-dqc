@@ -399,7 +399,7 @@ class PacMan:
         command = command_dict["command"]
         assert (
             type(command) == Command
-        )  # This is for mypy check - is there a better way?
+        )
         qubits = command.qubits
         qubit_vertex_candidates = [
             self.hypergraph_circuit.get_vertex_of_qubit(qubit)
@@ -486,7 +486,12 @@ class PacMan:
         :return: Whether the packets can be packed by hopping packing.
         :rtype: bool
         """
+        # These should be guaranteed by ``.get_next_packet()``
         assert first_packet.qubit_vertex == second_packet.qubit_vertex
+        assert (
+            first_packet.connected_server_index
+            == second_packet.connected_server_index
+        ), "Cannot pack packets connected to different servers"
 
         logger.debug(
             f"Are packets {first_packet} and "
@@ -500,6 +505,18 @@ class PacMan:
             f"Int ops {[command.op for command in intermediate_commands]}"
         )
 
+        # Find the indices of the Hadamards in
+        # intermediate_commands.
+        # If there are any local CU1s before/after the first/last
+        # Hadamards they can be ignored.
+        h_indices = [
+            i for i, command in enumerate(intermediate_commands)
+            if command.op.type == OpType.H
+        ]
+        if len(h_indices) < 2:
+            logger.debug("Must have 2 Hadamards between the packets")
+            return False
+
         # Find and check that all the CU1 gates are embeddable
         # Store their indices in ``intermediate_commands`` so that
         # it can be sliced later into lists of 1 qubit gates between
@@ -507,11 +524,15 @@ class PacMan:
         cu1_indices = []
         for i, command in enumerate(intermediate_commands):
             if command.op.type == OpType.CU1:
-                assert (
-                    first_packet.connected_server_index
-                    == second_packet.connected_server_index
-                ), "Cannot pack packets connected to different servers"
-                if not self.hypergraph_circuit.is_h_embeddable_CU1(
+                # Ignore CU1s before or after the
+                # first or last H - these don't affect embedding
+                # as they can commute past CU1s and single-qubit
+                # embeddable gates.
+                if i < h_indices[0] or i > h_indices[-1]:
+                    logger.debug(
+                        f"Ignoring {command} "
+                    )
+                elif not self.hypergraph_circuit.is_h_embeddable_CU1(
                     command,
                     set(
                         [
@@ -527,15 +548,23 @@ class PacMan:
                         f"No, CU1 command {command} is not embeddable."
                     )
                     return False
-                cu1_indices.append(i)
+                else:
+                    cu1_indices.append(i)
 
-        assert cu1_indices, "There must be CU1 gates between the two packets."
+        # If there are no CU1s between Hadamards
+        # then there is nothing to embed.
+        if not cu1_indices:
+            logger.debug("No CU1s that can be embedded")
+            return False
 
-        # Add the ops at the start of the embedding
+        # Add the ops at the start of the embedding.
+        # Ignore gates before the first H - these don't
+        # affect embedding as they can commute past CU1s
+        # and single-qubit embeddable gates.
         ops_1q_list: list[list[Op]] = [
             [
                 command.op
-                for command in intermediate_commands[0: cu1_indices[0]]
+                for command in intermediate_commands[h_indices[0]: cu1_indices[0]]
             ]
         ]
 
@@ -551,10 +580,13 @@ class PacMan:
             prev_cu1_index = cu1_index
 
         # Add the ops at the end of the embedding
+        # Ignore gates after the last H - these don't
+        # affect embedding as they can commute past CU1s
+        # and single-qubit embeddable gates.
         ops_1q_list.append(
             [
                 command.op
-                for command in intermediate_commands[cu1_indices[-1] + 1:]
+                for command in intermediate_commands[cu1_indices[-1] + 1 : h_indices[-1]+1]
             ]
         )
 
@@ -712,6 +744,73 @@ class PacMan:
 
         return current_index, packets
 
+    def get_hypergraph_from_packets(self) -> HypergraphCircuit:
+        """Return a fresh instance of HypergraphCircuit whose hypergraph is
+        generated from scratch using the information from the dictionary
+        ``self.packets_by_qubit``. One hyperedge per packet.
+        :return: A new HypergraphCircuit on the same circuit but with
+        a new hypergraph.
+        :rtype: HypergraphCircuit
+        """
+        # Create a new instance of HyperedgeCircuit
+        circ = self.hypergraph_circuit.get_circuit()
+        hyp_circ = HypergraphCircuit(circ)
+        qubit_vertices = hyp_circ.get_qubit_vertices()
+        # Empty all dictionaries
+        hyp_circ.hyperedge_list = []
+        hyp_circ.hyperedge_dict = {v: [] for v in hyp_circ.vertex_list}
+        hyp_circ.vertex_neighbours = {v: set() for v in hyp_circ.vertex_list}
+
+        # Create a hyperedge per packet
+        hedges_to_add = []
+        for qubit_vertex in qubit_vertices:
+            for packet in self.packets_by_qubit[qubit_vertex]:
+                hedges_to_add.append([qubit_vertex] + packet.gate_vertices)
+
+        # `PacMan` does not consider packets for local gates, but these
+        # must still have their hyperedges in the returned hypergraph
+        for vertex in hyp_circ.vertex_list:
+            if not hyp_circ.is_qubit_vertex(vertex):
+                # Find the hyperedges added so far containing this gate vertex
+                hedges = [hedge for hedge in hedges_to_add if vertex in hedge]
+                if len(hedges) > 0:
+                    # Hyperedges always come in pairs for a given gate vertex
+                    assert len(hedges) == 2
+                # If no hyperedge has been added for this vertex yet, it must
+                # be that it is a local gate. We add trivial hyperedges.
+                else:
+                    gate = hyp_circ.get_gate_of_vertex(vertex)
+                    q_vertices = [
+                        hyp_circ.get_vertex_of_qubit(q) for q in gate.qubits
+                    ]
+
+                    # Sanity check: the gate is local
+                    assert (
+                        self.placement.placement[q_vertices[0]]
+                        == self.placement.placement[q_vertices[1]]
+                    )
+
+                    # Since the gate is local, these hyperedges won't be cut
+                    # but we still need to include them for the hypergraph
+                    # and its distribution to pass their validity predicates.
+                    for q in q_vertices:
+                        hedges_to_add.append([q, vertex])
+
+        # We want to add the hyperedges in the appropriate order that will
+        # satisfy `_sorted_hedges_predicate()`.
+        hedges_to_add.sort(
+            key=lambda vertices: min(
+                v for v in vertices if not hyp_circ.is_qubit_vertex(v)
+            )
+        )
+        # Add the hyperedges
+        for hedge in hedges_to_add:
+            hyp_circ.add_hyperedge(hedge)
+
+        assert hyp_circ._vertex_id_predicate()
+        assert hyp_circ._sorted_hedges_predicate()
+        return hyp_circ
+
     def get_intermediate_commands(
         self, first_packet: Packet, second_packet: Packet
     ) -> list[Command]:
@@ -863,6 +962,29 @@ class PacMan:
 
         return connected_merged_packets
 
+    def get_split_packets(
+        self, merged_packet: MergedPacket, conflict_packet: HoppingPacket
+    ) -> tuple[MergedPacket, MergedPacket]:
+        """Given a merged packet and a conflicting hopping packet within it,
+        split ``merged_packet`` into two merged packets so that each side of
+        ``conflict_packet`` is on one side of the split.
+        :param merged_packet: The merged packet to be split in two
+        :type merged_packet: MergedPacket
+        :param conflict_packet: The hopping packet in conflict
+        :type conflict_packet: HoppingPacket
+        :return: The two merged packets resulting after splitting
+        :rtype: tuple[MergedPacket, MergedPacket]
+        """
+        c_pac_a, c_pac_b = conflict_packet
+        assert c_pac_a.packet_index < c_pac_b.packet_index
+        packet_a = tuple(
+            p for p in merged_packet if p.packet_index <= c_pac_a.packet_index
+        )
+        packet_b = tuple(
+            p for p in merged_packet if p.packet_index >= c_pac_b.packet_index
+        )
+        return packet_a, packet_b
+
     def get_embedded_packets(
         self, hopping_packet: HoppingPacket
     ) -> set[Packet]:
@@ -950,6 +1072,30 @@ class PacMan:
             ):
                 break
         return hopping_packet
+
+    def get_hopping_packets_within(
+        self, merged_packets: set[MergedPacket]
+    ) -> set[HoppingPacket]:
+        """Given a set of merged packets, find all the hopping packets that
+        are contained in them.
+        :param merged_packets: The set of merged packets to look into
+        :type merged_packets: set[MergedPacket]
+        :return: The set of hopping packets contained in ``merged_packets``
+        :rtype: set[HoppingPacket]
+        """
+        hoppings_within: set[HoppingPacket] = set()
+        all_hopping_packets = [
+            hop_packet
+            for packet_list in self.hopping_packets.values()
+            for hop_packet in packet_list
+        ]
+        for (p0, p1) in all_hopping_packets:
+            # Try to find a merged packet that contains both p0 and p1
+            for merged_packet in merged_packets:
+                if p0 in merged_packet and p1 in merged_packet:
+                    hoppings_within.add((p0, p1))
+
+        return hoppings_within
 
     def is_packet_embedded(self, packet: Packet) -> bool:
         """Checks if a ``Packet`` is embedded
@@ -1046,18 +1192,21 @@ class PacMan:
         )
         return graph, bipartitions[1]
 
+    # TODO: Deprecated. Remove once Tim has finished helping Junyi
     def get_mvc_merged_graph(self) -> set[MergedPacket]:
         """Get the minimum vertex cover of the merged graph."""
         g, topnodes = self.get_nx_graph_merged()
         matching = bipartite.maximum_matching(g, top_nodes=topnodes)
         return bipartite.to_vertex_cover(g, matching, top_nodes=topnodes)
 
+    # TODO: Deprecated. Remove once Tim has finished helping Junyi
     def get_mvc_neighbouring_graph(self) -> set[NeighbouringPacket]:
         """Get the minimum vertex cover of the neighbouring graph."""
         g, topnodes = self.get_nx_graph_neighbouring()
         matching = bipartite.maximum_matching(g, top_nodes=topnodes)
         return bipartite.to_vertex_cover(g, matching, top_nodes=topnodes)
 
+    # TODO: Deprecated. Remove once Tim has finished helping Junyi
     def get_conflict_edges_given_mvc(
         self,
         potential_conflict_edges: set[frozenset[HoppingPacket]],
@@ -1091,21 +1240,6 @@ class PacMan:
                 true_conflicts.add((u, v))
 
         return true_conflicts
-
-    def get_conflict_edge(
-        self, embedded_packet1: Packet, embedded_packet2: Packet
-    ) -> tuple[HoppingPacket, HoppingPacket]:
-        """Given two embedded packets, return a ``frozenset``
-        that has the hopping packets that embed the packets as elements.
-
-        This is a very specific function to replace
-        long lines of code in `get_nx_graph_conflict()`
-        that failed flake8 line length checks.
-        """
-        return (
-            self.get_hopping_packet_from_embedded_packet(embedded_packet1),
-            self.get_hopping_packet_from_embedded_packet(embedded_packet2),
-        )
 
     def assign_bipartitions(
         self, graph: nx.Graph
