@@ -564,7 +564,9 @@ class PacMan:
         ops_1q_list: list[list[Op]] = [
             [
                 command.op
-                for command in intermediate_commands[h_indices[0]: cu1_indices[0]]
+                for command in intermediate_commands[
+                    h_indices[0] : cu1_indices[0]  # noqa: E203
+                ]
             ]
         ]
 
@@ -586,7 +588,9 @@ class PacMan:
         ops_1q_list.append(
             [
                 command.op
-                for command in intermediate_commands[cu1_indices[-1] + 1 : h_indices[-1]+1]
+                for command in intermediate_commands[
+                    cu1_indices[-1] + 1 : h_indices[-1] + 1  # noqa: E203
+                ]
             ]
         )
 
