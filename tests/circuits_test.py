@@ -1049,11 +1049,11 @@ def test_to_pytket_circuit_circ_with_embeddings_3():
     )
 
     circ = Circuit(2)
-    circ.add_gate(OpType.CU1, 1.0, [0,1])  # Gate 2
+    circ.add_gate(OpType.CU1, 1.0, [0, 1])  # Gate 2
     circ.H(0).H(1)
-    circ.add_gate(OpType.CU1, 1.0, [0,1])  # Gate 3
+    circ.add_gate(OpType.CU1, 1.0, [0, 1])  # Gate 3
     circ.H(0).H(1)
-    circ.add_gate(OpType.CU1, 1.0, [0,1])  # Gate 4
+    circ.add_gate(OpType.CU1, 1.0, [0, 1])  # Gate 4
 
     placement = Placement({0: 0, 1: 1, 2: 0, 3: 1, 4: 0})
 
@@ -1072,7 +1072,10 @@ def test_to_pytket_circuit_circ_with_embeddings_3():
     assert distribution.is_valid()
 
     circ_with_dist = distribution.to_pytket_circuit()
-    render_circuit_jupyter(circ_with_dist)
+
+    assert check_equivalence(
+        circ, circ_with_dist, distribution.get_qubit_mapping()
+    )
 
 
 def test_to_pytket_circuit_circ_with_intertwined_embeddings_1():
