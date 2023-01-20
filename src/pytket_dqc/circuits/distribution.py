@@ -14,6 +14,7 @@ from pytket_dqc.utils.circuit_analysis import (
     all_cu1_local,
     _cost_from_circuit,
     get_server_id,
+    is_link_qubit,
 )
 from pytket import Circuit, OpType, Qubit  # type: ignore
 from pytket.circuit import Command  # type: ignore
@@ -720,6 +721,31 @@ class Distribution:
                                     for rq in found_embedded_cmd.qubits
                                     if rq != q
                                 ][0]
+                            # In the case of ``found_embedded_cmd`` being a
+                            # CU1 gate that has already been distributed,
+                            # ``remote_qubit`` may be a link qubit, rather
+                            # than the original one. The one that we actually
+                            # want to use is the original one, since that's
+                            # the one that was considered when calling
+                            # ``hyperedge_cost``.
+                            if (
+                                found_embedded_cmd.op.type == OpType.CU1
+                                and is_link_qubit(remote_qubit)
+                            ):
+                                # Find the next ending process on this
+                                # ``remote_qubit``; it's target qubit
+                                # will be the original qubit.
+                                original_remote = None
+                                for g in commands[i:]:
+                                    if (
+                                        is_end_proc(g)
+                                        and g.qubits[0] == remote_qubit
+                                    ):
+                                        original_remote = g.qubits[1]
+                                assert original_remote is not None
+                                assert not is_link_qubit(original_remote)
+                                remote_qubit = original_remote
+
                             remote_server = get_server_id(remote_qubit)
                             # All servers but ``remote_server`` must be
                             # disconnected.
@@ -868,6 +894,28 @@ class Distribution:
                             assert isclose(phase % 1, 0) or isclose(
                                 phase % 1, 1
                             )
+
+                            # If the CU1 gate has already been distributed,
+                            # ``rmt_qubit`` may be a link qubit, rather
+                            # than the original one. The one that we actually
+                            # want to use is the original one, since that's
+                            # the one that was considered when calling
+                            # ``hyperedge_cost``.
+                            if is_link_qubit(rmt_qubit):
+                                # Find the next ending process on this
+                                # ``remote_qubit``; it's target qubit
+                                # will be the original qubit.
+                                original_remote = None
+                                for g in commands[i:]:
+                                    if (
+                                        is_end_proc(g)
+                                        and g.qubits[0] == rmt_qubit
+                                    ):
+                                        original_remote = g.qubits[1]
+                                assert original_remote is not None
+                                rmt_qubit = original_remote
+                            assert not is_link_qubit(rmt_qubit)
+
                             # A correction gate must be applied on every link
                             # qubit that is currently alive and has been used
                             # to implement this hyperedge.
@@ -877,7 +925,7 @@ class Distribution:
                                     OpType.CZ,
                                     [
                                         link_qubit,
-                                        linkman.get_updated_name(rmt_qubit),
+                                        rmt_qubit,
                                     ],
                                 )
                             # CZ gates are used here to distinguish from CU1
@@ -1004,6 +1052,8 @@ class Distribution:
         assert check_equivalence(
             self.circuit.get_circuit(), final_circ, qubit_mapping
         )
-        assert _cost_from_circuit(final_circ) == self.cost()
+        assert (
+            _cost_from_circuit(final_circ) == self.cost()
+        ), f"Theory: {self.cost()}, real: {_cost_from_circuit(final_circ)}."
 
         return final_circ
