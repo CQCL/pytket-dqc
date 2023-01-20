@@ -557,11 +557,16 @@ class PacMan:
             logger.debug("No CU1s that can be embedded")
             return False
 
-        # Add the ops at the start of the embedding
+        # Add the ops at the start of the embedding.
+        # Ignore gates before the first H - these don't
+        # affect embedding as they can commute past CU1s
+        # and single-qubit embeddable gates.
         ops_1q_list: list[list[Op]] = [
             [
                 command.op
-                for command in intermediate_commands[0: cu1_indices[0]]
+                for command in intermediate_commands[
+                    h_indices[0] : cu1_indices[0]  # noqa: E203
+                ]
             ]
         ]
 
@@ -577,10 +582,15 @@ class PacMan:
             prev_cu1_index = cu1_index
 
         # Add the ops at the end of the embedding
+        # Ignore gates after the last H - these don't
+        # affect embedding as they can commute past CU1s
+        # and single-qubit embeddable gates.
         ops_1q_list.append(
             [
                 command.op
-                for command in intermediate_commands[cu1_indices[-1] + 1:]
+                for command in intermediate_commands[
+                    cu1_indices[-1] + 1 : h_indices[-1] + 1  # noqa: E203
+                ]
             ]
         )
 

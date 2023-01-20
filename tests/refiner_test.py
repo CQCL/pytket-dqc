@@ -902,6 +902,33 @@ def test_vertex_cover_refiner_frac_CZ_circ():
     )
 
 
+def test_vertex_cover_embedding_boundary_failure():
+    # Originally a failing test discovered by Dan.
+    # Fixed by PR #72
+
+    with open(
+        "tests/test_circuits/vertex_cover_assert_circuit.json", 'r'
+    ) as fp:
+        circ = Circuit().from_dict(json.load(fp))
+
+    with open(
+        "tests/test_circuits/vertex_cover_assert_architecture.json", 'r'
+    ) as fp:
+        network = NISQNetwork.from_dict(json.load(fp))
+
+    DQCPass().apply(circ)
+
+    distribution = HypergraphPartitioning().allocate(
+        circ, network, seed=0, num_rounds=0
+    )
+    VertexCover().refine(distribution, vertex_cover_alg='networkx')
+
+    pytket_circ = distribution.to_pytket_circuit()
+    assert check_equivalence(
+        circ, pytket_circ, distribution.get_qubit_mapping()
+    )
+
+
 def test_eager_h_type_merge_00():
     # Should merge 0th and 2nd hyperedges on qubit 0
 
