@@ -1,6 +1,7 @@
 from .nisq_network import NISQNetwork
 import random
 import networkx as nx  # type:ignore
+import math
 
 
 class RandomNISQNetwork(NISQNetwork):
@@ -28,7 +29,7 @@ class RandomNISQNetwork(NISQNetwork):
                 "The number of qubits must be greater ",
                 "than the number of servers.")
 
-        edge_prob = kwargs.get("edge_prob", 2/(n_servers-1))
+        edge_prob = kwargs.get("edge_prob", 1/math.factorial(n_servers-2))
         seed = kwargs.get("seed", None)
 
         # Generate erdos renyi graph until one that is connected is generated.
@@ -77,7 +78,7 @@ class ScaleFreeNISQNetwork(NISQNetwork):
                 "than the number of servers."
             )
 
-        m = kwargs.get('m', 2)
+        m = kwargs.get('m', 1)
         seed = kwargs.get('seed', None)
         initial_graph = kwargs.get('initial_graph', None)
 
@@ -126,7 +127,7 @@ class SmallWorldNISQNetwork(NISQNetwork):
                 "than the number of servers."
             )
 
-        k = kwargs.get('k', 4)
+        k = kwargs.get('k', 2)
         seed = kwargs.get('seed', None)
         p = kwargs.get('p', 0.5)
         tries = kwargs.get('tries', 1000)
