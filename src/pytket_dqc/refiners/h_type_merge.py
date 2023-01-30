@@ -111,19 +111,19 @@ class EagerHTypeMerge(Refiner):
 
         for merging_hedges in all_hedges_to_merge:
             if len(merging_hedges) > 1:
-                # This merger resolves conflict edges by
-                # construction - hence any merged hyperedges
-                # should only require local correcting gates.
-                # So the gain should be at least 1 if hyperedges
-                # have been merged - it is only 0 in the case
-                # that the placement does not make this merged
-                # hyperedge non-local
-                # (i.e all the gates are made local).
-                assert (gain_mgr.merge_hyperedge_gain(
+                # Usually the gain will be non-negative when merging
+                # hyperedges in this way.
+                # The exception comes when an embedding gain
+                # interferes with the use of a Steiner tree,
+                # causing the tree to break and therefore giving
+                # an overall negative gain.
+                # Hence we verify that this is not the case
+                # before merging the hyperedges.
+                if (gain_mgr.merge_hyperedge_gain(
                     list(merging_hedges)
-                )) >= 0
-                gain_mgr.merge_hyperedge(list(merging_hedges))
-                refinement_made = True
+                )) >= 0:
+                    gain_mgr.merge_hyperedge(list(merging_hedges))
+                    refinement_made = True
 
         assert gain_mgr.distribution.is_valid()
         return refinement_made
