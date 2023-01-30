@@ -3,5 +3,7 @@ from .vertex_cover import VertexCover  # noqa:F401
 from .neighbouring_d_type_merge import NeighbouringDTypeMerge  # noqa:F401
 from .intertwined_d_type_merge import IntertwinedDTypeMerge  # noqa:F401
 from .h_type_merge import EagerHTypeMerge  # noqa:F401
+from .boundary_reallocation import BoundaryReallocation  # noqa:F401
+from .evicted_gates import EvictedGates  # noqa:F401
 from .repeat_refiner import RepeatRefiner  # noqa:F401
 from .sequence_refiner import SequenceRefiner  # noqa:F401

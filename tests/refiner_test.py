@@ -919,7 +919,7 @@ def test_vertex_cover_embedding_boundary_failure():
     DQCPass().apply(circ)
 
     distribution = HypergraphPartitioning().allocate(
-        circ, network, seed=0, num_rounds=0
+        circ, network, seed=0
     )
     VertexCover().refine(distribution, vertex_cover_alg='networkx')
 
@@ -1272,7 +1272,7 @@ def test_eager_h_type_merge_06():
     )
 
     allocator = HypergraphPartitioning()
-    distribution = allocator.allocate(circ, network, num_rounds=0)
+    distribution = allocator.allocate(circ, network)
     cost = distribution.cost()
 
     refiner = EagerHTypeMerge()

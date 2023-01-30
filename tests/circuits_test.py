@@ -1468,7 +1468,7 @@ def test_to_pytket_circuit_with_pauli_circ():
     )
 
     allocator = HypergraphPartitioning()
-    distribution = allocator.allocate(circ, network, num_rounds=0)
+    distribution = allocator.allocate(circ, network)
 
     assert check_equivalence(
         circ,
@@ -1490,7 +1490,7 @@ def test_to_pytket_circuit_with_random_circ():
     )
 
     allocator = HypergraphPartitioning()
-    distribution = allocator.allocate(circ, network, num_rounds=0)
+    distribution = allocator.allocate(circ, network)
 
     assert check_equivalence(
         circ,
@@ -1514,7 +1514,7 @@ def test_to_pytket_circuit_with_frac_cz_circ():
     )
 
     allocator = HypergraphPartitioning()
-    distribution = allocator.allocate(circ, network, num_rounds=0)
+    distribution = allocator.allocate(circ, network)
 
     assert check_equivalence(
         circ,
