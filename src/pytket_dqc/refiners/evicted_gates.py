@@ -40,6 +40,7 @@ class EvictedGates(Refiner):
 
         return BoundaryReallocation().refine(
             distribution,
+            reallocate_qubits=False,
             num_rounds=num_rounds,
             stop_parameter=stop_parameter,
             seed=seed,
