@@ -38,7 +38,6 @@ class HypergraphPartitioning(Allocator):
 
         :key ini_path: Path to kahypar ini file.
         :key seed: Seed for randomness. Default is None
-        :key num_rounds: Max number of refinement rounds. Default is 1000.
 
         :return: Distribution of ``circ`` onto ``network``.
         :rtype: Distribution
