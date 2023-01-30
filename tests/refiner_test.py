@@ -921,6 +921,13 @@ def test_vertex_cover_embedding_boundary_failure():
     distribution = HypergraphPartitioning().allocate(
         circ, network, seed=0, num_rounds=0
     )
+
+    # Creating the circuit at this point failed prior to PR #74
+    pytket_circ = distribution.to_pytket_circuit()
+    assert check_equivalence(
+        circ, pytket_circ, distribution.get_qubit_mapping()
+    )
+
     VertexCover().refine(distribution, vertex_cover_alg='networkx')
 
     pytket_circ = distribution.to_pytket_circuit()
