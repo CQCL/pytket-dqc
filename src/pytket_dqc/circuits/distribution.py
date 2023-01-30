@@ -612,7 +612,7 @@ class Distribution:
                 ):
                     qs = [linkman.get_updated_name(q) for q in cmd.qubits]
                     if cmd.op.type == OpType.Barrier:
-                        new_circ.add_barrier(qs)
+                        new_circ.add_barrier(new_circ.qubits)
                     else:
                         new_circ.add_gate(cmd.op, qs)
                     continue
@@ -1006,8 +1006,7 @@ class Distribution:
                     new_circ.add_gate(cmd.op, qs)
                 elif cmd.op.type == OpType.Barrier:
                     # Apply the command
-                    qs = [linkman.get_updated_name(q) for q in cmd.qubits]
-                    new_circ.add_barrier(qs)
+                    new_circ.add_barrier(new_circ.qubits)
                 else:
                     raise Exception(f"Command {cmd.op} not supported.")
 
@@ -1026,7 +1025,7 @@ class Distribution:
             qs = [qubit_mapping[q] for q in cmd.qubits]
             new_circ.add_gate(cmd.op, qs)
             if cmd.op.type == OpType.CU1:
-                new_circ.add_barrier(list(qubit_mapping.values()))
+                new_circ.add_barrier(new_circ.qubits)
 
         # Implement the hyperedges one by one
         for hedge in hyp_circ.hyperedge_list:
