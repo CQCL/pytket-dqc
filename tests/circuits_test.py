@@ -1039,6 +1039,45 @@ def test_to_pytket_circuit_circ_with_embeddings_2():
     )
 
 
+def test_to_pytket_circuit_circ_with_embeddings_3():
+    # This test failed due to a bug when ending links
+    # due to embedding; fixed in PR #71
+
+    network = NISQNetwork(
+        [[0, 1]],
+        {0: [0], 1: [1]},
+    )
+
+    circ = Circuit(2)
+    circ.add_gate(OpType.CU1, 1.0, [0, 1])  # Gate 2
+    circ.H(0).H(1)
+    circ.add_gate(OpType.CU1, 1.0, [0, 1])  # Gate 3
+    circ.H(0).H(1)
+    circ.add_gate(OpType.CU1, 1.0, [0, 1])  # Gate 4
+
+    placement = Placement({0: 0, 1: 1, 2: 0, 3: 1, 4: 0})
+
+    hyp_circ = HypergraphCircuit(circ)
+    hyp_circ.hyperedge_list = []
+    hyp_circ.hyperedge_dict = {v: [] for v in hyp_circ.vertex_list}
+    hyp_circ.vertex_neighbours = {v: set() for v in hyp_circ.vertex_list}
+
+    hyp_circ.add_hyperedge([0, 2])
+    hyp_circ.add_hyperedge([0, 3])
+    hyp_circ.add_hyperedge([0, 4])
+    hyp_circ.add_hyperedge([1, 2, 4])
+    hyp_circ.add_hyperedge([1, 3])
+
+    distribution = Distribution(hyp_circ, placement, network)
+    assert distribution.is_valid()
+
+    circ_with_dist = distribution.to_pytket_circuit()
+
+    assert check_equivalence(
+        circ, circ_with_dist, distribution.get_qubit_mapping()
+    )
+
+
 def test_to_pytket_circuit_circ_with_intertwined_embeddings_1():
     network = NISQNetwork(
         server_coupling=[[0, 1]], server_qubits={0: [0], 1: [1, 2, 3, 4]}
