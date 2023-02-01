@@ -1109,8 +1109,14 @@ class Distribution:
                 # Choose according to longest distance
                 dist = v_post - v_prev
                 if longest_dist < dist:
-                    longest_dist = dist
-                    chosen_hedge = h
+                    # Check that this hyperedge actually uses a link
+                    # qubit on `e.server`.
+                    h_servers = [placement_map[v] for v in h.vertices]
+                    tree = steiner_tree(server_graph, h_servers)
+                    # If it does, it's the best split so far, otherwise skip.
+                    if e.server in tree.nodes:
+                        longest_dist = dist
+                        chosen_hedge = h
 
             # If no hyperedge could be chosen, inform the user
             if chosen_hedge is None:
