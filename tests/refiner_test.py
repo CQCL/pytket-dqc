@@ -4,7 +4,7 @@ from pytket_dqc import Distribution
 from pytket_dqc.circuits import HypergraphCircuit
 from pytket_dqc.circuits.hypergraph import Hyperedge
 from pytket_dqc.placement import Placement
-from pytket_dqc.utils import check_equivalence, DQCPass
+from pytket_dqc.utils import check_equivalence, DQCPass, ConstraintException
 from pytket_dqc.networks import NISQNetwork
 from pytket_dqc.refiners import (
     NeighbouringDTypeMerge,
@@ -735,6 +735,22 @@ def test_vertex_cover_refiner_complex_1():
         circ, pytket_circ, distribution.get_qubit_mapping()
     )
 
+    # Try bounding the communication memory
+    network.server_ebit_mem = {0: 1, 1: 1, 2: 1, 3: 1}
+
+    caught = False
+    try:
+        distribution.to_pytket_circuit(allow_update=False)
+    except ConstraintException:
+        caught = True
+    assert caught
+
+    circ_with_dist = distribution.to_pytket_circuit()
+
+    assert check_equivalence(
+        circ, circ_with_dist, distribution.get_qubit_mapping()
+    )
+
 
 def test_vertex_cover_refiner_complex_2():
     network = NISQNetwork(
@@ -780,6 +796,22 @@ def test_vertex_cover_refiner_complex_2():
         circ, pytket_circ, distribution.get_qubit_mapping()
     )
 
+    # Try bounding the communication memory
+    network.server_ebit_mem = {0: 1, 1: 3, 2: 1, 3: 2, 4: 1, 5: 2}
+
+    caught = False
+    try:
+        distribution.to_pytket_circuit(allow_update=False)
+    except ConstraintException:
+        caught = True
+    assert caught
+
+    circ_with_dist = distribution.to_pytket_circuit()
+
+    assert check_equivalence(
+        circ, circ_with_dist, distribution.get_qubit_mapping()
+    )
+
 
 def test_vertex_cover_refiner_pauli_circ():
     # Randomly generated circuit of type pauli, depth 10 and 10 qubits
@@ -821,6 +853,22 @@ def test_vertex_cover_refiner_pauli_circ():
         circ, pytket_circ, distribution.get_qubit_mapping()
     )
 
+    # Try bounding the communication memory
+    network.server_ebit_mem = {0: 2, 1: 3, 2: 3, 3: 1, 4: 2}
+
+    caught = False
+    try:
+        distribution.to_pytket_circuit(allow_update=False)
+    except ConstraintException:
+        caught = True
+    assert caught
+
+    circ_with_dist = distribution.to_pytket_circuit()
+
+    assert check_equivalence(
+        circ, circ_with_dist, distribution.get_qubit_mapping()
+    )
+
 
 def test_vertex_cover_refiner_random_circ():
     # Randomly generated circuit of type random, depth 6 and 6 qubits
@@ -859,6 +907,16 @@ def test_vertex_cover_refiner_random_circ():
     assert check_equivalence(
         circ, pytket_circ, distribution.get_qubit_mapping()
     )
+
+    # Try bounding the communication memory
+    network.server_ebit_mem = {0: 1, 1: 1, 2: 1, 3: 1, 4: 1}
+
+    caught = False
+    try:
+        distribution.to_pytket_circuit(allow_update=False)
+    except ConstraintException:
+        caught = True
+    assert not caught  # Already satisfies the constraint
 
 
 def test_vertex_cover_refiner_frac_CZ_circ():
@@ -899,6 +957,22 @@ def test_vertex_cover_refiner_frac_CZ_circ():
     pytket_circ = distribution.to_pytket_circuit()
     assert check_equivalence(
         circ, pytket_circ, distribution.get_qubit_mapping()
+    )
+
+    # Try bounding the communication memory
+    network.server_ebit_mem = {0: 1, 1: 3, 2: 2, 3: 1, 4: 3}
+
+    caught = False
+    try:
+        distribution.to_pytket_circuit(allow_update=False)
+    except ConstraintException:
+        caught = True
+    assert caught
+
+    circ_with_dist = distribution.to_pytket_circuit()
+
+    assert check_equivalence(
+        circ, circ_with_dist, distribution.get_qubit_mapping()
     )
 
 
