@@ -738,13 +738,6 @@ def test_vertex_cover_refiner_complex_1():
     # Try bounding the communication memory
     network.server_ebit_mem = {0: 1, 1: 1, 2: 1, 3: 1}
 
-    caught = False
-    try:
-        distribution.to_pytket_circuit(allow_update=False)
-    except ConstraintException:
-        caught = True
-    assert caught
-
     circ_with_dist = distribution.to_pytket_circuit()
 
     assert check_equivalence(

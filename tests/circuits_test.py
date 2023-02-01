@@ -1125,7 +1125,7 @@ def test_to_pytket_circuit_circ_with_embeddings_2():
     network = NISQNetwork(
         [[0, 1], [0, 2], [0, 3], [3, 4]],
         {0: [0], 1: [1, 2], 2: [3, 4], 3: [7], 4: [5, 6]},
-        server_ebit_mem={0: 1, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1}
+        server_ebit_mem={0: 1, 1: 1, 2: 1, 3: 1, 4: 1}
     )
     distribution = Distribution(hyp_circ, placement, network)
     assert distribution.is_valid()

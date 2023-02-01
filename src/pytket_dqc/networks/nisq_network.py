@@ -87,7 +87,6 @@ class NISQNetwork(ServerNetwork):
         # Check that the resulting network is connected.
         assert nx.is_connected(self.get_nisq_nx())
 
-
     def __eq__(self, other):
         """Check equality based on equality of components"""
         if isinstance(other, NISQNetwork):
@@ -100,12 +99,16 @@ class NISQNetwork(ServerNetwork):
 
     def to_dict(
         self
-    ) -> dict[str, Union[list[list[int]], dict[int, list[int]]]]:
+    ) -> dict[str, Union[
+        list[list[int]], dict[int, list[int]], dict[int, int]
+    ]]:
         """Serialise NISQNetwork
 
         :return: Dictionary serialisation of NISQNetwork. Dictionary has keys
             'server_coupling' and 'server_qubits'.
-        :rtype: dict[str, Union[list[list[int]], dict[int, list[int]]]]
+        :rtype: dict[str, Union[
+                list[list[int]], dict[int, list[int]], dict[int, int]
+            ]]
         """
 
         return {
