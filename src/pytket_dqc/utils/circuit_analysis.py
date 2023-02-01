@@ -1,6 +1,17 @@
 from pytket import Circuit, OpType  # type: ignore
 
 
+class ConstraintException(Exception):
+    """Raised when the communication memory constraint of a server is
+    exceeded. Stores the offending server and gate vertex at which
+    the constraint was violated.
+    """
+    def __init__(self, message, server):
+        super().__init__(message)
+        self.server = server
+        self.v_gate = None
+
+
 def all_cu1_local(circ: Circuit) -> bool:
     """Checks that all of the CU1 gates in the circuit are local.
     """
