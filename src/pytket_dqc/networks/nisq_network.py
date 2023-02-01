@@ -6,7 +6,7 @@ from pytket.placement import NoiseAwarePlacement  # type:ignore
 from pytket.architecture import Architecture  # type:ignore
 from pytket.circuit import Node  # type:ignore
 from pytket_dqc.circuits.hypergraph_circuit import HypergraphCircuit
-from typing import Tuple, Union, cast
+from typing import Tuple, Union, cast, Optional
 
 
 class NISQNetwork(ServerNetwork):
@@ -18,7 +18,8 @@ class NISQNetwork(ServerNetwork):
     def __init__(
         self,
         server_coupling: list[list[int]],
-        server_qubits: dict[int, list[int]]
+        server_qubits: dict[int, list[int]],
+        server_ebit_mem: Optional[dict[int, int]] = None
     ) -> None:
         """Initialisation function. Performs checks on inputted network
         description.
@@ -29,21 +30,50 @@ class NISQNetwork(ServerNetwork):
         :param server_qubits: Dictionary from server index to qubits it
             contains.
         :type server_qubits: dict[int, list[int]]
+        :param server_ebit_mem: Dictionary from server index to its
+            communication capacity. Optional; if not given, assumes unbounded.
+        :type server_ebit_mem: Optional[dict[int, int]]
         :raises Exception: Raised if a server is empty.
-        :raises Exception: Raised if a server is in more than server.
+        :raises Exception: Raised if a qubit is in more than one server.
+        :raises Exception: When the user provides `server_ebit_mem`, raised if
+            the list of servers does not match `self.get_server_list()`.
         """
 
         super().__init__(server_coupling)
 
         self.server_qubits = server_qubits
+        if server_ebit_mem is None:
+            # Set to negative capacity, which will be interpreted as unbounded
+            self.server_ebit_mem = {s: -1 for s in server_qubits.keys()}
+        else:
+            self.server_ebit_mem = server_ebit_mem
 
-        # Check that each server has a collection of qubits
-        # which belong to it specified.
-        for server in self.get_server_list():
+        server_list = self.get_server_list()
+        for server in server_list:
+            # Check that each server appears on `server_qubits`.
             if server not in self.server_qubits.keys():
                 raise Exception(
                     f"The qubits in server {server}"
                     " have not been specified."
+                )
+            # Check that each server appears on `server_ebit_mem`.
+            if server not in self.server_ebit_mem.keys():
+                raise Exception(
+                    f"The communication memory capacity of server {server}"
+                    " has not been specified."
+                )
+
+        # Check that there aren't more servers in the dictionaries than
+        # servers in the network.
+        if len(self.server_qubits.keys()) > len(server_list):
+            raise Exception(
+                    "The network defined does not cover all servers with"
+                    "qubits allocated to them."
+                )
+        if len(self.server_ebit_mem.keys()) > len(server_list):
+            raise Exception(
+                    "The network defined does not cover all servers that"
+                    "have a bound to communication memory assigned to them."
                 )
 
         qubit_list = self.get_qubit_list()
@@ -57,11 +87,13 @@ class NISQNetwork(ServerNetwork):
         # Check that the resulting network is connected.
         assert nx.is_connected(self.get_nisq_nx())
 
+
     def __eq__(self, other):
         """Check equality based on equality of components"""
         if isinstance(other, NISQNetwork):
             return (
                 self.server_qubits == other.server_qubits and
+                self.server_ebit_mem == other.server_ebit_mem and
                 super().__eq__(other)
             )
         return False
@@ -79,6 +111,7 @@ class NISQNetwork(ServerNetwork):
         return {
             'server_coupling': self.server_coupling,
             'server_qubits': self.server_qubits,
+            'server_ebit_mem': self.server_ebit_mem
         }
 
     @classmethod
@@ -112,9 +145,18 @@ class NISQNetwork(ServerNetwork):
             for server, qubit_list in server_qubits.items()
         }
 
+        server_ebit_mem = cast(
+            dict[int, int], network_dict['server_ebit_mem']
+        )
+        server_ebit_mem = {
+            int(server): int(bound)
+            for server, bound in server_ebit_mem.items()
+        }
+
         return cls(
             server_coupling=server_coupling,
             server_qubits=server_qubits,
+            server_ebit_mem=server_ebit_mem,
         )
 
     def can_implement(self, dist_circ: HypergraphCircuit) -> bool:
