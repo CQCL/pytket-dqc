@@ -59,6 +59,7 @@ intertwined_hyperedge_list = [
     for vertices in intertwined_hyperedge_vertex_list
 ]
 
+
 def intertwined_test_placement() -> Placement:
     return Placement(
         {
