@@ -299,13 +299,13 @@ class Distribution:
 
         return qubit_map
 
-    def to_pytket_circuit(self, allow_update: bool = True) -> Circuit:
+    def to_pytket_circuit(self, allow_update: bool = False) -> Circuit:
         """Generate the circuit corresponding to this `Distribution`.
 
         :param allow_update: Whether the `Distribution` may be altered by
             this method, in order to make it satisfy the network's
             communication capacity (in case it has been bounded). Optional
-            parameter, defaults to True.
+            parameter, defaults to False.
         :raise ConstraintException: If a server's communication capacity
             is exceeded and `allow_update` was set to False.
         """
@@ -383,8 +383,9 @@ class Distribution:
                     if server_ebit_mem[server] <= len(self.occupied[server]):
                         raise ConstraintException(
                             "Communication memory capacity of server "
-                            f"{server} exceeded. Consider setting "
-                            "allow_update to True.", server
+                            f"{server} exceeded. \n\tConsider setting "
+                            "allow_update to True: \n\t"
+                            "to_pytket_circuit(allow_update=True)", server
                         )
 
                 if not self.available[server]:
@@ -1167,7 +1168,7 @@ class Distribution:
             assert hyp_circ is self.circuit
 
             # Run to_pytket_circuit on the updated distribution
-            return self.to_pytket_circuit()
+            return self.to_pytket_circuit(allow_update=allow_update)
 
         # Turn every CZ (correction) gate to CU1; remove barriers
         # Remove the origin qubit from the name of each start_proc

@@ -738,7 +738,7 @@ def test_vertex_cover_refiner_complex_1():
     # Try bounding the communication memory
     network.server_ebit_mem = {0: 1, 1: 1, 2: 1, 3: 1}
 
-    circ_with_dist = distribution.to_pytket_circuit()
+    circ_with_dist = distribution.to_pytket_circuit(allow_update=True)
 
     assert check_equivalence(
         circ, circ_with_dist, distribution.get_qubit_mapping()
@@ -794,12 +794,12 @@ def test_vertex_cover_refiner_complex_2():
 
     caught = False
     try:
-        distribution.to_pytket_circuit(allow_update=False)
+        distribution.to_pytket_circuit()
     except ConstraintException:
         caught = True
     assert caught
 
-    circ_with_dist = distribution.to_pytket_circuit()
+    circ_with_dist = distribution.to_pytket_circuit(allow_update=True)
 
     assert check_equivalence(
         circ, circ_with_dist, distribution.get_qubit_mapping()
@@ -851,12 +851,12 @@ def test_vertex_cover_refiner_pauli_circ():
 
     caught = False
     try:
-        distribution.to_pytket_circuit(allow_update=False)
+        distribution.to_pytket_circuit()
     except ConstraintException:
         caught = True
     assert caught
 
-    circ_with_dist = distribution.to_pytket_circuit()
+    circ_with_dist = distribution.to_pytket_circuit(allow_update=True)
 
     assert check_equivalence(
         circ, circ_with_dist, distribution.get_qubit_mapping()
@@ -906,7 +906,7 @@ def test_vertex_cover_refiner_random_circ():
 
     caught = False
     try:
-        distribution.to_pytket_circuit(allow_update=False)
+        distribution.to_pytket_circuit()
     except ConstraintException:
         caught = True
     assert not caught  # Already satisfies the constraint
@@ -957,12 +957,12 @@ def test_vertex_cover_refiner_frac_CZ_circ():
 
     caught = False
     try:
-        distribution.to_pytket_circuit(allow_update=False)
+        distribution.to_pytket_circuit()
     except ConstraintException:
         caught = True
     assert caught
 
-    circ_with_dist = distribution.to_pytket_circuit()
+    circ_with_dist = distribution.to_pytket_circuit(allow_update=True)
 
     assert check_equivalence(
         circ, circ_with_dist, distribution.get_qubit_mapping()

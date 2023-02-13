@@ -843,12 +843,12 @@ def test_to_pytket_constrained_mem_simple():
 
     caught = False
     try:
-        distribution.to_pytket_circuit(allow_update=False)
+        distribution.to_pytket_circuit()
     except ConstraintException:
         caught = True
     assert caught
 
-    circ_with_dist = distribution.to_pytket_circuit()
+    circ_with_dist = distribution.to_pytket_circuit(allow_update=True)
 
     assert check_equivalence(
         circ, circ_with_dist, distribution.get_qubit_mapping()
@@ -935,7 +935,7 @@ def test_to_pytket_circuit_with_embedding_2q():
 
     caught = False
     try:
-        distribution.to_pytket_circuit(allow_update=False)
+        distribution.to_pytket_circuit()
     except ConstraintException:
         caught = True
     assert not caught  # Already satisfies the constraint
@@ -1030,7 +1030,7 @@ def test_to_pytket_circuit_circ_with_embeddings_1():
     distribution = Distribution(hyp_circ, placement, network)
     assert distribution.is_valid()
 
-    circ_with_dist = distribution.to_pytket_circuit()
+    circ_with_dist = distribution.to_pytket_circuit(allow_update=True)
 
     assert check_equivalence(
         circ, circ_with_dist, distribution.get_qubit_mapping()
@@ -1132,12 +1132,12 @@ def test_to_pytket_circuit_circ_with_embeddings_2():
 
     caught = False
     try:
-        distribution.to_pytket_circuit(allow_update=False)
+        distribution.to_pytket_circuit()
     except ConstraintException:
         caught = True
     assert caught
 
-    circ_with_dist = distribution.to_pytket_circuit()
+    circ_with_dist = distribution.to_pytket_circuit(allow_update=True)
 
     assert check_equivalence(
         circ, circ_with_dist, distribution.get_qubit_mapping()
@@ -1239,12 +1239,12 @@ def test_to_pytket_circuit_circ_with_intertwined_embeddings_1():
 
     caught = False
     try:
-        distribution.to_pytket_circuit(allow_update=False)
+        distribution.to_pytket_circuit()
     except ConstraintException:
         caught = True
     assert caught
 
-    circ_with_dist = distribution.to_pytket_circuit()
+    circ_with_dist = distribution.to_pytket_circuit(allow_update=True)
 
     assert check_equivalence(
         circ, circ_with_dist, distribution.get_qubit_mapping()
@@ -1392,12 +1392,12 @@ def test_to_pytket_circuit_circ_with_intertwined_embeddings_3():
 
     caught = False
     try:
-        distribution.to_pytket_circuit(allow_update=False)
+        distribution.to_pytket_circuit()
     except ConstraintException:
         caught = True
     assert caught
 
-    circ_with_dist = distribution.to_pytket_circuit()
+    circ_with_dist = distribution.to_pytket_circuit(allow_update=True)
 
     assert check_equivalence(
         circ, circ_with_dist, distribution.get_qubit_mapping()
@@ -1481,12 +1481,12 @@ def test_to_pytket_circuit_M_P_choice_collision():
 
     caught = False
     try:
-        distribution.to_pytket_circuit(allow_update=False)
+        distribution.to_pytket_circuit()
     except ConstraintException:
         caught = True
     assert caught
 
-    circ_with_dist = distribution.to_pytket_circuit()
+    circ_with_dist = distribution.to_pytket_circuit(allow_update=True)
 
     assert check_equivalence(
         circ, circ_with_dist, distribution.get_qubit_mapping()
@@ -1591,12 +1591,12 @@ def test_to_pytket_circuit_mixing_H_and_D_embeddings():
 
     caught = False
     try:
-        distribution.to_pytket_circuit(allow_update=False)
+        distribution.to_pytket_circuit()
     except ConstraintException:
         caught = True
     assert caught
 
-    circ_with_dist = distribution.to_pytket_circuit()
+    circ_with_dist = distribution.to_pytket_circuit(allow_update=True)
 
     assert check_equivalence(
         circ, circ_with_dist, distribution.get_qubit_mapping()
@@ -1686,12 +1686,12 @@ def test_to_pytket_circuit_with_pauli_circ():
 
     caught = False
     try:
-        distribution.to_pytket_circuit(allow_update=False)
+        distribution.to_pytket_circuit()
     except ConstraintException:
         caught = True
     assert caught
 
-    circ_with_dist = distribution.to_pytket_circuit()
+    circ_with_dist = distribution.to_pytket_circuit(allow_update=True)
 
     assert check_equivalence(
         circ, circ_with_dist, distribution.get_qubit_mapping()
@@ -1754,12 +1754,12 @@ def test_to_pytket_circuit_with_frac_cz_circ():
 
     caught = False
     try:
-        distribution.to_pytket_circuit(allow_update=False)
+        distribution.to_pytket_circuit()
     except ConstraintException:
         caught = True
     assert caught
 
-    circ_with_dist = distribution.to_pytket_circuit()
+    circ_with_dist = distribution.to_pytket_circuit(allow_update=True)
 
     assert check_equivalence(
         circ, circ_with_dist, distribution.get_qubit_mapping()
