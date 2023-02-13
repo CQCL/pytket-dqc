@@ -760,7 +760,7 @@ def test_vertex_cover_refiner_intertwined():
 
     distribution = Distribution(
         circuit=test_hyp_circuit,
-        placement=intertwined_test_placement,
+        placement=intertwined_test_placement(),
         network=intertwined_test_network,
     )
     VertexCover().refine(distribution, vertex_cover_alg="all_brute_force")
