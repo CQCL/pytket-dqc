@@ -287,18 +287,20 @@ class GainManager:
         call ``is_move_valid``.
         """
 
-        # If a hyperedge requires embedding, moving a vertex that is contained
+        placement_dict = self.distribution.placement.placement
+        dist_circ = self.distribution.circuit
+
+        # If a hyperedge requires embedding, moving a qubit-vertex contained
         # in the embedded hyperedge could cause issues: it may be that it is
         # no longer embeddable, so the hyperedge that required embedding can
         # no longer be implemented with the estimated cost.
         # To avoid this, we simply forbid placement moves once a hyperedge
         # embedded.
-        if any(b for b in self.requires_h_embedded_cu1.values()):
+        if dist_circ.is_qubit_vertex(vertex) and any(
+            b for b in self.requires_h_embedded_cu1.values()
+        ):
             raise Exception("Changing the placement after gates are embedded \
                              is not allowed.")
-
-        placement_dict = self.distribution.placement.placement
-        dist_circ = self.distribution.circuit
 
         # Ignore if the move would leave in the same server
         if placement_dict[vertex] != server:
