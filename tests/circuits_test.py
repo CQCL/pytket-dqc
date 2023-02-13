@@ -18,7 +18,12 @@ from pytket_dqc.utils.gateset import (
     telep_proc,
 )
 from pytket_dqc.allocators import Brute, Random, HypergraphPartitioning
-from pytket_dqc.utils import check_equivalence, DQCPass, ConstraintException
+from pytket_dqc.utils import (
+    check_equivalence,
+    DQCPass,
+    ConstraintException,
+    ebit_memory_required
+)
 from pytket_dqc.networks import NISQNetwork, ScaleFreeNISQNetwork
 from pytket.circuit import QControlBox, Op, OpType  # type: ignore
 from pytket_dqc.allocators import Annealing
@@ -940,6 +945,9 @@ def test_to_pytket_circuit_with_embedding_2q():
         caught = True
     assert not caught  # Already satisfies the constraint
 
+    for server, ebit_req in ebit_memory_required(circ_with_dist).items():
+        assert ebit_req <= network.server_ebit_mem[server]
+
 
 def test_to_pytket_circuit_circ_with_embeddings_1():
 
@@ -1035,6 +1043,9 @@ def test_to_pytket_circuit_circ_with_embeddings_1():
     assert check_equivalence(
         circ, circ_with_dist, distribution.get_qubit_mapping()
     )
+
+    for server, ebit_req in ebit_memory_required(circ_with_dist).items():
+        assert ebit_req <= network.server_ebit_mem[server]
 
 
 def test_to_pytket_circuit_circ_with_embeddings_2():
@@ -1143,6 +1154,9 @@ def test_to_pytket_circuit_circ_with_embeddings_2():
         circ, circ_with_dist, distribution.get_qubit_mapping()
     )
 
+    for server, ebit_req in ebit_memory_required(circ_with_dist).items():
+        assert ebit_req <= network.server_ebit_mem[server]
+
 
 def test_to_pytket_circuit_circ_with_embeddings_3():
     # This test failed due to a bug when ending links
@@ -1249,6 +1263,9 @@ def test_to_pytket_circuit_circ_with_intertwined_embeddings_1():
     assert check_equivalence(
         circ, circ_with_dist, distribution.get_qubit_mapping()
     )
+
+    for server, ebit_req in ebit_memory_required(circ_with_dist).items():
+        assert ebit_req <= network.server_ebit_mem[server]
 
 
 def test_to_pytket_circuit_circ_with_intertwined_embeddings_2():
@@ -1403,6 +1420,9 @@ def test_to_pytket_circuit_circ_with_intertwined_embeddings_3():
         circ, circ_with_dist, distribution.get_qubit_mapping()
     )
 
+    for server, ebit_req in ebit_memory_required(circ_with_dist).items():
+        assert ebit_req <= network.server_ebit_mem[server]
+
 
 def test_to_pytket_circuit_M_P_choice_collision():
     # This is the case of a circuit whose chosen distribution has
@@ -1491,6 +1511,9 @@ def test_to_pytket_circuit_M_P_choice_collision():
     assert check_equivalence(
         circ, circ_with_dist, distribution.get_qubit_mapping()
     )
+
+    for server, ebit_req in ebit_memory_required(circ_with_dist).items():
+        assert ebit_req <= network.server_ebit_mem[server]
 
 
 def test_to_pytket_circuit_with_D_embedding():
@@ -1602,6 +1625,9 @@ def test_to_pytket_circuit_mixing_H_and_D_embeddings():
         circ, circ_with_dist, distribution.get_qubit_mapping()
     )
 
+    for server, ebit_req in ebit_memory_required(circ_with_dist).items():
+        assert ebit_req <= network.server_ebit_mem[server]
+
 
 def test_to_pytket_circuit_with_hyperedge_requiring_euler():
     # The circuit given below has a hyperedge between the first and last
@@ -1697,6 +1723,9 @@ def test_to_pytket_circuit_with_pauli_circ():
         circ, circ_with_dist, distribution.get_qubit_mapping()
     )
 
+    for server, ebit_req in ebit_memory_required(circ_with_dist).items():
+        assert ebit_req <= network.server_ebit_mem[server]
+
 
 def test_to_pytket_circuit_with_random_circ():
     # Randomly generated circuit of type random, depth 6 and 6 qubits
@@ -1764,6 +1793,9 @@ def test_to_pytket_circuit_with_frac_cz_circ():
     assert check_equivalence(
         circ, circ_with_dist, distribution.get_qubit_mapping()
     )
+
+    for server, ebit_req in ebit_memory_required(circ_with_dist).items():
+        assert ebit_req <= network.server_ebit_mem[server]
 
 
 @pytest.mark.skip(reason="Support for teleportation has been disabled")
