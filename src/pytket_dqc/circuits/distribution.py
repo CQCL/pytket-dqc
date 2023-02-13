@@ -2,7 +2,11 @@ from __future__ import annotations
 from pytket_dqc.circuits import HypergraphCircuit, Hyperedge
 from pytket_dqc.placement import Placement
 from pytket_dqc.networks import NISQNetwork
-from pytket_dqc.utils import steiner_tree, check_equivalence
+from pytket_dqc.utils import (
+    steiner_tree,
+    check_equivalence,
+    ConstraintException
+)
 from pytket_dqc.utils.gateset import (
     start_proc,
     is_start_proc,
@@ -295,7 +299,16 @@ class Distribution:
 
         return qubit_map
 
-    def to_pytket_circuit(self) -> Circuit:
+    def to_pytket_circuit(self, allow_update: bool = False) -> Circuit:
+        """Generate the circuit corresponding to this `Distribution`.
+
+        :param allow_update: Whether the `Distribution` may be altered by
+            this method, in order to make it satisfy the network's
+            communication capacity (in case it has been bounded). Optional
+            parameter, defaults to False.
+        :raise ConstraintException: If a server's communication capacity
+            is exceeded and `allow_update` was set to False.
+        """
         if not self.is_valid():
             raise Exception("The distribution of the circuit is not valid!")
 
@@ -305,13 +318,12 @@ class Distribution:
         server_graph = self.network.get_server_nx()
         placement_map = self.placement.placement
         qubit_mapping = self.get_qubit_mapping()
+        server_ebit_mem = self.network.server_ebit_mem
 
         # -- INTERNAL CLASSES -- #
-
         class EjppAction(NamedTuple):
             """Encodes the information to create Starting and EndingProcesses
             """
-
             from_qubit: Qubit
             to_qubit: Qubit
 
@@ -363,7 +375,19 @@ class Distribution:
                 """Returns an available link qubit in ``server``. If there are
                 none, it creates a new one.
                 Do not call this function outside the LinkManager class.
+
+                :raise ConstraintException: If a server's communication
+                capacity is exceeded.
                 """
+                if server_ebit_mem[server] > 0:  # There's a bound to ebit mem
+                    if server_ebit_mem[server] <= len(self.occupied[server]):
+                        raise ConstraintException(
+                            "Communication memory capacity of server "
+                            f"{server} exceeded. \n\tConsider setting "
+                            "allow_update to True: \n\t"
+                            "to_pytket_circuit(allow_update=True)", server
+                        )
+
                 if not self.available[server]:
                     next_id = len(self.occupied[server])
                     qubit = Qubit(f"server_{server}_link_register", next_id)
@@ -568,6 +592,9 @@ class Distribution:
             """Given a circuit equivalent to the original one, but with some
             of its non-local gates already distributed, implement those of the
             given hyperedge and return the new equivalent circuit.
+
+            :raise ConstraintException: If a server's communication capacity
+                is exceeded.
             """
             if len(hyperedge.vertices) == 1:  # Edge case: no gate vertices
                 return circ
@@ -581,29 +608,48 @@ class Distribution:
             src_qubit = qubit_mapping[hyp_circ.get_qubit_of_vertex(q_vertex)]
 
             # Data to keep around during iterations
-            cu1_count = 0
+            #   `v_gate` stands for "gate vertex"; it keeps track of
+            #   the vertex index of the last CU1 gate encountered while
+            #   scanning the circuit
+            v_gate = len(qubit_mapping) - 1
+            #   `currently_h_embedding` is a boolean flag that indicates
+            #   whether we are within an embedding unit at the moment
             currently_h_embedding = False
+            #   `linkman` will help use manage the link qubits
             linkman = LinkManager(hyperedge, self.network.get_server_list())
-            carry_phase = 0  # Phase pushed around within H-embedding
+            #   `carry_phase` is the phase pushed around within an embedding
+            #   unit
+            carry_phase = 0
 
             # Iterate over the commands of `circ`
             commands = circ.get_commands()
             for cmd_idx, cmd in enumerate(commands):
                 # Keep track of how many of the original CU1 we've seen so far
                 if cmd.op.type == OpType.CU1:
-                    cu1_count += 1
+                    v_gate += 1
                 # Keep track of the occupation of link qubits
                 if is_start_proc(cmd):
-                    linkman.update_occupation(cmd.qubits[1], starting=True)
+                    try:
+                        linkman.update_occupation(
+                            cmd.qubits[1], starting=True
+                        )
+                    except ConstraintException as e:
+                        e.v_gate = v_gate
+                        raise e
                     remote_qubit = linkman.get_updated_name(cmd.qubits[1])
                     if remote_qubit not in new_circ.qubits:
                         new_circ.add_qubit(remote_qubit)
                 if is_end_proc(cmd):
-                    linkman.update_occupation(cmd.qubits[0], starting=False)
+                    try:
+                        linkman.update_occupation(
+                            cmd.qubits[0], starting=False
+                        )
+                    except ConstraintException as e:
+                        e.v_gate = v_gate
+                        raise e
 
                 # Trivial for every command that is not in the hyperedge's
                 # subcircuit
-                v_gate = cu1_count + len(qubit_mapping) - 1
                 gate_vertices = hyp_circ.get_gate_vertices(hyperedge)
                 # fmt: off
                 if (
@@ -852,7 +898,11 @@ class Distribution:
                         target_server = placement_map[v_gate]
 
                         # Add the required starting processes (if any)
-                        start_actions = linkman.start_link(target_server)
+                        try:
+                            start_actions = linkman.start_link(target_server)
+                        except ConstraintException as e:
+                            e.v_gate = v_gate
+                            raise e
                         for ejpp_start in start_actions:
                             if ejpp_start.to_qubit not in new_circ.qubits:
                                 new_circ.add_qubit(ejpp_start.to_qubit)
@@ -929,8 +979,8 @@ class Distribution:
                                     ],
                                 )
                             # CZ gates are used here to distinguish from CU1
-                            # gates and, hence, do not mess with the
-                            # `cu1_count` in future calls to this function
+                            # gates and, hence, do not mess with the counter
+                            # `v_gate` in future calls to this function
 
                 # ~ EJPP starting process ~#
                 elif is_start_proc(cmd):
@@ -988,7 +1038,7 @@ class Distribution:
                 # replaced accordingly at the end of `to_pytket_circuit`.
                 #
                 # CZ gates correspond to correction gates due to H-embedding.
-                # We use CZ instead of CU1 to make sure that `cu1_count` is
+                # We use CZ instead of CU1 to make sure that `v_gate` is
                 # only considering the CU1 gates originally in the circuit.
                 # They will be replaced with CU1 gates on the final circuit.
                 #
@@ -1028,8 +1078,105 @@ class Distribution:
                 new_circ.add_barrier(new_circ.qubits)
 
         # Implement the hyperedges one by one
-        for hedge in hyp_circ.hyperedge_list:
-            new_circ = to_pytket_circuit_one_hyperedge(hedge, new_circ)
+        try:
+            for hedge in hyp_circ.hyperedge_list:
+                new_circ = to_pytket_circuit_one_hyperedge(hedge, new_circ)
+        except ConstraintException as e:
+            # If the user refuses to change the distribution, raise exception.
+            if not allow_update:
+                raise e
+
+            # Otherwise, we must split a hyperedge to attempt to reduce the
+            # number of ebits alive at the point the constrained was violated.
+            # To do so, find all hyperedges simultaneous to `e.v_gate`.
+            # Filter out actual edges since these are just a qubit-vertex and
+            # a gate-vertex and cannot be split.
+            hedges = [
+                h
+                for h in hyp_circ.hyperedge_list
+                if len(h.vertices) > 2
+                and any(v <= e.v_gate for v in hyp_circ.get_gate_vertices(h))
+                and any(v >= e.v_gate for v in hyp_circ.get_gate_vertices(h))
+            ]
+
+            # Choose the hyperedge from `hedges` that has the further distance
+            # between its two vertices before and after `v_gate`.
+            chosen_hedge = None
+            longest_dist = -1
+            for h in hedges:
+                gates = hyp_circ.get_gate_vertices(h)
+                # Get the first gate-vertex previous to `e.v_gate`
+                v_prev = e.v_gate  # Default if none
+                prev_vertices = [v for v in gates if v < e.v_gate]
+                if prev_vertices:
+                    v_prev = max(prev_vertices)
+                # Get the first gate-vertex after `e.v_gate`
+                v_post = e.v_gate  # Default if none
+                post_vertices = [v for v in gates if v > e.v_gate]
+                if post_vertices:
+                    v_post = min(post_vertices)
+                # Choose according to longest distance
+                dist = v_post - v_prev
+                if longest_dist < dist:
+                    # Check that this hyperedge actually uses a link
+                    # qubit on `e.server`.
+                    h_servers = [placement_map[v] for v in h.vertices]
+                    tree = steiner_tree(server_graph, h_servers)
+                    # If it does, it's the best split so far, otherwise skip.
+                    if e.server in tree.nodes:
+                        longest_dist = dist
+                        chosen_hedge = h
+
+            # If no hyperedge could be chosen, inform the user
+            if chosen_hedge is None:
+                home_servers = [
+                    placement_map[hyp_circ.get_qubit_vertex(h)]
+                    for h in hyp_circ.get_hyperedges_containing([e.v_gate])
+                ]
+                placed_server = placement_map[e.v_gate]
+                if placed_server not in home_servers:
+                    # Then, `v_gate` is an evicted gate; it can only be
+                    # implemented if chosen_server has more than 2 qubits
+                    # of communication capacity.
+                    if server_ebit_mem[placed_server] < 2:
+                        raise ConstraintException(
+                            f"Could not implement the gate {e.v_gate} since"
+                            "it is placed on a non-home server "
+                            f"{placed_server} and said server has memory "
+                            "capacity less than two. Consider using an "
+                            "approach that does not produce evicted gates, "
+                            "or increase the communication memory of "
+                            f"server {placed_server}.", placed_server
+                        )
+                # Otherwise, unexpected error
+                raise ConstraintException(
+                    "The distribution could not be amended to satisfy "
+                    "the bound on communication capacity.", e.server
+                )
+
+            # Split the chosen hyperedge
+            v_q = hyp_circ.get_qubit_vertex(chosen_hedge)
+            gates = hyp_circ.get_gate_vertices(chosen_hedge)
+            prev_vertices = [v for v in gates if v <= e.v_gate]
+            post_vertices = [v for v in gates if v > e.v_gate]
+            # If `post_vertices` is empty it can only be because the
+            # last gate vertex in `chosen_hedges` is `e.v_gate`. Fix split.
+            if not post_vertices:
+                last_prev = prev_vertices.pop()
+                assert last_prev == e.v_gate
+                post_vertices = [last_prev]
+            # Perform the split
+            prev_hedge = Hyperedge([v_q] + prev_vertices)
+            post_hedge = Hyperedge([v_q] + post_vertices)
+            hyp_circ.split_hyperedge(
+                old_hyperedge=chosen_hedge,
+                new_hyperedge_list=[prev_hedge, post_hedge],
+            )
+            # Sanity check: the distribution is updated "in place"
+            assert hyp_circ is self.circuit
+
+            # Run to_pytket_circuit on the updated distribution
+            return self.to_pytket_circuit(allow_update=allow_update)
 
         # Turn every CZ (correction) gate to CU1; remove barriers
         # Remove the origin qubit from the name of each start_proc

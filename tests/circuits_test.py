@@ -18,7 +18,12 @@ from pytket_dqc.utils.gateset import (
     telep_proc,
 )
 from pytket_dqc.allocators import Brute, Random, HypergraphPartitioning
-from pytket_dqc.utils import check_equivalence, DQCPass
+from pytket_dqc.utils import (
+    check_equivalence,
+    DQCPass,
+    ConstraintException,
+    ebit_memory_required
+)
 from pytket_dqc.networks import NISQNetwork, ScaleFreeNISQNetwork
 from pytket.circuit import QControlBox, Op, OpType  # type: ignore
 from pytket_dqc.allocators import Annealing
@@ -821,6 +826,40 @@ def test_to_pytket_circuit_from_placed_circuit():
         )
 
 
+def test_to_pytket_constrained_mem_simple():
+
+    network = NISQNetwork(
+        server_coupling=[[0, 1], [0, 2]],
+        server_qubits={0: [0], 1: [1], 2: [2]},
+        server_ebit_mem={0: 1, 1: 1, 2: 1}
+    )
+
+    circ = (
+        Circuit(2)
+        .add_gate(OpType.CU1, 0.3, [0, 1])
+        .H(0)
+        .add_gate(OpType.CU1, 1.0, [0, 1])
+        .add_gate(OpType.CU1, 0.3, [1, 0])
+    )
+
+    placement = Placement({0: 1, 1: 2, 2: 2, 3: 1, 4: 2})
+    distribution = Distribution(HypergraphCircuit(circ), placement, network)
+    assert distribution.is_valid()
+
+    caught = False
+    try:
+        distribution.to_pytket_circuit()
+    except ConstraintException:
+        caught = True
+    assert caught
+
+    circ_with_dist = distribution.to_pytket_circuit(allow_update=True)
+
+    assert check_equivalence(
+        circ, circ_with_dist, distribution.get_qubit_mapping()
+    )
+
+
 def test_to_pytket_circuit_with_embedding_1q():
 
     network = NISQNetwork(
@@ -890,6 +929,25 @@ def test_to_pytket_circuit_with_embedding_2q():
         circ, circ_with_dist, distribution.get_qubit_mapping()
     )
 
+    # Try bounding the communication memory
+    network = NISQNetwork(
+        [[2, 1], [1, 0], [1, 3], [0, 4]],
+        {0: [0], 1: [1], 2: [2], 3: [3], 4: [4, 5, 6]},
+        server_ebit_mem={0: 1, 1: 1, 2: 1, 3: 2, 4: 1}
+    )
+    distribution = Distribution(hyp_circ, placement, network)
+    assert distribution.is_valid()
+
+    caught = False
+    try:
+        distribution.to_pytket_circuit()
+    except ConstraintException:
+        caught = True
+    assert not caught  # Already satisfies the constraint
+
+    for server, ebit_req in ebit_memory_required(circ_with_dist).items():
+        assert ebit_req <= network.server_ebit_mem[server]
+
 
 def test_to_pytket_circuit_circ_with_embeddings_1():
 
@@ -952,6 +1010,42 @@ def test_to_pytket_circuit_circ_with_embeddings_1():
     assert check_equivalence(
         circ, circ_with_dist, distribution.get_qubit_mapping()
     )
+
+    # Try bounding the communication memory
+    network = NISQNetwork(
+        [[0, 1], [0, 2], [0, 3], [3, 4]],
+        {0: [0], 1: [1, 2], 2: [3, 4], 3: [7], 4: [5, 6]},
+        server_ebit_mem={0: 1, 1: 1, 2: 1, 3: 1, 4: 1}
+    )
+    distribution = Distribution(hyp_circ, placement, network)
+    assert distribution.is_valid()
+
+    caught = False
+    try:  # Evicted gate 13 causing problems
+        distribution.to_pytket_circuit()
+    except ConstraintException as e:
+        e.server = 3
+        caught = True
+    assert caught
+
+    # The solution is to increase the capacity of server 3
+    # Similar issue with server 0
+    network = NISQNetwork(
+        [[0, 1], [0, 2], [0, 3], [3, 4]],
+        {0: [0], 1: [1, 2], 2: [3, 4], 3: [7], 4: [5, 6]},
+        server_ebit_mem={0: 2, 1: 1, 2: 1, 3: 2, 4: 1}
+    )
+    distribution = Distribution(hyp_circ, placement, network)
+    assert distribution.is_valid()
+
+    circ_with_dist = distribution.to_pytket_circuit(allow_update=True)
+
+    assert check_equivalence(
+        circ, circ_with_dist, distribution.get_qubit_mapping()
+    )
+
+    for server, ebit_req in ebit_memory_required(circ_with_dist).items():
+        assert ebit_req <= network.server_ebit_mem[server]
 
 
 def test_to_pytket_circuit_circ_with_embeddings_2():
@@ -1038,6 +1132,31 @@ def test_to_pytket_circuit_circ_with_embeddings_2():
         circ, circ_with_dist, distribution.get_qubit_mapping()
     )
 
+    # Try bounding the communication memory
+    network = NISQNetwork(
+        [[0, 1], [0, 2], [0, 3], [3, 4]],
+        {0: [0], 1: [1, 2], 2: [3, 4], 3: [7], 4: [5, 6]},
+        server_ebit_mem={0: 1, 1: 1, 2: 1, 3: 1, 4: 1}
+    )
+    distribution = Distribution(hyp_circ, placement, network)
+    assert distribution.is_valid()
+
+    caught = False
+    try:
+        distribution.to_pytket_circuit()
+    except ConstraintException:
+        caught = True
+    assert caught
+
+    circ_with_dist = distribution.to_pytket_circuit(allow_update=True)
+
+    assert check_equivalence(
+        circ, circ_with_dist, distribution.get_qubit_mapping()
+    )
+
+    for server, ebit_req in ebit_memory_required(circ_with_dist).items():
+        assert ebit_req <= network.server_ebit_mem[server]
+
 
 def test_to_pytket_circuit_circ_with_embeddings_3():
     # This test failed due to a bug when ending links
@@ -1122,6 +1241,31 @@ def test_to_pytket_circuit_circ_with_intertwined_embeddings_1():
     assert check_equivalence(
         circ, circ_with_dist, distribution.get_qubit_mapping()
     )
+
+    # Try bounding the communication memory
+    network = NISQNetwork(
+        server_coupling=[[0, 1]],
+        server_qubits={0: [0], 1: [1, 2, 3, 4]},
+        server_ebit_mem={0: 1, 1: 1}
+    )
+    distribution = Distribution(hyp_circ, placement, network)
+    assert distribution.is_valid()
+
+    caught = False
+    try:
+        distribution.to_pytket_circuit()
+    except ConstraintException:
+        caught = True
+    assert caught
+
+    circ_with_dist = distribution.to_pytket_circuit(allow_update=True)
+
+    assert check_equivalence(
+        circ, circ_with_dist, distribution.get_qubit_mapping()
+    )
+
+    for server, ebit_req in ebit_memory_required(circ_with_dist).items():
+        assert ebit_req <= network.server_ebit_mem[server]
 
 
 def test_to_pytket_circuit_circ_with_intertwined_embeddings_2():
@@ -1252,6 +1396,33 @@ def test_to_pytket_circuit_circ_with_intertwined_embeddings_3():
         circ, circ_with_dist, distribution.get_qubit_mapping()
     )
 
+    # Try bounding the communication memory
+    network = NISQNetwork(
+        server_coupling=[[0, 1], [1, 2]],
+        server_qubits={0: [0], 1: [1], 2: [2, 3, 4, 5]},
+        server_ebit_mem={0: 1, 1: 1, 2: 1}
+    )
+    distribution = Distribution(
+        circuit=hyp_circ, placement=placement, network=network,
+    )
+    assert distribution.is_valid()
+
+    caught = False
+    try:
+        distribution.to_pytket_circuit()
+    except ConstraintException:
+        caught = True
+    assert caught
+
+    circ_with_dist = distribution.to_pytket_circuit(allow_update=True)
+
+    assert check_equivalence(
+        circ, circ_with_dist, distribution.get_qubit_mapping()
+    )
+
+    for server, ebit_req in ebit_memory_required(circ_with_dist).items():
+        assert ebit_req <= network.server_ebit_mem[server]
+
 
 def test_to_pytket_circuit_M_P_choice_collision():
     # This is the case of a circuit whose chosen distribution has
@@ -1316,6 +1487,33 @@ def test_to_pytket_circuit_M_P_choice_collision():
     assert check_equivalence(
         circ, circ_with_dist, distribution.get_qubit_mapping()
     )
+
+    # Try bounding the communication memory
+    network = NISQNetwork(
+        server_coupling=[[0, 1]],
+        server_qubits={0: [0], 1: [1]},
+        server_ebit_mem={0: 2, 1: 2}
+    )
+    distribution = Distribution(
+        circuit=hyp_circ, placement=placement, network=network,
+    )
+    assert distribution.is_valid()
+
+    caught = False
+    try:
+        distribution.to_pytket_circuit()
+    except ConstraintException:
+        caught = True
+    assert caught
+
+    circ_with_dist = distribution.to_pytket_circuit(allow_update=True)
+
+    assert check_equivalence(
+        circ, circ_with_dist, distribution.get_qubit_mapping()
+    )
+
+    for server, ebit_req in ebit_memory_required(circ_with_dist).items():
+        assert ebit_req <= network.server_ebit_mem[server]
 
 
 def test_to_pytket_circuit_with_D_embedding():
@@ -1403,6 +1601,33 @@ def test_to_pytket_circuit_mixing_H_and_D_embeddings():
         circ, circ_with_dist, distribution.get_qubit_mapping()
     )
 
+    # Try bounding the communication memory
+    network = NISQNetwork(
+        server_coupling=[[0, 1], [1, 2]],
+        server_qubits={0: [0], 1: [1], 2: [2, 3]},
+        server_ebit_mem={0: 2, 1: 1, 2: 2}
+    )
+    distribution = Distribution(
+        circuit=hyp_circ, placement=placement, network=network,
+    )
+    assert distribution.is_valid()
+
+    caught = False
+    try:
+        distribution.to_pytket_circuit()
+    except ConstraintException:
+        caught = True
+    assert caught
+
+    circ_with_dist = distribution.to_pytket_circuit(allow_update=True)
+
+    assert check_equivalence(
+        circ, circ_with_dist, distribution.get_qubit_mapping()
+    )
+
+    for server, ebit_req in ebit_memory_required(circ_with_dist).items():
+        assert ebit_req <= network.server_ebit_mem[server]
+
 
 def test_to_pytket_circuit_with_hyperedge_requiring_euler():
     # The circuit given below has a hyperedge between the first and last
@@ -1476,6 +1701,31 @@ def test_to_pytket_circuit_with_pauli_circ():
         distribution.get_qubit_mapping(),
     )
 
+    # Try bounding the communication memory
+    network = NISQNetwork(
+        server_coupling=[[2, 1], [1, 0], [1, 3], [0, 4]],
+        server_qubits={0: [0, 1, 2], 1: [3, 4], 2: [5, 6, 7], 3: [8], 4: [9]},
+        server_ebit_mem={0: 1, 1: 2, 2: 1, 3: 3, 4: 3}
+    )
+    distribution = allocator.allocate(circ, network, num_rounds=0)
+    assert distribution.is_valid()
+
+    caught = False
+    try:
+        distribution.to_pytket_circuit()
+    except ConstraintException:
+        caught = True
+    assert caught
+
+    circ_with_dist = distribution.to_pytket_circuit(allow_update=True)
+
+    assert check_equivalence(
+        circ, circ_with_dist, distribution.get_qubit_mapping()
+    )
+
+    for server, ebit_req in ebit_memory_required(circ_with_dist).items():
+        assert ebit_req <= network.server_ebit_mem[server]
+
 
 def test_to_pytket_circuit_with_random_circ():
     # Randomly generated circuit of type random, depth 6 and 6 qubits
@@ -1521,6 +1771,31 @@ def test_to_pytket_circuit_with_frac_cz_circ():
         distribution.to_pytket_circuit(),
         distribution.get_qubit_mapping(),
     )
+
+    # Try bounding the communication memory
+    network = NISQNetwork(
+        server_coupling=[[2, 1], [1, 0], [1, 3], [0, 4]],
+        server_qubits={0: [0, 1, 2], 1: [3, 4], 2: [5, 6, 7], 3: [8], 4: [9]},
+        server_ebit_mem={0: 2, 2: 3, 1: 1, 3: 1, 4: 3}
+    )
+    distribution = allocator.allocate(circ, network, num_rounds=0)
+    assert distribution.is_valid()
+
+    caught = False
+    try:
+        distribution.to_pytket_circuit()
+    except ConstraintException:
+        caught = True
+    if caught:
+
+        circ_with_dist = distribution.to_pytket_circuit(allow_update=True)
+
+        assert check_equivalence(
+            circ, circ_with_dist, distribution.get_qubit_mapping()
+        )
+
+        for server, ebit_req in ebit_memory_required(circ_with_dist).items():
+            assert ebit_req <= network.server_ebit_mem[server]
 
 
 @pytest.mark.skip(reason="Support for teleportation has been disabled")
