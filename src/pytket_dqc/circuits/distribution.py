@@ -608,10 +608,18 @@ class Distribution:
             src_qubit = qubit_mapping[hyp_circ.get_qubit_of_vertex(q_vertex)]
 
             # Data to keep around during iterations
+            #   `v_gate` stands for "gate vertex"; it keeps track of
+            #   the vertex index of the last CU1 gate encountered while
+            #   scanning the circuit
             v_gate = len(qubit_mapping) - 1
+            #   `currently_h_embedding` is a boolean flag that indicates
+            #   whether we are within an embedding unit at the moment
             currently_h_embedding = False
+            #   `linkman` will help use manage the link qubits
             linkman = LinkManager(hyperedge, self.network.get_server_list())
-            carry_phase = 0  # Phase pushed around within H-embedding
+            #   `carry_phase` is the phase pushed around within an embedding
+            #   unit
+            carry_phase = 0
 
             # Iterate over the commands of `circ`
             commands = circ.get_commands()
