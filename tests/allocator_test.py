@@ -88,9 +88,8 @@ def test_graph_initial_partitioning():
 
     allocator = HypergraphPartitioning()
 
-    # num_rounds = 0 so that there are no refinement rounds
     initial_distribution = allocator.allocate(
-        circ, network, seed=1, num_rounds=0
+        circ, network, seed=1
     )
 
     assert initial_distribution.placement == Placement(
@@ -100,7 +99,7 @@ def test_graph_initial_partitioning():
     )
 
 
-def test_graph_partitioning_refinement():
+def test_graph_partitioning_make_valid():
 
     network = NISQNetwork([[0, 1], [0, 2]], {0: [0], 1: [1, 2], 2: [3, 4, 5]})
 
@@ -122,16 +121,16 @@ def test_graph_partitioning_refinement():
     bad_placement = Placement({v: 2 for v in dist_circ.vertex_list})
     assert not bad_placement.is_valid(dist_circ, network)
 
-    initial_distribution = Distribution(
+    distribution = Distribution(
         dist_circ, bad_placement, network
     )
-    refined_distribution = allocator.refine(initial_distribution, seed=1)
+    allocator.make_valid(distribution, seed=1)
     good_placement = Placement(
-        {0: 2, 1: 2, 2: 2, 3: 0, 4: 2, 5: 2, 6: 2, 7: 2, 8: 2, 9: 2}
+        {0: 0, 1: 2, 2: 2, 3: 2, 4: 2, 5: 2, 6: 2, 7: 2, 8: 2, 9: 2}
     )
 
-    assert refined_distribution.is_valid()
-    assert refined_distribution.placement == good_placement
+    assert distribution.is_valid()
+    assert distribution.placement == good_placement
 
 
 @pytest.mark.skip(reason="Circuit contains CX gates that are not supported.")
