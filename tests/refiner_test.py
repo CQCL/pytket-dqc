@@ -59,23 +59,24 @@ intertwined_hyperedge_list = [
     for vertices in intertwined_hyperedge_vertex_list
 ]
 
-intertwined_test_placement = Placement(
-    {
-        0: 0,
-        1: 1,
-        2: 2,
-        3: 3,
-        4: 0,
-        5: 3,
-        6: 3,
-        7: 0,
-        8: 0,
-        9: 2,
-        10: 3,
-        11: 0,
-        12: 0,
-    }
-)
+def intertwined_test_placement() -> Placement:
+    return Placement(
+        {
+            0: 0,
+            1: 1,
+            2: 2,
+            3: 3,
+            4: 0,
+            5: 3,
+            6: 3,
+            7: 0,
+            8: 0,
+            9: 2,
+            10: 3,
+            11: 0,
+            12: 0,
+        }
+    )
 
 
 def test_to_pytket_backwards_mergeable():
@@ -93,10 +94,9 @@ def test_to_pytket_backwards_mergeable():
     for new_hyperedge in intertwined_hyperedge_vertex_list:
         test_hyp_circuit.add_hyperedge(new_hyperedge)
 
-    placement_copy = Placement(intertwined_test_placement.placement.copy())
     distribution = Distribution(
         circuit=test_hyp_circuit,
-        placement=placement_copy,
+        placement=intertwined_test_placement(),
         network=intertwined_test_network,
     )
 
@@ -129,10 +129,9 @@ def test_sequence_merge_d_type_backwards_mergeable():
     for new_hyperedge in intertwined_hyperedge_vertex_list:
         test_hyp_circuit.add_hyperedge(new_hyperedge)
 
-    placement_copy = Placement(intertwined_test_placement.placement.copy())
     distribution = Distribution(
         circuit=test_hyp_circuit,
-        placement=placement_copy,
+        placement=intertwined_test_placement(),
         network=intertwined_test_network,
     )
 
@@ -183,10 +182,9 @@ def test_repeat_merge_d_type_backwards_mergeable():
     for new_hyperedge in intertwined_hyperedge_vertex_list:
         test_hyp_circuit.add_hyperedge(new_hyperedge)
 
-    placement_copy = Placement(intertwined_test_placement.placement.copy())
     distribution = Distribution(
         circuit=test_hyp_circuit,
-        placement=placement_copy,
+        placement=intertwined_test_placement(),
         network=intertwined_test_network,
     )
 
@@ -235,10 +233,9 @@ def test_intertwined_merge_d_type_backwards_mergeable():
     for new_hyperedge in intertwined_hyperedge_vertex_list:
         test_hyp_circuit.add_hyperedge(new_hyperedge)
 
-    placement_copy = Placement(intertwined_test_placement.placement.copy())
     distribution = Distribution(
         circuit=test_hyp_circuit,
-        placement=placement_copy,
+        placement=intertwined_test_placement(),
         network=intertwined_test_network,
     )
 
@@ -286,10 +283,9 @@ def test_neighbouring_merge_d_type_backwards_mergeable():
     for new_hyperedge in intertwined_hyperedge_vertex_list:
         test_hyp_circuit.add_hyperedge(new_hyperedge)
 
-    placement_copy = Placement(intertwined_test_placement.placement.copy())
     distribution = Distribution(
         circuit=test_hyp_circuit,
-        placement=placement_copy,
+        placement=intertwined_test_placement(),
         network=intertwined_test_network,
     )
 
@@ -788,10 +784,9 @@ def test_vertex_cover_refiner_intertwined():
     for new_hyperedge in intertwined_hyperedge_vertex_list:
         test_hyp_circuit.add_hyperedge(new_hyperedge)
 
-    placement_copy = Placement(intertwined_test_placement.placement.copy())
     distribution = Distribution(
         circuit=test_hyp_circuit,
-        placement=placement_copy,
+        placement=intertwined_test_placement(),
         network=intertwined_test_network,
     )
     VertexCover().refine(distribution, vertex_cover_alg="networkx")
