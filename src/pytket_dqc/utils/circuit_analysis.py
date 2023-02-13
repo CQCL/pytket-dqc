@@ -62,26 +62,26 @@ def ebit_memory_required(circ: Circuit) -> dict[int, int]:
     return ebit_memory_required
 
 
-def evicted_gate_count(circ: Circuit) -> int:
-    """Scan the circuit and return the number of evicted gates in it.
-    An evicted gate is a 2-qubit gate that acts on link qubits on both
+def detached_gate_count(circ: Circuit) -> int:
+    """Scan the circuit and return the number of detached gates in it.
+    An detached gate is a 2-qubit gate that acts on link qubits on both
     ends; i.e. it is implemented away from both of its home servers.
 
     :param circ: The circuit to be analysed
     :type circ: Circuit
 
-    :return: The number of evicted gates
+    :return: The number of detached gates
     :rtype: dict[int, int]
     """
-    n_evicted = 0
+    n_detached = 0
 
     for command in circ.get_commands():
         if command.op.type in {OpType.CU1, OpType.CZ}:
             qubits = command.qubits
             if is_link_qubit(qubits[0]) and is_link_qubit(qubits[1]):
-                n_evicted += 1
+                n_detached += 1
 
-    return n_evicted
+    return n_detached
 
 
 # TODO: This is checked by parsing the name of the qubit.

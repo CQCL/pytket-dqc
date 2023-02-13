@@ -104,7 +104,7 @@ def test_to_pytket_backwards_mergeable():
     assert distribution.circuit.hyperedge_list == intertwined_hyperedge_list
     distribution.to_pytket_circuit()
 
-    # Finally, refine last distribution for evicted gates
+    # Finally, refine last distribution for detached gates
     EvictedGates().refine(distribution)
 
     circ = intertwined_test_circuit
@@ -157,7 +157,7 @@ def test_sequence_merge_d_type_backwards_mergeable():
         Hyperedge(vertices=[3, 5, 6, 10], weight=1),
     ]
 
-    # Finally, refine last distribution for evicted gates
+    # Finally, refine last distribution for detached gates
     EvictedGates().refine(distribution)
 
     circ = intertwined_test_circuit
@@ -208,7 +208,7 @@ def test_repeat_merge_d_type_backwards_mergeable():
         Hyperedge(vertices=[3, 5, 6, 10], weight=1),
     ]
 
-    # Finally, refine last distribution for evicted gates
+    # Finally, refine last distribution for detached gates
     EvictedGates().refine(distribution)
 
     circ = intertwined_test_circuit
@@ -255,7 +255,7 @@ def test_intertwined_merge_d_type_backwards_mergeable():
         Hyperedge(vertices=[3, 5, 6, 10], weight=1),
     ]
 
-    # Finally, refine last distribution for evicted gates
+    # Finally, refine last distribution for detached gates
     EvictedGates().refine(distribution)
 
     circ = intertwined_test_circuit
@@ -306,7 +306,7 @@ def test_neighbouring_merge_d_type_backwards_mergeable():
         Hyperedge(vertices=[3, 5, 6, 10], weight=1),
     ]
 
-    # Finally, refine last distribution for evicted gates
+    # Finally, refine last distribution for detached gates
     EvictedGates().refine(distribution)
 
     circ = intertwined_test_circuit
@@ -379,7 +379,7 @@ def test_neighbouring_merge_d_type_intertwined():
 
     assert distribution.circuit.hyperedge_list == ideal_hyperedge_list
 
-    # Finally, refine last distribution for evicted gates
+    # Finally, refine last distribution for detached gates
     EvictedGates().refine(distribution)
 
     circ = test_circuit
@@ -492,7 +492,7 @@ def test_neighbouring_merge_d_type_complex_circuit():
     ]
     assert distribution.circuit.hyperedge_list == ideal_hyperedge_list
 
-    # Finally, refine last distribution for evicted gates
+    # Finally, refine last distribution for detached gates
     EvictedGates().refine(distribution)
 
     circ = test_circuit
@@ -539,7 +539,7 @@ def test_neighbouring_merge_d_type_only_CZ():
 
     assert distribution.cost() == 2
 
-    # Finally, refine last distribution for evicted gates
+    # Finally, refine last distribution for detached gates
     EvictedGates().refine(distribution)
 
     pytket_circ = distribution.to_pytket_circuit()
@@ -585,7 +585,7 @@ def test_neighbouring_merge_d_type_no_new_hyperedges():
 
     assert distribution.circuit.hyperedge_list == hyperedge_list
 
-    # Finally, refine last distribution for evicted gates
+    # Finally, refine last distribution for detached gates
     EvictedGates().refine(distribution)
 
     pytket_circ = distribution.to_pytket_circuit()
@@ -645,7 +645,7 @@ def test_vertex_cover_refiner_empty():
         circ, pytket_circ, distribution.get_qubit_mapping()
     )
 
-    # Finally, refine last distribution for evicted gates
+    # Finally, refine last distribution for detached gates
     EvictedGates().refine(distribution)
 
     pytket_circ = distribution.to_pytket_circuit()
@@ -685,7 +685,7 @@ def test_vertex_cover_refiner_trivial():
         circ, pytket_circ, distribution.get_qubit_mapping()
     )
 
-    # Finally, refine last distribution for evicted gates
+    # Finally, refine last distribution for detached gates
     EvictedGates().refine(distribution)
 
     pytket_circ = distribution.to_pytket_circuit()
@@ -733,7 +733,7 @@ def test_vertex_cover_refiner_simple():
         circ, pytket_circ, distribution.get_qubit_mapping()
     )
 
-    # Finally, refine last distribution for evicted gates
+    # Finally, refine last distribution for detached gates
     EvictedGates().refine(distribution)
 
     pytket_circ = distribution.to_pytket_circuit()
@@ -796,7 +796,7 @@ def test_vertex_cover_refiner_intertwined():
         intertwined_test_circuit, pytket_circ, distribution.get_qubit_mapping()
     )
 
-    # Finally, refine last distribution for evicted gates
+    # Finally, refine last distribution for detached gates
     EvictedGates().refine(distribution)
 
     circ = intertwined_test_circuit
@@ -850,7 +850,7 @@ def test_vertex_cover_refiner_complex_1():
         circ, pytket_circ, distribution.get_qubit_mapping()
     )
 
-    # Finally, refine last distribution for evicted gates
+    # Finally, refine last distribution for detached gates
     EvictedGates().refine(distribution)
 
     pytket_circ = distribution.to_pytket_circuit()
@@ -903,7 +903,7 @@ def test_vertex_cover_refiner_complex_2():
         circ, pytket_circ, distribution.get_qubit_mapping()
     )
 
-    # Finally, refine last distribution for evicted gates
+    # Finally, refine last distribution for detached gates
     EvictedGates().refine(distribution)
 
     pytket_circ = distribution.to_pytket_circuit()
@@ -952,7 +952,7 @@ def test_vertex_cover_refiner_pauli_circ():
         circ, pytket_circ, distribution.get_qubit_mapping()
     )
 
-    # Finally, refine last distribution for evicted gates
+    # Finally, refine last distribution for detached gates
     EvictedGates().refine(distribution)
 
     pytket_circ = distribution.to_pytket_circuit()
@@ -999,7 +999,7 @@ def test_vertex_cover_refiner_random_circ():
         circ, pytket_circ, distribution.get_qubit_mapping()
     )
 
-    # Finally, refine last distribution for evicted gates
+    # Finally, refine last distribution for detached gates
     EvictedGates().refine(distribution)
 
     pytket_circ = distribution.to_pytket_circuit()
@@ -1048,7 +1048,7 @@ def test_vertex_cover_refiner_frac_CZ_circ():
         circ, pytket_circ, distribution.get_qubit_mapping()
     )
 
-    # Finally, refine last distribution for evicted gates
+    # Finally, refine last distribution for detached gates
     EvictedGates().refine(distribution)
 
     pytket_circ = distribution.to_pytket_circuit()
@@ -1090,7 +1090,7 @@ def test_vertex_cover_embedding_boundary_failure():
         circ, pytket_circ, distribution.get_qubit_mapping()
     )
 
-    # Finally, refine last distribution for evicted gates
+    # Finally, refine last distribution for detached gates
     EvictedGates().refine(distribution)
 
     pytket_circ = distribution.to_pytket_circuit()

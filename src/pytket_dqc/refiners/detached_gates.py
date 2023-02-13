@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 
 class EvictedGates(Refiner):
     """An alias for ``BoundaryReallocation`` with ``reallocate_qubits``
-    set to False. This refiner can optimise gate distribution so that evicted
+    set to False. This refiner can optimise gate distribution so that detached
     gates may be used, even in the presence of embedding.
     """
 
