@@ -25,6 +25,7 @@ from pytket_dqc.refiners.vertex_cover import (
     get_min_covers,
 )
 from pytket_dqc.allocators import HypergraphPartitioning
+import pytest
 
 
 intertwined_test_network = NISQNetwork(
@@ -949,6 +950,7 @@ def test_vertex_cover_refiner_complex_2():
         assert ebit_req <= network.server_ebit_mem[server]
 
 
+@pytest.mark.high_compute
 def test_vertex_cover_refiner_pauli_circ():
     # Randomly generated circuit of type pauli, depth 10 and 10 qubits
     with open(
@@ -1017,6 +1019,7 @@ def test_vertex_cover_refiner_pauli_circ():
         assert ebit_req <= network.server_ebit_mem[server]
 
 
+@pytest.mark.high_compute
 def test_vertex_cover_refiner_random_circ():
     # Randomly generated circuit of type random, depth 6 and 6 qubits
     with open(
@@ -1145,6 +1148,7 @@ def test_vertex_cover_refiner_frac_CZ_circ():
         assert ebit_req <= network.server_ebit_mem[server]
 
 
+@pytest.mark.high_compute
 def test_vertex_cover_embedding_boundary_failure():
     # Originally a failing test discovered by Dan.
     # Fixed by PR #72
@@ -1653,6 +1657,7 @@ def test_boundary_reallocation_refiner_complex_2():
     )
 
 
+@pytest.mark.high_compute
 def test_boundary_reallocation_refiner_pauli_circ():
     # Randomly generated circuit of type pauli, depth 10 and 10 qubits
     with open(
