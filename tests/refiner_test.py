@@ -1080,7 +1080,6 @@ def test_vertex_cover_refiner_random_circ():
         assert ebit_req <= network.server_ebit_mem[server]
 
 
-@pytest.mark.high_compute
 def test_vertex_cover_refiner_frac_CZ_circ():
     # Randomly generated circuit of type frac_CZ, depth 10 and 10 qubits
     with open(
@@ -1656,6 +1655,7 @@ def test_boundary_reallocation_refiner_complex_2():
     assert check_equivalence(
         circ, pytket_circ, distribution.get_qubit_mapping()
     )
+
 
 @pytest.mark.high_compute
 def test_boundary_reallocation_refiner_pauli_circ():
