@@ -2,6 +2,7 @@ from .nisq_network import NISQNetwork
 import random
 import networkx as nx  # type:ignore
 import math
+import numpy as np
 
 
 class RandomNISQNetwork(NISQNetwork):
@@ -31,6 +32,7 @@ class RandomNISQNetwork(NISQNetwork):
 
         edge_prob = kwargs.get("edge_prob", 1/math.factorial(n_servers-2))
         seed = kwargs.get("seed", None)
+        np.random.seed(seed)
 
         # Generate erdos renyi graph until one that is connected is generated.
         connected = False
@@ -38,7 +40,7 @@ class RandomNISQNetwork(NISQNetwork):
             graph = nx.gnp_random_graph(
                 n=n_servers,
                 p=edge_prob,
-                seed=seed,
+                seed=np.random,
             )
             connected = nx.is_connected(graph)
         server_coupling = [list(edge) for edge in graph.edges]

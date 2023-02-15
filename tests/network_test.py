@@ -38,9 +38,7 @@ def test_all_to_all_network():
 def test_random_network():
 
     network = RandomNISQNetwork(n_servers=5, n_qubits=10, seed=0)
-    assert network.server_coupling == [
-        [0, 3], [0, 4], [1, 3], [2, 3], [2, 4]
-    ]
+    assert network.server_coupling == [[0, 1], [0, 2], [0, 4], [2, 3], [3, 4]]
     assert network.server_qubits == {
         0: [0, 7], 1: [1], 2: [2, 8], 3: [3, 5, 6], 4: [4, 9]
     }
