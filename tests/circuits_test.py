@@ -1678,7 +1678,7 @@ def test_to_pytket_circuit_with_hyperedge_requiring_euler():
     )
 
 
-# @pytest.mark.high_compute
+@pytest.mark.high_compute
 def test_to_pytket_circuit_with_pauli_circ():
     # Randomly generated circuit of type pauli, depth 10 and 10 qubits
     with open(
