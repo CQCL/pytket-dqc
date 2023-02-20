@@ -54,7 +54,16 @@ class RandomNISQNetwork(NISQNetwork):
             server = random.randrange(n_servers)
             server_qubits[server] = server_qubits[server] + [qubit]
 
-        super().__init__(server_coupling, server_qubits)
+        server_ebit_mem = {
+            server: (n_qubits//(n_servers * 2) + 1)
+            for server in server_qubits.keys()
+        }
+
+        super().__init__(
+            server_coupling=server_coupling,
+            server_qubits=server_qubits,
+            server_ebit_mem=server_ebit_mem,
+        )
 
 
 class ScaleFreeNISQNetwork(NISQNetwork):
@@ -102,7 +111,18 @@ class ScaleFreeNISQNetwork(NISQNetwork):
             server = random.randrange(n_servers)
             server_qubits[server] = server_qubits[server] + [qubit]
 
-        super().__init__(server_coupling, server_qubits)
+        # super().__init__(server_coupling, server_qubits)
+
+        server_ebit_mem = {
+            server: (n_qubits//(n_servers * 2) + 1)
+            for server in server_qubits.keys()
+        }
+
+        super().__init__(
+            server_coupling=server_coupling,
+            server_qubits=server_qubits,
+            server_ebit_mem=server_ebit_mem,
+        )
 
 
 class SmallWorldNISQNetwork(NISQNetwork):
@@ -153,4 +173,15 @@ class SmallWorldNISQNetwork(NISQNetwork):
             server = random.randrange(n_servers)
             server_qubits[server] = server_qubits[server] + [qubit]
 
-        super().__init__(server_coupling, server_qubits)
+        # super().__init__(server_coupling, server_qubits)
+
+        server_ebit_mem = {
+            server: (n_qubits//(n_servers * 2) + 1)
+            for server in server_qubits.keys()
+        }
+
+        super().__init__(
+            server_coupling=server_coupling,
+            server_qubits=server_qubits,
+            server_ebit_mem=server_ebit_mem,
+        )

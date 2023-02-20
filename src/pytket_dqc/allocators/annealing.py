@@ -127,23 +127,23 @@ class Annealing(Allocator):
             ):
 
                 # List all qubit vertices
-                destination_server_qubit_list = distribution.circuit.get_qubit_vertices()
+                dest_qubit_list = distribution.circuit.get_qubit_vertices()
 
                 # Gather qubits in ``destination_server``
-                destination_server_qubit_list = [
+                dest_qubit_list = [
                     v
-                    for v in destination_server_qubit_list
+                    for v in dest_qubit_list
                     if (gain_manager.current_server(v) == destination_server)
                 ]
 
-                q_in_dest = len(destination_server_qubit_list)
+                q_in_dest = len(dest_qubit_list)
                 size_dest = len(network.server_qubits[destination_server])
 
                 # If destination server is full, pick a random qubit in that
                 # server and move it to the home server of the qubit
                 # being moved.
                 if q_in_dest == size_dest:
-                    swap_vertex = random.choice(destination_server_qubit_list)
+                    swap_vertex = random.choice(dest_qubit_list)
 
             # Calculate gain
             gain = gain_manager.move_vertex_gain(

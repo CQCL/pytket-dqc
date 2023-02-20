@@ -104,7 +104,7 @@ def tk1_to_euler(a, b, c) -> Circuit:
     # We then use the decomposition of H = Rz(0.5)*Rx(0.5)*Rz(0.5) and
     # H = Rz(-0.5)*Rx(-0.5)*Rz(-0.5) to introduce the H gates as needed.
 
-    if any(type(x) == sympy.core.mul.Mul for x in [a,b,c]):
+    if any(type(x) == sympy.core.mul.Mul for x in [a, b, c]):
         raise Exception("Symbolic parameters are not supported")
 
     circ = Circuit(1)
