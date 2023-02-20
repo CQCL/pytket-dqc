@@ -1805,7 +1805,7 @@ def test_to_pytket_circuit_pr78_bug():
     with open("tests/test_circuits/pr78_distribution.json") as fp:
         distribution_dict = json.load(fp)
         distribution = Distribution.from_dict(distribution_dict)
-        circuit = distribution.to_pytket_circuit()
+        distribution.to_pytket_circuit()
 
 
 @pytest.mark.skip(reason="Support for teleportation has been disabled")
