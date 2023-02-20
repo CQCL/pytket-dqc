@@ -3,7 +3,7 @@ from pytket_dqc.utils import (
     DQCPass,
     direct_from_origin,
     ebit_memory_required,
-    evicted_gate_count,
+    detached_gate_count,
     check_equivalence,
     to_euler_with_two_hadamards,
 )
@@ -124,18 +124,18 @@ def test_ebit_memory_required():
     assert ebit_memory_required(circ) == {0: 0, 1: 4, 2: 0}
 
 
-def test_evicted_gate_count():
+def test_detached_gate_count():
     # This is a randomly generated circuit of type pauli, depth 6 and 6 qubits
     with open("tests/test_circuits/pauli_6.json", "r") as fp:
         circ = Circuit().from_dict(json.load(fp))
     # Comparing against calculation by hand
-    assert evicted_gate_count(circ) == 0
+    assert detached_gate_count(circ) == 0
 
     # Randomly generated circuit of type frac_CZ, depth 6 and 6 qubits
     with open("tests/test_circuits/frac_CZ_6.json", "r") as fp:
         circ = Circuit().from_dict(json.load(fp))
     # Comparing against calculation by
-    assert evicted_gate_count(circ) == 6
+    assert detached_gate_count(circ) == 6
 
 
 def test_verification_from_placed_circuit():

@@ -2,8 +2,19 @@ from pytket import Circuit, OpType  # type: ignore
 from pytket_dqc.utils.gateset import is_start_proc, is_end_proc, is_telep_proc
 
 
-def all_gates_local(circ: Circuit) -> bool:
-    """Checks that all of the gates in the circuit are local.
+class ConstraintException(Exception):
+    """Raised when the communication memory constraint of a server is
+    exceeded. Stores the offending server and gate vertex at which
+    the constraint was violated.
+    """
+    def __init__(self, message, server):
+        super().__init__(message)
+        self.server = server
+        self.v_gate = None
+
+
+def all_cu1_local(circ: Circuit) -> bool:
+    """Checks that all of the CU1 gates in the circuit are local.
     """
     for cmd in circ.get_commands():
         if cmd.op.type in [OpType.CustomGate, OpType.Barrier]:
@@ -61,26 +72,26 @@ def ebit_memory_required(circ: Circuit) -> dict[int, int]:
     return ebit_memory_required
 
 
-def evicted_gate_count(circ: Circuit) -> int:
-    """Scan the circuit and return the number of evicted gates in it.
-    An evicted gate is a 2-qubit gate that acts on link qubits on both
+def detached_gate_count(circ: Circuit) -> int:
+    """Scan the circuit and return the number of detached gates in it.
+    An detached gate is a 2-qubit gate that acts on link qubits on both
     ends; i.e. it is implemented away from both of its home servers.
 
     :param circ: The circuit to be analysed
     :type circ: Circuit
 
-    :return: The number of evicted gates
+    :return: The number of detached gates
     :rtype: dict[int, int]
     """
-    n_evicted = 0
+    n_detached = 0
 
     for command in circ.get_commands():
         if command.op.type in {OpType.CU1, OpType.CZ}:
             qubits = command.qubits
             if is_link_qubit(qubits[0]) and is_link_qubit(qubits[1]):
-                n_evicted += 1
+                n_detached += 1
 
-    return n_evicted
+    return n_detached
 
 
 # TODO: This is checked by parsing the name of the qubit.

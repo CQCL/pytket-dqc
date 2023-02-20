@@ -4,20 +4,28 @@ from pytket_dqc import Distribution
 from pytket_dqc.circuits import HypergraphCircuit
 from pytket_dqc.circuits.hypergraph import Hyperedge
 from pytket_dqc.placement import Placement
-from pytket_dqc.utils import check_equivalence, DQCPass
+from pytket_dqc.utils import (
+    check_equivalence,
+    DQCPass,
+    ConstraintException,
+    ebit_memory_required,
+)
 from pytket_dqc.networks import NISQNetwork
 from pytket_dqc.refiners import (
     NeighbouringDTypeMerge,
     IntertwinedDTypeMerge,
     RepeatRefiner,
     SequenceRefiner,
-    EagerHTypeMerge
+    EagerHTypeMerge,
+    EvictedGates,
+    BoundaryReallocation,
 )
 from pytket_dqc.refiners.vertex_cover import (
     VertexCover,
     get_min_covers,
 )
 from pytket_dqc.allocators import HypergraphPartitioning
+import pytest
 
 
 intertwined_test_network = NISQNetwork(
@@ -57,23 +65,25 @@ intertwined_hyperedge_list = [
     for vertices in intertwined_hyperedge_vertex_list
 ]
 
-intertwined_test_placement = Placement(
-    {
-        0: 0,
-        1: 1,
-        2: 2,
-        3: 3,
-        4: 0,
-        5: 3,
-        6: 3,
-        7: 0,
-        8: 0,
-        9: 2,
-        10: 3,
-        11: 0,
-        12: 0,
-    }
-)
+
+def intertwined_test_placement() -> Placement:
+    return Placement(
+        {
+            0: 0,
+            1: 1,
+            2: 2,
+            3: 3,
+            4: 0,
+            5: 3,
+            6: 3,
+            7: 0,
+            8: 0,
+            9: 2,
+            10: 3,
+            11: 0,
+            12: 0,
+        }
+    )
 
 
 def test_to_pytket_backwards_mergeable():
@@ -93,13 +103,22 @@ def test_to_pytket_backwards_mergeable():
 
     distribution = Distribution(
         circuit=test_hyp_circuit,
-        placement=intertwined_test_placement,
+        placement=intertwined_test_placement(),
         network=intertwined_test_network,
     )
 
     assert distribution.cost() == 9
     assert distribution.circuit.hyperedge_list == intertwined_hyperedge_list
     distribution.to_pytket_circuit()
+
+    # Finally, refine last distribution for detached gates
+    EvictedGates().refine(distribution)
+
+    circ = intertwined_test_circuit
+    pytket_circ = distribution.to_pytket_circuit()
+    assert check_equivalence(
+        circ, pytket_circ, distribution.get_qubit_mapping()
+    )
 
 
 def test_sequence_merge_d_type_backwards_mergeable():
@@ -119,7 +138,7 @@ def test_sequence_merge_d_type_backwards_mergeable():
 
     distribution = Distribution(
         circuit=test_hyp_circuit,
-        placement=intertwined_test_placement,
+        placement=intertwined_test_placement(),
         network=intertwined_test_network,
     )
 
@@ -145,6 +164,15 @@ def test_sequence_merge_d_type_backwards_mergeable():
         Hyperedge(vertices=[3, 5, 6, 10], weight=1),
     ]
 
+    # Finally, refine last distribution for detached gates
+    EvictedGates().refine(distribution)
+
+    circ = intertwined_test_circuit
+    pytket_circ = distribution.to_pytket_circuit()
+    assert check_equivalence(
+        circ, pytket_circ, distribution.get_qubit_mapping()
+    )
+
 
 def test_repeat_merge_d_type_backwards_mergeable():
 
@@ -163,7 +191,7 @@ def test_repeat_merge_d_type_backwards_mergeable():
 
     distribution = Distribution(
         circuit=test_hyp_circuit,
-        placement=intertwined_test_placement,
+        placement=intertwined_test_placement(),
         network=intertwined_test_network,
     )
 
@@ -187,6 +215,15 @@ def test_repeat_merge_d_type_backwards_mergeable():
         Hyperedge(vertices=[3, 5, 6, 10], weight=1),
     ]
 
+    # Finally, refine last distribution for detached gates
+    EvictedGates().refine(distribution)
+
+    circ = intertwined_test_circuit
+    pytket_circ = distribution.to_pytket_circuit()
+    assert check_equivalence(
+        circ, pytket_circ, distribution.get_qubit_mapping()
+    )
+
 
 def test_intertwined_merge_d_type_backwards_mergeable():
 
@@ -205,7 +242,7 @@ def test_intertwined_merge_d_type_backwards_mergeable():
 
     distribution = Distribution(
         circuit=test_hyp_circuit,
-        placement=intertwined_test_placement,
+        placement=intertwined_test_placement(),
         network=intertwined_test_network,
     )
 
@@ -224,6 +261,15 @@ def test_intertwined_merge_d_type_backwards_mergeable():
         Hyperedge(vertices=[2, 9], weight=1),
         Hyperedge(vertices=[3, 5, 6, 10], weight=1),
     ]
+
+    # Finally, refine last distribution for detached gates
+    EvictedGates().refine(distribution)
+
+    circ = intertwined_test_circuit
+    pytket_circ = distribution.to_pytket_circuit()
+    assert check_equivalence(
+        circ, pytket_circ, distribution.get_qubit_mapping()
+    )
 
 
 def test_neighbouring_merge_d_type_backwards_mergeable():
@@ -246,7 +292,7 @@ def test_neighbouring_merge_d_type_backwards_mergeable():
 
     distribution = Distribution(
         circuit=test_hyp_circuit,
-        placement=intertwined_test_placement,
+        placement=intertwined_test_placement(),
         network=intertwined_test_network,
     )
 
@@ -266,6 +312,15 @@ def test_neighbouring_merge_d_type_backwards_mergeable():
         Hyperedge(vertices=[2, 9], weight=1),
         Hyperedge(vertices=[3, 5, 6, 10], weight=1),
     ]
+
+    # Finally, refine last distribution for detached gates
+    EvictedGates().refine(distribution)
+
+    circ = intertwined_test_circuit
+    pytket_circ = distribution.to_pytket_circuit()
+    assert check_equivalence(
+        circ, pytket_circ, distribution.get_qubit_mapping()
+    )
 
 
 def test_neighbouring_merge_d_type_intertwined():
@@ -330,6 +385,15 @@ def test_neighbouring_merge_d_type_intertwined():
     ]
 
     assert distribution.circuit.hyperedge_list == ideal_hyperedge_list
+
+    # Finally, refine last distribution for detached gates
+    EvictedGates().refine(distribution)
+
+    circ = test_circuit
+    pytket_circ = distribution.to_pytket_circuit()
+    assert check_equivalence(
+        circ, pytket_circ, distribution.get_qubit_mapping()
+    )
 
 
 def test_neighbouring_merge_d_type_complex_circuit():
@@ -435,6 +499,15 @@ def test_neighbouring_merge_d_type_complex_circuit():
     ]
     assert distribution.circuit.hyperedge_list == ideal_hyperedge_list
 
+    # Finally, refine last distribution for detached gates
+    EvictedGates().refine(distribution)
+
+    circ = test_circuit
+    pytket_circ = distribution.to_pytket_circuit()
+    assert check_equivalence(
+        circ, pytket_circ, distribution.get_qubit_mapping()
+    )
+
 
 def test_neighbouring_merge_d_type_only_CZ():
 
@@ -473,6 +546,14 @@ def test_neighbouring_merge_d_type_only_CZ():
 
     assert distribution.cost() == 2
 
+    # Finally, refine last distribution for detached gates
+    EvictedGates().refine(distribution)
+
+    pytket_circ = distribution.to_pytket_circuit()
+    assert check_equivalence(
+        circ, pytket_circ, distribution.get_qubit_mapping()
+    )
+
 
 def test_neighbouring_merge_d_type_no_new_hyperedges():
 
@@ -510,6 +591,14 @@ def test_neighbouring_merge_d_type_no_new_hyperedges():
     assert not refinement_made
 
     assert distribution.circuit.hyperedge_list == hyperedge_list
+
+    # Finally, refine last distribution for detached gates
+    EvictedGates().refine(distribution)
+
+    pytket_circ = distribution.to_pytket_circuit()
+    assert check_equivalence(
+        circ, pytket_circ, distribution.get_qubit_mapping()
+    )
 
 
 def test_min_covers():
@@ -563,6 +652,14 @@ def test_vertex_cover_refiner_empty():
         circ, pytket_circ, distribution.get_qubit_mapping()
     )
 
+    # Finally, refine last distribution for detached gates
+    EvictedGates().refine(distribution)
+
+    pytket_circ = distribution.to_pytket_circuit()
+    assert check_equivalence(
+        circ, pytket_circ, distribution.get_qubit_mapping()
+    )
+
 
 def test_vertex_cover_refiner_trivial():
 
@@ -589,6 +686,14 @@ def test_vertex_cover_refiner_trivial():
         circuit=HypergraphCircuit(circ), placement=placement, network=network
     )
     VertexCover().refine(distribution, vertex_cover_alg="networkx")
+
+    pytket_circ = distribution.to_pytket_circuit()
+    assert check_equivalence(
+        circ, pytket_circ, distribution.get_qubit_mapping()
+    )
+
+    # Finally, refine last distribution for detached gates
+    EvictedGates().refine(distribution)
 
     pytket_circ = distribution.to_pytket_circuit()
     assert check_equivalence(
@@ -635,6 +740,14 @@ def test_vertex_cover_refiner_simple():
         circ, pytket_circ, distribution.get_qubit_mapping()
     )
 
+    # Finally, refine last distribution for detached gates
+    EvictedGates().refine(distribution)
+
+    pytket_circ = distribution.to_pytket_circuit()
+    assert check_equivalence(
+        circ, pytket_circ, distribution.get_qubit_mapping()
+    )
+
 
 def test_vertex_cover_refiner_intertwined():
 
@@ -654,7 +767,7 @@ def test_vertex_cover_refiner_intertwined():
 
     distribution = Distribution(
         circuit=test_hyp_circuit,
-        placement=intertwined_test_placement,
+        placement=intertwined_test_placement(),
         network=intertwined_test_network,
     )
     VertexCover().refine(distribution, vertex_cover_alg="all_brute_force")
@@ -680,7 +793,7 @@ def test_vertex_cover_refiner_intertwined():
 
     distribution = Distribution(
         circuit=test_hyp_circuit,
-        placement=intertwined_test_placement,
+        placement=intertwined_test_placement(),
         network=intertwined_test_network,
     )
     VertexCover().refine(distribution, vertex_cover_alg="networkx")
@@ -688,6 +801,15 @@ def test_vertex_cover_refiner_intertwined():
     pytket_circ = distribution.to_pytket_circuit()
     assert check_equivalence(
         intertwined_test_circuit, pytket_circ, distribution.get_qubit_mapping()
+    )
+
+    # Finally, refine last distribution for detached gates
+    EvictedGates().refine(distribution)
+
+    circ = intertwined_test_circuit
+    pytket_circ = distribution.to_pytket_circuit()
+    assert check_equivalence(
+        circ, pytket_circ, distribution.get_qubit_mapping()
     )
 
 
@@ -735,6 +857,26 @@ def test_vertex_cover_refiner_complex_1():
         circ, pytket_circ, distribution.get_qubit_mapping()
     )
 
+    # Finally, refine last distribution for detached gates
+    EvictedGates().refine(distribution)
+
+    pytket_circ = distribution.to_pytket_circuit()
+    assert check_equivalence(
+        circ, pytket_circ, distribution.get_qubit_mapping()
+    )
+
+    # Try bounding the communication memory
+    network.server_ebit_mem = {0: 1, 1: 1, 2: 1, 3: 1}
+
+    circ_with_dist = distribution.to_pytket_circuit(allow_update=True)
+
+    assert check_equivalence(
+        circ, circ_with_dist, distribution.get_qubit_mapping()
+    )
+
+    for server, ebit_req in ebit_memory_required(circ_with_dist).items():
+        assert ebit_req <= network.server_ebit_mem[server]
+
 
 def test_vertex_cover_refiner_complex_2():
     network = NISQNetwork(
@@ -780,7 +922,35 @@ def test_vertex_cover_refiner_complex_2():
         circ, pytket_circ, distribution.get_qubit_mapping()
     )
 
+    # Finally, refine last distribution for detached gates
+    EvictedGates().refine(distribution)
 
+    pytket_circ = distribution.to_pytket_circuit()
+    assert check_equivalence(
+        circ, pytket_circ, distribution.get_qubit_mapping()
+    )
+
+    # Try bounding the communication memory
+    network.server_ebit_mem = {0: 1, 1: 3, 2: 1, 3: 2, 4: 1, 5: 2}
+
+    caught = False
+    try:
+        distribution.to_pytket_circuit()
+    except ConstraintException:
+        caught = True
+    assert caught
+
+    circ_with_dist = distribution.to_pytket_circuit(allow_update=True)
+
+    assert check_equivalence(
+        circ, circ_with_dist, distribution.get_qubit_mapping()
+    )
+
+    for server, ebit_req in ebit_memory_required(circ_with_dist).items():
+        assert ebit_req <= network.server_ebit_mem[server]
+
+
+@pytest.mark.high_compute
 def test_vertex_cover_refiner_pauli_circ():
     # Randomly generated circuit of type pauli, depth 10 and 10 qubits
     with open(
@@ -821,7 +991,35 @@ def test_vertex_cover_refiner_pauli_circ():
         circ, pytket_circ, distribution.get_qubit_mapping()
     )
 
+    # Finally, refine last distribution for detached gates
+    EvictedGates().refine(distribution)
 
+    pytket_circ = distribution.to_pytket_circuit()
+    assert check_equivalence(
+        circ, pytket_circ, distribution.get_qubit_mapping()
+    )
+
+    # Try bounding the communication memory
+    network.server_ebit_mem = {0: 2, 1: 3, 2: 3, 3: 1, 4: 2}
+
+    caught = False
+    try:
+        distribution.to_pytket_circuit()
+    except ConstraintException:
+        caught = True
+    assert caught
+
+    circ_with_dist = distribution.to_pytket_circuit(allow_update=True)
+
+    assert check_equivalence(
+        circ, circ_with_dist, distribution.get_qubit_mapping()
+    )
+
+    for server, ebit_req in ebit_memory_required(circ_with_dist).items():
+        assert ebit_req <= network.server_ebit_mem[server]
+
+
+@pytest.mark.high_compute
 def test_vertex_cover_refiner_random_circ():
     # Randomly generated circuit of type random, depth 6 and 6 qubits
     with open(
@@ -859,6 +1057,27 @@ def test_vertex_cover_refiner_random_circ():
     assert check_equivalence(
         circ, pytket_circ, distribution.get_qubit_mapping()
     )
+
+    # Finally, refine last distribution for detached gates
+    EvictedGates().refine(distribution)
+
+    pytket_circ = distribution.to_pytket_circuit()
+    assert check_equivalence(
+        circ, pytket_circ, distribution.get_qubit_mapping()
+    )
+
+    # Try bounding the communication memory
+    network.server_ebit_mem = {0: 1, 1: 1, 2: 1, 3: 1, 4: 1}
+
+    caught = False
+    try:
+        circ_with_dist = distribution.to_pytket_circuit()
+    except ConstraintException:
+        caught = True
+    assert not caught  # Already satisfies the constraint
+
+    for server, ebit_req in ebit_memory_required(circ_with_dist).items():
+        assert ebit_req <= network.server_ebit_mem[server]
 
 
 def test_vertex_cover_refiner_frac_CZ_circ():
@@ -901,7 +1120,35 @@ def test_vertex_cover_refiner_frac_CZ_circ():
         circ, pytket_circ, distribution.get_qubit_mapping()
     )
 
+    # Finally, refine last distribution for detached gates
+    EvictedGates().refine(distribution)
 
+    pytket_circ = distribution.to_pytket_circuit()
+    assert check_equivalence(
+        circ, pytket_circ, distribution.get_qubit_mapping()
+    )
+
+    # Try bounding the communication memory
+    network.server_ebit_mem = {0: 1, 1: 3, 2: 2, 3: 1, 4: 3}
+
+    caught = False
+    try:
+        distribution.to_pytket_circuit()
+    except ConstraintException:
+        caught = True
+    assert caught
+
+    circ_with_dist = distribution.to_pytket_circuit(allow_update=True)
+
+    assert check_equivalence(
+        circ, circ_with_dist, distribution.get_qubit_mapping()
+    )
+
+    for server, ebit_req in ebit_memory_required(circ_with_dist).items():
+        assert ebit_req <= network.server_ebit_mem[server]
+
+
+@pytest.mark.high_compute
 def test_vertex_cover_embedding_boundary_failure():
     # Originally a failing test discovered by Dan.
     # Fixed by PR #72
@@ -919,9 +1166,24 @@ def test_vertex_cover_embedding_boundary_failure():
     DQCPass().apply(circ)
 
     distribution = HypergraphPartitioning().allocate(
-        circ, network, seed=0, num_rounds=0
+        circ, network, seed=0
     )
+
+    # Creating the circuit at this point failed prior to PR #74
+    pytket_circ = distribution.to_pytket_circuit()
+    assert check_equivalence(
+        circ, pytket_circ, distribution.get_qubit_mapping()
+    )
+
     VertexCover().refine(distribution, vertex_cover_alg='networkx')
+
+    pytket_circ = distribution.to_pytket_circuit()
+    assert check_equivalence(
+        circ, pytket_circ, distribution.get_qubit_mapping()
+    )
+
+    # Finally, refine last distribution for detached gates
+    EvictedGates().refine(distribution)
 
     pytket_circ = distribution.to_pytket_circuit()
     assert check_equivalence(
@@ -1272,7 +1534,7 @@ def test_eager_h_type_merge_06():
     )
 
     allocator = HypergraphPartitioning()
-    distribution = allocator.allocate(circ, network, num_rounds=0)
+    distribution = allocator.allocate(circ, network)
     cost = distribution.cost()
 
     refiner = EagerHTypeMerge()
@@ -1280,3 +1542,186 @@ def test_eager_h_type_merge_06():
 
     assert distribution.is_valid()
     assert distribution.cost() <= cost
+
+
+def test_boundary_reallocation_refiner_empty():
+
+    network = NISQNetwork([[0, 1]], {0: [0, 1], 1: [2]})
+
+    circ = Circuit(2)
+
+    distribution = HypergraphPartitioning().allocate(circ, network)
+    BoundaryReallocation().refine(distribution)
+
+    pytket_circ = distribution.to_pytket_circuit()
+    assert check_equivalence(
+        circ, pytket_circ, distribution.get_qubit_mapping()
+    )
+
+
+def test_boundary_reallocation_refiner_trivial():
+
+    network = NISQNetwork([[0, 1]], {0: [0, 1], 1: [2]})
+
+    circ = Circuit(2)
+    circ.add_gate(OpType.CU1, 1.0, [0, 1])
+
+    distribution = HypergraphPartitioning().allocate(circ, network)
+    BoundaryReallocation().refine(distribution)
+
+    pytket_circ = distribution.to_pytket_circuit()
+    assert check_equivalence(
+        circ, pytket_circ, distribution.get_qubit_mapping()
+    )
+
+
+def test_boundary_reallocation_refiner_simple():
+    network = NISQNetwork(
+        [[2, 1], [1, 0], [1, 3], [0, 4]],
+        {0: [0], 1: [1], 2: [2], 3: [3], 4: [4, 5]},
+    )
+
+    circ = (
+        Circuit(3)
+        .add_gate(OpType.CU1, 0.3, [0, 1])
+        .H(0)
+        .Rz(1.0, 0)
+        .H(0)
+        .add_gate(OpType.CU1, 0.8, [0, 2])
+    )
+
+    distribution = HypergraphPartitioning().allocate(circ, network)
+    BoundaryReallocation().refine(distribution)
+
+    pytket_circ = distribution.to_pytket_circuit()
+    assert check_equivalence(
+        circ, pytket_circ, distribution.get_qubit_mapping()
+    )
+
+
+def test_boundary_reallocation_refiner_complex_1():
+
+    network = NISQNetwork(
+        server_coupling=[[0, 1], [1, 2], [1, 3]],
+        server_qubits={0: [0], 1: [1], 2: [2], 3: [3]},
+    )
+
+    circ = Circuit(4)
+    circ.add_gate(OpType.CU1, 1.0, [0, 2])
+    circ.Rz(0.3, 0)
+    circ.add_gate(OpType.CU1, 1.0, [0, 1])
+    circ.H(2)
+    circ.add_gate(OpType.CU1, 1.0, [3, 2])
+    circ.H(2)
+    circ.H(0)
+    circ.add_gate(OpType.CU1, 1.0, [0, 2])
+    circ.add_gate(OpType.CU1, 1.0, [3, 0])
+    circ.H(0)
+    circ.add_gate(OpType.CU1, 1.0, [1, 0])
+
+    distribution = HypergraphPartitioning().allocate(circ, network)
+    BoundaryReallocation().refine(distribution)
+
+    pytket_circ = distribution.to_pytket_circuit()
+    assert check_equivalence(
+        circ, pytket_circ, distribution.get_qubit_mapping()
+    )
+
+
+def test_boundary_reallocation_refiner_complex_2():
+    network = NISQNetwork(
+        [[0, 1], [0, 2], [0, 3], [3, 4]],
+        {0: [0], 1: [1, 2], 2: [3, 4], 3: [7], 4: [5, 6]},
+    )
+
+    circ = Circuit(4)
+    circ.add_gate(OpType.CU1, 0.1234, [1, 2])
+    circ.add_gate(OpType.CU1, 0.1234, [0, 2])
+    circ.add_gate(OpType.CU1, 0.1234, [2, 3])
+    circ.add_gate(OpType.CU1, 0.1234, [0, 3])
+    circ.H(0).H(2).Rz(0.1234, 3)
+    circ.add_gate(OpType.CU1, 1.0, [0, 2])
+    circ.add_gate(OpType.CU1, 1.0, [0, 3])
+    circ.add_gate(OpType.CU1, 1.0, [1, 2])
+    circ.H(0).H(2).Rz(0.1234, 0)
+    circ.add_gate(OpType.CU1, 0.1234, [0, 1])
+    circ.add_gate(OpType.CU1, 0.1234, [0, 3])
+    circ.add_gate(OpType.CU1, 1.0, [1, 2])
+
+    distribution = HypergraphPartitioning().allocate(circ, network)
+    BoundaryReallocation().refine(distribution)
+
+    pytket_circ = distribution.to_pytket_circuit()
+    assert check_equivalence(
+        circ, pytket_circ, distribution.get_qubit_mapping()
+    )
+
+
+@pytest.mark.high_compute
+def test_boundary_reallocation_refiner_pauli_circ():
+    # Randomly generated circuit of type pauli, depth 10 and 10 qubits
+    with open(
+        "tests/test_circuits/to_pytket_circuit/pauli_10.json", "r"
+    ) as fp:
+        circ = Circuit().from_dict(json.load(fp))
+
+    DQCPass().apply(circ)
+
+    network = NISQNetwork(
+        [[2, 1], [1, 0], [1, 3], [0, 4]],
+        {0: [0, 1, 2], 1: [3, 4], 2: [5, 6, 7], 3: [8], 4: [9]},
+    )
+
+    distribution = HypergraphPartitioning().allocate(circ, network)
+    BoundaryReallocation().refine(distribution, num_rounds=10)
+
+    pytket_circ = distribution.to_pytket_circuit()
+    assert check_equivalence(
+        circ, pytket_circ, distribution.get_qubit_mapping()
+    )
+
+
+def test_boundary_reallocation_refiner_random_circ():
+    # Randomly generated circuit of type random, depth 6 and 6 qubits
+    with open(
+        "tests/test_circuits/to_pytket_circuit/random_6.json", "r"
+    ) as fp:
+        circ = Circuit().from_dict(json.load(fp))
+
+    DQCPass().apply(circ)
+
+    network = NISQNetwork(
+        [[2, 1], [1, 0], [1, 3], [0, 4]],
+        {0: [0, 1, 2], 1: [3, 4], 2: [5, 6, 7], 3: [8], 4: [9]},
+    )
+
+    distribution = HypergraphPartitioning().allocate(circ, network)
+    BoundaryReallocation().refine(distribution, num_rounds=10)
+
+    pytket_circ = distribution.to_pytket_circuit()
+    assert check_equivalence(
+        circ, pytket_circ, distribution.get_qubit_mapping()
+    )
+
+
+def test_boundary_reallocation_refiner_frac_CZ_circ():
+    # Randomly generated circuit of type frac_CZ, depth 10 and 10 qubits
+    with open(
+        "tests/test_circuits/to_pytket_circuit/frac_CZ_10.json", "r"
+    ) as fp:
+        circ = Circuit().from_dict(json.load(fp))
+
+    DQCPass().apply(circ)
+
+    network = NISQNetwork(
+        [[2, 1], [1, 0], [1, 3], [0, 4]],
+        {0: [0, 1, 2], 1: [3, 4], 2: [5, 6, 7], 3: [8], 4: [9]},
+    )
+
+    distribution = HypergraphPartitioning().allocate(circ, network)
+    BoundaryReallocation().refine(distribution, num_rounds=10)
+
+    pytket_circ = distribution.to_pytket_circuit()
+    assert check_equivalence(
+        circ, pytket_circ, distribution.get_qubit_mapping()
+    )

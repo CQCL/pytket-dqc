@@ -19,9 +19,10 @@ from .graph_tools import (  # noqa:F401
 )
 
 from .circuit_analysis import (  # noqa:F401
+    ConstraintException,
     _cost_from_circuit,
     ebit_memory_required,
-    evicted_gate_count,
+    detached_gate_count,
 )
 
 from .verification import check_equivalence  # noqa:F401
