@@ -300,7 +300,7 @@ class Distribution:
 
         return qubit_map
 
-    def to_pytket_circuit(self, allow_update: bool = False) -> Circuit:
+    def to_pytket_circuit(self, allow_update: bool = False, debugging=False) -> Circuit:
         """Generate the circuit corresponding to this `Distribution`.
 
         :param allow_update: Whether the `Distribution` may be altered by
@@ -790,6 +790,7 @@ class Distribution:
                                         and g.qubits[0] == remote_qubit
                                     ):
                                         original_remote = g.qubits[1]
+                                        break
                                 assert original_remote is not None
                                 assert not is_link_qubit(original_remote)
                                 remote_qubit = original_remote
@@ -958,12 +959,13 @@ class Distribution:
                                 # ``remote_qubit``; it's target qubit
                                 # will be the original qubit.
                                 original_remote = None
-                                for g in commands[i:]:
+                                for g in commands[cmd_idx:]:
                                     if (
                                         is_end_proc(g)
                                         and g.qubits[0] == rmt_qubit
                                     ):
                                         original_remote = g.qubits[1]
+                                        break
                                 assert original_remote is not None
                                 rmt_qubit = original_remote
                             assert not is_link_qubit(rmt_qubit)

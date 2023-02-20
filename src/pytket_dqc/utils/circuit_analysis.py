@@ -13,8 +13,8 @@ class ConstraintException(Exception):
         self.v_gate = None
 
 
-def all_cu1_local(circ: Circuit) -> bool:
-    """Checks that all of the CU1 gates in the circuit are local.
+def all_gates_local(circ: Circuit) -> bool:
+    """Checks that all of the gates in the circuit are local.
     """
     for cmd in circ.get_commands():
         if cmd.op.type in [OpType.CustomGate, OpType.Barrier]:
