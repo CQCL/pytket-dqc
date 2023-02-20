@@ -1799,6 +1799,15 @@ def test_to_pytket_circuit_with_frac_cz_circ():
             assert ebit_req <= network.server_ebit_mem[server]
 
 
+@pytest.mark.high_compute
+def test_to_pytket_circuit_pr78_bug():
+    # Bug fixed by PR 78
+    with open("tests/test_circuits/pr78_distribution.json") as fp:
+        distribution_dict = json.load(fp)
+        distribution = Distribution.from_dict(distribution_dict)
+        distribution.to_pytket_circuit()
+
+
 @pytest.mark.skip(reason="Support for teleportation has been disabled")
 def test_to_pytket_circuit_with_teleportation():
 
