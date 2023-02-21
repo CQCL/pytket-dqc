@@ -8,7 +8,9 @@ import numpy as np
 class RandomNISQNetwork(NISQNetwork):
     """NISQNetwok with underlying server network that is random but connected.
     In particular graphs are erdos renyi random graphs, post selected
-    on graphs that are connected.
+    on graphs that are connected. The ebit memory for each module is the the
+    larger of 2 and largest integer less than the average number of qubits
+    in each module.
     """
 
     def __init__(self, n_servers: int, n_qubits: int, **kwargs):
@@ -55,7 +57,7 @@ class RandomNISQNetwork(NISQNetwork):
             server_qubits[server] = server_qubits[server] + [qubit]
 
         server_ebit_mem = {
-            server: (n_qubits//(n_servers * 2) + 1)
+            server: max((n_qubits-1)//(n_servers), 2)
             for server in server_qubits.keys()
         }
 
@@ -68,7 +70,9 @@ class RandomNISQNetwork(NISQNetwork):
 
 class ScaleFreeNISQNetwork(NISQNetwork):
     """NISQNetwork with underlying server network that is scale-free. This is
-    to say one whose degree distribution follows a power law.
+    to say one whose degree distribution follows a power law. The ebit
+    memory for each module is the the larger of 2 and largest integer less
+    than the average number of qubits in each module.
     """
 
     def __init__(self, n_servers: int, n_qubits: int, **kwargs):
@@ -114,7 +118,7 @@ class ScaleFreeNISQNetwork(NISQNetwork):
         # super().__init__(server_coupling, server_qubits)
 
         server_ebit_mem = {
-            server: (n_qubits//(n_servers * 2) + 1)
+            server: max((n_qubits-1)//(n_servers), 2)
             for server in server_qubits.keys()
         }
 
@@ -128,7 +132,9 @@ class ScaleFreeNISQNetwork(NISQNetwork):
 class SmallWorldNISQNetwork(NISQNetwork):
     """NISQNetwork with underlying server network that is a small-world
     network. This is to say most servers can be reached from every other
-    server by a small number of steps
+    server by a small number of steps. The ebit memory for each module
+    is the the larger of 2 and largest integer less than the average number
+    of qubits in each module.
     """
 
     def __init__(self, n_servers: int, n_qubits: int, **kwargs):
@@ -176,7 +182,7 @@ class SmallWorldNISQNetwork(NISQNetwork):
         # super().__init__(server_coupling, server_qubits)
 
         server_ebit_mem = {
-            server: (n_qubits//(n_servers * 2) + 1)
+            server: max((n_qubits-1)//(n_servers), 2)
             for server in server_qubits.keys()
         }
 
