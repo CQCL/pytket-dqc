@@ -18,6 +18,7 @@ Check out the :doc:`usage` section for further information, including how to
    allocators
    placement
    refiners
+   distributors
    utils
    :maxdepth: 2
    :caption: Contents:

@@ -22,4 +22,14 @@ class Distributor(ABC):
     def distribute(
         self, circ: Circuit, network: NISQNetwork, **kwargs
     ) -> Distribution:
+        """Abstract method producing a distribution of the given circuit
+        onto the given network.
+
+        :param circ: Circuit to be distributed
+        :type circ: Circuit
+        :param network: Network onto which circuit should be distributed
+        :type network: NISQNetwork
+        :return: Distribution of circ onto network.
+        :rtype: Distribution
+        """
         pass

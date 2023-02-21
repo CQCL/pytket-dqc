@@ -15,6 +15,10 @@ from pytket_dqc.refiners import (
 
 
 class BipartiteEmbedding(Distributor):
+    """ Distributor applying :class:`.VertexCover` refinement to an
+    initial allocation by :class:`.HypergraphPartitioning`. This workflow
+    is the simplest one considering embedding in the first instance.
+    """
 
     def distribute(
         self, circ: Circuit, network: NISQNetwork, **kwargs
@@ -31,6 +35,9 @@ class BipartiteEmbedding(Distributor):
 
 
 class BipartiteEmbeddingSteiner(Distributor):
+    """ Distributor refining the output of :class:`.BipartiteEmbedding`
+    to make use of Steiner trees.
+    """
 
     def distribute(
         self, circ: Circuit, network: NISQNetwork, **kwargs
@@ -51,6 +58,9 @@ class BipartiteEmbeddingSteiner(Distributor):
 
 
 class BipartiteEmbeddingSteinerDetached(Distributor):
+    """ Distributor refining  the output of
+    :class:`.BipartiteEmbeddingSteiner` to make use of detached gates.
+    """
 
     def distribute(
         self, circ: Circuit, network: NISQNetwork, **kwargs

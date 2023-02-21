@@ -9,6 +9,9 @@ from pytket import Circuit
 
 
 class PartitioningEmbedding(Distributor):
+    """ Distributor refining the output of :class:`.HypergraphPartitioning`
+    to make use of embedding.
+    """
 
     def distribute(
         self, circ: Circuit, network: NISQNetwork, **kwargs

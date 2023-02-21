@@ -17,6 +17,7 @@ def small_circuit_network():
     )
     return circ, network
 
+
 def test_vertex_cover_steiner():
 
     circ, network = small_circuit_network()
