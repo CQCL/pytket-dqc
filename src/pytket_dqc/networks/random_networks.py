@@ -115,8 +115,6 @@ class ScaleFreeNISQNetwork(NISQNetwork):
             server = random.randrange(n_servers)
             server_qubits[server] = server_qubits[server] + [qubit]
 
-        # super().__init__(server_coupling, server_qubits)
-
         server_ebit_mem = {
             server: max((n_qubits-1)//(n_servers), 2)
             for server in server_qubits.keys()
@@ -178,8 +176,6 @@ class SmallWorldNISQNetwork(NISQNetwork):
         for qubit in range(n_servers, n_qubits):
             server = random.randrange(n_servers)
             server_qubits[server] = server_qubits[server] + [qubit]
-
-        # super().__init__(server_coupling, server_qubits)
 
         server_ebit_mem = {
             server: max((n_qubits-1)//(n_servers), 2)

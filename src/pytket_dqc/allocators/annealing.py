@@ -70,7 +70,7 @@ class Annealing(Allocator):
         :key cache_limit: The maximum size of the set of servers whose cost is
             stored in cache; see GainManager. Default value is 5.
         :key initial_temperature: Initial temperature of annealing procedure.
-            Default value if 3.
+            Default value of 3.
         """
 
         dist_circ = HypergraphCircuit(circ)

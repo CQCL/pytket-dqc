@@ -19,7 +19,7 @@ from pytket.passes import (  # type: ignore
 )
 from pytket.circuit import CustomGateDef, Op, Command  # type: ignore
 from typing import Optional
-import sympy
+import sympy  # type: ignore
 
 logging.basicConfig(level=logging.INFO)
 
