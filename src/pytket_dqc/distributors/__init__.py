@@ -1,8 +1,8 @@
 from .distributor import Distributor  # noqa:F401
 from .bipartite_embedding import (  # noqa:F401
-    BipartiteEmbedding,
-    BipartiteEmbeddingSteiner,
-    BipartiteEmbeddingSteinerDetached,
+    CoverEmbedding,
+    CoverEmbeddingSteiner,
+    CoverEmbeddingSteinerDetached,
 )
 from .partitioning_embedding import (  # noqa:F401
     PartitioningHeterogeneous,

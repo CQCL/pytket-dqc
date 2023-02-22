@@ -5,17 +5,17 @@ Distributors
 
     .. automethod:: Distributor.__init__
 
-.. autoclass:: pytket_dqc.distributors.BipartiteEmbedding
+.. autoclass:: pytket_dqc.distributors.CoverEmbedding
 
-    .. automethod:: BipartiteEmbedding.distribute
+    .. automethod:: CoverEmbedding.distribute
 
-.. autoclass:: pytket_dqc.distributors.BipartiteEmbeddingSteiner
+.. autoclass:: pytket_dqc.distributors.CoverEmbeddingSteiner
 
-    .. automethod:: BipartiteEmbeddingSteiner.distribute
+    .. automethod:: CoverEmbeddingSteiner.distribute
 
-.. autoclass:: pytket_dqc.distributors.BipartiteEmbeddingSteinerDetached
+.. autoclass:: pytket_dqc.distributors.CoverEmbeddingSteinerDetached
 
-    .. automethod:: BipartiteEmbeddingSteinerDetached.distribute
+    .. automethod:: CoverEmbeddingSteinerDetached.distribute
 
 .. autoclass:: pytket_dqc.distributors.PartitioningHeterogeneous
 

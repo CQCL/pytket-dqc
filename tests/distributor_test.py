@@ -1,6 +1,6 @@
 from pytket_dqc.distributors import (
     PartitioningHeterogeneousEmbedding,
-    BipartiteEmbeddingSteinerDetached,
+    CoverEmbeddingSteinerDetached,
 )
 from pytket import Circuit
 from pytket_dqc import NISQNetwork
@@ -21,7 +21,7 @@ def small_circuit_network():
 def test_vertex_cover_steiner():
 
     circ, network = small_circuit_network()
-    dist = BipartiteEmbeddingSteinerDetached().distribute(
+    dist = CoverEmbeddingSteinerDetached().distribute(
         circ=circ,
         network=network
     )

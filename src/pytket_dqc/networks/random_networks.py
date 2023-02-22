@@ -32,7 +32,7 @@ class RandomNISQNetwork(NISQNetwork):
                 "The number of qubits must be greater ",
                 "than the number of servers.")
 
-        edge_prob = kwargs.get("edge_prob", 1/math.factorial(n_servers-2))
+        edge_prob = kwargs.get("edge_prob", 2/(n_servers-1))
         seed = kwargs.get("seed", None)
         np.random.seed(seed)
 
