@@ -35,8 +35,8 @@ class PartitioningHeterogeneous(Distributor):
         distribution = HypergraphPartitioning().allocate(
             circ, network, **kwargs
         )
-        refiner = BoundaryReallocation(**kwargs)
-        refiner.refine(distribution)
+        refiner = BoundaryReallocation()
+        refiner.refine(distribution, **kwargs)
 
         return distribution
 
