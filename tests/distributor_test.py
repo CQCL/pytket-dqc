@@ -1,5 +1,5 @@
 from pytket_dqc.distributors import (
-    PartitioningEmbedding,
+    PartitioningHeterogeneousEmbedding,
     BipartiteEmbeddingSteinerDetached,
 )
 from pytket import Circuit
@@ -31,7 +31,7 @@ def test_vertex_cover_steiner():
 def test_partitioning_embedding():
 
     circ, network = small_circuit_network()
-    dist = PartitioningEmbedding().distribute(
+    dist = PartitioningHeterogeneousEmbedding().distribute(
         circ=circ,
         network=network
     )

@@ -5,5 +5,6 @@ from .bipartite_embedding import (  # noqa:F401
     BipartiteEmbeddingSteinerDetached,
 )
 from .partitioning_embedding import (  # noqa:F401
-    PartitioningEmbedding,
+    PartitioningHeterogeneous,
+    PartitioningHeterogeneousEmbedding,
 )

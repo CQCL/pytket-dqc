@@ -17,6 +17,10 @@ Distributors
 
     .. automethod:: BipartiteEmbeddingSteinerDetached.distribute
 
-.. autoclass:: pytket_dqc.distributors.PartitioningEmbedding
+.. autoclass:: pytket_dqc.distributors.PartitioningHeterogeneous
 
-    .. automethod:: PartitioningEmbedding.distribute
+    .. automethod:: PartitioningHeterogeneous.distribute
+
+.. autoclass:: pytket_dqc.distributors.PartitioningHeterogeneousEmbedding
+
+    .. automethod:: PartitioningHeterogeneousEmbedding.distribute

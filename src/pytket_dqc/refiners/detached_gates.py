@@ -8,7 +8,7 @@ if TYPE_CHECKING:
     from pytket_dqc import Distribution
 
 
-class EvictedGates(Refiner):
+class DetachedGates(Refiner):
     """An alias for ``BoundaryReallocation`` with ``reallocate_qubits``
     set to False. This refiner can optimise gate distribution so that detached
     gates may be used, even in the presence of embedding.

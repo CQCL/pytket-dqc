@@ -1,16 +1,16 @@
 from pytket_dqc.refiners import (
     VertexCover,
 )
-from pytket_dqc.allocators import HypergraphPartitioning
 from pytket import Circuit
 from .distributor import Distributor
+from .partitioning_embedding import PartitioningHeterogeneous
 from pytket_dqc import NISQNetwork, Distribution
 from pytket_dqc.refiners import (
     NeighbouringDTypeMerge,
     IntertwinedDTypeMerge,
     SequenceRefiner,
     RepeatRefiner,
-    BoundaryReallocation,
+    DetachedGates,
 )
 
 
@@ -24,12 +24,10 @@ class BipartiteEmbedding(Distributor):
         self, circ: Circuit, network: NISQNetwork, **kwargs
     ) -> Distribution:
 
-        seed = kwargs.get('seed', None)
-
-        distribution = HypergraphPartitioning().allocate(
-            circ, network, seed=seed, num_rounds=0
+        distribution = PartitioningHeterogeneous().distribute(
+            circ, network, **kwargs
         )
-        VertexCover().refine(distribution, vertex_cover_alg='networkx')
+        VertexCover().refine(distribution, **kwargs)
 
         return distribution
 
@@ -69,9 +67,8 @@ class BipartiteEmbeddingSteinerDetached(Distributor):
         distribution = BipartiteEmbeddingSteiner().distribute(
             circ, network, **kwargs
         )
-        BoundaryReallocation().refine(
+        DetachedGates().refine(
             distribution,
-            reallocate_qubits=False,
             **kwargs,
         )
 

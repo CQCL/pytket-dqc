@@ -52,7 +52,7 @@ class BoundaryReallocation(Refiner):
         """
 
         reallocate_qubits = kwargs.get("reallocate_qubits", True)
-        num_rounds = kwargs.get("num_rounds", 1000)
+        num_rounds = kwargs.get("num_rounds", 10)
         stop_parameter = kwargs.get("stop_parameter", 0.05)
         seed = kwargs.get("seed", None)
         if seed is not None:
