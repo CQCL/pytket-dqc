@@ -1,7 +1,6 @@
 from .nisq_network import NISQNetwork
 import random
 import networkx as nx  # type:ignore
-import math
 import numpy as np
 
 

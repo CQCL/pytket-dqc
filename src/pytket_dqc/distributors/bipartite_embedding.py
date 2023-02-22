@@ -25,7 +25,7 @@ class CoverEmbedding(Distributor):
     ) -> Distribution:
         """Method producing a distribution of the given circuit
         onto the given network.
-        
+
         Note that kwargs are passed on to
         :class:`.VertexCover` and the `distribute` method of the initial
         distributor.
@@ -63,7 +63,7 @@ class CoverEmbeddingSteiner(Distributor):
     ) -> Distribution:
         """Abstract method producing a distribution of the given circuit
         onto the given network.
-        
+
         Note that kwargs are passed on to
         the `distribute` method of :class:`.CoverEmbedding`.
 
@@ -99,7 +99,7 @@ class CoverEmbeddingSteinerDetached(Distributor):
     ) -> Distribution:
         """Abstract method producing a distribution of the given circuit
         onto the given network.
-        
+
         Note that kwargs are passed on to
         the `distribute` method of :class:`.CoverEmbeddingSteiner`. and
         the refine method of :class:`.DetachedGates`
