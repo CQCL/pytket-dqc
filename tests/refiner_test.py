@@ -17,7 +17,7 @@ from pytket_dqc.refiners import (
     RepeatRefiner,
     SequenceRefiner,
     EagerHTypeMerge,
-    EvictedGates,
+    DetachedGates,
     BoundaryReallocation,
 )
 from pytket_dqc.refiners.vertex_cover import (
@@ -112,7 +112,7 @@ def test_to_pytket_backwards_mergeable():
     distribution.to_pytket_circuit()
 
     # Finally, refine last distribution for detached gates
-    EvictedGates().refine(distribution)
+    DetachedGates().refine(distribution)
 
     circ = intertwined_test_circuit
     pytket_circ = distribution.to_pytket_circuit()
@@ -165,7 +165,7 @@ def test_sequence_merge_d_type_backwards_mergeable():
     ]
 
     # Finally, refine last distribution for detached gates
-    EvictedGates().refine(distribution)
+    DetachedGates().refine(distribution)
 
     circ = intertwined_test_circuit
     pytket_circ = distribution.to_pytket_circuit()
@@ -216,7 +216,7 @@ def test_repeat_merge_d_type_backwards_mergeable():
     ]
 
     # Finally, refine last distribution for detached gates
-    EvictedGates().refine(distribution)
+    DetachedGates().refine(distribution)
 
     circ = intertwined_test_circuit
     pytket_circ = distribution.to_pytket_circuit()
@@ -263,7 +263,7 @@ def test_intertwined_merge_d_type_backwards_mergeable():
     ]
 
     # Finally, refine last distribution for detached gates
-    EvictedGates().refine(distribution)
+    DetachedGates().refine(distribution)
 
     circ = intertwined_test_circuit
     pytket_circ = distribution.to_pytket_circuit()
@@ -314,7 +314,7 @@ def test_neighbouring_merge_d_type_backwards_mergeable():
     ]
 
     # Finally, refine last distribution for detached gates
-    EvictedGates().refine(distribution)
+    DetachedGates().refine(distribution)
 
     circ = intertwined_test_circuit
     pytket_circ = distribution.to_pytket_circuit()
@@ -387,7 +387,7 @@ def test_neighbouring_merge_d_type_intertwined():
     assert distribution.circuit.hyperedge_list == ideal_hyperedge_list
 
     # Finally, refine last distribution for detached gates
-    EvictedGates().refine(distribution)
+    DetachedGates().refine(distribution)
 
     circ = test_circuit
     pytket_circ = distribution.to_pytket_circuit()
@@ -500,7 +500,7 @@ def test_neighbouring_merge_d_type_complex_circuit():
     assert distribution.circuit.hyperedge_list == ideal_hyperedge_list
 
     # Finally, refine last distribution for detached gates
-    EvictedGates().refine(distribution)
+    DetachedGates().refine(distribution)
 
     circ = test_circuit
     pytket_circ = distribution.to_pytket_circuit()
@@ -547,7 +547,7 @@ def test_neighbouring_merge_d_type_only_CZ():
     assert distribution.cost() == 2
 
     # Finally, refine last distribution for detached gates
-    EvictedGates().refine(distribution)
+    DetachedGates().refine(distribution)
 
     pytket_circ = distribution.to_pytket_circuit()
     assert check_equivalence(
@@ -593,7 +593,7 @@ def test_neighbouring_merge_d_type_no_new_hyperedges():
     assert distribution.circuit.hyperedge_list == hyperedge_list
 
     # Finally, refine last distribution for detached gates
-    EvictedGates().refine(distribution)
+    DetachedGates().refine(distribution)
 
     pytket_circ = distribution.to_pytket_circuit()
     assert check_equivalence(
@@ -653,7 +653,7 @@ def test_vertex_cover_refiner_empty():
     )
 
     # Finally, refine last distribution for detached gates
-    EvictedGates().refine(distribution)
+    DetachedGates().refine(distribution)
 
     pytket_circ = distribution.to_pytket_circuit()
     assert check_equivalence(
@@ -693,7 +693,7 @@ def test_vertex_cover_refiner_trivial():
     )
 
     # Finally, refine last distribution for detached gates
-    EvictedGates().refine(distribution)
+    DetachedGates().refine(distribution)
 
     pytket_circ = distribution.to_pytket_circuit()
     assert check_equivalence(
@@ -741,7 +741,7 @@ def test_vertex_cover_refiner_simple():
     )
 
     # Finally, refine last distribution for detached gates
-    EvictedGates().refine(distribution)
+    DetachedGates().refine(distribution)
 
     pytket_circ = distribution.to_pytket_circuit()
     assert check_equivalence(
@@ -804,7 +804,7 @@ def test_vertex_cover_refiner_intertwined():
     )
 
     # Finally, refine last distribution for detached gates
-    EvictedGates().refine(distribution)
+    DetachedGates().refine(distribution)
 
     circ = intertwined_test_circuit
     pytket_circ = distribution.to_pytket_circuit()
@@ -858,7 +858,7 @@ def test_vertex_cover_refiner_complex_1():
     )
 
     # Finally, refine last distribution for detached gates
-    EvictedGates().refine(distribution)
+    DetachedGates().refine(distribution)
 
     pytket_circ = distribution.to_pytket_circuit()
     assert check_equivalence(
@@ -923,7 +923,7 @@ def test_vertex_cover_refiner_complex_2():
     )
 
     # Finally, refine last distribution for detached gates
-    EvictedGates().refine(distribution)
+    DetachedGates().refine(distribution)
 
     pytket_circ = distribution.to_pytket_circuit()
     assert check_equivalence(
@@ -992,7 +992,7 @@ def test_vertex_cover_refiner_pauli_circ():
     )
 
     # Finally, refine last distribution for detached gates
-    EvictedGates().refine(distribution)
+    DetachedGates().refine(distribution)
 
     pytket_circ = distribution.to_pytket_circuit()
     assert check_equivalence(
@@ -1059,7 +1059,7 @@ def test_vertex_cover_refiner_random_circ():
     )
 
     # Finally, refine last distribution for detached gates
-    EvictedGates().refine(distribution)
+    DetachedGates().refine(distribution)
 
     pytket_circ = distribution.to_pytket_circuit()
     assert check_equivalence(
@@ -1121,7 +1121,7 @@ def test_vertex_cover_refiner_frac_CZ_circ():
     )
 
     # Finally, refine last distribution for detached gates
-    EvictedGates().refine(distribution)
+    DetachedGates().refine(distribution)
 
     pytket_circ = distribution.to_pytket_circuit()
     assert check_equivalence(
@@ -1183,7 +1183,7 @@ def test_vertex_cover_embedding_boundary_failure():
     )
 
     # Finally, refine last distribution for detached gates
-    EvictedGates().refine(distribution)
+    DetachedGates().refine(distribution)
 
     pytket_circ = distribution.to_pytket_circuit()
     assert check_equivalence(

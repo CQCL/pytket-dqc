@@ -24,16 +24,14 @@ def acceptance_criterion(
     If ``gain`` is positive (improvement) the output will be greater than 1.
     If ``gain`` is negative the output will be a probability from 0 to 1.
 
-    :param new: New value of objective function.
-    :type new: int
-    :param current: Current value of objective function.
-    :type current: int
+    :param gain: Change in objective function.
+    :type gain: int
     :param iteration: Current iteration.
     :type iteration: int
-    :param initial_temperature: Initial temperatire, defaults to 1.
+    :param initial_temperature: Initial temperature, defaults to 1.
     :type initial_temperature: float, optional
     :return: acceptance criterion.
-    :rtype: [type]
+    :rtype: float
     """
 
     temperature = initial_temperature / (iteration + 1)
@@ -71,6 +69,8 @@ class Annealing(Allocator):
             placement. Default is Random.
         :key cache_limit: The maximum size of the set of servers whose cost is
             stored in cache; see GainManager. Default value is 5.
+        :key initial_temperature: Initial temperature of annealing procedure.
+            Default value of 3.
         """
 
         dist_circ = HypergraphCircuit(circ)
@@ -79,10 +79,11 @@ class Annealing(Allocator):
                 "This circuit cannot be implemented on this network."
             )
 
-        iterations = kwargs.get("iterations", 10000)
+        iterations = kwargs.get("iterations", 30000)
         initial_aloc = kwargs.get("initial_place_method", Random())
         seed = kwargs.get("seed", None)
         cache_limit = kwargs.get("cache_limit", None)
+        initial_temperature = kwargs.get("initial_temperature", 3)
 
         random.seed(seed)
 
@@ -126,30 +127,23 @@ class Annealing(Allocator):
             ):
 
                 # List all qubit vertices
-                destination_server_qubit_list = [
-                    v
-                    for v in distribution.circuit.vertex_list
-                    if (
-                        distribution.circuit._vertex_circuit_map[v]["type"]
-                        == "qubit"
-                    )
-                ]
+                dest_qubit_list = distribution.circuit.get_qubit_vertices()
 
                 # Gather qubits in ``destination_server``
-                destination_server_qubit_list = [
+                dest_qubit_list = [
                     v
-                    for v in destination_server_qubit_list
+                    for v in dest_qubit_list
                     if (gain_manager.current_server(v) == destination_server)
                 ]
 
-                q_in_dest = len(destination_server_qubit_list)
+                q_in_dest = len(dest_qubit_list)
                 size_dest = len(network.server_qubits[destination_server])
 
                 # If destination server is full, pick a random qubit in that
                 # server and move it to the home server of the qubit
                 # being moved.
                 if q_in_dest == size_dest:
-                    swap_vertex = random.choice(destination_server_qubit_list)
+                    swap_vertex = random.choice(dest_qubit_list)
 
             # Calculate gain
             gain = gain_manager.move_vertex_gain(
@@ -168,7 +162,11 @@ class Annealing(Allocator):
                     vertex_to_move, home_server, recalculate_cost=False
                 )
 
-            acceptance_prob = acceptance_criterion(gain, i)
+            acceptance_prob = acceptance_criterion(
+                gain=gain,
+                iteration=i,
+                initial_temperature=initial_temperature,
+            )
 
             # If acceptance probability is higher than random number then
             # ten accept new placement. Note that new placement is always

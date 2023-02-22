@@ -35,8 +35,8 @@ class VertexCover(Refiner):
             "networkx" -> use NetworkX's algorithm to find a
                           single vertex cover
         """
-        vertex_cover_alg = kwargs.get("vertex_cover_alg", None)
-        if vertex_cover_alg is None or vertex_cover_alg not in [
+        vertex_cover_alg = kwargs.get("vertex_cover_alg", "networkx")
+        if vertex_cover_alg not in [
             "all_brute_force",
             "networkx",
         ]:
