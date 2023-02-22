@@ -3,7 +3,7 @@ from pytket_dqc.refiners import (
 )
 from pytket import Circuit
 from .distributor import Distributor
-from .partitioning_embedding import PartitioningHeterogeneous
+from .partitioning_heterogeneous import PartitioningHeterogeneous
 from pytket_dqc import NISQNetwork, Distribution
 from pytket_dqc.refiners import (
     NeighbouringDTypeMerge,
