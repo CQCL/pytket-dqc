@@ -23,7 +23,8 @@ def test_vertex_cover_steiner():
     circ, network = small_circuit_network()
     dist = CoverEmbeddingSteinerDetached().distribute(
         circ=circ,
-        network=network
+        network=network,
+        seed=0,
     )
     assert dist.is_valid()
 
@@ -33,6 +34,7 @@ def test_partitioning_embedding():
     circ, network = small_circuit_network()
     dist = PartitioningHeterogeneousEmbedding().distribute(
         circ=circ,
-        network=network
+        network=network,
+        n_rounds=5,
     )
     assert dist.is_valid()
