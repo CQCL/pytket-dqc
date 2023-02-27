@@ -1,12 +1,15 @@
 from .nisq_network import NISQNetwork
 import random
 import networkx as nx  # type:ignore
+import numpy as np
 
 
 class RandomNISQNetwork(NISQNetwork):
     """NISQNetwok with underlying server network that is random but connected.
     In particular graphs are erdos renyi random graphs, post selected
-    on graphs that are connected.
+    on graphs that are connected. The ebit memory for each module is the the
+    larger of 2 and largest integer less than the average number of qubits
+    in each module.
     """
 
     def __init__(self, n_servers: int, n_qubits: int, **kwargs):
@@ -30,6 +33,7 @@ class RandomNISQNetwork(NISQNetwork):
 
         edge_prob = kwargs.get("edge_prob", 2/(n_servers-1))
         seed = kwargs.get("seed", None)
+        np.random.seed(seed)
 
         # Generate erdos renyi graph until one that is connected is generated.
         connected = False
@@ -37,7 +41,7 @@ class RandomNISQNetwork(NISQNetwork):
             graph = nx.gnp_random_graph(
                 n=n_servers,
                 p=edge_prob,
-                seed=seed,
+                seed=np.random,
             )
             connected = nx.is_connected(graph)
         server_coupling = [list(edge) for edge in graph.edges]
@@ -51,12 +55,23 @@ class RandomNISQNetwork(NISQNetwork):
             server = random.randrange(n_servers)
             server_qubits[server] = server_qubits[server] + [qubit]
 
-        super().__init__(server_coupling, server_qubits)
+        server_ebit_mem = {
+            server: max((n_qubits-1)//(n_servers), 2)
+            for server in server_qubits.keys()
+        }
+
+        super().__init__(
+            server_coupling=server_coupling,
+            server_qubits=server_qubits,
+            server_ebit_mem=server_ebit_mem,
+        )
 
 
 class ScaleFreeNISQNetwork(NISQNetwork):
     """NISQNetwork with underlying server network that is scale-free. This is
-    to say one whose degree distribution follows a power law.
+    to say one whose degree distribution follows a power law. The ebit
+    memory for each module is the the larger of 2 and largest integer less
+    than the average number of qubits in each module.
     """
 
     def __init__(self, n_servers: int, n_qubits: int, **kwargs):
@@ -77,7 +92,7 @@ class ScaleFreeNISQNetwork(NISQNetwork):
                 "than the number of servers."
             )
 
-        m = kwargs.get('m', 2)
+        m = kwargs.get('m', 1)
         seed = kwargs.get('seed', None)
         initial_graph = kwargs.get('initial_graph', None)
 
@@ -99,13 +114,24 @@ class ScaleFreeNISQNetwork(NISQNetwork):
             server = random.randrange(n_servers)
             server_qubits[server] = server_qubits[server] + [qubit]
 
-        super().__init__(server_coupling, server_qubits)
+        server_ebit_mem = {
+            server: max((n_qubits-1)//(n_servers), 2)
+            for server in server_qubits.keys()
+        }
+
+        super().__init__(
+            server_coupling=server_coupling,
+            server_qubits=server_qubits,
+            server_ebit_mem=server_ebit_mem,
+        )
 
 
 class SmallWorldNISQNetwork(NISQNetwork):
     """NISQNetwork with underlying server network that is a small-world
     network. This is to say most servers can be reached from every other
-    server by a small number of steps
+    server by a small number of steps. The ebit memory for each module
+    is the the larger of 2 and largest integer less than the average number
+    of qubits in each module.
     """
 
     def __init__(self, n_servers: int, n_qubits: int, **kwargs):
@@ -126,7 +152,7 @@ class SmallWorldNISQNetwork(NISQNetwork):
                 "than the number of servers."
             )
 
-        k = kwargs.get('k', 4)
+        k = kwargs.get('k', 2)
         seed = kwargs.get('seed', None)
         p = kwargs.get('p', 0.5)
         tries = kwargs.get('tries', 1000)
@@ -150,4 +176,13 @@ class SmallWorldNISQNetwork(NISQNetwork):
             server = random.randrange(n_servers)
             server_qubits[server] = server_qubits[server] + [qubit]
 
-        super().__init__(server_coupling, server_qubits)
+        server_ebit_mem = {
+            server: max((n_qubits-1)//(n_servers), 2)
+            for server in server_qubits.keys()
+        }
+
+        super().__init__(
+            server_coupling=server_coupling,
+            server_qubits=server_qubits,
+            server_ebit_mem=server_ebit_mem,
+        )

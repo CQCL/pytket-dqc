@@ -1799,6 +1799,15 @@ def test_to_pytket_circuit_with_frac_cz_circ():
             assert ebit_req <= network.server_ebit_mem[server]
 
 
+@pytest.mark.high_compute
+def test_to_pytket_circuit_pr78_bug():
+    # Bug fixed by PR 78
+    with open("tests/test_circuits/pr78_distribution.json") as fp:
+        distribution_dict = json.load(fp)
+        distribution = Distribution.from_dict(distribution_dict)
+        distribution.to_pytket_circuit()
+
+
 @pytest.mark.skip(reason="Support for teleportation has been disabled")
 def test_to_pytket_circuit_with_teleportation():
 
@@ -1874,6 +1883,50 @@ def test_to_pytket_circuit_with_teleportation():
     assert test_circ_command_qubits == circ_with_dist_command_qubits
 
     assert test_circ.q_registers == circ_with_dist.q_registers
+
+    assert check_equivalence(
+        circ, circ_with_dist, distribution.get_qubit_mapping()
+    )
+
+
+def test_to_pytket_satisfy_bound_flag():
+
+    network = NISQNetwork(
+        server_coupling=[[0, 1], [0, 2]],
+        server_qubits={0: [0], 1: [1], 2: [2]},
+        server_ebit_mem={0: 1, 1: 1, 2: 1}
+    )
+
+    circ = (
+        Circuit(2)
+        .add_gate(OpType.CU1, 0.3, [0, 1])
+        .H(0)
+        .add_gate(OpType.CU1, 1.0, [0, 1])
+        .add_gate(OpType.CU1, 0.3, [1, 0])
+    )
+
+    placement = Placement({0: 1, 1: 2, 2: 2, 3: 1, 4: 2})
+    distribution = Distribution(HypergraphCircuit(circ), placement, network)
+    assert distribution.is_valid()
+
+    caught = False
+    try:
+        distribution.to_pytket_circuit(satisfy_bound=True, allow_update=False)
+    except ConstraintException:
+        caught = True
+    assert caught  # The bound is violated
+
+    caught = False
+    try:
+        distribution.to_pytket_circuit(satisfy_bound=False)
+    except ConstraintException:
+        caught = True
+    assert not caught  # Bounds are ignored and, hence, no exception is raised
+
+    circ_with_dist = distribution.to_pytket_circuit(
+        satisfy_bound=True,
+        allow_update=True
+    )
 
     assert check_equivalence(
         circ, circ_with_dist, distribution.get_qubit_mapping()

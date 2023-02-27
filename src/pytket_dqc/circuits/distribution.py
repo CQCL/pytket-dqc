@@ -300,15 +300,26 @@ class Distribution:
 
         return qubit_map
 
-    def to_pytket_circuit(self, allow_update: bool = False, debugging=False) -> Circuit:
+
+    def to_pytket_circuit(
+        self,
+        satisfy_bound: bool = True,
+        allow_update: bool = False,
+        debugging=False
+    ) -> Circuit:
         """Generate the circuit corresponding to this `Distribution`.
 
+        :param satisfy_bound: Whether the output circuit is only allowed
+            to use as many link qubits per module as establisehd by the
+            network's communication capacity (if provided). Optional
+            parameter, defaults to True.
         :param allow_update: Whether the `Distribution` may be altered by
             this method, in order to make it satisfy the network's
             communication capacity (in case it has been bounded). Optional
             parameter, defaults to False.
         :raise ConstraintException: If a server's communication capacity
-            is exceeded and `allow_update` was set to False.
+            is exceeded, `satisfy_bound` was set to True and `allow_update`
+            was set to False.
         """
         if not self.is_valid():
             raise Exception("The distribution of the circuit is not valid!")
@@ -378,9 +389,9 @@ class Distribution:
                 Do not call this function outside the LinkManager class.
 
                 :raise ConstraintException: If a server's communication
-                capacity is exceeded.
+                capacity is exceeded and `satisfy_bound` was set to True.
                 """
-                if server_ebit_mem[server] > 0:  # There's a bound to ebit mem
+                if satisfy_bound and server_ebit_mem[server] > 0:
                     if server_ebit_mem[server] <= len(self.occupied[server]):
                         raise ConstraintException(
                             "Communication memory capacity of server "
@@ -595,7 +606,7 @@ class Distribution:
             given hyperedge and return the new equivalent circuit.
 
             :raise ConstraintException: If a server's communication capacity
-                is exceeded.
+                is exceeded and `satisfy_bound` was set to True.
             """
             if len(hyperedge.vertices) == 1:  # Edge case: no gate vertices
                 return circ

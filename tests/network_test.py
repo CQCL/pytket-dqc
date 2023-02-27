@@ -39,11 +39,15 @@ def test_random_network():
 
     network = RandomNISQNetwork(n_servers=5, n_qubits=10, seed=0)
     assert network.server_coupling == [
-        [0, 3], [0, 4], [1, 3], [2, 3], [2, 4]
+        [0, 3], [1, 2], [1, 4], [3, 4]
     ]
     assert network.server_qubits == {
         0: [0, 7], 1: [1], 2: [2, 8], 3: [3, 5, 6], 4: [4, 9]
     }
+    assert network.server_ebit_mem == {0: 2, 1: 2, 2: 2, 3: 2, 4: 2}
+
+    network = RandomNISQNetwork(n_servers=3, n_qubits=12, seed=0)
+    assert network.server_ebit_mem == {0: 3, 1: 3, 2: 3}
 
 
 def test_small_world_network():
@@ -53,11 +57,16 @@ def test_small_world_network():
     network_dict = network.to_dict()
     server_coupling = network_dict['server_coupling']
     server_qubits = network_dict['server_qubits']
+    server_ebit_mem = network_dict['server_ebit_mem']
 
     assert server_coupling == [[0, 4], [0, 2], [0, 3], [1, 3], [1, 2]]
     assert server_qubits == {
         0: [0, 7, 9], 1: [1, 5], 2: [2, 8], 3: [3], 4: [4, 6]
     }
+    assert server_ebit_mem == {0: 2, 1: 2, 2: 2, 3: 2, 4: 2}
+
+    network = SmallWorldNISQNetwork(n_servers=3, n_qubits=12, seed=0)
+    assert network.server_ebit_mem == {0: 3, 1: 3, 2: 3}
 
 
 def test_scale_free_network():
@@ -67,6 +76,10 @@ def test_scale_free_network():
     assert network.server_qubits == {
         0: [0, 7, 9], 1: [1, 5], 2: [2, 8], 3: [3], 4: [4, 6]
     }
+    assert network.server_ebit_mem == {0: 2, 1: 2, 2: 2, 3: 2, 4: 2}
+
+    network = ScaleFreeNISQNetwork(n_servers=3, n_qubits=12, seed=0)
+    assert network.server_ebit_mem == {0: 3, 1: 3, 2: 3}
 
 
 def test_can_implement():
