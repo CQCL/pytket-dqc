@@ -7,4 +7,5 @@ from .cover_embedding import (  # noqa:F401
 from .partitioning_heterogeneous import (  # noqa:F401
     PartitioningHeterogeneous,
     PartitioningHeterogeneousEmbedding,
+    PartitioningAnnealing,
 )

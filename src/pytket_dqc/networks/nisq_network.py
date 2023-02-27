@@ -7,6 +7,7 @@ from pytket.architecture import Architecture  # type:ignore
 from pytket.circuit import Node  # type:ignore
 from pytket_dqc.circuits.hypergraph_circuit import HypergraphCircuit
 from typing import Tuple, Union, cast, Optional
+import matplotlib.pyplot as plt
 
 
 class NISQNetwork(ServerNetwork):
@@ -277,12 +278,14 @@ class NISQNetwork(ServerNetwork):
 
         G = self.get_nisq_nx()
         colors = [G[u][v]["color"] for u, v in G.edges()]
+        f = plt.figure()
         nx.draw(
             G,
             with_labels=True,
             edge_color=colors,
             pos=nx.nx_agraph.graphviz_layout(G)
         )
+        return f
 
 
 class AllToAll(NISQNetwork):
