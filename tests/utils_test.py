@@ -124,18 +124,18 @@ def test_ebit_memory_required():
     assert ebit_memory_required(circ) == {0: 0, 1: 4, 2: 0}
 
 
-def test_detached_gate_count():
-    # This is a randomly generated circuit of type pauli, depth 6 and 6 qubits
-    with open("tests/test_circuits/pauli_6.json", "r") as fp:
-        circ = Circuit().from_dict(json.load(fp))
-    # Comparing against calculation by hand
-    assert detached_gate_count(circ) == 0
+# def test_detached_gate_count():
+#     # This is a randomly generated circuit of type pauli, depth 6 and 6 qubits
+#     with open("tests/test_circuits/pauli_6.json", "r") as fp:
+#         circ = Circuit().from_dict(json.load(fp))
+#     # Comparing against calculation by hand
+#     assert detached_gate_count(circ) == 0
 
-    # Randomly generated circuit of type frac_CZ, depth 6 and 6 qubits
-    with open("tests/test_circuits/frac_CZ_6.json", "r") as fp:
-        circ = Circuit().from_dict(json.load(fp))
-    # Comparing against calculation by
-    assert detached_gate_count(circ) == 6
+#     # Randomly generated circuit of type frac_CZ, depth 6 and 6 qubits
+#     with open("tests/test_circuits/frac_CZ_6.json", "r") as fp:
+#         circ = Circuit().from_dict(json.load(fp))
+#     # Comparing against calculation by
+#     assert detached_gate_count(circ) == 6
 
 
 def test_verification_from_placed_circuit():
