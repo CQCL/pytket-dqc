@@ -78,16 +78,26 @@ def ebit_memory_required(circ: Circuit) -> dict[int, int]:
 
 
 def detached_gate_count(distribution: 'Distribution') -> int:
+    """Scan the distribution and return the number of detached gates in it.
+    An detached gate is a 2-qubit gate that acts on link qubits on both
+    ends; i.e. it is implemented away from both of its home servers.
+
+    :param distribution: The distribution to be analysed
+    :type distribution: Distribution
+
+    :return: The number of detached gates
+    :rtype: int
+    """
 
     n_detached = 0
 
     for vertex in distribution.circuit.vertex_list:
-    
+
         if not distribution.circuit.is_qubit_vertex(vertex):
-            
+
             # Qubits gate acts on in original circuit
             q_1, q_2 = distribution.circuit.get_gate_of_vertex(vertex).qubits
-            
+
             # Vertices of these qubits
             v_1 = distribution.circuit.get_vertex_of_qubit(q_1)
             v_2 = distribution.circuit.get_vertex_of_qubit(q_2)
@@ -95,37 +105,15 @@ def detached_gate_count(distribution: 'Distribution') -> int:
             # Servers to which the qubits have been assigned
             s_1 = distribution.placement.placement[v_1]
             s_2 = distribution.placement.placement[v_2]
-            
+
             # Server to which the gate has been assigned
             s_g = distribution.placement.placement[vertex]
-            
+
             # Assert that gate is not detached
-            if not ((s_1==s_g) or (s_2==s_g)):
-                n_detached+=1
+            if not ((s_1 == s_g) or (s_2 == s_g)):
+                n_detached += 1
 
     return n_detached
-
-
-# def detached_gate_count(circ: Circuit) -> int:
-#     """Scan the circuit and return the number of detached gates in it.
-#     An detached gate is a 2-qubit gate that acts on link qubits on both
-#     ends; i.e. it is implemented away from both of its home servers.
-
-#     :param circ: The circuit to be analysed
-#     :type circ: Circuit
-
-#     :return: The number of detached gates
-#     :rtype: dict[int, int]
-#     """
-#     n_detached = 0
-
-#     for command in circ.get_commands():
-#         if command.op.type in {OpType.CU1, OpType.CZ}:
-#             qubits = command.qubits
-#             if is_link_qubit(qubits[0]) and is_link_qubit(qubits[1]):
-#                 n_detached += 1
-
-#     return n_detached
 
 
 # TODO: This is checked by parsing the name of the qubit.

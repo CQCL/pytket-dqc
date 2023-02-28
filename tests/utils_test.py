@@ -25,8 +25,6 @@ import numpy as np  # type: ignore
 import pytest  # type: ignore
 from pytket_dqc.utils.qasm import to_qasm_str
 from pytket.qasm import circuit_from_qasm_str
-import json
-from pytket_dqc import Distribution
 
 
 def test_qasm():
@@ -125,23 +123,26 @@ def test_ebit_memory_required():
     # Comparing against calculationby hand
     assert ebit_memory_required(circ) == {0: 0, 1: 4, 2: 0}
 
+
 def test_detached_gate_count():
 
-    with open("tests/test_circuits/chemistry_aware_post_vertex_cover.json", 'r') as fp:
+    with open(
+        "tests/test_circuits/chemistry_aware_post_vertex_cover.json", 'r'
+    ) as fp:
         distribution = Distribution.from_dict(json.load(fp))
 
     assert detached_gate_count(distribution) == 0
 
-    circ = Circuit(2).CZ(0,1)
+    circ = Circuit(2).CZ(0, 1)
     DQCPass().apply(circ)
 
     hyp_circ = HypergraphCircuit(circuit=circ)
 
     net = NISQNetwork(
-        server_coupling=[[0,1], [1,2]],
-        server_qubits={0:[0], 1:[1], 2:[2]},
+        server_coupling=[[0, 1], [1, 2]],
+        server_qubits={0: [0], 1: [1], 2: [2]},
     )
-    place = Placement({0:0, 1:2, 2:1})
+    place = Placement({0: 0, 1: 2, 2: 1})
 
     dist = Distribution(
         circuit=hyp_circ,
@@ -150,6 +151,7 @@ def test_detached_gate_count():
     )
 
     assert detached_gate_count(dist) == 1
+
 
 def test_verification_from_placed_circuit():
     # This is the same test as in ``test_from_placed_circuit`` but instead of
