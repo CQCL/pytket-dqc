@@ -109,7 +109,7 @@ def detached_gate_count(distribution: 'Distribution') -> int:
             # Server to which the gate has been assigned
             s_g = distribution.placement.placement[vertex]
 
-            # Assert that gate is not detached
+            # Count if detached
             if not ((s_1 == s_g) or (s_2 == s_g)):
                 n_detached += 1
 
