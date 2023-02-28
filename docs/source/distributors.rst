@@ -17,6 +17,10 @@ Distributors
 
     .. automethod:: CoverEmbeddingSteinerDetached.distribute
 
+.. autoclass:: pytket_dqc.distributors.PartitioningAnnealing
+
+    .. automethod:: PartitioningAnnealing.distribute
+
 .. autoclass:: pytket_dqc.distributors.PartitioningHeterogeneous
 
     .. automethod:: PartitioningHeterogeneous.distribute

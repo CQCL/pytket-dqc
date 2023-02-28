@@ -2163,3 +2163,14 @@ def test_distribution_to_dict(tmpdir_factory):
     new_distribution = distribution.from_dict(retrieved_distribution_dict)
 
     assert new_distribution == distribution
+
+
+@pytest.mark.xfail
+@pytest.mark.high_compute
+def test_embedding_detached():
+
+    with open(
+        "tests/test_circuits/chemistry_aware_embedding_detatched.json", 'r'
+    ) as fp:
+        distribution = Distribution.from_dict(json.load(fp))
+    distribution.to_pytket_circuit(satisfy_bound=False)

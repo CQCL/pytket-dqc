@@ -5,8 +5,34 @@ from pytket_dqc.refiners import (
     EagerHTypeMerge,
     BoundaryReallocation,
 )
-from pytket_dqc.allocators import HypergraphPartitioning
+from pytket_dqc.allocators import HypergraphPartitioning, Annealing
 from pytket import Circuit
+
+
+class PartitioningAnnealing(Distributor):
+    """ Distributor using the :class:`.Annealing` allocator.
+    """
+
+    def distribute(
+        self, circ: Circuit, network: NISQNetwork, **kwargs
+    ) -> Distribution:
+        """Method producing a distribution of the given circuit
+        onto the given network.
+
+        Note that kwargs are passed on to the allocate method of
+        :class:`.Annealing`.
+
+        :param circ: Circuit to be distributed
+        :type circ: Circuit
+        :param network: Network onto which circuit should be distributed
+        :type network: NISQNetwork
+        :return: Distribution of circ onto network.
+        :rtype: Distribution
+        """
+
+        return Annealing().allocate(
+            circ, network, **kwargs
+        )
 
 
 class PartitioningHeterogeneous(Distributor):
@@ -17,7 +43,7 @@ class PartitioningHeterogeneous(Distributor):
     def distribute(
         self, circ: Circuit, network: NISQNetwork, **kwargs
     ) -> Distribution:
-        """Abstract method producing a distribution of the given circuit
+        """Method producing a distribution of the given circuit
         onto the given network.
 
         Note that kwargs are passed on to the allocate method of
@@ -35,8 +61,8 @@ class PartitioningHeterogeneous(Distributor):
         distribution = HypergraphPartitioning().allocate(
             circ, network, **kwargs
         )
-        refiner = BoundaryReallocation(**kwargs)
-        refiner.refine(distribution)
+        refiner = BoundaryReallocation()
+        refiner.refine(distribution, **kwargs)
 
         return distribution
 
@@ -49,7 +75,7 @@ class PartitioningHeterogeneousEmbedding(Distributor):
     def distribute(
         self, circ: Circuit, network: NISQNetwork, **kwargs
     ) -> Distribution:
-        """Abstract method producing a distribution of the given circuit
+        """Method producing a distribution of the given circuit
         onto the given network.
 
         Note that kwargs are passed on to the distribute method of
@@ -63,7 +89,11 @@ class PartitioningHeterogeneousEmbedding(Distributor):
         :rtype: Distribution
         """
 
-        distribution = PartitioningHeterogeneous().distribute(
+        initial_distributor = kwargs.get(
+            'initial_distributor', PartitioningHeterogeneous()
+        )
+
+        distribution = initial_distributor.distribute(
             circ, network, **kwargs
         )
         refiner = RepeatRefiner(EagerHTypeMerge())
