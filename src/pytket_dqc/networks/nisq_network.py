@@ -7,7 +7,7 @@ from pytket.architecture import Architecture  # type:ignore
 from pytket.circuit import Node  # type:ignore
 from pytket_dqc.circuits.hypergraph_circuit import HypergraphCircuit
 from typing import Tuple, Union, cast, Optional
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt  # type:ignore
 
 
 class NISQNetwork(ServerNetwork):

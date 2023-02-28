@@ -2165,8 +2165,8 @@ def test_distribution_to_dict(tmpdir_factory):
     assert new_distribution == distribution
 
 @pytest.mark.xfail
-def test_detached_gate_count():
+def test_embedding_detached():
 
-    with open("tests/test_circuits/chemistry_aware.json", 'r') as fp:
+    with open("tests/test_circuits/chemistry_aware_embedding_detatched.json", 'r') as fp:
         distribution = Distribution.from_dict(json.load(fp))
     distribution.to_pytket_circuit(satisfy_bound=False)
