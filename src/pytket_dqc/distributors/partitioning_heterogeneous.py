@@ -10,8 +10,7 @@ from pytket import Circuit
 
 
 class PartitioningAnnealing(Distributor):
-    """ Distributor refining the output of :class:`.HypergraphPartitioning`
-    to adapt the result to heterogeneous networks.
+    """ Distributor using the :class:`.Annealing` allocator.
     """
 
     def distribute(
@@ -21,8 +20,7 @@ class PartitioningAnnealing(Distributor):
         onto the given network.
 
         Note that kwargs are passed on to the allocate method of
-        :class:`.HypergraphPartitioning` and the `refine` method of
-        :class:`.BoundaryReallocation`.
+        :class:`.Annealing`.
 
         :param circ: Circuit to be distributed
         :type circ: Circuit
