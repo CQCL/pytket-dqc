@@ -7,14 +7,23 @@ from copy import copy
 
 
 class EagerHTypeMerge(Refiner):
-    """Scans circuit from left to right, merging hedges
-    via hoppings as it finds them according to `PacMan` found packets.
+    """:class:`.Refiner` that scans circuit from left to right,
+        merging hyperedges via hoppings as it finds them according
+        to `PacMan` found packets.
 
     In the case of conflicts, the first found hopping is the one that is
     used, and no calculation is made as to which might be better to implement.
     """
 
     def refine(self, distribution: Distribution, **kwargs):
+        """Merge intertwined packets.
+
+        :param distribution: Distribution whose hopping packable packets should
+            be merged.
+        :type distribution: Distribution
+        :return: True if a refinement has been performed. False otherwise.
+        :rtype: bool
+        """
         gain_mgr = GainManager(initial_distribution=distribution)
         refinement_made = False
         pacman = PacMan(distribution.circuit, distribution.placement)
