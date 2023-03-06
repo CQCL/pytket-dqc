@@ -24,3 +24,9 @@ Refiners
     .. automethod:: SequenceRefiner.__init__
 
     .. automethod:: SequenceRefiner.refine
+
+.. autoclass:: pytket_dqc.refiners.EagerHTypeMerge
+
+    .. automethod:: EagerHTypeMerge.__init__
+    
+    .. automethod:: EagerHTypeMerge.refine
