@@ -15,7 +15,7 @@ class EagerHTypeMerge(Refiner):
     used, and no calculation is made as to which might be better to implement.
     """
 
-    def refine(self, distribution: Distribution, **kwargs):
+    def refine(self, distribution: Distribution, **kwargs) -> bool:
         """Merge intertwined packets.
 
         :param distribution: Distribution whose hopping packable packets should
