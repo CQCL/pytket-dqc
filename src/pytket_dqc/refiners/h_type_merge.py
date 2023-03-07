@@ -7,9 +7,10 @@ from copy import copy
 
 
 class EagerHTypeMerge(Refiner):
-    """:class:`.Refiner` that scans circuit from left to right,
-    merging hyperedges via hoppings as it finds them according
-    to `PacMan` found packets.
+    """:class:`.Refiner` that scans circuit, merging hyperedges as it finds
+    ones that are able to do so.
+    To scan through the hyperedges it looks at each qubit and for each qubit
+    it scans from the start to the end of the circuit for hoppings.
 
     In the case of conflicts, the first found hopping is the one that is
     used, and no calculation is made as to which might be better to implement.
