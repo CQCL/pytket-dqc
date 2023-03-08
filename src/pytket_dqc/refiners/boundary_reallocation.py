@@ -37,8 +37,8 @@ class BoundaryReallocation(Refiner):
         :param distribution: Distribution to refine.
         :type distribution: Distribution
 
-        :key reallocate_qubits: Whether qubit vertices are allowed to be
-            reallocated. Default is True.
+        :key fixed_vertices: A list of vertices that cannot be reallocated.
+            Default is [].
         :key num_rounds: Max number of refinement rounds. Default is 1000.
         :key stop_parameter: Real number in [0,1]. If proportion of moves
             in a round is smaller than this number, do no more rounds. Default
@@ -51,7 +51,7 @@ class BoundaryReallocation(Refiner):
         :rtype: Distribution
         """
 
-        reallocate_qubits = kwargs.get("reallocate_qubits", True)
+        fixed_vertices = kwargs.get("fixed_vertices", [])
         num_rounds = kwargs.get("num_rounds", 10)
         stop_parameter = kwargs.get("stop_parameter", 0.05)
         seed = kwargs.get("seed", None)
@@ -72,12 +72,10 @@ class BoundaryReallocation(Refiner):
         placement = gain_manager.distribution.placement
         while round_id < num_rounds and proportion_moved > stop_parameter:
             active_vertices = dist_circ.get_boundary(placement)
-            if not reallocate_qubits:
-                active_vertices = [
-                    v
-                    for v in active_vertices
-                    if not dist_circ.is_qubit_vertex(v)
-                ]
+            # Filter out gates that are fixed
+            active_vertices = [
+                v for v in active_vertices if v not in fixed_vertices
+            ]
 
             moves = 0
             for vertex in active_vertices:

@@ -9,9 +9,9 @@ if TYPE_CHECKING:
 
 
 class DetachedGates(Refiner):
-    """An alias for ``BoundaryReallocation`` with ``reallocate_qubits``
-    set to False. This refiner can optimise gate distribution so that detached
-    gates may be used, even in the presence of embedding.
+    """An alias for ``BoundaryReallocation`` with ``fixed_vertices`` set to
+    the list of qubit-vertices and embedded gate-vertices. This refiner can
+    optimise gate distribution so that detached gates may be used.
     """
 
     def refine(self, distribution: Distribution, **kwargs) -> bool:
@@ -38,9 +38,14 @@ class DetachedGates(Refiner):
         seed = kwargs.get("seed", None)
         cache_limit = kwargs.get("cache_limit", None)
 
+        fixed_vertices = (
+            distribution.circuit.get_qubit_vertices()
+            + distribution.circuit.get_all_h_embedded_gate_vertices()
+        )
+
         return BoundaryReallocation().refine(
             distribution,
-            reallocate_qubits=False,
+            fixed_vertices=fixed_vertices,
             num_rounds=num_rounds,
             stop_parameter=stop_parameter,
             seed=seed,
