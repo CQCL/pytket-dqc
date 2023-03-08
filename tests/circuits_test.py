@@ -1475,9 +1475,9 @@ def test_to_pytket_circuit_M_P_choice_collision():
     for new_hedge in new_hedge_list:
         hyp_circ.add_hyperedge(new_hedge)
 
-    hedge_A = new_hedge_list[0]
+    hedge_A = Hyperedge(new_hedge_list[0])
     assert hyp_circ.get_h_embedded_gate_vertices(hedge_A) == [3, 4, 5]
-    hedge_B = new_hedge_list[1]
+    hedge_B = Hyperedge(new_hedge_list[1])
     assert hyp_circ.get_h_embedded_gate_vertices(hedge_B) == [5, 6, 7]
 
     placement = Placement(

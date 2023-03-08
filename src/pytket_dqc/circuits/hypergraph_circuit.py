@@ -537,9 +537,9 @@ class HypergraphCircuit(Hypergraph):
         # Find out all of the gate vertices in `subcircuit`. Unfortunately,
         # this can't be done by exploring `subcircuit`, since it removed
         # many CU1 gates. Instead, we use the information in `hyperedge`
-        v_g = self.get_first_gate_vertex(hyperedge)
+        v_g = min(self.get_gate_vertices(hyperedge))
         q = self.get_qubit_of_vertex(self.get_qubit_vertex(hyperedge))
-        while v_g <= self.get_last_gate_vertex(hyperedge):
+        while v_g <= max(self.get_gate_vertices(hyperedge)):
 
             if q in self.get_gate_of_vertex(v_g).qubits:
                 gate_vertices_in_subcircuit.append(v_g)
