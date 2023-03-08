@@ -22,7 +22,6 @@ from .circuit_analysis import (  # noqa:F401
     ConstraintException,
     _cost_from_circuit,
     ebit_memory_required,
-    detached_gate_count,
 )
 
 from .verification import check_equivalence  # noqa:F401

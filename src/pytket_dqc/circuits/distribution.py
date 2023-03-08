@@ -114,6 +114,76 @@ class Distribution:
             cost += self.hyperedge_cost(hyperedge)
         return cost
 
+    def non_local_gate_count(self) -> int:
+        """Scan the distribution and return the number of detached gates in it.
+        An detached gate is a 2-qubit gate that acts on link qubits on both
+        ends; i.e. it is implemented away from both of its home servers.
+
+        :return: The number of detached gates
+        :rtype: int
+        """
+
+        n_detached = 0
+
+        for vertex in self.circuit.vertex_list:
+
+            if not self.circuit.is_qubit_vertex(vertex):
+
+                # Qubits gate acts on in original circuit
+                q_1, q_2 = self.circuit.get_gate_of_vertex(vertex).qubits
+
+                # Vertices of these qubits
+                v_1 = self.circuit.get_vertex_of_qubit(q_1)
+                v_2 = self.circuit.get_vertex_of_qubit(q_2)
+
+                # Servers to which the qubits have been assigned
+                s_1 = self.placement.placement[v_1]
+                s_2 = self.placement.placement[v_2]
+
+                # Server to which the gate has been assigned
+                s_g = self.placement.placement[vertex]
+
+                # Count if detached
+                if not ((s_1 == s_g) and (s_2 == s_g)):
+                    n_detached += 1
+
+        return n_detached
+
+    def detached_gate_count(self) -> int:
+        """Scan the distribution and return the number of detached gates in it.
+        An detached gate is a 2-qubit gate that acts on link qubits on both
+        ends; i.e. it is implemented away from both of its home servers.
+
+        :return: The number of detached gates
+        :rtype: int
+        """
+
+        n_detached = 0
+
+        for vertex in self.circuit.vertex_list:
+
+            if not self.circuit.is_qubit_vertex(vertex):
+
+                # Qubits gate acts on in original circuit
+                q_1, q_2 = self.circuit.get_gate_of_vertex(vertex).qubits
+
+                # Vertices of these qubits
+                v_1 = self.circuit.get_vertex_of_qubit(q_1)
+                v_2 = self.circuit.get_vertex_of_qubit(q_2)
+
+                # Servers to which the qubits have been assigned
+                s_1 = self.placement.placement[v_1]
+                s_2 = self.placement.placement[v_2]
+
+                # Server to which the gate has been assigned
+                s_g = self.placement.placement[vertex]
+
+                # Count if detached
+                if not ((s_1 == s_g) or (s_2 == s_g)):
+                    n_detached += 1
+
+        return n_detached
+
     def hyperedge_cost(self, hyperedge: Hyperedge, **kwargs) -> int:
         """First, we check whether the hyperedge requires H-embeddings to be
         implemented. If not, we calculate its cost by counting the number of
