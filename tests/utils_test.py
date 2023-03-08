@@ -125,17 +125,32 @@ def test_ebit_memory_required():
 
 
 def test_detached_gate_count():
-    # This is a randomly generated circuit of type pauli, depth 6 and 6 qubits
-    with open("tests/test_circuits/pauli_6.json", "r") as fp:
-        circ = Circuit().from_dict(json.load(fp))
-    # Comparing against calculation by hand
-    assert detached_gate_count(circ) == 0
 
-    # Randomly generated circuit of type frac_CZ, depth 6 and 6 qubits
-    with open("tests/test_circuits/frac_CZ_6.json", "r") as fp:
-        circ = Circuit().from_dict(json.load(fp))
-    # Comparing against calculation by
-    assert detached_gate_count(circ) == 6
+    with open(
+        "tests/test_circuits/chemistry_aware_post_vertex_cover.json", 'r'
+    ) as fp:
+        distribution = Distribution.from_dict(json.load(fp))
+
+    assert detached_gate_count(distribution) == 0
+
+    circ = Circuit(2).CZ(0, 1)
+    DQCPass().apply(circ)
+
+    hyp_circ = HypergraphCircuit(circuit=circ)
+
+    net = NISQNetwork(
+        server_coupling=[[0, 1], [1, 2]],
+        server_qubits={0: [0], 1: [1], 2: [2]},
+    )
+    place = Placement({0: 0, 1: 2, 2: 1})
+
+    dist = Distribution(
+        circuit=hyp_circ,
+        placement=place,
+        network=net,
+    )
+
+    assert detached_gate_count(dist) == 1
 
 
 def test_verification_from_placed_circuit():
