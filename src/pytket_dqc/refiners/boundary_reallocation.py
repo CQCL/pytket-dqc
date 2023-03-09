@@ -39,7 +39,7 @@ class BoundaryReallocation(Refiner):
 
         :key fixed_vertices: A list of vertices that cannot be reallocated.
             Default is [].
-        :key num_rounds: Max number of refinement rounds. Default is 1000.
+        :key num_rounds: Max number of refinement rounds. Default is 10.
         :key stop_parameter: Real number in [0,1]. If proportion of moves
             in a round is smaller than this number, do no more rounds. Default
             is 0.05.
