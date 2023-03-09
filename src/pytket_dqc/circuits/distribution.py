@@ -116,23 +116,23 @@ class Distribution:
         return cost
 
     def non_local_gate_count(self) -> int:
-        """Scan the distribution and return the number of detached gates in it.
-        An detached gate is a 2-qubit gate that acts on link qubits on both
-        ends; i.e. it is implemented away from both of its home servers.
+        """Scan the distribution and return the number of non-local gates.
+        An non-local gate is a 2-qubit gate that acts in a server not
+        containing one of the two qubits it acts on.
 
-        :return: The number of detached gates
+        :return: A list of non-local gates
         :rtype: int
         """
 
         return len(self.non_local_gate_list())
 
     def non_local_gate_list(self) -> list[Vertex]:
-        """Scan the distribution and return the number of detached gates in it.
-        An detached gate is a 2-qubit gate that acts on link qubits on both
-        ends; i.e. it is implemented away from both of its home servers.
+        """Scan the distribution and return a list of non-local gates.
+        An non-local gate is a 2-qubit gate that acts in a server not
+        containing one of the two qubits it acts on.
 
-        :return: The number of detached gates
-        :rtype: int
+        :return: The number of non-local gates
+        :rtype: list[Vertex]
         """
 
         non_local_list = []
@@ -155,7 +155,7 @@ class Distribution:
                 # Server to which the gate has been assigned
                 s_g = self.placement.placement[vertex]
 
-                # Count if detached
+                # Append if non-local
                 if not ((s_1 == s_g) and (s_2 == s_g)):
                     non_local_list.append(vertex)
 
@@ -163,11 +163,11 @@ class Distribution:
 
     def detached_gate_list(self) -> list[Vertex]:
         """Scan the distribution and return a list of detached gates in it.
-        An detached gate is a 2-qubit gate that acts on link qubits on both
+        A detached gate is a 2-qubit gate that acts on link qubits on both
         ends; i.e. it is implemented away from both of its home servers.
 
         :return: A list of detached gates
-        :rtype: int
+        :rtype: list[Vertex]
         """
 
         detached_list = []
@@ -190,7 +190,7 @@ class Distribution:
                 # Server to which the gate has been assigned
                 s_g = self.placement.placement[vertex]
 
-                # Count if detached
+                # Append if detached
                 if not ((s_1 == s_g) or (s_2 == s_g)):
                     detached_list.append(vertex)
 
@@ -198,7 +198,7 @@ class Distribution:
 
     def detached_gate_count(self) -> int:
         """Scan the distribution and return the number of detached gates in it.
-        An detached gate is a 2-qubit gate that acts on link qubits on both
+        A detached gate is a 2-qubit gate that acts on link qubits on both
         ends; i.e. it is implemented away from both of its home servers.
 
         :return: The number of detached gates
