@@ -25,6 +25,7 @@ from pytket.circuit import Command  # type: ignore
 import networkx as nx  # type: ignore
 from numpy import isclose  # type: ignore
 from typing import NamedTuple
+from .hypergraph import Vertex
 
 
 class Distribution:
@@ -123,7 +124,18 @@ class Distribution:
         :rtype: int
         """
 
-        n_detached = 0
+        return len(self.non_local_gate_list())
+
+    def non_local_gate_list(self) -> list[Vertex]:
+        """Scan the distribution and return the number of detached gates in it.
+        An detached gate is a 2-qubit gate that acts on link qubits on both
+        ends; i.e. it is implemented away from both of its home servers.
+
+        :return: The number of detached gates
+        :rtype: int
+        """
+
+        non_local_list = []
 
         for vertex in self.circuit.vertex_list:
 
@@ -145,20 +157,20 @@ class Distribution:
 
                 # Count if detached
                 if not ((s_1 == s_g) and (s_2 == s_g)):
-                    n_detached += 1
+                    non_local_list.append(vertex)
 
-        return n_detached
+        return non_local_list
 
-    def detached_gate_count(self) -> int:
-        """Scan the distribution and return the number of detached gates in it.
+    def detached_gate_list(self) -> list[Vertex]:
+        """Scan the distribution and return a list of detached gates in it.
         An detached gate is a 2-qubit gate that acts on link qubits on both
         ends; i.e. it is implemented away from both of its home servers.
 
-        :return: The number of detached gates
+        :return: A list of detached gates
         :rtype: int
         """
 
-        n_detached = 0
+        detached_list = []
 
         for vertex in self.circuit.vertex_list:
 
@@ -180,9 +192,20 @@ class Distribution:
 
                 # Count if detached
                 if not ((s_1 == s_g) or (s_2 == s_g)):
-                    n_detached += 1
+                    detached_list.append(vertex)
 
-        return n_detached
+        return detached_list
+
+    def detached_gate_count(self) -> int:
+        """Scan the distribution and return the number of detached gates in it.
+        An detached gate is a 2-qubit gate that acts on link qubits on both
+        ends; i.e. it is implemented away from both of its home servers.
+
+        :return: The number of detached gates
+        :rtype: int
+        """
+
+        return len(self.detached_gate_list())
 
     def hyperedge_cost(self, hyperedge: Hyperedge, **kwargs) -> int:
         """First, we check whether the hyperedge requires H-embeddings to be
