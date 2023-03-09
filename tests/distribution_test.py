@@ -1,5 +1,5 @@
 from pytket_dqc.networks import NISQNetwork
-from pytket_dqc import HypergraphCircuit, Distribution
+from pytket_dqc import HypergraphCircuit, Distribution, DQCPass
 from pytket_dqc.circuits import Hyperedge
 from pytket_dqc.placement import Placement
 from pytket import Circuit, OpType
@@ -297,3 +297,29 @@ def test_distribution_cost_with_embedding():
 
     assert distribution.cost() == 3 + 4 + 4 + 2 + 6 + 1 + 0
     assert distribution.is_valid()
+
+
+def test_detached_gate_list():
+
+    circ = Circuit(3).CZ(0, 1).CZ(0, 2)
+    DQCPass().apply(circ)
+
+    hyp_circ = HypergraphCircuit(circuit=circ)
+
+    net = NISQNetwork(
+        server_coupling=[[0, 1], [1, 2]],
+        server_qubits={0: [0], 1: [1], 2: [2]},
+    )
+    place = Placement({0: 0, 1: 1, 2: 2, 3: 1, 4: 1})
+
+    dist = Distribution(
+        circuit=hyp_circ,
+        placement=place,
+        network=net,
+    )
+
+    assert dist.detached_gate_list() == [4]
+    assert dist.non_local_gate_list() == [3, 4]
+
+    assert dist.detached_gate_count() == 1
+    assert dist.non_local_gate_count() == 2
