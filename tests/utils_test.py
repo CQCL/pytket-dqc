@@ -3,7 +3,6 @@ from pytket_dqc.utils import (
     DQCPass,
     direct_from_origin,
     ebit_memory_required,
-    detached_gate_count,
     check_equivalence,
     to_euler_with_two_hadamards,
 )
@@ -131,7 +130,7 @@ def test_detached_gate_count():
     ) as fp:
         distribution = Distribution.from_dict(json.load(fp))
 
-    assert detached_gate_count(distribution) == 0
+    assert distribution.detached_gate_count() == 0
 
     circ = Circuit(2).CZ(0, 1)
     DQCPass().apply(circ)
@@ -150,7 +149,7 @@ def test_detached_gate_count():
         network=net,
     )
 
-    assert detached_gate_count(dist) == 1
+    assert dist.detached_gate_count() == 1
 
 
 def test_verification_from_placed_circuit():

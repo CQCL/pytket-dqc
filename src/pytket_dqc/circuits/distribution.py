@@ -25,6 +25,7 @@ from pytket.circuit import Command  # type: ignore
 import networkx as nx  # type: ignore
 from numpy import isclose  # type: ignore
 from typing import NamedTuple
+from .hypergraph import Vertex
 
 
 class Distribution:
@@ -113,6 +114,98 @@ class Distribution:
         for hyperedge in self.circuit.hyperedge_list:
             cost += self.hyperedge_cost(hyperedge)
         return cost
+
+    def non_local_gate_count(self) -> int:
+        """Scan the distribution and return the number of non-local gates.
+        An non-local gate is a 2-qubit gate that acts in a server not
+        containing one of the two qubits it acts on.
+
+        :return: A list of non-local gates
+        :rtype: int
+        """
+
+        return len(self.non_local_gate_list())
+
+    def non_local_gate_list(self) -> list[Vertex]:
+        """Scan the distribution and return a list of non-local gates.
+        An non-local gate is a 2-qubit gate that acts in a server not
+        containing one of the two qubits it acts on.
+
+        :return: The number of non-local gates
+        :rtype: list[Vertex]
+        """
+
+        non_local_list = []
+
+        for vertex in self.circuit.vertex_list:
+
+            if not self.circuit.is_qubit_vertex(vertex):
+
+                # Qubits gate acts on in original circuit
+                q_1, q_2 = self.circuit.get_gate_of_vertex(vertex).qubits
+
+                # Vertices of these qubits
+                v_1 = self.circuit.get_vertex_of_qubit(q_1)
+                v_2 = self.circuit.get_vertex_of_qubit(q_2)
+
+                # Servers to which the qubits have been assigned
+                s_1 = self.placement.placement[v_1]
+                s_2 = self.placement.placement[v_2]
+
+                # Server to which the gate has been assigned
+                s_g = self.placement.placement[vertex]
+
+                # Append if non-local
+                if not ((s_1 == s_g) and (s_2 == s_g)):
+                    non_local_list.append(vertex)
+
+        return non_local_list
+
+    def detached_gate_list(self) -> list[Vertex]:
+        """Scan the distribution and return a list of detached gates in it.
+        A detached gate is a 2-qubit gate that acts on link qubits on both
+        ends; i.e. it is implemented away from both of its home servers.
+
+        :return: A list of detached gates
+        :rtype: list[Vertex]
+        """
+
+        detached_list = []
+
+        for vertex in self.circuit.vertex_list:
+
+            if not self.circuit.is_qubit_vertex(vertex):
+
+                # Qubits gate acts on in original circuit
+                q_1, q_2 = self.circuit.get_gate_of_vertex(vertex).qubits
+
+                # Vertices of these qubits
+                v_1 = self.circuit.get_vertex_of_qubit(q_1)
+                v_2 = self.circuit.get_vertex_of_qubit(q_2)
+
+                # Servers to which the qubits have been assigned
+                s_1 = self.placement.placement[v_1]
+                s_2 = self.placement.placement[v_2]
+
+                # Server to which the gate has been assigned
+                s_g = self.placement.placement[vertex]
+
+                # Append if detached
+                if not ((s_1 == s_g) or (s_2 == s_g)):
+                    detached_list.append(vertex)
+
+        return detached_list
+
+    def detached_gate_count(self) -> int:
+        """Scan the distribution and return the number of detached gates in it.
+        A detached gate is a 2-qubit gate that acts on link qubits on both
+        ends; i.e. it is implemented away from both of its home servers.
+
+        :return: The number of detached gates
+        :rtype: int
+        """
+
+        return len(self.detached_gate_list())
 
     def hyperedge_cost(self, hyperedge: Hyperedge, **kwargs) -> int:
         """First, we check whether the hyperedge requires H-embeddings to be
