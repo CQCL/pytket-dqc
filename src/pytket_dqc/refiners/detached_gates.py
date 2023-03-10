@@ -17,26 +17,15 @@ class DetachedGates(Refiner):
     def refine(self, distribution: Distribution, **kwargs) -> bool:
         """An alias for boundary reallocation with no movements of
         qubit vertices.
+        Key arguments (kwargs) are passed directly to `BoundaryReallocation`;
+        the arguments it accepts are described in its documentation.
 
         :param distribution: Distribution to refine.
         :type distribution: Distribution
 
-        :key num_rounds: Max number of refinement rounds. Default is 1000.
-        :key stop_parameter: Real number in [0,1]. If proportion of moves
-            in a round is smaller than this number, do no more rounds. Default
-            is 0.05.
-        :key seed: Seed for randomness. Default is None.
-        :key cache_limit: The maximum size of the set of servers whose cost is
-            stored in cache; see GainManager. Default value is 5.
-
         :return: Distribution where the placement updated.
         :rtype: Distribution
         """
-
-        num_rounds = kwargs.get("num_rounds", 1000)
-        stop_parameter = kwargs.get("stop_parameter", 0.05)
-        seed = kwargs.get("seed", None)
-        cache_limit = kwargs.get("cache_limit", None)
 
         fixed_vertices = (
             distribution.circuit.get_qubit_vertices()
@@ -46,8 +35,5 @@ class DetachedGates(Refiner):
         return BoundaryReallocation().refine(
             distribution,
             fixed_vertices=fixed_vertices,
-            num_rounds=num_rounds,
-            stop_parameter=stop_parameter,
-            seed=seed,
-            cache_limit=cache_limit,
+            **kwargs
         )
