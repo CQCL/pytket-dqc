@@ -1,5 +1,6 @@
 from pytket_dqc.distributors import (
     PartitioningHeterogeneousEmbedding,
+    CoverEmbeddingDetached,
     CoverEmbeddingSteinerDetached,
     PartitioningAnnealing,
 )
@@ -23,6 +24,13 @@ def test_vertex_cover_steiner():
 
     circ, network = small_circuit_network()
     dist = CoverEmbeddingSteinerDetached().distribute(
+        circ=circ,
+        network=network,
+        seed=0,
+    )
+    assert dist.is_valid()
+
+    dist = CoverEmbeddingDetached().distribute(
         circ=circ,
         network=network,
         seed=0,
