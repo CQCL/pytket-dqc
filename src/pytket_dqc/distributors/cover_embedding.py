@@ -61,7 +61,7 @@ class CoverEmbeddingSteiner(Distributor):
     def distribute(
         self, circ: Circuit, network: NISQNetwork, **kwargs
     ) -> Distribution:
-        """Abstract method producing a distribution of the given circuit
+        """Method producing a distribution of the given circuit
         onto the given network.
 
         Note that kwargs are passed on to
@@ -89,6 +89,40 @@ class CoverEmbeddingSteiner(Distributor):
         return distribution
 
 
+class CoverEmbeddingDetached(Distributor):
+    """ Distributor refining the output of :class:`.CoverEmbedding`
+    to make use of detached gates.
+    """
+
+    def distribute(
+        self, circ: Circuit, network: NISQNetwork, **kwargs
+    ) -> Distribution:
+        """Method producing a distribution of the given circuit
+        onto the given network.
+
+        Note that kwargs are passed on to
+        the `distribute` method of :class:`.CoverEmbedding`. and
+        the refine method of :class:`.DetachedGates`
+
+        :param circ: Circuit to be distributed
+        :type circ: Circuit
+        :param network: Network onto which circuit should be distributed
+        :type network: NISQNetwork
+        :return: Distribution of circ onto network.
+        :rtype: Distribution
+        """
+
+        distribution = CoverEmbedding().distribute(
+            circ, network, **kwargs
+        )
+        DetachedGates().refine(
+            distribution,
+            **kwargs,
+        )
+
+        return distribution
+
+
 class CoverEmbeddingSteinerDetached(Distributor):
     """ Distributor refining  the output of
     :class:`.BipartiteEmbeddingSteiner` to make use of detached gates.
@@ -97,7 +131,7 @@ class CoverEmbeddingSteinerDetached(Distributor):
     def distribute(
         self, circ: Circuit, network: NISQNetwork, **kwargs
     ) -> Distribution:
-        """Abstract method producing a distribution of the given circuit
+        """Method producing a distribution of the given circuit
         onto the given network.
 
         Note that kwargs are passed on to
