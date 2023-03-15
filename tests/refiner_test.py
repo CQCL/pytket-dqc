@@ -1598,7 +1598,7 @@ def test_eager_h_type_merge_no_detached():
         network=network
     )
     assert distribution.is_valid()
-    assert distribution.detached_gate_list() != [4]
+    assert distribution.detached_gate_list() == [4]
 
     refiner = EagerHTypeMerge()
     refinement_made = refiner.refine(distribution)
