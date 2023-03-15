@@ -1561,33 +1561,7 @@ def test_eager_h_type_merge_no_detached():
 
     hyp_circ = HypergraphCircuit(circ)
 
-    # First, do not detach gate 4
-    placement = Placement(
-        {0: 0, 1: 2, 2: 2, 3: 0, 4: 2, 5: 0}
-    )
-
-    distribution = Distribution(
-        circuit=hyp_circ,
-        placement=placement,
-        network=network
-    )
-    assert distribution.is_valid()
-
-    refiner = EagerHTypeMerge()
-    refinement_made = refiner.refine(distribution)
-    assert refinement_made
-
-    hyperedge_list = [
-        Hyperedge(vertices=[0, 3, 5]),  # Gate 4 is embedded
-        Hyperedge(vertices=[0, 4]),
-        Hyperedge(vertices=[1, 3]),
-        Hyperedge(vertices=[1, 5]),
-        Hyperedge(vertices=[2, 4]),
-    ]
-
-    assert distribution.circuit.hyperedge_list == hyperedge_list
-
-    # Next, try detaching gate 4
+    # First, try detaching gate 4
     placement = Placement(
         {0: 0, 1: 2, 2: 2, 3: 0, 4: 1, 5: 0}
     )
@@ -1608,6 +1582,33 @@ def test_eager_h_type_merge_no_detached():
         Hyperedge(vertices=[0, 3]),
         Hyperedge(vertices=[0, 4]),
         Hyperedge(vertices=[0, 5]),
+        Hyperedge(vertices=[1, 3]),
+        Hyperedge(vertices=[1, 5]),
+        Hyperedge(vertices=[2, 4]),
+    ]
+
+    assert distribution.circuit.hyperedge_list == hyperedge_list
+
+    # Then, do not detach gate 4
+    placement = Placement(
+        {0: 0, 1: 2, 2: 2, 3: 0, 4: 2, 5: 0}
+    )
+
+    distribution = Distribution(
+        circuit=hyp_circ,
+        placement=placement,
+        network=network
+    )
+    assert distribution.is_valid()
+    assert distribution.detached_gate_list() == []
+
+    refiner = EagerHTypeMerge()
+    refinement_made = refiner.refine(distribution)
+    assert refinement_made
+
+    hyperedge_list = [
+        Hyperedge(vertices=[0, 3, 5]),  # Gate 4 is embedded
+        Hyperedge(vertices=[0, 4]),
         Hyperedge(vertices=[1, 3]),
         Hyperedge(vertices=[1, 5]),
         Hyperedge(vertices=[2, 4]),
