@@ -16,6 +16,7 @@ class EagerHTypeMerge(Refiner):
 
     def refine(self, distribution: Distribution, **kwargs):
         gain_mgr = GainManager(initial_distribution=distribution)
+        detached_gate_list = distribution.detached_gate_list()
         refinement_made = False
         pacman = PacMan(distribution.circuit, distribution.placement)
 
@@ -56,14 +57,19 @@ class EagerHTypeMerge(Refiner):
                     if next_hopper is not None:
                         hopping_packet = (current_packet, next_hopper)
                         # We only merge embeddings when there are no conflicts
-                        # that have already been merged previously
-                        if all(
-                            [
+                        # that have already been merged previously and none of
+                        # the embedded gates are detached
+                        if (
+                            all(  # No conflicts
                                 conflict not in already_done_hoppings
                                 for conflict in pacman.get_conflict_hoppings(
                                     hopping_packet
                                 )
-                            ]
+                            ) and all(  # No detached gates
+                                gate not in detached_gate_list for emb_packet
+                                in pacman.get_embedded_packets(hopping_packet)
+                                for gate in emb_packet.gate_vertices
+                            )
                         ):
                             # Make a note that the hopping has now been done
                             # therefore we cannot do another hopping that
