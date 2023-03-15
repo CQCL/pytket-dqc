@@ -13,6 +13,10 @@ Distributors
 
     .. automethod:: CoverEmbeddingSteiner.distribute
 
+.. autoclass:: pytket_dqc.distributors.CoverEmbeddingDetached
+
+    .. automethod:: CoverEmbeddingDetached.distribute
+
 .. autoclass:: pytket_dqc.distributors.CoverEmbeddingSteinerDetached
 
     .. automethod:: CoverEmbeddingSteinerDetached.distribute
