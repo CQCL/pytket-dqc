@@ -2174,7 +2174,9 @@ def test_distribution_to_dict(tmpdir_factory):
     assert new_distribution == distribution
 
 
-@pytest.mark.xfail
+@pytest.mark.skip(
+    "Such a distribution can no longer occur as a result of our workflows."
+)
 @pytest.mark.high_compute
 def test_embedding_detached():
 
