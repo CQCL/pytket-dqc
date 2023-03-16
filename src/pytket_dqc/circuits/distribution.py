@@ -24,6 +24,7 @@ from pytket import Circuit, OpType, Qubit  # type: ignore
 from pytket.circuit import Command  # type: ignore
 import networkx as nx  # type: ignore
 from numpy import isclose  # type: ignore
+import warnings  # type: ignore
 from typing import NamedTuple
 from .hypergraph import Vertex
 
@@ -1302,8 +1303,23 @@ class Distribution:
         assert check_equivalence(
             self.circuit.get_circuit(), final_circ, qubit_mapping
         )
-        assert (
-            _cost_from_circuit(final_circ) == self.cost()
-        ), f"Theory: {self.cost()}, real: {_cost_from_circuit(final_circ)}."
+        if _cost_from_circuit(final_circ) != self.cost():
+            detached_gates = self.detached_gate_list()
+            embedded_gates = self.circuit.get_all_h_embedded_gate_vertices()
+            # If a gate is both detached and embedded, the cost estimate may
+            # be wrong. This should never happen using or current workflows
+            # and it is here only for the sake of backwards compatibility.
+            if any(detached in embedded_gates for detached in detached_gates):
+                warnings.warn(
+                    "Detected a gate that is both detached and embedded. " +
+                    "As a consequence, the estimated cost did not match " +
+                    f"actual cost. Estimate: {self.cost()}, " +
+                    f"real: {_cost_from_circuit(final_circ)}."
+                )
+            else:
+                raise Exception(
+                    "Estimated cost does not match actual cost. Estimate: " +
+                    f"{self.cost()}, real: {_cost_from_circuit(final_circ)}."
+                )
 
         return final_circ
