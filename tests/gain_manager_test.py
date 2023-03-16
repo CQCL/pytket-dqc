@@ -10,24 +10,29 @@ from pytket_dqc.utils import steiner_tree
 from pytket import Circuit, OpType
 from copy import copy
 
-circ = Circuit(4)
-circ.add_gate(OpType.CU1, 0.1234, [1, 2])
-circ.add_gate(OpType.CU1, 0.1234, [0, 2])
-circ.add_gate(OpType.CU1, 0.1234, [2, 3])
-circ.add_gate(OpType.CU1, 0.1234, [0, 3])
-circ.H(0).H(2).Rz(0.1234, 3)
-circ.add_gate(OpType.CU1, 1.0, [0, 2])
-circ.add_gate(OpType.CU1, 1.0, [0, 3])
-circ.add_gate(OpType.CU1, 1.0, [1, 2])
-circ.H(0).H(2).Rz(0.1234, 0)
-circ.add_gate(OpType.CU1, 0.1234, [0, 1])
-circ.add_gate(OpType.CU1, 0.1234, [0, 3])
-circ.add_gate(OpType.CU1, 1.0, [1, 2])
 
-network = NISQNetwork(
-    [[0, 1], [0, 2], [0, 3], [3, 4]],
-    {0: [0], 1: [1, 2], 2: [3, 4], 3: [7], 4: [5, 6]},
-)
+def get_circ():
+    circ = Circuit(4)
+    circ.add_gate(OpType.CU1, 0.1234, [1, 2])
+    circ.add_gate(OpType.CU1, 0.1234, [0, 2])
+    circ.add_gate(OpType.CU1, 0.1234, [2, 3])
+    circ.add_gate(OpType.CU1, 0.1234, [0, 3])
+    circ.H(0).H(2).H(3)
+    circ.add_gate(OpType.CU1, 1.0, [0, 2])
+    circ.add_gate(OpType.CU1, 1.0, [0, 3])
+    circ.add_gate(OpType.CU1, 1.0, [1, 2])
+    circ.H(0).H(2).Rz(0.1234, 0)
+    circ.add_gate(OpType.CU1, 0.1234, [0, 1])
+    circ.add_gate(OpType.CU1, 0.1234, [0, 3])
+    circ.add_gate(OpType.CU1, 1.0, [1, 2])
+    return circ
+
+
+def get_network():
+    return NISQNetwork(
+        [[0, 1], [0, 2], [0, 3], [3, 4]],
+        {0: [0], 1: [1, 2], 2: [3, 4], 3: [7], 4: [5, 6]},
+    )
 
 
 def test_placement_move_occupancy():
@@ -49,6 +54,8 @@ def test_placement_move_occupancy():
             13: 0,
         }
     )
+    circ = get_circ()
+    network = get_network()
     distribution = Distribution(HypergraphCircuit(circ), placement, network)
     manager = GainManager(distribution)
 
@@ -98,6 +105,8 @@ def test_gain_no_embeddings():
             13: 0,
         }
     )
+    circ = get_circ()
+    network = get_network()
     distribution = Distribution(HypergraphCircuit(circ), placement, network)
     manager = GainManager(distribution)
 
