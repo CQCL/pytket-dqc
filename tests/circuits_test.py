@@ -1,4 +1,5 @@
 import pickle  # type: ignore
+import warnings  # type: ignore
 import json  # type: ignore
 import pytest
 from pytket import Circuit
@@ -2174,12 +2175,20 @@ def test_distribution_to_dict(tmpdir_factory):
     assert new_distribution == distribution
 
 
-@pytest.mark.xfail
 @pytest.mark.high_compute
 def test_embedding_detached():
+    warnings.filterwarnings("error")
 
     with open(
         "tests/test_circuits/chemistry_aware_embedding_detatched.json", 'r'
     ) as fp:
         distribution = Distribution.from_dict(json.load(fp))
-    distribution.to_pytket_circuit(satisfy_bound=False)
+
+    caught_warning = False
+    try:
+        distribution.to_pytket_circuit(satisfy_bound=False)
+    except Warning:
+        caught_warning = True
+
+    warnings.resetwarnings()
+    assert caught_warning
