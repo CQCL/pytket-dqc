@@ -30,11 +30,11 @@ def test_annealing_distribute():
     circ = (
         Circuit(4)
         .add_gate(OpType.CU1, 1.0, [0, 3])
-        .Rz(0.5, 3)
+        .H(3)
         .add_gate(OpType.CU1, 1.0, [1, 3])
-        .Rz(0.5, 3)
+        .H(3)
         .add_gate(OpType.CU1, 1.0, [2, 3])
-        .Rz(0.5, 3)
+        .H(3)
     )
 
     allocator = Annealing()
@@ -79,11 +79,11 @@ def test_graph_initial_partitioning():
     circ = (
         Circuit(4)
         .add_gate(OpType.CU1, 1.0, [0, 3])
-        .Rz(0.5, 3)
+        .H(3)
         .add_gate(OpType.CU1, 1.0, [1, 3])
-        .Rz(0.5, 3)
+        .H(3)
         .add_gate(OpType.CU1, 1.0, [2, 3])
-        .Rz(0.5, 3)
+        .H(3)
     )
 
     allocator = HypergraphPartitioning()
@@ -273,11 +273,11 @@ def test_brute_distribute_small_hyperedge():
     circ = (
         Circuit(4)
         .add_gate(OpType.CU1, 1.0, [0, 3])
-        .Rz(0.5, 3)
+        .H(3)
         .add_gate(OpType.CU1, 1.0, [1, 3])
-        .Rz(0.5, 3)
+        .H(3)
         .add_gate(OpType.CU1, 1.0, [2, 3])
-        .Rz(0.5, 3)
+        .H(3)
     )
 
     allocator = Brute()

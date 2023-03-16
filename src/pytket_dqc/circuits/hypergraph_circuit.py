@@ -674,7 +674,10 @@ class HypergraphCircuit(Hypergraph):
                         hyperedge = [qubit_index]
                     self._commands[command_index]["vertex"] = vertex
                     self._commands[command_index]["type"] = "distributed gate"
-                # Otherwise (which is to say if a single qubit gate is
+                # Encountering a Rz does not affect the hypergraph.
+                elif command["command"].op.type in [OpType.Rz]:
+                    self._commands[command_index]["type"] = "1q local gate"
+                # Otherwise (which is to say if a H gate is
                 # encountered) add the hyperedge to the hypergraph and start
                 # a new working hyperedge.
                 else:
