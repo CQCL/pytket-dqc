@@ -428,7 +428,7 @@ def test_CRz_circuit():
     circ = Circuit(2)
     circ.add_gate(OpType.CU1, 1.0, [0, 1])
     circ.add_gate(OpType.CU1, 0.3, [1, 0])
-    circ.Rz(0.3, 1)
+    circ.H(1)
     circ.add_gate(OpType.CU1, 1.0, [1, 0])
 
     dist_circ = HypergraphCircuit(circ)

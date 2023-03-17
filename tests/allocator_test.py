@@ -23,9 +23,22 @@ import json
 # have any cost two edges
 
 
-def test_annealing_distribute():
+def get_H_ladder_circ():
 
-    network = NISQNetwork([[0, 1], [0, 2]], {0: [0], 1: [1, 2], 2: [3, 4]})
+    circ = (
+        Circuit(4)
+        .add_gate(OpType.CU1, 1.0, [0, 3])
+        .H(3)
+        .add_gate(OpType.CU1, 1.0, [1, 3])
+        .H(3)
+        .add_gate(OpType.CU1, 1.0, [2, 3])
+        .H(3)
+    )
+
+    return circ
+
+
+def get_Rz_ladder_circ():
 
     circ = (
         Circuit(4)
@@ -37,6 +50,18 @@ def test_annealing_distribute():
         .Rz(0.5, 3)
     )
 
+    return circ
+
+
+def get_line_network():
+    return NISQNetwork([[0, 1], [0, 2]], {0: [0], 1: [1, 2], 2: [3, 4]})
+
+
+def test_annealing_distribute():
+
+    network = get_line_network()
+
+    circ = get_H_ladder_circ()
     allocator = Annealing()
 
     distribution = allocator.allocate(
@@ -65,6 +90,22 @@ def test_annealing_distribute():
     )
     assert distribution.cost() == 8
 
+    circ = get_Rz_ladder_circ()
+    allocator = Annealing()
+
+    distribution = allocator.allocate(
+        circ,
+        network,
+        seed=2,
+        iterations=1,
+        initial_place_method=Ordered(),
+    )
+
+    assert distribution.placement == Placement(
+        {0: 1, 1: 1, 2: 2, 3: 0, 4: 1, 5: 1, 6: 1}
+    )
+    assert distribution.cost() == 3
+
 
 def test_acceptance_criterion():
 
@@ -74,17 +115,8 @@ def test_acceptance_criterion():
 
 def test_graph_initial_partitioning():
 
-    network = NISQNetwork([[0, 1], [0, 2]], {0: [0], 1: [1, 2], 2: [3, 4]})
-
-    circ = (
-        Circuit(4)
-        .add_gate(OpType.CU1, 1.0, [0, 3])
-        .Rz(0.5, 3)
-        .add_gate(OpType.CU1, 1.0, [1, 3])
-        .Rz(0.5, 3)
-        .add_gate(OpType.CU1, 1.0, [2, 3])
-        .Rz(0.5, 3)
-    )
+    network = get_line_network()
+    circ = get_H_ladder_circ()
 
     allocator = HypergraphPartitioning()
 
@@ -161,7 +193,7 @@ def test_refinement_makes_valid():
 
 def test_graph_partitioning_unused_qubits():
 
-    network = NISQNetwork([[0, 1], [0, 2]], {0: [0], 1: [1, 2], 2: [3, 4]})
+    network = get_line_network()
     allocator = HypergraphPartitioning()
 
     circ = Circuit(2)
@@ -268,17 +300,8 @@ def test_ordered_allocator():
 
 def test_brute_distribute_small_hyperedge():
 
-    network = NISQNetwork([[0, 1], [0, 2]], {0: [0], 1: [1, 2], 2: [3, 4]})
-
-    circ = (
-        Circuit(4)
-        .add_gate(OpType.CU1, 1.0, [0, 3])
-        .Rz(0.5, 3)
-        .add_gate(OpType.CU1, 1.0, [1, 3])
-        .Rz(0.5, 3)
-        .add_gate(OpType.CU1, 1.0, [2, 3])
-        .Rz(0.5, 3)
-    )
+    network = get_line_network()
+    circ = get_H_ladder_circ()
 
     allocator = Brute()
     distribution = allocator.allocate(circ, network)
