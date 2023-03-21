@@ -19,6 +19,7 @@ class EagerHTypeMerge(Refiner):
         detached_gate_list = distribution.detached_gate_list()
         refinement_made = False
         pacman = PacMan(distribution.circuit, distribution.placement)
+        hyp_circ = distribution.circuit
 
         already_done_hoppings: list[HoppingPacket] = list()
         all_hedges_to_merge: list[set[Hyperedge]] = list()
@@ -66,9 +67,14 @@ class EagerHTypeMerge(Refiner):
                                     hopping_packet
                                 )
                             ) and all(  # No detached gates
-                                gate not in detached_gate_list for emb_packet
-                                in pacman.get_embedded_packets(hopping_packet)
-                                for gate in emb_packet.gate_vertices
+                                gate not in detached_gate_list for gate
+                                in hyp_circ.get_h_embedded_gate_vertices(
+                                    Hyperedge(
+                                        [qubit_vertex]
+                                        + current_packet.gate_vertices
+                                        + next_hopper.gate_vertices
+                                    )
+                                )
                             )
                         ):
                             # Make a note that the hopping has now been done
