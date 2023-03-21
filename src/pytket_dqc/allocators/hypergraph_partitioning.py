@@ -17,26 +17,28 @@ if TYPE_CHECKING:
 
 class HypergraphPartitioning(Allocator):
     """Distribution technique, making use of existing tools for hypergraph
-    partitioning available through the `kahypar <https://kahypar.org/>`_
-    package. This allocator will ignore weighted hypergraphs and assume
-    all hyperedges have weight 1. This allocator will ignore the
+    partitioning available through the `KaHyPar <https://kahypar.org/>`_
+    package. This allocator will ignore weights on hyperedges and
+    assume all hyperedges have weight 1. This allocator will ignore the
     connectivity of the NISQNetwork.
     """
 
     def allocate(
         self, circ: Circuit, network: NISQNetwork, **kwargs
     ) -> Distribution:
-        """Distribute ``circ`` onto ``network``. The initial distribution
+        """Distribute ``circ`` onto ``network``. The distribution
         is found by KaHyPar using the connectivity metric. All-to-all
-        network connectivity is assumed; you may wish to run the refiner
-        ``BoundaryReallocation`` to take the network topology into account.
+        connectivity of the network of modules is assumed; you may wish
+        to run the refiner ``BoundaryReallocation`` on the output ``Distribution``
+        to take the network topology into account.
 
         :param circ: Circuit to distribute.
         :type circ: pytket.Circuit
         :param network: Network onto which ``circ`` should be placed.
         :type network: NISQNetwork
 
-        :key ini_path: Path to kahypar ini file.
+        :key ini_path: Path to kahypar ini file. Default points to the
+            ini file within the pytket-dqc repository.
         :key seed: Seed for randomness. Default is None
 
         :return: Distribution of ``circ`` onto ``network``.
