@@ -29,8 +29,8 @@ class HypergraphPartitioning(Allocator):
         """Distribute ``circ`` onto ``network``. The distribution
         is found by KaHyPar using the connectivity metric. All-to-all
         connectivity of the network of modules is assumed; you may wish
-        to run the refiner ``BoundaryReallocation`` on the output ``Distribution``
-        to take the network topology into account.
+        to run the refiner ``BoundaryReallocation`` on the output
+        ``Distribution`` to take the network topology into account.
 
         :param circ: Circuit to distribute.
         :type circ: pytket.Circuit

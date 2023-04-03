@@ -26,7 +26,7 @@ class GainManager:
     :type occupancy: dict[int, int]
     :param hyperedge_cost_map: Contains the current cost of each hyperedge.
         Note that `hyperedge_cost_map` may contain hyperedges which are not
-        currently in the `HyperGraph` of `distribution`. Hyperedges in
+        currently in the `Hypergraph` of `distribution`. Hyperedges in
         `hyperedge_cost_map` may be conflicting due to the embeddings
         they imply, in which case the cost would be that if only one was
         implemented. All hyperedges in hyperedge_cost_map are however
