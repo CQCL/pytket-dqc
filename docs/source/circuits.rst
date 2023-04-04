@@ -1,4 +1,4 @@
-Circuits
+Data structures
 ============
 
 .. autoclass:: pytket_dqc.circuits.hypergraph.Hypergraph
