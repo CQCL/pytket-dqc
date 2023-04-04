@@ -107,6 +107,15 @@ class Distribution:
 
     def cost(self) -> int:
         """Return the number of ebits required to implement this distribution.
+
+        NOTE: this function does not guarantee that the distribution being
+        analysed satisfies the bound to the link qubit registers. If you wish
+        to take the bound into account, call ``to_pytket_circuit`` before
+        calling this function. Alternatively, call ``ebit_cost`` on the
+        distributed circuit.
+
+        :return: The number of ebits used in this distribution.
+        :rtype: int
         """
         if not self.is_valid():
             raise Exception("This is not a valid distribution")
