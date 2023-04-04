@@ -31,9 +31,8 @@ class VertexCover(Refiner):
 
         :key vertex_cover_alg: The choice of algorithm to be used to find the
         vertex covers that decide the placement of gates. Either:
-            "all_brute_force" -> exhaustive search of all min vertex covers
-            "networkx" -> use NetworkX's algorithm to find a
-                          single vertex cover
+        "all_brute_force" to do an exhaustive search of all min vertex covers
+        or "networkx" to use NetworkX's algorithm to find a single cover.
         """
         vertex_cover_alg = kwargs.get("vertex_cover_alg", "networkx")
         if vertex_cover_alg not in [

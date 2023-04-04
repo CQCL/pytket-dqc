@@ -1,8 +1,7 @@
 Utils
 =========
 
-.. automodule:: pytket_dqc.utils.gateset
-    :members:
+.. automethod:: pytket_dqc.utils.gateset.DQCPass
 
 .. autoclass:: pytket_dqc.utils.circuit_analysis.ContraintException
 
