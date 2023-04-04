@@ -17,7 +17,7 @@ def test_build_packets():
     circ = Circuit(3)
     # One Hyperedge but two Packets
     circ.add_gate(cz, [0, 1]).add_gate(cz, [0, 2]).add_gate(cz, [0, 1])
-    circ.add_gate(cz, [1, 2]).Rz(1, 1).add_gate(cz, [2, 1])
+    circ.add_gate(cz, [1, 2]).H(1).add_gate(cz, [2, 1])
 
     placement_dict = {0: 0, 1: 1, 2: 2, 3: 0, 4: 0, 5: 0, 6: 1, 7: 2}
     pacman = PacMan(HypergraphCircuit(circ), Placement(placement_dict))
@@ -63,6 +63,13 @@ def test_identify_neighbouring_packets_00():
 
     # Make hypergraph of circuit
     h_circ00 = HypergraphCircuit(circ00)
+    h_circ00.split_hyperedge(
+        old_hyperedge=Hyperedge(vertices=[0, 6, 7], weight=1),
+        new_hyperedge_list=[
+            Hyperedge(vertices=[0, 7], weight=1),
+            Hyperedge(vertices=[0, 6], weight=1)
+        ]
+    )
 
     # Pass into PacMan
     pacman00 = PacMan(h_circ00, placement00)
@@ -141,6 +148,13 @@ def test_identify_neighbouring_packets_02():
 
     # Make hypergraph of circuit
     h_circ02 = HypergraphCircuit(circ02)
+    h_circ02.split_hyperedge(
+        old_hyperedge=Hyperedge(vertices=[0, 6, 7, 8, 9], weight=1),
+        new_hyperedge_list=[
+            Hyperedge(vertices=[0, 6, 7], weight=1),
+            Hyperedge(vertices=[0, 8, 9], weight=1)
+        ]
+    )
 
     # Pass into PacMan
     pacman02 = PacMan(h_circ02, placement02)
@@ -225,6 +239,13 @@ def test_identify_hopping_packets_04():
 
     # Make hypergraph of circuit
     h_circ04 = HypergraphCircuit(circ04)
+    h_circ04.split_hyperedge(
+        old_hyperedge=Hyperedge(vertices=[0, 7, 8], weight=1),
+        new_hyperedge_list=[
+            Hyperedge(vertices=[0, 7], weight=1),
+            Hyperedge(vertices=[0, 8], weight=1),
+        ],
+    )
 
     # Pass into PacMan
     pacman04 = PacMan(h_circ04, placement04)
@@ -544,33 +565,28 @@ def test_merge_packets():
     P21 = pacman.packets_by_qubit[0][21]
     P22 = pacman.packets_by_qubit[0][22]
     P23 = pacman.packets_by_qubit[0][23]
-    P24 = pacman.packets_by_qubit[0][24]
-    P25 = pacman.packets_by_qubit[0][25]
-    P26 = pacman.packets_by_qubit[0][26]
-    P27 = pacman.packets_by_qubit[0][27]
-
-    P28 = pacman.packets_by_qubit[2][0]
-    P29 = pacman.packets_by_qubit[3][0]
-    P30 = pacman.packets_by_qubit[4][0]
-    P31 = pacman.packets_by_qubit[5][0]
+    P24 = pacman.packets_by_qubit[2][0]
+    P25 = pacman.packets_by_qubit[3][0]
+    P26 = pacman.packets_by_qubit[4][0]
+    P27 = pacman.packets_by_qubit[5][0]
 
     merged_packets_ref = {
         0: [
-            (P0, P1, P2, P4, P7, P10, P13, P16, P19, P22),
-            (P3, P5),
-            (P6, P8, P9, P11, P12, P14),
-            (P15, P17),
-            (P18, P20),
-            (P21, P23, P26),
-            (P24,),
-            (P25,),
-            (P27,),
+            (P0, P1, P4, P6, P9, P12, P15, P18),
+            (P2,),
+            (P3, P5, P7, P8, P10),
+            (P11, P13),
+            (P14, P16),
+            (P17, P19, P22,),
+            (P20,),
+            (P21,),
+            (P23,),
         ],
         1: [],
-        2: [(P28,)],
-        3: [(P29,)],
-        4: [(P30,)],
-        5: [(P31,)],
+        2: [(P24,)],
+        3: [(P25,)],
+        4: [(P26,)],
+        5: [(P27,)],
     }
     assert merged_packets_ref == pacman.merged_packets
 
