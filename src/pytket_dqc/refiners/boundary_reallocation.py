@@ -39,13 +39,13 @@ class BoundaryReallocation(Refiner):
 
         :key reallocate_qubits: Whether qubit vertices are allowed to be
             reallocated. Default is True.
-        :key num_rounds: Max number of refinement rounds. Default is 1000.
+        :key num_rounds: Max number of refinement rounds. Default is 10.
         :key stop_parameter: Real number in [0,1]. If proportion of moves
             in a round is smaller than this number, do no more rounds. Default
             is 0.05.
         :key seed: Seed for randomness. Default is None.
         :key cache_limit: The maximum size of the set of servers whose cost is
-            stored in cache; see GainManager. Default value is 5.
+            stored in cache. Default value is 5.
 
         :return: Distribution where the placement updated.
         :rtype: Distribution

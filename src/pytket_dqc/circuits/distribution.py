@@ -16,7 +16,7 @@ from pytket_dqc.utils.gateset import (
 )
 from pytket_dqc.utils.circuit_analysis import (
     all_cu1_local,
-    _cost_from_circuit,
+    ebit_cost,
     get_server_id,
     is_link_qubit,
 )
@@ -104,7 +104,7 @@ class Distribution:
         return self.placement.is_valid(self.circuit, self.network)
 
     def cost(self) -> int:
-        """Return the number of ebits required for this distribution.
+        """Return the number of ebits required to implement this distribution.
         """
         if not self.is_valid():
             raise Exception("This is not a valid distribution")
@@ -283,7 +283,12 @@ class Distribution:
             return cost
 
     def get_qubit_mapping(self) -> dict[Qubit, Qubit]:
-        """Mapping from circuit (logical) qubits to server (hardware) qubits.
+        """Mapping from the names of the original circuit's qubits to the
+        names of the hardware qubits, including whether they are link qubits
+        or computation qubits and the module they belong to.
+
+        :return: The mapping of circuit qubits to hardware qubits.
+        :rtype: dict[Qubit, Qubit]
         """
         if not self.is_valid():
             raise Exception("The distribution of the circuit is not valid!")
@@ -314,7 +319,7 @@ class Distribution:
             this method, in order to make it satisfy the network's
             communication capacity (in case it has been bounded). Optional
             parameter, defaults to False.
-        :raise ConstraintException: If a server's communication capacity
+        :raise ``ConstraintException``: If a server's communication capacity
             is exceeded, `satisfy_bound` was set to True and `allow_update`
             was set to False.
         """
@@ -1210,7 +1215,7 @@ class Distribution:
             self.circuit.get_circuit(), final_circ, qubit_mapping
         )
         assert (
-            _cost_from_circuit(final_circ) == self.cost()
-        ), f"Theory: {self.cost()}, real: {_cost_from_circuit(final_circ)}."
+            ebit_cost(final_circ) == self.cost()
+        ), f"Theory: {self.cost()}, real: {ebit_cost(final_circ)}."
 
         return final_circ

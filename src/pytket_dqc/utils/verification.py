@@ -11,14 +11,17 @@ def check_equivalence(
 ) -> bool:
     """
     Use PyZX to check the two circuits are equivalent. This is done by
-    concatenating the ZX diagram of ``circ1`` with the adjoint of the
-    ZX diagram of ``circ2`` to see if the result is the identity.
+    concatenating the ZX diagram of `circ1` with the adjoint of the
+    ZX diagram of `circ2` to see if the result is the identity.
+
+    NOTE: PyZX can be installed via `pip install pyzx`. You will also need
+    to install pytket-pyzx via `pip install pytket-pyzx`.
 
     NOTE: returning False does not guarantee that the circuits are different;
     it just means that PyZX could not prove that they are equivalent.
-    If it returns True and the ``qubit_mapping`` covers all qubits of both
+    If it returns True and the `qubit_mapping` covers all qubits of both
     circuits, then it is guaranteed that the circuits are equivalent.
-    If some qubits are missing from ``qubit_mapping`` then there are
+    If some qubits are missing from `qubit_mapping` then there are
     post-selections/projections to state 0, which means that the test is not
     a formal proof -- we would need to test for projection to state 1 as well
     (and, in fact, all combinations of 0 and 1).
@@ -29,10 +32,13 @@ def check_equivalence(
     :type circ1: Circuit
     :param circ2: The second of the two circuits to be compared for equality
     :type circ2: Circuit
-    :param qubit_mapping: A mapping from qubits of ``circ1`` to qubits of
-        ``circ2``. If a qubit is not included in this dictionary it means that
+    :param qubit_mapping: A mapping from qubits of `circ1` to qubits of
+        `circ2`. If a qubit is not included in this dictionary it means that
         it ought to be treated as an ancilla (i.e. prepared and measured).
     :type qubit_mapping: dict[Qubit, Qubit]
+
+    :return: Whether the circuits are proven to be equivalent.
+    :rtype: bool
     """
 
     # Note: the implementation is based on the code for verify_equality from

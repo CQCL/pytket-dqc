@@ -143,10 +143,16 @@ def get_server_id(qubit) -> int:
         return int(qubit_name[1].split("[")[0])
 
 
-# This function is for sanity checking and should not make it into production
-# (whatever that means for this project). In particular it is not
-# documented or tested.
-def _cost_from_circuit(circ: Circuit) -> int:
+def ebit_cost(circ: Circuit) -> int:
+    """Scan the circuit and return the number of ebits required to implement
+    it.
+
+    :param circ: The circuit to be analysed.
+    :type circ: Circuit
+
+    :return: The number of ebits consumed by the circuit.
+    :rtype: int
+    """
 
     starting_count = 0
     ending_count = 0

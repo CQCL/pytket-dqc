@@ -30,3 +30,5 @@ Circuits
     .. automethod:: Distribution.__init__
 
     .. automethod:: Distribution.to_pytket_circuit
+
+    .. automethod:: Distribution.get_qubit_mapping

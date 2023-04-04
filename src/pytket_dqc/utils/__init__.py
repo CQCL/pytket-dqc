@@ -20,7 +20,7 @@ from .graph_tools import (  # noqa:F401
 
 from .circuit_analysis import (  # noqa:F401
     ConstraintException,
-    _cost_from_circuit,
+    ebit_cost,
     ebit_memory_required,
     detached_gate_count,
 )
