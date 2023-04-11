@@ -31,6 +31,10 @@ Data structures
 
     .. automethod:: Distribution.cost
 
+    .. automethod:: Distribution.non_local_gate_count
+
+    .. automethod:: Distribution.detached_gate_count
+
     .. automethod:: Distribution.to_pytket_circuit
 
     .. automethod:: Distribution.get_qubit_mapping

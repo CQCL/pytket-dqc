@@ -36,5 +36,3 @@ Allocators
     .. automethod:: Ordered.__init__
 
     .. automethod:: Ordered.allocate
-
-.. autofunction:: pytket_dqc.allocators.ordered.order_reducing_size

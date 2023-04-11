@@ -127,7 +127,7 @@ class Distribution:
 
     def non_local_gate_count(self) -> int:
         """Scan the distribution and return the number of non-local gates.
-        An non-local gate is a 2-qubit gate that acts in a server not
+        A non-local gate is a 2-qubit gate that acts in a server not
         containing one of the two qubits it acts on.
 
         :return: A list of non-local gates
@@ -138,7 +138,7 @@ class Distribution:
 
     def non_local_gate_list(self) -> list[Vertex]:
         """Scan the distribution and return a list of non-local gates.
-        An non-local gate is a 2-qubit gate that acts in a server not
+        A non-local gate is a 2-qubit gate that acts in a server not
         containing one of the two qubits it acts on.
 
         :return: The number of non-local gates

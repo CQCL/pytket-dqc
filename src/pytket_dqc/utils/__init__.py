@@ -25,3 +25,5 @@ from .circuit_analysis import (  # noqa:F401
 )
 
 from .verification import check_equivalence  # noqa:F401
+
+from .qasm import to_qasm_str  # noqa:F401

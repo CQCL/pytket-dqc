@@ -3,11 +3,9 @@ Utils
 
 .. automethod:: pytket_dqc.utils.gateset.DQCPass
 
-.. autoclass:: pytket_dqc.utils.circuit_analysis.ContraintException
+.. autoclass:: pytket_dqc.utils.circuit_analysis.ConstraintException
 
 .. automethod:: pytket_dqc.utils.circuit_analysis.ebit_memory_required
-
-.. automethod:: pytket_dqc.utils.detached_gate_count
 
 .. automethod:: pytket_dqc.utils.ebit_cost
 
