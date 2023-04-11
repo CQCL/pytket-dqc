@@ -10,10 +10,10 @@ from typing import Tuple, Union, cast, Optional
 import matplotlib.pyplot as plt  # type:ignore
 
 
-class NISQNetwork(ServerNetwork):
-    """Class for the management of NISQ networks of quantum computers. Child
-    class of ServerNetwork. Adds additional functionality to manage information
-    about the internal architectures of servers.
+class HeterogeneousNetwork(ServerNetwork):
+    """Class for the management of heterogeneous networks of quantum
+    computers. Child class of ServerNetwork. Adds additional functionality to
+    manage information about the internal architectures of servers.
     """
 
     def __init__(
@@ -90,7 +90,7 @@ class NISQNetwork(ServerNetwork):
 
     def __eq__(self, other):
         """Check equality based on equality of components"""
-        if isinstance(other, NISQNetwork):
+        if isinstance(other, HeterogeneousNetwork):
             return (
                 self.server_qubits == other.server_qubits and
                 self.server_ebit_mem == other.server_ebit_mem and
@@ -103,13 +103,12 @@ class NISQNetwork(ServerNetwork):
     ) -> dict[str, Union[
         list[list[int]], dict[int, list[int]], dict[int, int]
     ]]:
-        """Serialise NISQNetwork.
+        """Serialise HeterogeneousNetwork.
 
-        :return: Dictionary serialisation of NISQNetwork. Dictionary has keys
-            'server_coupling' and 'server_qubits'.
-        :rtype: dict[str, Union[
-                list[list[int]], dict[int, list[int]], dict[int, int]
-            ]]
+        :return: Dictionary serialisation of HeterogeneousNetwork. Dictionary
+            has keys 'server_coupling' and 'server_qubits'.
+        :rtype: dict[str, Union[list[list[int]], dict[int, list[int]],
+            dict[int, int]]]
         """
 
         return {
@@ -122,17 +121,17 @@ class NISQNetwork(ServerNetwork):
     def from_dict(
         cls,
         network_dict: dict[str, Union[list[list[int]], dict[int, list[int]]]]
-    ) -> NISQNetwork:
-        """Constructor for ``NISQNetwork`` using dictionary created by
+    ) -> HeterogeneousNetwork:
+        """Constructor for ``HeterogeneousNetwork`` using dictionary created by
         ``to_dict``.
 
         :param network_dict: Dictionary with keys
             'server_coupling' and 'server_qubits'.
         :type network_dict:
             dict[str, Union[list[list[int]], dict[int, list[int]]]]
-        :return: NISQNetwork with variables corresponding to
+        :return: HeterogeneousNetwork with variables corresponding to
             dictionary values.
-        :rtype: NISQNetwork
+        :rtype: HeterogeneousNetwork
         """
 
         server_coupling = cast(
@@ -289,8 +288,9 @@ class NISQNetwork(ServerNetwork):
         return f
 
 
-class AllToAll(NISQNetwork):
-    """NISQNetwork consisting of uniformly sized, all to all connected servers.
+class AllToAll(HeterogeneousNetwork):
+    """HeterogeneousNetwork consisting of uniformly sized, all to all
+    connected servers.
     """
 
     def __init__(self, n_servers: int, qubits_per_server: int):

@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from pytket import Circuit
-    from pytket_dqc.networks import NISQNetwork
+    from pytket_dqc.networks import HeterogeneousNetwork
 
 
 class Brute(Allocator):
@@ -21,7 +21,7 @@ class Brute(Allocator):
         pass
 
     def allocate(
-        self, circ: Circuit, network: NISQNetwork, **kwargs
+        self, circ: Circuit, network: HeterogeneousNetwork, **kwargs
     ) -> Distribution:
         """Distribute quantum circuit by looking at all possible placements
         and returning the one with the lowest cost.
@@ -29,7 +29,7 @@ class Brute(Allocator):
         :param circ: Circuit to distribute.
         :type circ: pytket.Circuit
         :param network: Network onto which ``circ`` should be distributed.
-        :type network: NISQNetwork
+        :type network: HeterogeneousNetwork
         :raises Exception: Raised if no valid placement could be found.
         :return: Distribution of ``circ`` onto ``network``.
         :rtype: Distribution

@@ -4,7 +4,7 @@ from pytket_dqc.refiners import (
 from pytket import Circuit
 from .distributor import Distributor
 from .partitioning_heterogeneous import PartitioningHeterogeneous
-from pytket_dqc import NISQNetwork, Distribution
+from pytket_dqc import HeterogeneousNetwork, Distribution
 from pytket_dqc.refiners import (
     NeighbouringDTypeMerge,
     IntertwinedDTypeMerge,
@@ -21,7 +21,7 @@ class CoverEmbedding(Distributor):
     """
 
     def distribute(
-        self, circ: Circuit, network: NISQNetwork, **kwargs
+        self, circ: Circuit, network: HeterogeneousNetwork, **kwargs
     ) -> Distribution:
         """Method producing a distribution of the given circuit
         onto the given network.
@@ -33,7 +33,7 @@ class CoverEmbedding(Distributor):
         :param circ: Circuit to be distributed
         :type circ: Circuit
         :param network: Network onto which circuit should be distributed
-        :type network: NISQNetwork
+        :type network: HeterogeneousNetwork
         :return: Distribution of circ onto network.
         :rtype: Distribution
 
@@ -59,7 +59,7 @@ class CoverEmbeddingSteiner(Distributor):
     """
 
     def distribute(
-        self, circ: Circuit, network: NISQNetwork, **kwargs
+        self, circ: Circuit, network: HeterogeneousNetwork, **kwargs
     ) -> Distribution:
         """Abstract method producing a distribution of the given circuit
         onto the given network.
@@ -70,7 +70,7 @@ class CoverEmbeddingSteiner(Distributor):
         :param circ: Circuit to be distributed
         :type circ: Circuit
         :param network: Network onto which circuit should be distributed
-        :type network: NISQNetwork
+        :type network: HeterogeneousNetwork
         :return: Distribution of circ onto network.
         :rtype: Distribution
         """
@@ -95,7 +95,7 @@ class CoverEmbeddingSteinerDetached(Distributor):
     """
 
     def distribute(
-        self, circ: Circuit, network: NISQNetwork, **kwargs
+        self, circ: Circuit, network: HeterogeneousNetwork, **kwargs
     ) -> Distribution:
         """Abstract method producing a distribution of the given circuit
         onto the given network.
@@ -107,7 +107,7 @@ class CoverEmbeddingSteinerDetached(Distributor):
         :param circ: Circuit to be distributed
         :type circ: Circuit
         :param network: Network onto which circuit should be distributed
-        :type network: NISQNetwork
+        :type network: HeterogeneousNetwork
         :return: Distribution of circ onto network.
         :rtype: Distribution
         """

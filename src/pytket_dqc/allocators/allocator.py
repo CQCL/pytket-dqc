@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from pytket_dqc.circuits.distribution import Distribution
-    from pytket_dqc.networks import NISQNetwork
+    from pytket_dqc.networks import HeterogeneousNetwork
     from pytket import Circuit
 
 
@@ -21,6 +21,6 @@ class Allocator(ABC):
     # TODO: Correct type here to be any subclass of ServerNetwork
     @abstractmethod
     def allocate(
-        self, circ: Circuit, network: NISQNetwork, **kwargs
+        self, circ: Circuit, network: HeterogeneousNetwork, **kwargs
     ) -> Distribution:
         pass

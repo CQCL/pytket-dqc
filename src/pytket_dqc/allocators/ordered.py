@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from pytket import Circuit
-    from pytket_dqc.networks import NISQNetwork
+    from pytket_dqc.networks import HeterogeneousNetwork
 
 
 def order_reducing_size(
@@ -65,7 +65,7 @@ class Ordered(Allocator):
     def allocate(
         self,
         circ: Circuit,
-        network: NISQNetwork,
+        network: HeterogeneousNetwork,
         **kwargs
     ) -> Distribution:
         """Distribute ``circ`` onto ``network`` by placing quibts onto
@@ -74,7 +74,7 @@ class Ordered(Allocator):
         :param circ: Circuit to distribute.
         :type circ: pytket.Circuit
         :param network: Network onto which ``circ`` should be distributed.
-        :type network: NISQNetwork
+        :type network: HeterogeneousNetwork
         :return: Distribution of ``circ`` onto ``network``.
         :rtype: Distribution
         """

@@ -13,7 +13,7 @@ from pytket_dqc.circuits import HypergraphCircuit, Distribution
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from pytket import Circuit
-    from pytket_dqc.networks import NISQNetwork
+    from pytket_dqc.networks import HeterogeneousNetwork
 
 
 class Routing(Allocator):
@@ -27,7 +27,7 @@ class Routing(Allocator):
     def allocate(
         self,
         circ: Circuit,
-        network: NISQNetwork,
+        network: HeterogeneousNetwork,
         **kwargs
     ) -> Distribution:
         """Distribute quantum circuits using routing tools available in
@@ -37,7 +37,7 @@ class Routing(Allocator):
         :param circ: Circuit to distribute.
         :type circ: pytket.Circuit
         :param network: Network onto which ``circ`` should be distributed.
-        :type network: NISQNetwork
+        :type network: HeterogeneousNetwork
         :return: Distribution of ``circ`` onto ``network``.
         :rtype: Distribution
         """

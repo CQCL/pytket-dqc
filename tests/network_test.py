@@ -1,9 +1,9 @@
 from pytket_dqc.networks import (
-    NISQNetwork,
+    HeterogeneousNetwork,
     ServerNetwork,
-    ScaleFreeNISQNetwork,
-    SmallWorldNISQNetwork,
-    RandomNISQNetwork,
+    ScaleFreeNetwork,
+    SmallWorldNetwork,
+    RandomNetwork,
     AllToAll,
 )
 from pytket.placement import NoiseAwarePlacement  # type:ignore
@@ -37,7 +37,7 @@ def test_all_to_all_network():
 
 def test_random_network():
 
-    network = RandomNISQNetwork(n_servers=5, n_qubits=10, seed=0)
+    network = RandomNetwork(n_servers=5, n_qubits=10, seed=0)
     assert network.server_coupling == [
         [0, 3], [1, 2], [1, 4], [3, 4]
     ]
@@ -46,13 +46,13 @@ def test_random_network():
     }
     assert network.server_ebit_mem == {0: 2, 1: 2, 2: 2, 3: 2, 4: 2}
 
-    network = RandomNISQNetwork(n_servers=3, n_qubits=12, seed=0)
+    network = RandomNetwork(n_servers=3, n_qubits=12, seed=0)
     assert network.server_ebit_mem == {0: 3, 1: 3, 2: 3}
 
 
 def test_small_world_network():
 
-    network = SmallWorldNISQNetwork(n_servers=5, n_qubits=10, seed=1, k=2)
+    network = SmallWorldNetwork(n_servers=5, n_qubits=10, seed=1, k=2)
 
     network_dict = network.to_dict()
     server_coupling = network_dict['server_coupling']
@@ -65,20 +65,20 @@ def test_small_world_network():
     }
     assert server_ebit_mem == {0: 2, 1: 2, 2: 2, 3: 2, 4: 2}
 
-    network = SmallWorldNISQNetwork(n_servers=3, n_qubits=12, seed=0)
+    network = SmallWorldNetwork(n_servers=3, n_qubits=12, seed=0)
     assert network.server_ebit_mem == {0: 3, 1: 3, 2: 3}
 
 
 def test_scale_free_network():
 
-    network = ScaleFreeNISQNetwork(n_servers=5, n_qubits=10, seed=1, m=1)
+    network = ScaleFreeNetwork(n_servers=5, n_qubits=10, seed=1, m=1)
     assert network.server_coupling == [[0, 1], [0, 2], [0, 3], [0, 4]]
     assert network.server_qubits == {
         0: [0, 7, 9], 1: [1, 5], 2: [2, 8], 3: [3], 4: [4, 6]
     }
     assert network.server_ebit_mem == {0: 2, 1: 2, 2: 2, 3: 2, 4: 2}
 
-    network = ScaleFreeNISQNetwork(n_servers=3, n_qubits=12, seed=0)
+    network = ScaleFreeNetwork(n_servers=3, n_qubits=12, seed=0)
     assert network.server_ebit_mem == {0: 3, 1: 3, 2: 3}
 
 
@@ -89,7 +89,7 @@ def test_can_implement():
         0: [0, 1],
         1: [2],
     }
-    network = NISQNetwork(server_coupling, server_qubits)
+    network = HeterogeneousNetwork(server_coupling, server_qubits)
 
     large_circ = (
         Circuit(4)
@@ -108,7 +108,9 @@ def test_can_implement():
 
 def test_nisq_get_architecture():
 
-    med_network = NISQNetwork([[0, 1], [0, 2]], {0: [0], 1: [1], 2: [2, 3]})
+    med_network = HeterogeneousNetwork(
+        [[0, 1], [0, 2]], {0: [0], 1: [1], 2: [2, 3]}
+    )
     med_arch = Architecture(
         [(Node(2), Node(3)), (Node(2), Node(0)), (Node(0), Node(1))]
     )
@@ -120,7 +122,9 @@ def test_nisq_get_architecture():
 @pytest.mark.skip(reason="This test needs to be fixed.")
 def test_nisq_get_placer():
 
-    med_network = NISQNetwork([[0, 1], [0, 2]], {0: [0], 1: [1], 2: [2, 3]})
+    med_network = HeterogeneousNetwork(
+        [[0, 1], [0, 2]], {0: [0], 1: [1], 2: [2, 3]}
+    )
     med_arch = Architecture(
         [(Node(2), Node(3)), (Node(2), Node(0)), (Node(0), Node(1))]
     )
@@ -134,7 +138,7 @@ def test_nisq_get_placer():
 
 
 def test_nisq_draw():
-    network = NISQNetwork(
+    network = HeterogeneousNetwork(
         [[0, 1], [0, 2], [2, 3]],
         {0: [0, 1], 1: [2, 3, 4], 2: [5, 6, 7, 8], 3: [9]},
     )
@@ -142,7 +146,7 @@ def test_nisq_draw():
 
 
 def test_nisq_get_nx():
-    network = NISQNetwork(
+    network = HeterogeneousNetwork(
         [[0, 1], [0, 2]], {0: [0, 1, 2], 1: [3, 4, 5], 2: [6, 7, 8, 9]}
     )
 
@@ -177,10 +181,10 @@ def test_server_get_nx():
 
 def test_get_server_list():
 
-    large_network = NISQNetwork(
+    large_network = HeterogeneousNetwork(
         [[0, 1], [0, 2], [1, 2]], {0: [0, 1, 2], 1: [3, 4, 5], 2: [6, 7, 8, 9]}
     )
-    small_network = NISQNetwork([[0, 1]], {0: [0, 1], 1: [2, 3, 4]})
+    small_network = HeterogeneousNetwork([[0, 1]], {0: [0, 1], 1: [2, 3, 4]})
 
     assert small_network.get_server_list() == [0, 1]
     assert large_network.get_server_list() == [0, 1, 2]

@@ -9,7 +9,7 @@ import math
 
 if TYPE_CHECKING:
     from pytket import Circuit
-    from pytket_dqc.networks import NISQNetwork
+    from pytket_dqc.networks import HeterogeneousNetwork
 
 
 # Credit to
@@ -51,14 +51,14 @@ class Annealing(Allocator):
         pass
 
     def allocate(
-        self, circ: Circuit, network: NISQNetwork, **kwargs
+        self, circ: Circuit, network: HeterogeneousNetwork, **kwargs
     ) -> Distribution:
         """Distribute quantum circuit using simulated annealing approach.
 
         :param circ: Circuit to distribute.
         :type circ: pytket.Circuit
         :param network: Network onto which circuit is to be distributed.
-        :type network: NISQNetwork
+        :type network: HeterogeneousNetwork
         :return: Distribution of ``circ`` onto ``network``.
         :rtype: Distribution
 
