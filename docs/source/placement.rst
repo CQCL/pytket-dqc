@@ -8,3 +8,7 @@ Placement
     .. automethod:: Placement.is_valid
 
     .. automethod:: Placement.get_distribution_tree
+
+    .. automethod:: Placement.to_dict
+
+    .. automethod:: Placement.from_dict

@@ -16,7 +16,7 @@ from pytket_dqc.utils.gateset import (
 )
 from pytket_dqc.utils.circuit_analysis import (
     all_cu1_local,
-    _cost_from_circuit,
+    ebit_cost,
     get_server_id,
     is_link_qubit,
 )
@@ -69,9 +69,10 @@ class Distribution:
 
     def to_dict(self) -> dict[str, dict]:
         """Generate JSON serialisable dictionary representation of
-        `Distribution`.
+        the Distribution.
 
-        :return: JSON serialisable dictionary representation of `Distribution`.
+        :return: JSON serialisable dictionary representation of
+            the Distribution.
         :rtype: dict[str, dict]
         """
         return {
@@ -82,7 +83,7 @@ class Distribution:
 
     @classmethod
     def from_dict(cls, distribution_dict: dict[str, dict]) -> Distribution:
-        """Construct Distribution instance from JSON serialisable
+        """Construct ``Distribution`` instance from JSON serialisable
         dictionary representation of the Distribution.
 
         :param distribution_dict: JSON serialisable dictionary
@@ -106,7 +107,16 @@ class Distribution:
         return self.placement.is_valid(self.circuit, self.network)
 
     def cost(self) -> int:
-        """Return the number of ebits required for this distribution.
+        """Return the number of ebits required to implement this distribution.
+
+        NOTE: this function does not guarantee that the distribution being
+        analysed satisfies the bound to the link qubit registers. If you wish
+        to take the bound into account, call ``to_pytket_circuit`` before
+        calling this function. Alternatively, call ``ebit_cost`` on the
+        distributed circuit.
+
+        :return: The number of ebits used in this distribution.
+        :rtype: int
         """
         if not self.is_valid():
             raise Exception("This is not a valid distribution")
@@ -118,7 +128,7 @@ class Distribution:
 
     def non_local_gate_count(self) -> int:
         """Scan the distribution and return the number of non-local gates.
-        An non-local gate is a 2-qubit gate that acts in a server not
+        A non-local gate is a 2-qubit gate that acts in a server not
         containing one of the two qubits it acts on.
 
         :return: A list of non-local gates
@@ -129,7 +139,7 @@ class Distribution:
 
     def non_local_gate_list(self) -> list[Vertex]:
         """Scan the distribution and return a list of non-local gates.
-        An non-local gate is a 2-qubit gate that acts in a server not
+        A non-local gate is a 2-qubit gate that acts in a server not
         containing one of the two qubits it acts on.
 
         :return: The number of non-local gates
@@ -377,7 +387,12 @@ class Distribution:
             return cost
 
     def get_qubit_mapping(self) -> dict[Qubit, Qubit]:
-        """Mapping from circuit (logical) qubits to server (hardware) qubits.
+        """Mapping from the names of the original circuit's qubits to the
+        names of the hardware qubits, including whether they are link qubits
+        or computation qubits and the module they belong to.
+
+        :return: The mapping of circuit qubits to hardware qubits.
+        :rtype: dict[Qubit, Qubit]
         """
         if not self.is_valid():
             raise Exception("The distribution of the circuit is not valid!")
@@ -408,7 +423,7 @@ class Distribution:
             this method, in order to make it satisfy the network's
             communication capacity (in case it has been bounded). Optional
             parameter, defaults to False.
-        :raise ConstraintException: If a server's communication capacity
+        :raise ``ConstraintException``: If a server's communication capacity
             is exceeded, `satisfy_bound` was set to True and `allow_update`
             was set to False.
         """
@@ -1303,7 +1318,7 @@ class Distribution:
         assert check_equivalence(
             self.circuit.get_circuit(), final_circ, qubit_mapping
         )
-        if _cost_from_circuit(final_circ) != self.cost():
+        if ebit_cost(final_circ) != self.cost():
             detached_gates = self.detached_gate_list()
             embedded_gates = self.circuit.get_all_h_embedded_gate_vertices()
             # If a gate is both detached and embedded, the cost estimate may
@@ -1314,12 +1329,12 @@ class Distribution:
                     "Detected a gate that is both detached and embedded. " +
                     "As a consequence, the estimated cost did not match " +
                     f"actual cost. Estimate: {self.cost()}, " +
-                    f"real: {_cost_from_circuit(final_circ)}."
+                    f"real: {ebit_cost(final_circ)}."
                 )
             else:
                 raise Exception(
                     "Estimated cost does not match actual cost. Estimate: " +
-                    f"{self.cost()}, real: {_cost_from_circuit(final_circ)}."
+                    f"{self.cost()}, real: {ebit_cost(final_circ)}."
                 )
 
         return final_circ

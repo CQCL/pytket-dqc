@@ -16,8 +16,8 @@ class DetachedGates(Refiner):
 
     def refine(self, distribution: Distribution, **kwargs) -> bool:
         """An alias for boundary reallocation with no movements of
-        qubit vertices.
-        Key arguments (kwargs) are passed directly to `BoundaryReallocation`;
+        qubit vertices or embedded gates. Key arguments (kwargs) are
+        passed directly to ``BoundaryReallocation``
         the arguments it accepts are described in its documentation.
 
         :param distribution: Distribution to refine.

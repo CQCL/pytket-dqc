@@ -103,7 +103,7 @@ class NISQNetwork(ServerNetwork):
     ) -> dict[str, Union[
         list[list[int]], dict[int, list[int]], dict[int, int]
     ]]:
-        """Serialise NISQNetwork
+        """Serialise NISQNetwork.
 
         :return: Dictionary serialisation of NISQNetwork. Dictionary has keys
             'server_coupling' and 'server_qubits'.
@@ -123,7 +123,8 @@ class NISQNetwork(ServerNetwork):
         cls,
         network_dict: dict[str, Union[list[list[int]], dict[int, list[int]]]]
     ) -> NISQNetwork:
-        """Constructor for NISQNetwork using dictionary created by `to_dict`.
+        """Constructor for ``NISQNetwork`` using dictionary created by
+        ``to_dict``.
 
         :param network_dict: Dictionary with keys
             'server_coupling' and 'server_qubits'.

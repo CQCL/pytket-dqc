@@ -1,7 +1,16 @@
-from pytket import OpType
+from pytket import OpType, Circuit
 
 
-def to_qasm_str(circ):
+def to_qasm_str(circ: Circuit):
+    """Return the QASM representation of the circuit, where the starting
+    and ending processes are represented as custom gates.
+
+    :param circ: The circuit in pytket format.
+    :type circ: Circuit
+
+    :return: The QASM output as a string.
+    :rtype: str
+    """
 
     qasm_str = "OPENQASM 2.0;"
     qasm_str += "\ninclude \"qelib1.inc\";"

@@ -223,8 +223,9 @@ def to_euler_with_two_hadamards(ops: list[Op]) -> list[Op]:
 
 #: Pass rebasing gates to those valid within pytket-dqc
 def DQCPass() -> BasePass:
-    # This is the convention used by pytket: use camel case for the naming
-    # of functions that return BasePass
+    """Transpile a given circuit to the gateset supported by pytket-dqc
+    by calling ``DQCPass().apply(circuit)``.
+    """
     return SequencePass(
         [
             CustomPass(cz_to_cu1),

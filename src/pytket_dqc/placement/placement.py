@@ -31,12 +31,23 @@ class Placement:
         return str(self.placement)
 
     def to_dict(self) -> dict[int, int]:
-        """Generate JSON serialisable dictionary for Placement"""
+        """Generate JSON serialisable dictionary for the Placement.
+
+        :return: Dictionary serialisation of the Placement.
+        :rtype: dict[int, int]
+        """
         return self.placement
 
     @classmethod
     def from_dict(cls, placement_dict: dict[int, int]):
-        """Generate Placement instance from JSON serialisable dictionary"""
+        """Generate ``Placement`` instance from JSON serialisable dictionary.
+
+        :param placement_dict: JSON serialisable dictionary
+            representation of the Placement.
+        :type placement_dict: dict[int, int]
+        :return: Placement instance constructed from placement_dict.
+        :rtype: Placement
+        """
         placement = {
             int(node): int(server) for node, server in placement_dict.items()
         }

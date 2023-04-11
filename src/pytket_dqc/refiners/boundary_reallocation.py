@@ -45,7 +45,7 @@ class BoundaryReallocation(Refiner):
             is 0.05.
         :key seed: Seed for randomness. Default is None.
         :key cache_limit: The maximum size of the set of servers whose cost is
-            stored in cache; see GainManager. Default value is 5.
+            stored in cache. Default value is 5.
 
         :return: Distribution where the placement updated.
         :rtype: Distribution
