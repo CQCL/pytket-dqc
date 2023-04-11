@@ -36,3 +36,7 @@ Refiners
 .. autoclass:: pytket_dqc.refiners.IntertwinedDTypeMerge
 
     .. automethod:: IntertwinedDTypeMerge.refine
+
+.. autoclass:: pytket_dqc.refiners.EagerHTypeMerge
+
+    .. automethod:: EagerHTypeMerge.refine

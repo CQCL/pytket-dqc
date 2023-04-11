@@ -86,35 +86,38 @@ class PacMan:
     NOTE: A hopping packet is only comprised of two ``Packet``s, neighbouring
     packets are of any length >= 2 and merged packets can be of
     length >= 1.
-
-    :param hypergraph_circuit: The ``HypergraphCircuit`` from which
-    to build and identify ``Packet``s.
-    :type hypergraph_circuit: HypergraphCircuit
-    :param placement: The ``Placement`` describing the placement of qubits
-    and their gates.
-    :type placement: Placement
-    :param packets_by_qubit: A dictionary containing chronologically
-    ordered lists of all the ``Packet``s on each qubit, with
-    each qubit's ``Vertex`` as the key.
-    :type packets_by_qubit: dict[Vertex, list[Packet]]
-    :param neighbouring_packets: A dictionary containing lists of ``Packet``
-    tuples on each qubit. A tuple of ``Packet``s represents a group of packets
-    that can be packed together via neighbouring packing.
-    :type neighbouring_packets: dict[Vertex, list[NeighbouringPacket]]
-    :param hopping_packets: A dictionary containing lists of ``Packet`` tuples
-    than can be merged by hopping packing on each qubit.
-    A tuple of ``Packet``s represents two packets that can be packed together
-    via hopping packing.
-    :type hopping_packets: dict[Vertex, list[HoppingPacket]]
-    :param merged_packets: A dictionary containing lists of ``Packet`` tuples
-    than can be merged by neighbouring or hopping packing on each qubit.
-    A tuple of ``Packet``s represents two packets that can be packed together,
-    either by neighbouring or hopping packing.
     """
 
     def __init__(
         self, hypergraph_circuit: HypergraphCircuit, placement: Placement
     ):
+        """ Initialisation function.
+
+        :param hypergraph_circuit: The ``HypergraphCircuit`` from which
+            to build and identify ``Packet``s.
+        :type hypergraph_circuit: HypergraphCircuit
+        :param placement: The ``Placement`` describing the placement of qubits
+            and their gates.
+        :type placement: Placement
+        :param packets_by_qubit: A dictionary containing chronologically
+            ordered lists of all the ``Packet``s on each qubit, with
+            each qubit's ``Vertex`` as the key.
+        :type packets_by_qubit: dict[Vertex, list[Packet]]
+        :param neighbouring_packets: A dictionary containing lists of
+            ``Packet`` tuples on each qubit. A tuple of ``Packet``s
+            represents a group of packets that can be packed together
+            via neighbouring packing.
+        :type neighbouring_packets: dict[Vertex, list[NeighbouringPacket]]
+        :param hopping_packets: A dictionary containing lists of ``Packet``
+            tuples than can be merged by hopping packing on each qubit.
+            A tuple of ``Packet``s represents two packets that can be
+            packed together via hopping packing.
+        :type hopping_packets: dict[Vertex, list[HoppingPacket]]
+        :param merged_packets: A dictionary containing lists of ``Packet``
+            tuples than can be merged by neighbouring or hopping packing on
+            each qubit. A tuple of ``Packet``s represents two packets that can
+            be packed together, either by neighbouring or hopping packing.
+    """
         self.hypergraph_circuit: HypergraphCircuit = hypergraph_circuit
         self.placement: Placement = placement
         self.packets_by_qubit: dict[Vertex, list[Packet]] = dict()
