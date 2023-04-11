@@ -26,8 +26,10 @@ class EagerHTypeMerge(Refiner):
         :rtype: bool
         """
         gain_mgr = GainManager(initial_distribution=distribution)
+        detached_gate_list = distribution.detached_gate_list()
         refinement_made = False
         pacman = PacMan(distribution.circuit, distribution.placement)
+        hyp_circ = distribution.circuit
 
         already_done_hoppings: list[HoppingPacket] = list()
         all_hedges_to_merge: list[set[Hyperedge]] = list()
@@ -66,14 +68,24 @@ class EagerHTypeMerge(Refiner):
                     if next_hopper is not None:
                         hopping_packet = (current_packet, next_hopper)
                         # We only merge embeddings when there are no conflicts
-                        # that have already been merged previously
-                        if all(
-                            [
+                        # that have already been merged previously and none of
+                        # the embedded gates are detached
+                        if (
+                            all(  # No conflicts
                                 conflict not in already_done_hoppings
                                 for conflict in pacman.get_conflict_hoppings(
                                     hopping_packet
                                 )
-                            ]
+                            ) and all(  # No detached gates
+                                gate not in detached_gate_list for gate
+                                in hyp_circ.get_h_embedded_gate_vertices(
+                                    Hyperedge(
+                                        [qubit_vertex]
+                                        + current_packet.gate_vertices
+                                        + next_hopper.gate_vertices
+                                    )
+                                )
+                            )
                         ):
                             # Make a note that the hopping has now been done
                             # therefore we cannot do another hopping that

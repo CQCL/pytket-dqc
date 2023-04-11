@@ -1,4 +1,5 @@
 import pickle  # type: ignore
+import warnings  # type: ignore
 import json  # type: ignore
 import pytest
 from pytket import Circuit
@@ -427,7 +428,7 @@ def test_CRz_circuit():
     circ = Circuit(2)
     circ.add_gate(OpType.CU1, 1.0, [0, 1])
     circ.add_gate(OpType.CU1, 0.3, [1, 0])
-    circ.Rz(0.3, 1)
+    circ.H(1)
     circ.add_gate(OpType.CU1, 1.0, [1, 0])
 
     dist_circ = HypergraphCircuit(circ)
@@ -1187,6 +1188,8 @@ def test_to_pytket_circuit_circ_with_embeddings_3():
     hyp_circ.add_hyperedge([1, 2, 4])
     hyp_circ.add_hyperedge([1, 3])
 
+    assert hyp_circ.get_all_h_embedded_gate_vertices() == [3]
+
     distribution = Distribution(hyp_circ, placement, network)
     assert distribution.is_valid()
 
@@ -1473,6 +1476,11 @@ def test_to_pytket_circuit_M_P_choice_collision():
     for new_hedge in new_hedge_list:
         hyp_circ.add_hyperedge(new_hedge)
 
+    hedge_A = Hyperedge(new_hedge_list[0])
+    assert hyp_circ.get_h_embedded_gate_vertices(hedge_A) == [3, 4, 5]
+    hedge_B = Hyperedge(new_hedge_list[1])
+    assert hyp_circ.get_h_embedded_gate_vertices(hedge_B) == [5, 6, 7]
+
     placement = Placement(
         {0: 0, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1}
     )
@@ -1591,6 +1599,8 @@ def test_to_pytket_circuit_mixing_H_and_D_embeddings():
     hyp_circ.add_hyperedge([1, 7])
     hyp_circ.add_hyperedge([2, 5, 8])
     hyp_circ.add_hyperedge([3, 6, 7])
+
+    assert hyp_circ.get_all_h_embedded_gate_vertices() == [5, 6]
 
     distribution = Distribution(hyp_circ, placement, network)
     assert distribution.is_valid()
@@ -2165,12 +2175,20 @@ def test_distribution_to_dict(tmpdir_factory):
     assert new_distribution == distribution
 
 
-@pytest.mark.xfail
 @pytest.mark.high_compute
 def test_embedding_detached():
+    warnings.filterwarnings("error")
 
     with open(
         "tests/test_circuits/chemistry_aware_embedding_detatched.json", 'r'
     ) as fp:
         distribution = Distribution.from_dict(json.load(fp))
-    distribution.to_pytket_circuit(satisfy_bound=False)
+
+    caught_warning = False
+    try:
+        distribution.to_pytket_circuit(satisfy_bound=False)
+    except Warning:
+        caught_warning = True
+
+    warnings.resetwarnings()
+    assert caught_warning

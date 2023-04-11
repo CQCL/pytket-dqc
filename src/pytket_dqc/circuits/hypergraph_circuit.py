@@ -524,6 +524,56 @@ class HypergraphCircuit(Hypergraph):
 
         return False
 
+    def get_h_embedded_gate_vertices(
+        self, hyperedge: Hyperedge
+    ) -> list[Vertex]:
+        """Returns the list of gate vertices that are embedded on the
+        given hyperedge.
+        """
+        subcircuit = self.get_hyperedge_subcircuit(hyperedge)
+        gate_vertices_in_subcircuit = []
+        h_embedded_gate_vertices = []
+
+        # Find out all of the gate vertices in `subcircuit`. Unfortunately,
+        # this can't be done by exploring `subcircuit`, since it removed
+        # many CU1 gates. Instead, we use the information in `hyperedge`
+        v_g = min(self.get_gate_vertices(hyperedge))
+        q = self.get_qubit_of_vertex(self.get_qubit_vertex(hyperedge))
+        while v_g <= max(self.get_gate_vertices(hyperedge)):
+
+            if q in self.get_gate_of_vertex(v_g).qubits:
+                gate_vertices_in_subcircuit.append(v_g)
+            v_g += 1
+
+        # Go through the `subcircuit` and the list of gate vertices in it,
+        # identifying the gates that are embedded.
+        currently_embedding = False
+        for cmd in subcircuit:
+
+            if cmd.op.type == OpType.H:
+                currently_embedding = not currently_embedding
+            elif cmd.op.type == OpType.CU1:
+                v_g = gate_vertices_in_subcircuit.pop(0)
+
+                if currently_embedding:
+                    h_embedded_gate_vertices.append(v_g)
+
+        # Sanity check: the list of gate vertices has been exhausted
+        assert not gate_vertices_in_subcircuit
+        return h_embedded_gate_vertices
+
+    def get_all_h_embedded_gate_vertices(self) -> list[Vertex]:
+        """Returns the list of gate vertices that are embedded on any
+        hyperedge.
+        """
+        h_embedded_gate_vertices = set()
+
+        for hedge in self.hyperedge_list:
+            vertex_list = self.get_h_embedded_gate_vertices(hedge)
+            h_embedded_gate_vertices.update(vertex_list)
+
+        return list(h_embedded_gate_vertices)
+
     def from_circuit(self):
         """Method to create a hypergraph from a circuit.
 
@@ -624,7 +674,10 @@ class HypergraphCircuit(Hypergraph):
                         hyperedge = [qubit_index]
                     self._commands[command_index]["vertex"] = vertex
                     self._commands[command_index]["type"] = "distributed gate"
-                # Otherwise (which is to say if a single qubit gate is
+                # Encountering a Rz does not affect the hypergraph.
+                elif command["command"].op.type in [OpType.Rz]:
+                    self._commands[command_index]["type"] = "1q local gate"
+                # Otherwise (which is to say if a H gate is
                 # encountered) add the hyperedge to the hypergraph and start
                 # a new working hyperedge.
                 else:
