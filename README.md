@@ -2,6 +2,12 @@
 
 Automated entanglement-efficient distribution of quantum circuits.
 
+## Table of Contents
+
+- [About](#about)
+- [Requirements](#requirements)
+- [Installing pytket-dqc](#installing-pytket-dqc)
+
 ## About
 This package takes a quantum circuit and network description and produces a circuit distributed across the given network,
 using entanglement-assisted local operations and classical communication to implement non-local gates in the circuit,
@@ -19,22 +25,31 @@ but they should apply just the same for Linux systems by replacing `brew` with y
 This is required for building the other packages listed here.
 
 <details>
+
 <summary>Installation Steps</summary>
+
 1. `brew install cmake`
+
 </details>
 
 ### [KaHyPar (with Python interface)](https://github.com/kahypar/kahypar)
-This is required for the hypergraph partioning methods used in `pytket-dqc`.
 
-In the Requirements section of [kahypar](https://github.com/kahypar/kahypar),
-if you are not sure you have Boost.build installed or if you want to install it,
-please check https://www.boost.org/doc/libs/1_78_0/tools/build/doc/html/index.html#bbv2.installation.
+This is required for the hypergraph partioning methods used in `pytket-dqc`.
 
 We use an experimental feature from KaHyPar that let us select a different maximum weight for each block of the partition
 (i.e. a different qubit capacity for each server).
-The python interface for this feature was added in [this commit](https://github.com/kahypar/kahypar/commit/ff8fdf06c4e50af2faecddb9c5b6f7553e232df2) on July 2020.
+The python interface for this feature was added in [this commit](https://github.com/kahypar/kahypar/commit/ff8fdf06c4e50af2faecddb9c5b6f7553e232df2).
 It looks like KaHyPar >1.2.1 is the least requirement for this feature.
 If KaHyPar is built from their repository (following the instructions given below), this feature is automatically available.
+
+<details>
+<summary>Boost</summary>
+
+[KaHyPar requires Boost.Program_options](https://github.com/kahypar/kahypar#requirements).
+If you do not have Boost installed then you can:
+- Install it (see [here](https://www.boost.org/doc/libs/1_78_0/tools/build/doc/html/index.html#bbv2.installation))
+- Add the flag `-DKAHYPAR_USE_MINIMAL_BOOST=ON` to the command given in Step 4 below.
+</details>
 
 <details>
 <summary>Installation Steps</summary>
@@ -75,16 +90,23 @@ If KaHyPar is built from their repository (following the instructions given belo
   ```
 </details>
   
-#### Test KaHyPar
+<details>
+<summary>Test KaHyPar</summary>
 
 You should now be able to use KaHyPar in Python.
-To test this, in your terminal open a Python 3 shell (`python3`) and then do `import kahypar`.
+To test this, in your terminal open a Python 3 shell with command `python3` and then do `import kahypar`.
 If this fails then Python cannot access the dynamic library (the `.so` file).
 If you get such an error it is likely something went wrong in step 6 from the instructions above,
 i.e. the `.so` file was not copied to the right directory, or the wrong `.so` file was copied.
 
-#### Troubleshooting
+</details>
+
 <details>
+
+<summary>Troubleshooting</summary>
+
+<details>
+
 <summary>I got an error when building KaHyPar! (Step 4)</summary>
 
 If an error occurs it might be that you do not have the Boost library installed in your computer.
@@ -97,14 +119,19 @@ cmake ../ -DCMAKE_BUILD_TYPE=RELEASE -DKAHYPAR_PYTHON_INTERFACE=1 -DKAHYPAR_USE_
 Note that the `-DKAHYPAR_USE_MINIMAL_BOOST=ON` flag is used.
 It may not be possible to get it to play nicely with an already present installation of boost.
 See <https://githubhot.com/repo/kahypar/kahypar/issues/98> for relevant discussion.
+
 </details>
 
 <details>
+
 <summary>My terminal is telling me `kahypar.so` doesn't exist when I try to copy it! (Step 6)</summary>
 
 Try to find a file in the directory `kahypar/build/python` with the extension `.so` and copy that instead.
 
 You do not need to rename the file.
+
+</details>
+
 </details>
 
 ### [Graphviz](https://graphviz.org/download/)
@@ -117,7 +144,7 @@ This package is used for graph visualisation.
 1. `pip install --global-option=build_ext --global-option="-I/opt/homebrew/include/" --global-option="-L/opt/homebrew/lib/graphviz" pygraphviz`
 </details>
 
-### Installing pytket-dqc
+## Installing pytket-dqc
 
 1. Ensure that CMake, KaHyPar, and Graphviz are installed. See above for guidance on this.
 1. In your terminal, navigate to the directory you wish to download `pytket-dqc`'s source files to.
