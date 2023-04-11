@@ -13,6 +13,10 @@ Refiners
 
     .. automethod:: IntertwinedDTypeMerge.refine
 
+.. autoclass:: pytket_dqc.refiners.EagerHTypeMerge
+    
+    .. automethod:: EagerHTypeMerge.refine
+
 .. autoclass:: pytket_dqc.refiners.RepeatRefiner
 
     .. automethod:: RepeatRefiner.__init__
