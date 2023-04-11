@@ -1,6 +1,6 @@
 from pytket_dqc.networks import (
     HeterogeneousNetwork,
-    ServerNetwork,
+    ModuleNetwork,
     ScaleFreeNetwork,
     SmallWorldNetwork,
     RandomNetwork,
@@ -142,7 +142,7 @@ def test_nisq_draw():
         [[0, 1], [0, 2], [2, 3]],
         {0: [0, 1], 1: [2, 3, 4], 2: [5, 6, 7, 8], 3: [9]},
     )
-    network.draw_nisq_network()
+    network.draw_heterogeneous_network()
 
 
 def test_nisq_get_nx():
@@ -174,7 +174,7 @@ def test_nisq_get_nx():
 
 def test_server_get_nx():
 
-    server_network = ServerNetwork([[0, 1], [0, 2], [1, 2]])
+    server_network = ModuleNetwork([[0, 1], [0, 2], [1, 2]])
     G = server_network.get_server_nx()
     assert list(G.edges()) == [(0, 1), (0, 2), (1, 2)]
 
@@ -192,8 +192,8 @@ def test_get_server_list():
 
 def test_server_network_is_placement():
 
-    large_network = ServerNetwork([[0, 1], [0, 2], [1, 2]])
-    small_network = ServerNetwork([[0, 1]])
+    large_network = ModuleNetwork([[0, 1], [0, 2], [1, 2]])
+    small_network = ModuleNetwork([[0, 1]])
 
     placement_one = Placement({0: 1, 1: 1, 2: 1, 3: 0, 4: 1, 5: 1, 6: 1})
     placement_two = Placement({0: 2, 1: 2, 2: 2})

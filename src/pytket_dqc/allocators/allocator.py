@@ -18,7 +18,7 @@ class Allocator(ABC):
     def __init__(self) -> None:
         pass
 
-    # TODO: Correct type here to be any subclass of ServerNetwork
+    # TODO: Correct type here to be any subclass of ModuleNetwork
     @abstractmethod
     def allocate(
         self, circ: Circuit, network: HeterogeneousNetwork, **kwargs

@@ -1,15 +1,15 @@
 Networks
 ========
 
-.. autoclass:: pytket_dqc.networks.server_network.ServerNetwork
+.. autoclass:: pytket_dqc.networks.module_network.ModuleNetwork
 
-    .. automethod:: ServerNetwork.__init__
+    .. automethod:: ModuleNetwork.__init__
     
-    .. automethod:: ServerNetwork.is_placement
+    .. automethod:: ModuleNetwork.is_placement
 
-    .. automethod:: ServerNetwork.get_server_list
+    .. automethod:: ModuleNetwork.get_server_list
 
-    .. automethod:: ServerNetwork.draw_server_network
+    .. automethod:: ModuleNetwork.draw_module_network
 
 .. autoclass:: pytket_dqc.networks.nisq_network.HeterogeneousNetwork
 
@@ -17,7 +17,7 @@ Networks
 
     .. automethod:: HeterogeneousNetwork.get_qubit_list
 
-    .. automethod:: HeterogeneousNetwork.draw_nisq_network
+    .. automethod:: HeterogeneousNetwork.draw_heterogeneous_network
 
     .. automethod:: HeterogeneousNetwork.to_dict
 

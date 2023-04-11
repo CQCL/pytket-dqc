@@ -1,5 +1,5 @@
 from __future__ import annotations
-from pytket_dqc.networks.server_network import ServerNetwork
+from pytket_dqc.networks.module_network import ModuleNetwork
 from itertools import combinations
 import networkx as nx  # type:ignore
 from pytket.placement import NoiseAwarePlacement  # type:ignore
@@ -10,9 +10,9 @@ from typing import Tuple, Union, cast, Optional
 import matplotlib.pyplot as plt  # type:ignore
 
 
-class HeterogeneousNetwork(ServerNetwork):
+class HeterogeneousNetwork(ModuleNetwork):
     """Class for the management of heterogeneous networks of quantum
-    computers. Child class of ServerNetwork. Adds additional functionality to
+    computers. Child class of ModuleNetwork. Adds additional functionality to
     manage information about the internal architectures of servers.
     """
 
@@ -272,7 +272,7 @@ class HeterogeneousNetwork(ServerNetwork):
 
         return G
 
-    def draw_nisq_network(self) -> None:
+    def draw_heterogeneous_network(self) -> None:
         """Draw network using netwrokx draw method.
         """
 

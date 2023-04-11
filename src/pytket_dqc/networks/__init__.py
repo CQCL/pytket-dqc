@@ -4,4 +4,4 @@ from .random_networks import (  # noqa:F401
     ScaleFreeNetwork,
     SmallWorldNetwork
 )
-from .server_network import ServerNetwork  # noqa:F401
+from .module_network import ModuleNetwork  # noqa:F401
