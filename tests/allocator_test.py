@@ -9,7 +9,7 @@ from pytket_dqc.allocators import (
 from pytket_dqc.allocators.annealing import acceptance_criterion
 from pytket_dqc import HypergraphCircuit, Distribution
 from pytket import Circuit
-from pytket_dqc.networks import HeterogeneousNetwork
+from pytket_dqc.networks import NISQNetwork
 from pytket_dqc.allocators.ordered import order_reducing_size
 from pytket_dqc.placement import Placement
 import kahypar as kahypar  # type:ignore
@@ -54,9 +54,7 @@ def get_Rz_ladder_circ():
 
 
 def get_line_network():
-    return HeterogeneousNetwork(
-        [[0, 1], [0, 2]], {0: [0], 1: [1, 2], 2: [3, 4]}
-    )
+    return NISQNetwork([[0, 1], [0, 2]], {0: [0], 1: [1, 2], 2: [3, 4]})
 
 
 def test_annealing_distribute():
@@ -135,9 +133,7 @@ def test_graph_initial_partitioning():
 
 def test_graph_partitioning_make_valid():
 
-    network = HeterogeneousNetwork(
-        [[0, 1], [0, 2]], {0: [0], 1: [1, 2], 2: [3, 4, 5]}
-    )
+    network = NISQNetwork([[0, 1], [0, 2]], {0: [0], 1: [1, 2], 2: [3, 4, 5]})
 
     circ = (
         Circuit(4)
@@ -184,7 +180,7 @@ def test_refinement_makes_valid():
         1: [2],
         2: [3, 4, 5],
     }
-    network = HeterogeneousNetwork(server_coupling, server_qubits)
+    network = NISQNetwork(server_coupling, server_qubits)
 
     with open("tests/test_circuits/not_valid_circ.json", "r") as fp:
         circuit = Circuit().from_dict(json.load(fp))
@@ -265,9 +261,7 @@ def test_random_allocator():
         .add_gate(OpType.CU1, 1.0, [1, 2])
     )
 
-    network = HeterogeneousNetwork(
-        [[0, 1], [0, 2]], {0: [0, 1], 1: [2, 3], 2: [4]}
-    )
+    network = NISQNetwork([[0, 1], [0, 2]], {0: [0, 1], 1: [2, 3], 2: [4]})
 
     allocator = Random()
     distribution = allocator.allocate(circ, network, seed=0)
@@ -287,9 +281,9 @@ def test_ordered_allocator():
         .add_gate(OpType.CU1, 1.0, [2, 3])
     )
 
-    small_network = HeterogeneousNetwork([[0, 1]], {0: [0, 1], 1: [2, 3, 4]})
+    small_network = NISQNetwork([[0, 1]], {0: [0, 1], 1: [2, 3, 4]})
 
-    large_network = HeterogeneousNetwork(
+    large_network = NISQNetwork(
         [[0, 1], [0, 2]], {0: [0, 1, 2], 1: [3, 4, 5], 2: [6, 7, 8, 9]}
     )
 
@@ -320,12 +314,10 @@ def test_brute_distribute_small_hyperedge():
 
 def test_brute_distribute():
 
-    small_network = HeterogeneousNetwork([[0, 1]], {0: [0, 1], 1: [2]})
+    small_network = NISQNetwork([[0, 1]], {0: [0, 1], 1: [2]})
     small_circ = Circuit(2).add_gate(OpType.CU1, 1.0, [0, 1])
 
-    med_network = HeterogeneousNetwork(
-        [[0, 1], [0, 2]], {0: [0], 1: [1], 2: [2, 3]}
-    )
+    med_network = NISQNetwork([[0, 1], [0, 2]], {0: [0], 1: [1], 2: [2, 3]})
     med_circ = (
         Circuit(4)
         .add_gate(OpType.CU1, 1.0, [0, 1])
@@ -348,9 +340,7 @@ def test_brute_distribute():
 
 def test_routing_allocator():
 
-    small_network = HeterogeneousNetwork(
-        [[0, 1], [0, 2]], {0: [0], 1: [1], 2: [2, 3]}
-    )
+    small_network = NISQNetwork([[0, 1], [0, 2]], {0: [0], 1: [1], 2: [2, 3]})
     small_circ = (
         Circuit(4)
         .add_gate(OpType.CU1, 1.0, [0, 1])
@@ -364,7 +354,7 @@ def test_routing_allocator():
     assert routing_distribution.placement == ideal_placement
     assert routing_distribution.cost() == 2
 
-    med_network = HeterogeneousNetwork([[0, 1]], {0: [0, 1], 1: [2, 3, 4]})
+    med_network = NISQNetwork([[0, 1]], {0: [0, 1], 1: [2, 3, 4]})
     med_circ = (
         Circuit(5)
         .add_gate(OpType.CU1, 1.0, [0, 1])
@@ -406,7 +396,7 @@ def test_routing_allocator():
 @pytest.mark.skip(reason="QControlBox are not supported for now")
 def test_q_control_box_circuits():
 
-    network = HeterogeneousNetwork([[0, 1]], {0: [0], 1: [1]})
+    network = NISQNetwork([[0, 1]], {0: [0], 1: [1]})
 
     op = Op.create(OpType.V)
     cv = QControlBox(op, 1)
@@ -431,7 +421,7 @@ def test_q_control_box_circuits():
 
 def test_CRz_circuits():
 
-    network = HeterogeneousNetwork([[0, 1]], {0: [0], 1: [1]})
+    network = NISQNetwork([[0, 1]], {0: [0], 1: [1]})
 
     circ = Circuit(2)
     circ.add_gate(OpType.CU1, 0.3, [1, 0])

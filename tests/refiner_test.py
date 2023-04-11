@@ -10,7 +10,7 @@ from pytket_dqc.utils import (
     ConstraintException,
     ebit_memory_required,
 )
-from pytket_dqc.networks import HeterogeneousNetwork
+from pytket_dqc.networks import NISQNetwork
 from pytket_dqc.refiners import (
     NeighbouringDTypeMerge,
     IntertwinedDTypeMerge,
@@ -28,7 +28,7 @@ from pytket_dqc.allocators import HypergraphPartitioning
 import pytest
 
 
-intertwined_test_network = HeterogeneousNetwork(
+intertwined_test_network = NISQNetwork(
     server_coupling=[[0, 1], [1, 2], [1, 3]],
     server_qubits={0: [0], 1: [1], 2: [2], 3: [3]},
 )
@@ -325,7 +325,7 @@ def test_neighbouring_merge_d_type_backwards_mergeable():
 
 def test_neighbouring_merge_d_type_intertwined():
 
-    test_network = HeterogeneousNetwork(
+    test_network = NISQNetwork(
         server_coupling=[[0, 1], [1, 2]],
         server_qubits={0: [0], 1: [1], 2: [2]},
     )
@@ -398,7 +398,7 @@ def test_neighbouring_merge_d_type_intertwined():
 
 def test_neighbouring_merge_d_type_complex_circuit():
 
-    test_network = HeterogeneousNetwork(
+    test_network = NISQNetwork(
         server_coupling=[[0, 1], [1, 2], [1, 3]],
         server_qubits={0: [0], 1: [1], 2: [2], 3: [3]},
     )
@@ -511,7 +511,7 @@ def test_neighbouring_merge_d_type_complex_circuit():
 
 def test_neighbouring_merge_d_type_only_CZ():
 
-    network = HeterogeneousNetwork(
+    network = NISQNetwork(
         server_coupling=[[0, 1], [1, 2]],
         server_qubits={0: [0], 1: [1], 2: [2]},
     )
@@ -557,7 +557,7 @@ def test_neighbouring_merge_d_type_only_CZ():
 
 def test_neighbouring_merge_d_type_no_new_hyperedges():
 
-    network = HeterogeneousNetwork(
+    network = NISQNetwork(
         server_coupling=[[0, 1], [1, 2]],
         server_qubits={0: [0], 1: [1], 2: [2]},
     )
@@ -624,7 +624,7 @@ def test_min_covers():
 
 def test_vertex_cover_refiner_empty():
 
-    network = HeterogeneousNetwork([[0, 1]], {0: [0, 1], 1: [2]})
+    network = NISQNetwork([[0, 1]], {0: [0, 1], 1: [2]})
 
     circ = Circuit(2)
 
@@ -663,7 +663,7 @@ def test_vertex_cover_refiner_empty():
 
 def test_vertex_cover_refiner_trivial():
 
-    network = HeterogeneousNetwork([[0, 1]], {0: [0, 1], 1: [2]})
+    network = NISQNetwork([[0, 1]], {0: [0, 1], 1: [2]})
 
     circ = Circuit(2)
     circ.add_gate(OpType.CU1, 1.0, [0, 1])
@@ -702,7 +702,7 @@ def test_vertex_cover_refiner_trivial():
 
 
 def test_vertex_cover_refiner_simple():
-    network = HeterogeneousNetwork(
+    network = NISQNetwork(
         [[2, 1], [1, 0], [1, 3], [0, 4]],
         {0: [0], 1: [1], 2: [2], 3: [3], 4: [4, 5]},
     )
@@ -815,7 +815,7 @@ def test_vertex_cover_refiner_intertwined():
 
 def test_vertex_cover_refiner_complex_1():
 
-    network = HeterogeneousNetwork(
+    network = NISQNetwork(
         server_coupling=[[0, 1], [1, 2], [1, 3]],
         server_qubits={0: [0], 1: [1], 2: [2], 3: [3]},
     )
@@ -879,7 +879,7 @@ def test_vertex_cover_refiner_complex_1():
 
 
 def test_vertex_cover_refiner_complex_2():
-    network = HeterogeneousNetwork(
+    network = NISQNetwork(
         [[0, 1], [0, 2], [0, 3], [3, 4]],
         {0: [0], 1: [1, 2], 2: [3, 4], 3: [7], 4: [5, 6]},
     )
@@ -960,7 +960,7 @@ def test_vertex_cover_refiner_pauli_circ():
 
     DQCPass().apply(circ)
 
-    network = HeterogeneousNetwork(
+    network = NISQNetwork(
         [[2, 1], [1, 0], [1, 3], [0, 4]],
         {0: [0, 1, 2], 1: [3, 4], 2: [5, 6, 7], 3: [8], 4: [9]},
     )
@@ -1029,7 +1029,7 @@ def test_vertex_cover_refiner_random_circ():
 
     DQCPass().apply(circ)
 
-    network = HeterogeneousNetwork(
+    network = NISQNetwork(
         [[2, 1], [1, 0], [1, 3], [0, 4]],
         {0: [0, 1, 2], 1: [3, 4], 2: [5, 6, 7], 3: [8], 4: [9]},
     )
@@ -1089,7 +1089,7 @@ def test_vertex_cover_refiner_frac_CZ_circ():
 
     DQCPass().apply(circ)
 
-    network = HeterogeneousNetwork(
+    network = NISQNetwork(
         [[2, 1], [1, 0], [1, 3], [0, 4]],
         {0: [0, 1, 2], 1: [3, 4], 2: [5, 6, 7], 3: [8], 4: [9]},
     )
@@ -1161,7 +1161,7 @@ def test_vertex_cover_embedding_boundary_failure():
     with open(
         "tests/test_circuits/vertex_cover_assert_architecture.json", 'r'
     ) as fp:
-        network = HeterogeneousNetwork.from_dict(json.load(fp))
+        network = NISQNetwork.from_dict(json.load(fp))
 
     DQCPass().apply(circ)
 
@@ -1194,7 +1194,7 @@ def test_vertex_cover_embedding_boundary_failure():
 def test_eager_h_type_merge_00():
     # Should merge 0th and 2nd hyperedges on qubit 0
 
-    network = HeterogeneousNetwork(
+    network = NISQNetwork(
         server_coupling=[[0, 1]],
         server_qubits={0: [0], 1: [1, 2, 3]}
     )
@@ -1251,7 +1251,7 @@ def test_eager_h_type_merge_01():
     # Conflict prevents merging of 0th and 2nd
     # hyperedges on qubit 1
 
-    network = HeterogeneousNetwork(
+    network = NISQNetwork(
         server_coupling=[[0, 1]],
         server_qubits={0: [0], 1: [1]}
     )
@@ -1306,7 +1306,7 @@ def test_eager_h_type_merge_01():
 def test_eager_h_type_merge_02():
     # Hyperedges go to different servers
     # no hopping should be done
-    network = HeterogeneousNetwork(
+    network = NISQNetwork(
         server_coupling=[[0, 1], [0, 2], [1, 2]],
         server_qubits={0: [0], 1: [1], 2: [2]}
     )
@@ -1361,7 +1361,7 @@ def test_eager_h_type_merge_02():
 def test_eager_h_type_merge_03():
     # CU1 in embedding goes to 3rd server
     # so no embedding
-    network = HeterogeneousNetwork(
+    network = NISQNetwork(
         server_coupling=[[0, 1], [0, 2], [1, 2]],
         server_qubits={0: [0], 1: [1], 2: [2]}
     )
@@ -1416,7 +1416,7 @@ def test_eager_h_type_merge_03():
 def test_eager_h_type_merge_04():
     # Local hyperedges shouldn't affect merging
     # so hopping should still occur
-    network = HeterogeneousNetwork(
+    network = NISQNetwork(
         server_coupling=[[0, 1]],
         server_qubits={0: [0, 1], 1: [2]}
     )
@@ -1467,7 +1467,7 @@ def test_eager_h_type_merge_04():
 def test_eager_h_type_merge_05():
     # CU1 in embedding is local
     # so no embedding
-    network = HeterogeneousNetwork(
+    network = NISQNetwork(
         server_coupling=[[0, 1], ],
         server_qubits={0: [0, 1], 1: [2]}
     )
@@ -1528,7 +1528,7 @@ def test_eager_h_type_merge_06():
 
     DQCPass().apply(circ)
 
-    network = HeterogeneousNetwork(
+    network = NISQNetwork(
         [[2, 1], [1, 0], [1, 3], [0, 4]],
         {0: [0, 1, 2], 1: [3, 4], 2: [5, 6, 7], 3: [8], 4: [9]},
     )
@@ -1547,7 +1547,7 @@ def test_eager_h_type_merge_06():
 def test_eager_h_type_merge_no_detached():
     # CU1 in embedding is local
     # so no embedding
-    network = HeterogeneousNetwork(
+    network = NISQNetwork(
         server_coupling=[[0, 1], [1, 2]],
         server_qubits={0: [0], 1: [1], 2: [2, 3]}
     )
@@ -1619,7 +1619,7 @@ def test_eager_h_type_merge_no_detached():
 
 def test_boundary_reallocation_refiner_empty():
 
-    network = HeterogeneousNetwork([[0, 1]], {0: [0, 1], 1: [2]})
+    network = NISQNetwork([[0, 1]], {0: [0, 1], 1: [2]})
 
     circ = Circuit(2)
 
@@ -1634,7 +1634,7 @@ def test_boundary_reallocation_refiner_empty():
 
 def test_boundary_reallocation_refiner_trivial():
 
-    network = HeterogeneousNetwork([[0, 1]], {0: [0, 1], 1: [2]})
+    network = NISQNetwork([[0, 1]], {0: [0, 1], 1: [2]})
 
     circ = Circuit(2)
     circ.add_gate(OpType.CU1, 1.0, [0, 1])
@@ -1649,7 +1649,7 @@ def test_boundary_reallocation_refiner_trivial():
 
 
 def test_boundary_reallocation_refiner_simple():
-    network = HeterogeneousNetwork(
+    network = NISQNetwork(
         [[2, 1], [1, 0], [1, 3], [0, 4]],
         {0: [0], 1: [1], 2: [2], 3: [3], 4: [4, 5]},
     )
@@ -1674,7 +1674,7 @@ def test_boundary_reallocation_refiner_simple():
 
 def test_boundary_reallocation_refiner_complex_1():
 
-    network = HeterogeneousNetwork(
+    network = NISQNetwork(
         server_coupling=[[0, 1], [1, 2], [1, 3]],
         server_qubits={0: [0], 1: [1], 2: [2], 3: [3]},
     )
@@ -1702,7 +1702,7 @@ def test_boundary_reallocation_refiner_complex_1():
 
 
 def test_boundary_reallocation_refiner_complex_2():
-    network = HeterogeneousNetwork(
+    network = NISQNetwork(
         [[0, 1], [0, 2], [0, 3], [3, 4]],
         {0: [0], 1: [1, 2], 2: [3, 4], 3: [7], 4: [5, 6]},
     )
@@ -1740,7 +1740,7 @@ def test_boundary_reallocation_refiner_pauli_circ():
 
     DQCPass().apply(circ)
 
-    network = HeterogeneousNetwork(
+    network = NISQNetwork(
         [[2, 1], [1, 0], [1, 3], [0, 4]],
         {0: [0, 1, 2], 1: [3, 4], 2: [5, 6, 7], 3: [8], 4: [9]},
     )
@@ -1763,7 +1763,7 @@ def test_boundary_reallocation_refiner_random_circ():
 
     DQCPass().apply(circ)
 
-    network = HeterogeneousNetwork(
+    network = NISQNetwork(
         [[2, 1], [1, 0], [1, 3], [0, 4]],
         {0: [0, 1, 2], 1: [3, 4], 2: [5, 6, 7], 3: [8], 4: [9]},
     )
@@ -1786,7 +1786,7 @@ def test_boundary_reallocation_refiner_frac_CZ_circ():
 
     DQCPass().apply(circ)
 
-    network = HeterogeneousNetwork(
+    network = NISQNetwork(
         [[2, 1], [1, 0], [1, 3], [0, 4]],
         {0: [0, 1, 2], 1: [3, 4], 2: [5, 6, 7], 3: [8], 4: [9]},
     )

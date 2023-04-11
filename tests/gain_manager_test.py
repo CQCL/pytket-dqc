@@ -1,4 +1,4 @@
-from pytket_dqc.networks import HeterogeneousNetwork
+from pytket_dqc.networks import NISQNetwork
 from pytket_dqc.circuits import (
     Hyperedge,
     HypergraphCircuit,
@@ -29,7 +29,7 @@ def get_circ():
 
 
 def get_network():
-    return HeterogeneousNetwork(
+    return NISQNetwork(
         [[0, 1], [0, 2], [0, 3], [3, 4]],
         {0: [0], 1: [1, 2], 2: [3, 4], 3: [7], 4: [5, 6]},
     )
@@ -233,7 +233,7 @@ def test_split_merge():
     to_merge_hyperedge_two = Hyperedge(vertices=[0, 4], weight=1)
 
     placement = Placement({0: 1, 1: 2, 2: 3, 3: 2, 4: 3})
-    network = HeterogeneousNetwork(
+    network = NISQNetwork(
         server_coupling=[[0, 1], [0, 2], [0, 3]],
         server_qubits={0: [0], 1: [1], 2: [2], 3: [3]}
     )
@@ -284,7 +284,7 @@ def test_split_merge():
 
 def test_merge_with_embedding():
 
-    network = HeterogeneousNetwork(
+    network = NISQNetwork(
         server_coupling=[[0, 1], [0, 2], [0, 3]],
         server_qubits={0: [0], 1: [1], 2: [2], 3: [3]}
     )

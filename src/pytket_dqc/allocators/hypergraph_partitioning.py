@@ -12,7 +12,7 @@ from pytket import Circuit
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from pytket_dqc.networks import HeterogeneousNetwork
+    from pytket_dqc.networks import NISQNetwork
 
 
 class HypergraphPartitioning(Allocator):
@@ -20,11 +20,11 @@ class HypergraphPartitioning(Allocator):
     partitioning available through the `KaHyPar <https://kahypar.org/>`_
     package. This allocator will ignore weights on hyperedges and
     assume all hyperedges have weight 1. This allocator will ignore the
-    connectivity of the HeterogeneousNetwork.
+    connectivity of the NISQNetwork.
     """
 
     def allocate(
-        self, circ: Circuit, network: HeterogeneousNetwork, **kwargs
+        self, circ: Circuit, network: NISQNetwork, **kwargs
     ) -> Distribution:
         """Distribute ``circ`` onto ``network``. The distribution
         is found by KaHyPar using the connectivity metric. All-to-all
@@ -35,7 +35,7 @@ class HypergraphPartitioning(Allocator):
         :param circ: Circuit to distribute.
         :type circ: pytket.Circuit
         :param network: Network onto which ``circ`` should be placed.
-        :type network: HeterogeneousNetwork
+        :type network: NISQNetwork
 
         :key ini_path: Path to kahypar ini file. Default points to the
             ini file within the pytket-dqc repository.
@@ -106,7 +106,7 @@ class HypergraphPartitioning(Allocator):
     def initial_distribute(
         self,
         dist_circ: HypergraphCircuit,
-        network: HeterogeneousNetwork,
+        network: NISQNetwork,
         ini_path: str,
         **kwargs,
     ) -> Placement:
@@ -118,7 +118,7 @@ class HypergraphPartitioning(Allocator):
         :param dist_circ: Circuit to distribute.
         :type dist_circ: HypergraphCircuit
         :param network: Network onto which ``dist_circ`` should be placed.
-        :type network: HeterogeneousNetwork
+        :type network: NISQNetwork
         :param ini_path: Path to kahypar ini file.
         :type ini_path: str
 

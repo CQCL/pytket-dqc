@@ -11,30 +11,30 @@ Networks
 
     .. automethod:: ServerNetwork.draw_server_network
 
-.. autoclass:: pytket_dqc.networks.nisq_network.HeterogeneousNetwork
+.. autoclass:: pytket_dqc.networks.nisq_network.NISQNetwork
 
-    .. automethod:: HeterogeneousNetwork.__init__
+    .. automethod:: NISQNetwork.__init__
 
-    .. automethod:: HeterogeneousNetwork.get_qubit_list
+    .. automethod:: NISQNetwork.get_qubit_list
 
-    .. automethod:: HeterogeneousNetwork.draw_nisq_network
+    .. automethod:: NISQNetwork.draw_nisq_network
 
-    .. automethod:: HeterogeneousNetwork.to_dict
+    .. automethod:: NISQNetwork.to_dict
 
-    .. automethod:: HeterogeneousNetwork.from_dict
+    .. automethod:: NISQNetwork.from_dict
 
 .. autoclass:: pytket_dqc.networks.nisq_network.AllToAll
 
     .. automethod:: AllToAll.__init__
 
-.. autoclass:: pytket_dqc.networks.random_networks.ScaleFreeNetwork
+.. autoclass:: pytket_dqc.networks.random_networks.ScaleFreeNISQNetwork
 
-    .. automethod:: ScaleFreeNetwork.__init__
+    .. automethod:: ScaleFreeNISQNetwork.__init__
 
-.. autoclass:: pytket_dqc.networks.random_networks.SmallWorldNetwork
+.. autoclass:: pytket_dqc.networks.random_networks.SmallWorldNISQNetwork
 
-    .. automethod:: SmallWorldNetwork.__init__
+    .. automethod:: SmallWorldNISQNetwork.__init__
 
-.. autoclass:: pytket_dqc.networks.random_networks.RandomNetwork
+.. autoclass:: pytket_dqc.networks.random_networks.RandomNISQNetwork
 
-    .. automethod:: RandomNetwork.__init__
+    .. automethod:: RandomNISQNetwork.__init__

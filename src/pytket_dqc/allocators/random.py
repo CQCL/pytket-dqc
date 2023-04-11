@@ -8,7 +8,7 @@ import random
 
 if TYPE_CHECKING:
     from pytket import Circuit
-    from pytket_dqc.networks import HeterogeneousNetwork
+    from pytket_dqc.networks import NISQNetwork
 
 
 class Random(Allocator):
@@ -22,7 +22,7 @@ class Random(Allocator):
     def allocate(
         self,
         circ: Circuit,
-        network: HeterogeneousNetwork,
+        network: NISQNetwork,
         **kwargs
     ) -> Distribution:
         """Distribute ``circ`` onto ``network`` by randomly placing
@@ -33,7 +33,7 @@ class Random(Allocator):
         :param circ: Circuit to distribute.
         :type circ: pytket.Circuit
         :param network: Network onto which ``circ`` should be distributed.
-        :type network: HeterogeneousNetwork
+        :type network: NISQNetwork
         :return: Distribution of ``circ`` onto ``network``.
         :rtype: Distribution
         """

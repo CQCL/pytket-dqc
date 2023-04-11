@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from pytket_dqc.circuits.distribution import Distribution
-    from pytket_dqc.networks import HeterogeneousNetwork
+    from pytket_dqc.networks import NISQNetwork
     from pytket import Circuit
 
 
@@ -20,7 +20,7 @@ class Distributor(ABC):
 
     @abstractmethod
     def distribute(
-        self, circ: Circuit, network: HeterogeneousNetwork, **kwargs
+        self, circ: Circuit, network: NISQNetwork, **kwargs
     ) -> Distribution:
         """Abstract method producing a distribution of the given circuit
         onto the given network.
@@ -28,7 +28,7 @@ class Distributor(ABC):
         :param circ: Circuit to be distributed
         :type circ: Circuit
         :param network: Network onto which circuit should be distributed
-        :type network: HeterogeneousNetwork
+        :type network: NISQNetwork
         :return: Distribution of circ onto network.
         :rtype: Distribution
         """

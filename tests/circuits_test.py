@@ -25,7 +25,7 @@ from pytket_dqc.utils import (
     ConstraintException,
     ebit_memory_required
 )
-from pytket_dqc.networks import HeterogeneousNetwork, ScaleFreeNetwork
+from pytket_dqc.networks import NISQNetwork, ScaleFreeNISQNetwork
 from pytket.circuit import QControlBox, Op, OpType  # type: ignore
 from pytket_dqc.allocators import Annealing
 from pytket.passes import DecomposeBoxes  # type: ignore
@@ -35,7 +35,7 @@ from pytket.passes import DecomposeBoxes  # type: ignore
 
 def test_embedding_and_not_embedding():
 
-    network = HeterogeneousNetwork(
+    network = NISQNetwork(
         server_coupling=[[0, 1], [1, 2], [1, 3]],
         server_qubits={0: [0], 1: [1], 2: [2], 3: [3]},
     )
@@ -350,9 +350,7 @@ def test_distributed_circuit():
 def test_regular_graph_distributed_circuit():
 
     circ = RegularGraphHypergraphCircuit(3, 2, 1, seed=0).get_circuit()
-    network = HeterogeneousNetwork(
-        [[0, 1], [0, 2]], {0: [0, 1], 1: [2, 3, 4], 2: [5]}
-    )
+    network = NISQNetwork([[0, 1], [0, 2]], {0: [0, 1], 1: [2, 3, 4], 2: [5]})
     allocator = Brute()
     distribution = allocator.allocate(circ, network)
     cost = distribution.cost()
@@ -522,9 +520,7 @@ def test_q_control_box_circuits():
 
 def test_to_pytket_circuit_CRz():
 
-    network = HeterogeneousNetwork(
-        [[0, 1], [1, 2], [0, 2]], {0: [0], 1: [1], 2: [2]}
-    )
+    network = NISQNetwork([[0, 1], [1, 2], [0, 2]], {0: [0], 1: [1], 2: [2]})
 
     circ = (
         Circuit(2)
@@ -592,9 +588,7 @@ def test_to_pytket_circuit_detached_gate():
     # This test tests the case where the gate is acted on a server to which
     # the no qubit has been assigned.
 
-    network = HeterogeneousNetwork(
-        [[0, 1], [1, 2]], {0: [0], 1: [1], 2: [2]}
-    )
+    network = NISQNetwork([[0, 1], [1, 2]], {0: [0], 1: [1], 2: [2]})
 
     circ = (
         Circuit(2)
@@ -669,9 +663,7 @@ def test_to_pytket_circuit_detached_gate():
 
 def test_to_pytket_circuit_gates_on_different_servers():
 
-    network = HeterogeneousNetwork(
-        [[0, 1], [1, 2]], {0: [0], 1: [1], 2: [2]}
-    )
+    network = NISQNetwork([[0, 1], [1, 2]], {0: [0], 1: [1], 2: [2]})
 
     circ = (
         Circuit(2)
@@ -742,7 +734,7 @@ def test_to_pytket_circuit_gates_on_different_servers():
 
 def test_to_pytket_circuit_with_branching_distribution_tree():
 
-    network = HeterogeneousNetwork(
+    network = NISQNetwork(
         [[2, 1], [1, 0], [1, 3], [0, 4]],
         {0: [0], 1: [1], 2: [2], 3: [3], 4: [4]},
     )
@@ -826,7 +818,7 @@ def test_to_pytket_circuit_from_placed_circuit():
         ) as f:
             rebased_circuit = pickle.load(f)
         DQCPass().apply(rebased_circuit)
-        network = HeterogeneousNetwork(network_tuple[0], network_tuple[1])
+        network = NISQNetwork(network_tuple[0], network_tuple[1])
         distribution = allocator.allocate(rebased_circuit, network, seed=seed)
         circ_with_dist = distribution.to_pytket_circuit()
 
@@ -837,7 +829,7 @@ def test_to_pytket_circuit_from_placed_circuit():
 
 def test_to_pytket_constrained_mem_simple():
 
-    network = HeterogeneousNetwork(
+    network = NISQNetwork(
         server_coupling=[[0, 1], [0, 2]],
         server_qubits={0: [0], 1: [1], 2: [2]},
         server_ebit_mem={0: 1, 1: 1, 2: 1}
@@ -871,7 +863,7 @@ def test_to_pytket_constrained_mem_simple():
 
 def test_to_pytket_circuit_with_embedding_1q():
 
-    network = HeterogeneousNetwork(
+    network = NISQNetwork(
         [[2, 1], [1, 0], [1, 3], [0, 4]],
         {0: [0], 1: [1], 2: [2], 3: [3], 4: [4, 5]},
     )
@@ -905,7 +897,7 @@ def test_to_pytket_circuit_with_embedding_1q():
 
 def test_to_pytket_circuit_with_embedding_2q():
 
-    network = HeterogeneousNetwork(
+    network = NISQNetwork(
         [[2, 1], [1, 0], [1, 3], [0, 4]],
         {0: [0], 1: [1], 2: [2], 3: [3], 4: [4, 5, 6]},
     )
@@ -939,7 +931,7 @@ def test_to_pytket_circuit_with_embedding_2q():
     )
 
     # Try bounding the communication memory
-    network = HeterogeneousNetwork(
+    network = NISQNetwork(
         [[2, 1], [1, 0], [1, 3], [0, 4]],
         {0: [0], 1: [1], 2: [2], 3: [3], 4: [4, 5, 6]},
         server_ebit_mem={0: 1, 1: 1, 2: 1, 3: 2, 4: 1}
@@ -960,7 +952,7 @@ def test_to_pytket_circuit_with_embedding_2q():
 
 def test_to_pytket_circuit_circ_with_embeddings_1():
 
-    network = HeterogeneousNetwork(
+    network = NISQNetwork(
         [[0, 1], [0, 2], [0, 3], [3, 4]],
         {0: [0], 1: [1, 2], 2: [3, 4], 3: [7], 4: [5, 6]},
     )
@@ -1021,7 +1013,7 @@ def test_to_pytket_circuit_circ_with_embeddings_1():
     )
 
     # Try bounding the communication memory
-    network = HeterogeneousNetwork(
+    network = NISQNetwork(
         [[0, 1], [0, 2], [0, 3], [3, 4]],
         {0: [0], 1: [1, 2], 2: [3, 4], 3: [7], 4: [5, 6]},
         server_ebit_mem={0: 1, 1: 1, 2: 1, 3: 1, 4: 1}
@@ -1039,7 +1031,7 @@ def test_to_pytket_circuit_circ_with_embeddings_1():
 
     # The solution is to increase the capacity of server 3
     # Similar issue with server 0
-    network = HeterogeneousNetwork(
+    network = NISQNetwork(
         [[0, 1], [0, 2], [0, 3], [3, 4]],
         {0: [0], 1: [1, 2], 2: [3, 4], 3: [7], 4: [5, 6]},
         server_ebit_mem={0: 2, 1: 1, 2: 1, 3: 2, 4: 1}
@@ -1059,7 +1051,7 @@ def test_to_pytket_circuit_circ_with_embeddings_1():
 
 def test_to_pytket_circuit_circ_with_embeddings_2():
 
-    network = HeterogeneousNetwork(
+    network = NISQNetwork(
         [[0, 1], [0, 2], [0, 3], [3, 4]],
         {0: [0], 1: [1, 2], 2: [3, 4], 3: [7], 4: [5, 6]},
     )
@@ -1142,7 +1134,7 @@ def test_to_pytket_circuit_circ_with_embeddings_2():
     )
 
     # Try bounding the communication memory
-    network = HeterogeneousNetwork(
+    network = NISQNetwork(
         [[0, 1], [0, 2], [0, 3], [3, 4]],
         {0: [0], 1: [1, 2], 2: [3, 4], 3: [7], 4: [5, 6]},
         server_ebit_mem={0: 1, 1: 1, 2: 1, 3: 1, 4: 1}
@@ -1171,7 +1163,7 @@ def test_to_pytket_circuit_circ_with_embeddings_3():
     # This test failed due to a bug when ending links
     # due to embedding; fixed in PR #71
 
-    network = HeterogeneousNetwork(
+    network = NISQNetwork(
         [[0, 1]],
         {0: [0], 1: [1]},
     )
@@ -1209,7 +1201,7 @@ def test_to_pytket_circuit_circ_with_embeddings_3():
 
 
 def test_to_pytket_circuit_circ_with_intertwined_embeddings_1():
-    network = HeterogeneousNetwork(
+    network = NISQNetwork(
         server_coupling=[[0, 1]], server_qubits={0: [0], 1: [1, 2, 3, 4]}
     )
 
@@ -1254,7 +1246,7 @@ def test_to_pytket_circuit_circ_with_intertwined_embeddings_1():
     )
 
     # Try bounding the communication memory
-    network = HeterogeneousNetwork(
+    network = NISQNetwork(
         server_coupling=[[0, 1]],
         server_qubits={0: [0], 1: [1, 2, 3, 4]},
         server_ebit_mem={0: 1, 1: 1}
@@ -1280,7 +1272,7 @@ def test_to_pytket_circuit_circ_with_intertwined_embeddings_1():
 
 
 def test_to_pytket_circuit_circ_with_intertwined_embeddings_2():
-    test_network = HeterogeneousNetwork(
+    test_network = NISQNetwork(
         server_coupling=[[0, 1], [1, 2], [1, 3]],
         server_qubits={0: [0], 1: [1], 2: [2], 3: [3]},
     )
@@ -1362,7 +1354,7 @@ def test_to_pytket_circuit_circ_with_intertwined_embeddings_2():
 
 def test_to_pytket_circuit_circ_with_intertwined_embeddings_3():
     # As `intertwined_embeddings_1` but the servers are not adjacent
-    network = HeterogeneousNetwork(
+    network = NISQNetwork(
         server_coupling=[[0, 1], [1, 2]],
         server_qubits={0: [0], 1: [1], 2: [2, 3, 4, 5]},
     )
@@ -1408,7 +1400,7 @@ def test_to_pytket_circuit_circ_with_intertwined_embeddings_3():
     )
 
     # Try bounding the communication memory
-    network = HeterogeneousNetwork(
+    network = NISQNetwork(
         server_coupling=[[0, 1], [1, 2]],
         server_qubits={0: [0], 1: [1], 2: [2, 3, 4, 5]},
         server_ebit_mem={0: 1, 1: 1, 2: 1}
@@ -1442,7 +1434,7 @@ def test_to_pytket_circuit_M_P_choice_collision():
     # the CU1 gates.
     # Note: The circuit CAN be distributed, but it's subtle.
 
-    network = HeterogeneousNetwork(
+    network = NISQNetwork(
         server_coupling=[[0, 1]], server_qubits={0: [0], 1: [1]}
     )
 
@@ -1505,7 +1497,7 @@ def test_to_pytket_circuit_M_P_choice_collision():
     )
 
     # Try bounding the communication memory
-    network = HeterogeneousNetwork(
+    network = NISQNetwork(
         server_coupling=[[0, 1]],
         server_qubits={0: [0], 1: [1]},
         server_ebit_mem={0: 2, 1: 2}
@@ -1534,7 +1526,7 @@ def test_to_pytket_circuit_M_P_choice_collision():
 
 def test_to_pytket_circuit_with_D_embedding():
 
-    test_network = HeterogeneousNetwork(
+    test_network = NISQNetwork(
         server_coupling=[[0, 1], [1, 2]],
         server_qubits={0: [0], 1: [1], 2: [2]},
     )
@@ -1581,9 +1573,7 @@ def test_to_pytket_circuit_with_D_embedding():
 
 def test_to_pytket_circuit_mixing_H_and_D_embeddings():
 
-    network = HeterogeneousNetwork(
-        [[0, 1], [1, 2]], {0: [0], 1: [1], 2: [2, 3]}
-    )
+    network = NISQNetwork([[0, 1], [1, 2]], {0: [0], 1: [1], 2: [2, 3]})
 
     placement = Placement(
         {0: 0, 1: 1, 2: 2, 3: 2, 4: 0, 5: 1, 6: 1, 7: 1, 8: 2}
@@ -1622,7 +1612,7 @@ def test_to_pytket_circuit_mixing_H_and_D_embeddings():
     )
 
     # Try bounding the communication memory
-    network = HeterogeneousNetwork(
+    network = NISQNetwork(
         server_coupling=[[0, 1], [1, 2]],
         server_qubits={0: [0], 1: [1], 2: [2, 3]},
         server_ebit_mem={0: 2, 1: 1, 2: 2}
@@ -1669,7 +1659,7 @@ def test_to_pytket_circuit_with_hyperedge_requiring_euler():
     circ.Rz(0.3, 0)
     circ.H(0)
 
-    network = HeterogeneousNetwork([[0, 1]], {0: [0], 1: [1, 2, 3, 4]},)
+    network = NISQNetwork([[0, 1]], {0: [0], 1: [1, 2, 3, 4]},)
 
     placement = Placement(
         {0: 0, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1}
@@ -1708,7 +1698,7 @@ def test_to_pytket_circuit_with_pauli_circ():
 
     DQCPass().apply(circ)
 
-    network = HeterogeneousNetwork(
+    network = NISQNetwork(
         [[2, 1], [1, 0], [1, 3], [0, 4]],
         {0: [0, 1, 2], 1: [3, 4], 2: [5, 6, 7], 3: [8], 4: [9]},
     )
@@ -1723,7 +1713,7 @@ def test_to_pytket_circuit_with_pauli_circ():
     )
 
     # Try bounding the communication memory
-    network = HeterogeneousNetwork(
+    network = NISQNetwork(
         server_coupling=[[2, 1], [1, 0], [1, 3], [0, 4]],
         server_qubits={0: [0, 1, 2], 1: [3, 4], 2: [5, 6, 7], 3: [8], 4: [9]},
         server_ebit_mem={0: 1, 1: 2, 2: 1, 3: 3, 4: 3}
@@ -1755,7 +1745,7 @@ def test_to_pytket_circuit_with_random_circ():
     ) as fp:
         circ = Circuit().from_dict(json.load(fp))
 
-    network = HeterogeneousNetwork(
+    network = NISQNetwork(
         [[2, 1], [1, 0], [1, 3], [0, 4]],
         {0: [0, 1, 2], 1: [3, 4], 2: [5, 6, 7], 3: [8], 4: [9]},
     )
@@ -1779,7 +1769,7 @@ def test_to_pytket_circuit_with_frac_cz_circ():
 
     DQCPass().apply(circ)
 
-    network = HeterogeneousNetwork(
+    network = NISQNetwork(
         [[2, 1], [1, 0], [1, 3], [0, 4]],
         {0: [0, 1, 2], 1: [3, 4], 2: [5, 6, 7], 3: [8], 4: [9]},
     )
@@ -1794,7 +1784,7 @@ def test_to_pytket_circuit_with_frac_cz_circ():
     )
 
     # Try bounding the communication memory
-    network = HeterogeneousNetwork(
+    network = NISQNetwork(
         server_coupling=[[2, 1], [1, 0], [1, 3], [0, 4]],
         server_qubits={0: [0, 1, 2], 1: [3, 4], 2: [5, 6, 7], 3: [8], 4: [9]},
         server_ebit_mem={0: 2, 2: 3, 1: 1, 3: 1, 4: 3}
@@ -1831,7 +1821,7 @@ def test_to_pytket_circuit_pr78_bug():
 @pytest.mark.skip(reason="Support for teleportation has been disabled")
 def test_to_pytket_circuit_with_teleportation():
 
-    network = HeterogeneousNetwork(
+    network = NISQNetwork(
         [[0, 1], [1, 2], [1, 3]], {0: [0], 1: [1], 2: [2], 3: [3]}
     )
 
@@ -1911,7 +1901,7 @@ def test_to_pytket_circuit_with_teleportation():
 
 def test_to_pytket_satisfy_bound_flag():
 
-    network = HeterogeneousNetwork(
+    network = NISQNetwork(
         server_coupling=[[0, 1], [0, 2]],
         server_qubits={0: [0], 1: [1], 2: [2]},
         server_ebit_mem={0: 1, 1: 1, 2: 1}
@@ -1985,7 +1975,7 @@ def test_distribution_initialisation():
 
     placement = Placement({0: 1, 1: 2, 2: 2, 3: 0, 4: 1})
 
-    network = HeterogeneousNetwork(
+    network = NISQNetwork(
         [[0, 1], [1, 2]], {0: [0, 1, 2], 1: [3, 4, 5], 2: [6, 7, 8]},
     )
 
@@ -2160,7 +2150,7 @@ def test_get_vertex_to_command_index_map():
 
 def test_distribution_to_dict(tmpdir_factory):
 
-    network = ScaleFreeNetwork(n_servers=3, n_qubits=7, seed=0)
+    network = ScaleFreeNISQNetwork(n_servers=3, n_qubits=7, seed=0)
 
     with open('tests/test_circuits/random_width_5_depth_5.json', 'r') as fp:
         circuit = Circuit().from_dict(json.load(fp))

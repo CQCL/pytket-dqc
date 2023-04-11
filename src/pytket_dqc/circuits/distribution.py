@@ -1,7 +1,7 @@
 from __future__ import annotations
 from pytket_dqc.circuits import HypergraphCircuit, Hyperedge
 from pytket_dqc.placement import Placement
-from pytket_dqc.networks import HeterogeneousNetwork
+from pytket_dqc.networks import NISQNetwork
 from pytket_dqc.utils import (
     steiner_tree,
     check_equivalence,
@@ -37,7 +37,7 @@ class Distribution:
         self,
         circuit: HypergraphCircuit,
         placement: Placement,
-        network: HeterogeneousNetwork,
+        network: NISQNetwork,
     ):
         """Initialisation function for Distribution
 
@@ -46,7 +46,7 @@ class Distribution:
         :param placement: A placement of the qubits and gates onto servers.
         :type placement: Placement
         :param network: Network onto which circuit is distributed.
-        :type network: HeterogeneousNetwork
+        :type network: NISQNetwork
         :raises Exception: Raised if the placement is not valid for the
             circuit.
         :raises Exception: Raised if the placement is not valid for the
@@ -95,9 +95,7 @@ class Distribution:
         return cls(
             circuit=HypergraphCircuit.from_dict(distribution_dict['circuit']),
             placement=Placement.from_dict(distribution_dict['placement']),
-            network=HeterogeneousNetwork.from_dict(
-                distribution_dict['network']
-            ),
+            network=NISQNetwork.from_dict(distribution_dict['network']),
         )
 
     def is_valid(self) -> bool:
