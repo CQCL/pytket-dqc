@@ -149,7 +149,8 @@ This package is used for graph visualisation.
 1. Ensure that CMake, KaHyPar, and Graphviz are installed. See above for guidance on this.
 1. In your terminal, navigate to the directory you wish to download `pytket-dqc`'s source files to.
 (If unsure, then `cd ~` is probably fine.)
-1. Clone this repository with `git clone git@github.com:CQCL/pytket-dqc.git`
+1. Clone this repository with `git clone git@github.com:CQCL/pytket-dqc.git`.
+1. Navigate to the cloned repository `cd pytket-dqc`.
 1. Run `pip install .`
 
 Auto generated html documentation can be found as an artifact of the latest push action. 
