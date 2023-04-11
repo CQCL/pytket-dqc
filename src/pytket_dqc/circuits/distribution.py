@@ -69,9 +69,10 @@ class Distribution:
 
     def to_dict(self) -> dict[str, dict]:
         """Generate JSON serialisable dictionary representation of
-        `Distribution`.
+        the Distribution.
 
-        :return: JSON serialisable dictionary representation of `Distribution`.
+        :return: JSON serialisable dictionary representation of
+            the Distribution.
         :rtype: dict[str, dict]
         """
         return {
@@ -82,7 +83,7 @@ class Distribution:
 
     @classmethod
     def from_dict(cls, distribution_dict: dict[str, dict]) -> Distribution:
-        """Construct Distribution instance from JSON serialisable
+        """Construct ``Distribution`` instance from JSON serialisable
         dictionary representation of the Distribution.
 
         :param distribution_dict: JSON serialisable dictionary

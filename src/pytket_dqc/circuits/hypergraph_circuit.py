@@ -63,10 +63,10 @@ class HypergraphCircuit(Hypergraph):
 
     def to_dict(self) -> dict[str, Union[list[Vertex], list[dict], dict]]:
         """Generate JSON serialisable dictionary representation of
-        `HypergraphCircuit`.
+        the HypergraphCircuit.
 
         :return: JSON serialisable dictionary representation of
-            `HypergraphCircuit`
+            the HypergraphCircuit.
         :rtype: dict[str, Union[list[Vertex], list[dict], dict]]
         """
 
@@ -81,11 +81,11 @@ class HypergraphCircuit(Hypergraph):
             str, Union[list[Vertex], list[dict], dict]
         ]
     ) -> HypergraphCircuit:
-        """Construct HypergraphCircuit instance from JSON serialisable
+        """Construct ``HypergraphCircuit`` instance from JSON serialisable
         dictionary representation of the HypergraphCircuit.
 
         :param hypergraph_circuit_dict: JSON serialisable dictionary
-            representation of the HypergraphCircuit
+            representation of the HypergraphCircuit.
         :type hypergraph_circuit_dict:
             dict[str, Union[list[Vertex], list[dict], dict]]
         :return: HypergraphCircuit instance constructed from

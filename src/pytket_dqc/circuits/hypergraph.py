@@ -20,9 +20,9 @@ class Hyperedge(NamedTuple):
 
     def to_dict(self) -> dict[str, Union[list[Vertex], int]]:
         """Generate JSON serialisable dictionary representation of
-        `Hyperedge`.
+        the Hyperedge.
 
-        :return: JSON serialisable dictionary representation of `Hyperedge`
+        :return: JSON serialisable dictionary representation of the Hyperedge.
         :rtype: dict[str, Union[list[Vertex], int]]
         """
         return {
@@ -35,7 +35,7 @@ class Hyperedge(NamedTuple):
         cls,
         hyperedge_dict: dict[str, Union[list[Vertex], int]]
     ) -> Hyperedge:
-        """Construct Hyperedge instance from JSON serialisable
+        """Construct ``Hyperedge`` instance from JSON serialisable
         dictionary representation of the Hyperedge.
 
         :param hyperedge_dict: JSON serialisable dictionary
@@ -93,9 +93,10 @@ class Hypergraph:
 
     def to_dict(self) -> dict[str, Union[list[Vertex], list[dict], dict]]:
         """Generate JSON serialisable dictionary representation of
-        `Hypergraph`.
+        the Hypergraph.
 
-        :return: JSON serialisable dictionary representation of `Hypergraph`
+        :return: JSON serialisable dictionary representation of the
+            Hypergraph.
         :rtype: dict[str, Union[list[Vertex], list[dict]]]
         """
         return {
@@ -110,7 +111,7 @@ class Hypergraph:
         cls,
         hypergraph_dict: dict[str, Union[list[Vertex], list[dict], dict]],
     ) -> Hypergraph:
-        """Construct Hypergraph instance from JSON serialisable
+        """Construct ``Hypergraph`` instance from JSON serialisable
         dictionary representation of the Hypergraph.
 
         :param hypergraph_dict: JSON serialisable dictionary

@@ -19,6 +19,10 @@ Networks
 
     .. automethod:: NISQNetwork.draw_nisq_network
 
+    .. automethod:: NISQNetwork.to_dict
+
+    .. automethod:: NISQNetwork.from_dict
+
 .. autoclass:: pytket_dqc.networks.nisq_network.AllToAll
 
     .. automethod:: AllToAll.__init__
