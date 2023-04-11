@@ -1,4 +1,4 @@
-from pytket_dqc.networks import NISQNetwork
+from pytket_dqc.networks import HeterogeneousNetwork
 from pytket_dqc import HypergraphCircuit
 from pytket_dqc.placement import Placement
 from pytket import Circuit, OpType
@@ -9,10 +9,10 @@ from pytket import Circuit, OpType
 
 def test_placement_valid():
 
-    large_network = NISQNetwork(
+    large_network = HeterogeneousNetwork(
         [[0, 1], [0, 2], [1, 2]], {0: [0, 1, 2], 1: [3, 4, 5], 2: [6, 7, 8, 9]}
     )
-    small_network = NISQNetwork([[0, 1]], {0: [0, 1], 1: [2]})
+    small_network = HeterogeneousNetwork([[0, 1]], {0: [0, 1], 1: [2]})
 
     small_circ = Circuit(2).add_gate(OpType.CU1, 1.0, [0, 1])
     dist_small_circ = HypergraphCircuit(small_circ)

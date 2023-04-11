@@ -4,7 +4,7 @@ from pytket_dqc.distributors import (
     PartitioningAnnealing,
 )
 from pytket import Circuit
-from pytket_dqc import NISQNetwork
+from pytket_dqc import HeterogeneousNetwork
 from pytket_dqc.utils import DQCPass
 
 
@@ -12,7 +12,7 @@ def small_circuit_network():
 
     circ = Circuit(3).CZ(0, 1).CZ(1, 2)
     DQCPass().apply(circ)
-    network = NISQNetwork(
+    network = HeterogeneousNetwork(
         server_coupling=[[0, 1], [1, 2]],
         server_qubits={0: [0], 1: [1], 2: [2]},
     )

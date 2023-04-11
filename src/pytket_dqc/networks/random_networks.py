@@ -1,15 +1,15 @@
-from .nisq_network import NISQNetwork
+from .nisq_network import HeterogeneousNetwork
 import random
 import networkx as nx  # type:ignore
 import numpy as np
 
 
-class RandomNISQNetwork(NISQNetwork):
-    """NISQNetwok with underlying server network that is random but connected.
-    In particular graphs are erdos renyi random graphs, post selected
-    on graphs that are connected. The ebit memory for each module is the the
-    larger of 2 and largest integer less than the average number of qubits
-    in each module.
+class RandomNetwork(HeterogeneousNetwork):
+    """HeterogeneousNetwork with underlying server network that is random but
+    connected. In particular graphs are erdos renyi random graphs, post
+    selected on graphs that are connected. The ebit memory for each module is
+    the the larger of 2 and largest integer less than the average number of
+    qubits in each module.
     """
 
     def __init__(self, n_servers: int, n_qubits: int, **kwargs):
@@ -67,9 +67,9 @@ class RandomNISQNetwork(NISQNetwork):
         )
 
 
-class ScaleFreeNISQNetwork(NISQNetwork):
-    """NISQNetwork with underlying server network that is scale-free. This is
-    to say one whose degree distribution follows a power law. The ebit
+class ScaleFreeNetwork(HeterogeneousNetwork):
+    """HeterogeneousNetwork with underlying server network that is scale-free.
+    This is to say one whose degree distribution follows a power law. The ebit
     memory for each module is the the larger of 2 and largest integer less
     than the average number of qubits in each module.
     """
@@ -126,10 +126,10 @@ class ScaleFreeNISQNetwork(NISQNetwork):
         )
 
 
-class SmallWorldNISQNetwork(NISQNetwork):
-    """NISQNetwork with underlying server network that is a small-world
-    network. This is to say most servers can be reached from every other
-    server by a small number of steps. The ebit memory for each module
+class SmallWorldNetwork(HeterogeneousNetwork):
+    """HeterogeneousNetwork with underlying server network that is a
+    mall-world network. This is to say most servers can be reached from every
+    other server by a small number of steps. The ebit memory for each module
     is the the larger of 2 and largest integer less than the average number
     of qubits in each module.
     """

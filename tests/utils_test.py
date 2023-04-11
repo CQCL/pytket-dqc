@@ -11,7 +11,7 @@ from pytket.circuit import Op  # type: ignore
 from pytket.pauli import Pauli  # type: ignore
 from pytket_dqc import Distribution
 from pytket_dqc.circuits import HypergraphCircuit
-from pytket_dqc.networks import NISQNetwork
+from pytket_dqc.networks import HeterogeneousNetwork
 from pytket_dqc.allocators import Brute
 from pytket_dqc.placement import Placement
 import networkx as nx  # type: ignore
@@ -28,7 +28,7 @@ from pytket.qasm import circuit_from_qasm_str
 
 def test_qasm():
 
-    network = NISQNetwork([[0, 1], [0, 2]], {0: [0], 1: [1], 2: [2]})
+    network = HeterogeneousNetwork([[0, 1], [0, 2]], {0: [0], 1: [1], 2: [2]})
 
     circ = Circuit(2)
     circ.add_gate(OpType.CU1, 1.0, [0, 1]).H(0).Rz(
@@ -62,7 +62,7 @@ def test_CX_circuit():
 
     dist_circ = HypergraphCircuit(circ)
 
-    network = NISQNetwork([[0, 1]], {0: [0, 1], 1: [2, 3]})
+    network = HeterogeneousNetwork([[0, 1]], {0: [0, 1], 1: [2, 3]})
 
     allocator = Brute()
     placement = allocator.allocate(dist_circ, network)
@@ -137,7 +137,7 @@ def test_detached_gate_count():
 
     hyp_circ = HypergraphCircuit(circuit=circ)
 
-    net = NISQNetwork(
+    net = HeterogeneousNetwork(
         server_coupling=[[0, 1], [1, 2]],
         server_qubits={0: [0], 1: [1], 2: [2]},
     )

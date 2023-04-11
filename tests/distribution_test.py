@@ -1,4 +1,4 @@
-from pytket_dqc.networks import NISQNetwork
+from pytket_dqc.networks import HeterogeneousNetwork
 from pytket_dqc import HypergraphCircuit, Distribution, DQCPass
 from pytket_dqc.circuits import Hyperedge
 from pytket_dqc.placement import Placement
@@ -10,10 +10,10 @@ from pytket import Circuit, OpType
 
 def test_distribution_valid():
 
-    large_network = NISQNetwork(
+    large_network = HeterogeneousNetwork(
         [[0, 1], [0, 2], [1, 2]], {0: [0, 1, 2], 1: [3, 4, 5], 2: [6, 7, 8, 9]}
     )
-    small_network = NISQNetwork([[0, 1]], {0: [0, 1], 1: [2]})
+    small_network = HeterogeneousNetwork([[0, 1]], {0: [0, 1], 1: [2]})
 
     small_circ = Circuit(2).add_gate(OpType.CU1, 1.0, [0, 1])
     dist_small_circ = HypergraphCircuit(small_circ)
@@ -72,7 +72,7 @@ def test_distribution_cost_no_embedding():
     )
     dist_two_CZ_circ = HypergraphCircuit(two_CZ_circ)
 
-    three_line_network = NISQNetwork(
+    three_line_network = HeterogeneousNetwork(
         [[0, 1], [1, 2], [1, 3], [2, 4]],
         {0: [0], 1: [1], 2: [2], 3: [3], 4: [4]},
     )
@@ -116,7 +116,7 @@ def test_alap():
     circ.add_gate(OpType.CU1, 0.1234, [0, 3])
     circ.add_gate(OpType.CU1, 1.0, [1, 2])
 
-    network = NISQNetwork(
+    network = HeterogeneousNetwork(
         [[0, 1], [0, 2], [0, 3], [3, 4]],
         {0: [0], 1: [1, 2], 2: [3, 4], 3: [7], 4: [5, 6]},
     )
@@ -176,7 +176,7 @@ def test_alap_on_hyperedge_requiring_euler():
     circ.H(0)
     circ.add_gate(OpType.CU1, [0.8], [0, 2])
 
-    network = NISQNetwork([[0, 1]], {0: [0], 1: [1, 2, 3, 4]},)
+    network = HeterogeneousNetwork([[0, 1]], {0: [0], 1: [1, 2, 3, 4]},)
 
     placement = Placement(
         {0: 0, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1}
@@ -202,7 +202,9 @@ def test_alap_on_hyperedge_mixing_H_and_D_embeddings():
     circ.add_gate(OpType.CU1, 0.1234, [1, 3])  # Gate 7, D-embedded
     circ.add_gate(OpType.CU1, 0.1234, [1, 2])  # Gate 8
 
-    network = NISQNetwork([[0, 1], [1, 2]], {0: [0], 1: [1], 2: [2, 3]})
+    network = HeterogeneousNetwork(
+        [[0, 1], [1, 2]], {0: [0], 1: [1], 2: [2, 3]}
+    )
 
     placement = Placement(
         {0: 0, 1: 1, 2: 2, 3: 2, 4: 0, 5: 1, 6: 1, 7: 1, 8: 2}
@@ -235,7 +237,7 @@ def test_distribution_cost_with_embedding():
     circ.add_gate(OpType.CU1, 0.1234, [0, 3])
     circ.add_gate(OpType.CU1, 1.0, [1, 2])
 
-    network = NISQNetwork(
+    network = HeterogeneousNetwork(
         [[0, 1], [0, 2], [0, 3], [3, 4]],
         {0: [0], 1: [1, 2], 2: [3, 4], 3: [7], 4: [5, 6]},
     )
@@ -306,7 +308,7 @@ def test_detached_gate_list():
 
     hyp_circ = HypergraphCircuit(circuit=circ)
 
-    net = NISQNetwork(
+    net = HeterogeneousNetwork(
         server_coupling=[[0, 1], [1, 2]],
         server_qubits={0: [0], 1: [1], 2: [2]},
     )

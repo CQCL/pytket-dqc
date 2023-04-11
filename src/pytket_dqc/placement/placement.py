@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, List, Tuple
 
 if TYPE_CHECKING:
-    from pytket_dqc.networks import NISQNetwork
+    from pytket_dqc.networks import HeterogeneousNetwork
     from pytket_dqc.circuits import HypergraphCircuit
 
 from pytket_dqc.utils import steiner_tree
@@ -56,7 +56,7 @@ class Placement:
     def is_valid(
         self,
         circuit: HypergraphCircuit,
-        network: NISQNetwork
+        network: HeterogeneousNetwork
     ) -> bool:
         """Check if placement is valid. In particular check that no more
         qubits are allotted to a server than can be accommodated.
@@ -64,7 +64,7 @@ class Placement:
         :param circuit: Circuit being placed onto ``network`` by placement.
         :type circuit: HypergraphCircuit
         :param network: Network ``circuit`` is placed onto by placement.
-        :type network: NISQNetwork
+        :type network: HeterogeneousNetwork
         :return: Is a valid placement.
         :rtype: bool
         """
@@ -95,7 +95,7 @@ class Placement:
         self,
         hyperedge: list[int],
         qubit_node: int,
-        network: NISQNetwork,
+        network: HeterogeneousNetwork,
     ) -> List[Tuple[int, int]]:
         """Returns tree representing the edges along which distribution
         operations should act. This is the steiner tree covering the servers
@@ -107,7 +107,7 @@ class Placement:
         :param qubit_node: Node in hyperedge which corresponds to a qubit.
         :type qubit_node: int
         :param network: Network onto which hyper edge should be distributed.
-        :type network: NISQNetwork
+        :type network: HeterogeneousNetwork
         :return: List of edges along which distribution gates should act,
             with the direction and order in this they should act.
         :rtype: List[List[int]]

@@ -1,5 +1,5 @@
 from .distributor import Distributor
-from pytket_dqc import NISQNetwork, Distribution
+from pytket_dqc import HeterogeneousNetwork, Distribution
 from pytket_dqc.refiners import (
     RepeatRefiner,
     EagerHTypeMerge,
@@ -14,7 +14,7 @@ class PartitioningAnnealing(Distributor):
     """
 
     def distribute(
-        self, circ: Circuit, network: NISQNetwork, **kwargs
+        self, circ: Circuit, network: HeterogeneousNetwork, **kwargs
     ) -> Distribution:
         """Method producing a distribution of the given circuit
         onto the given network.
@@ -25,7 +25,7 @@ class PartitioningAnnealing(Distributor):
         :param circ: Circuit to be distributed
         :type circ: Circuit
         :param network: Network onto which circuit should be distributed
-        :type network: NISQNetwork
+        :type network: HeterogeneousNetwork
         :return: Distribution of circ onto network.
         :rtype: Distribution
         """
@@ -41,7 +41,7 @@ class PartitioningHeterogeneous(Distributor):
     """
 
     def distribute(
-        self, circ: Circuit, network: NISQNetwork, **kwargs
+        self, circ: Circuit, network: HeterogeneousNetwork, **kwargs
     ) -> Distribution:
         """Method producing a distribution of the given circuit
         onto the given network.
@@ -53,7 +53,7 @@ class PartitioningHeterogeneous(Distributor):
         :param circ: Circuit to be distributed
         :type circ: Circuit
         :param network: Network onto which circuit should be distributed
-        :type network: NISQNetwork
+        :type network: HeterogeneousNetwork
         :return: Distribution of circ onto network.
         :rtype: Distribution
         """
@@ -73,7 +73,7 @@ class PartitioningHeterogeneousEmbedding(Distributor):
     """
 
     def distribute(
-        self, circ: Circuit, network: NISQNetwork, **kwargs
+        self, circ: Circuit, network: HeterogeneousNetwork, **kwargs
     ) -> Distribution:
         """Method producing a distribution of the given circuit
         onto the given network.
@@ -84,7 +84,7 @@ class PartitioningHeterogeneousEmbedding(Distributor):
         :param circ: Circuit to be distributed
         :type circ: Circuit
         :param network: Network onto which circuit should be distributed
-        :type network: NISQNetwork
+        :type network: HeterogeneousNetwork
         :return: Distribution of circ onto network.
         :rtype: Distribution
         """
