@@ -7,6 +7,7 @@ Automated entanglement-efficient distribution of quantum circuits.
 - [About](#about)
 - [Requirements](#requirements)
 - [Installing pytket-dqc](#installing-pytket-dqc)
+- [Contributing](#contributing)
 
 ## About
 This package takes a quantum circuit and network description and produces a circuit distributed across the given network,
