@@ -1,4 +1,4 @@
-# Copyright 2023 Quantinuum
+# Copyright 2023 Quantinuum and The University of Tokyo
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
