@@ -161,9 +161,18 @@ such as [JupyterLab](https://jupyter.org/install).)
 #### Testing pytket-dqc
 
 You may wish to test your installation has succeeded.
-You can do this by running `pytest tests/distributor_test.py -k test_kahypar_install` from the directory that these source files were `git clone`d to.
-If an error is thrown saying either that the line `import kahypar as kahypar` fails or
-"Hypergraph is not an attribute of kahypar module"
-this means that Python cannot access the dynamic library (the `.so` file).
-Check that you have put the `.so` file in the correct directory, that matches the Python installation you are using with `pytket-dqc`.
 
+You can do this by running `pip install pytest` to install `pytest`.
+Then running `pytest tests -m "not high_compute` from the directory that these source files were `git clone`d to.
+(The additional flag skips tests that will take a long time.)
+Assuming that all the tests pass then you have succeeded in installing `pytket-dqc`!
+
+
+## Contributing
+
+If you wish to contribute to the development of `pytket-dqc` (which would be extremely welcome!),
+you can do so by creating a branch and submitting a PR.
+
+For code consistency, we'd ask you to include type annotations on your code,
+and ensure that your code conforms to standards set by `flake8` (with a line length of 79 characters).
+This will be checked automatically on any PRs submitted to this project, by `mypy` and `flake8` respectively.
