@@ -122,8 +122,7 @@ class NISQNetwork(ServerNetwork):
         :return: Dictionary serialisation of NISQNetwork. Dictionary has keys
             'server_coupling' and 'server_qubits'.
         :rtype: dict[str, Union[
-                list[list[int]], dict[int, list[int]], dict[int, int]
-            ]]
+            list[list[int]], dict[int, list[int]], dict[int, int]]]
         """
 
         return {
