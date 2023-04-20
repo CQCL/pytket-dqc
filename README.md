@@ -83,11 +83,11 @@ If you do not have Boost installed then you can:
 
 6. Copy the dynamic library to the appropriate path so that Python can import the kahypar module and use its contents:  
   ```
-  cp kahypar.so <path-to-site-packages>
+  cp kahypar*.so <path-to-site-packages>
   ```
   You must replace `<path-to-site-packages>` with the path to the directory `site-packages` listed by the command `python -m site`. For instance:
   ```
-  cp kahypar.so /home/myuser/anaconda3/lib/python3.9/site-packages'
+  cp kahypar*.so /home/myuser/anaconda3/lib/python3.9/site-packages
   ```
 </details>
   
