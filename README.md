@@ -154,7 +154,7 @@ This package is used for graph visualisation.
 1. Navigate to the cloned repository `cd pytket-dqc`.
 1. Run `pip install .`
 
-Documentation for using `pytket-dqc` can be found [here](INSERT URL HERE WHEN AVAILABLE)
+Documentation for using `pytket-dqc` can be found [here](https://cqcl.github.io/pytket-dqc/)
 You may also find the example Jupyter notebooks in `examples/` instructive.
 (Note that these require a seperate installation of packages capable of opening Jupyter notebooks,
 such as [JupyterLab](https://jupyter.org/install).)
