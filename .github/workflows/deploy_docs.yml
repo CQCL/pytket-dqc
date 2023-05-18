@@ -29,10 +29,56 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Set up Python 3.9.12
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9.12
+
+      - name: Cache kahypar Build
+        id: cache-kahypar
+        uses: actions/cache@v3
+        with:
+          path: ~/kahypar.cpython-39-x86_64-linux-gnu.so
+          key: kahypar_cache
+
+      - name: Install boost
+        run: sudo apt-get install libboost-all-dev
+
+      - name: Setup cmake
+        if: ${{ steps.cache-kahypar.outputs.cache-hit != 'true' }}
+        uses: jwlawson/actions-setup-cmake@v1.12
+        with:
+          cmake-version: 3.16.x
+
+      - name: Checkout kahypar
+        if: ${{ steps.cache-kahypar.outputs.cache-hit != 'true' }}
+        uses: actions/checkout@v2
+        with: 
+          repository: kahypar/kahypar
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Build kahypar
+        if: ${{ steps.cache-kahypar.outputs.cache-hit != 'true' }}
+        run: |
+          mkdir build && cd build
+          cmake .. -DCMAKE_BUILD_TYPE=RELEASE -DKAHYPAR_PYTHON_INTERFACE=1 -DBUILD_TESTING=OFF
+          make
+          cd python
+          make
+          cp kahypar.cpython-39-x86_64-linux-gnu.so ~/
+
+      - name: Install kahypar
+        run: cp ~/kahypar.cpython-39-x86_64-linux-gnu.so /opt/hostedtoolcache/Python/3.9.12/x64/lib/python3.9/site-packages
+
+      - name: Checkout pytket-dqc
         uses: actions/checkout@v3
+
       - name: Install pytket-dqc
-        run: pip install .
+        run: | 
+          sudo apt-get install graphviz graphviz-dev
+          pip install .
+
       - name: Setup Pages
         uses: actions/configure-pages@v3
       - name: Build documentation
