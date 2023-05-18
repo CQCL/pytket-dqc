@@ -31,13 +31,25 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+      - name: Install pytket-dqc
+        run: pip install .
       - name: Setup Pages
         uses: actions/configure-pages@v3
+      - name: Build documentation
+        run: |
+          pip install -r docs/docs_requirements.txt
+          cd docs
+          make html
+      - name: Save documentation
+        uses: actions/upload-artifact@v2
+        with:
+          name: docs_html
+          path: docs/build/html
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v1
         with:
           # Upload entire repository
-          path: '.'
+          path: 'docs/build/html/'
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v2
