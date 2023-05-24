@@ -13,7 +13,11 @@ Automated entanglement-efficient distribution of quantum circuits.
 This package takes a quantum circuit and network description and produces a circuit distributed across the given network,
 using entanglement-assisted local operations and classical communication to implement non-local gates in the circuit,
 with the aim of reducing the amount of entanglement required for the circuit implementation.
-A more in-depth presentation of the methods implemented here can be found [here](**INSERT LINK TO PAPER**).
+A more in-depth presentation of the methods implemented here can be found in the 
+corresponding paper ["Distributing circuits over heterogeneous, modular quantum computing network architectures"](https://arxiv.org/abs/2305.14148).
+
+Here we detail the steps required to install `pytket-dqc`. More thorough documentation of it use can be found [here](https://cqcl.github.io/pytket-dqc/)
+You may also find the example Jupyter notebooks in `examples/` instructive.
 
 ## Requirements
 In addition to specified Python packages that will automatically be installed when you install pytket-dqc,
@@ -153,11 +157,6 @@ This package is used for graph visualisation.
 1. Clone this repository with `git clone git@github.com:CQCL/pytket-dqc.git`.
 1. Navigate to the cloned repository `cd pytket-dqc`.
 1. Run `pip install .`
-
-Documentation for using `pytket-dqc` can be found [here](https://cqcl.github.io/pytket-dqc/)
-You may also find the example Jupyter notebooks in `examples/` instructive.
-(Note that these require a seperate installation of packages capable of opening Jupyter notebooks,
-such as [JupyterLab](https://jupyter.org/install).)
 
 #### Testing pytket-dqc
 
