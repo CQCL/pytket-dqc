@@ -37,6 +37,9 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
+      - name: find site packages
+        run: python -m site
+
       - name: Build kahypar
         if: ${{ steps.cache-kahypar.outputs.cache-hit != 'true' }}
         run: |
@@ -50,8 +53,9 @@ jobs:
           cp kahypar.cpython-311-darwin.so ~/
 
       - name: Install kahypar
-        run: cp ~/kahypar.cpython-311-darwin.so /opt/hostedtoolcache/Python/3.11.7/x64/lib/python3.11/site-packages
-
+        run: |
+          python -m site
+          cp ~/kahypar.cpython-311-darwin.so /opt/hostedtoolcache/Python/3.11.7/x64/lib/python3.11/site-packages
       - name: Checkout pytket-dqc
         uses: actions/checkout@v2
 
