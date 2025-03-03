@@ -39,7 +39,7 @@ jobs:
       - name: Build kahypar
         if: ${{ steps.cache-kahypar.outputs.cache-hit != 'true' }}
         run: |
-          git reset --hard efa12a9
+          git reset --hard efa12a90
           mkdir build && cd build
           cmake .. -DCMAKE_BUILD_TYPE=RELEASE -DKAHYPAR_PYTHON_INTERFACE=1 -DBUILD_TESTING=OFF
           make
