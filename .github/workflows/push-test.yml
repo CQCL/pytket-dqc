@@ -35,6 +35,7 @@ jobs:
         with: 
           repository: kahypar/kahypar
           submodules: recursive
+          fetch-depth: 0
 
       - name: Build kahypar
         if: ${{ steps.cache-kahypar.outputs.cache-hit != 'true' }}
