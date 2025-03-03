@@ -37,9 +37,6 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
-      - name: find site packages
-        run: python -m site
-
       - name: Build kahypar
         if: ${{ steps.cache-kahypar.outputs.cache-hit != 'true' }}
         run: |
@@ -59,10 +56,17 @@ jobs:
       - name: Checkout pytket-dqc
         uses: actions/checkout@v2
 
-      - name: Install pytket-dqc
+      - name: install graphviz
         run: | 
           brew install graphviz
-          pip install .
+          export GRAPHVIZ_DIR="$(brew --prefix graphviz)"
+          pip install pygraphviz \
+              --config-settings=--global-option=build_ext \
+              --config-settings=--global-option="-I$GRAPHVIZ_DIR/include" \
+              --config-settings=--global-option="-L$GRAPHVIZ_DIR/lib"
+
+      - name: Install pytket-dqc
+        run: pip install .
 
       - name: Install testing requirements
         run: pip install -r tests/test_requirements.txt
