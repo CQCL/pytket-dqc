@@ -5,13 +5,13 @@ on:
 
 jobs:
   ubuntu:
-    runs-on: ubuntu-latest
+    runs-on: macos
     steps: 
 
-      - name: Set up Python 3.9.12
+      - name: Set up Python 3.11.7
         uses: actions/setup-python@v2
         with:
-          python-version: 3.9.12
+          python-version: 3.11.7
 
       - name: Cache kahypar Build
         id: cache-kahypar
@@ -21,13 +21,13 @@ jobs:
           key: kahypar_cache
 
       - name: Install boost
-        run: sudo apt-get install libboost-all-dev
+        run: brew install boost
 
       - name: Setup cmake
         if: ${{ steps.cache-kahypar.outputs.cache-hit != 'true' }}
         uses: jwlawson/actions-setup-cmake@v1.12
         with:
-          cmake-version: 3.16.x
+          cmake-version: 3.31.6
 
       - name: Checkout kahypar
         if: ${{ steps.cache-kahypar.outputs.cache-hit != 'true' }}
