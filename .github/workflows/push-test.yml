@@ -5,7 +5,7 @@ on:
 
 jobs:
   ubuntu:
-    runs-on: macos
+    runs-on: macos-latest
     steps: 
 
       - name: Set up Python 3.11.7
