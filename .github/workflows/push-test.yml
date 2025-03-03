@@ -42,7 +42,7 @@ jobs:
         run: |
           git reset --hard 3802b797
           mkdir build && cd build
-          cmake .. -DCMAKE_BUILD_TYPE=RELEASE -DKAHYPAR_PYTHON_INTERFACE=1 -DBUILD_TESTING=ON -DKAHYPAR_USE_MINIMAL_BOOST=ON
+          cmake .. -DCMAKE_BUILD_TYPE=RELEASE -DKAHYPAR_PYTHON_INTERFACE=1 -DBUILD_TESTING=OFF
           make
           cd python
           make
