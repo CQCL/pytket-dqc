@@ -55,7 +55,7 @@ jobs:
       - name: Install kahypar
         run: |
           python -m site
-          cp ~/kahypar.cpython-311-darwin.so /opt/hostedtoolcache/Python/3.11.7/x64/lib/python3.11/site-packages
+          cp ~/kahypar.cpython-311-darwin.so /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages
       - name: Checkout pytket-dqc
         uses: actions/checkout@v2
 
