@@ -61,7 +61,7 @@ jobs:
 
       - name: Install pytket-dqc
         run: | 
-          brew install graphviz graphviz-dev
+          brew install graphviz
           pip install .
 
       - name: Install testing requirements
