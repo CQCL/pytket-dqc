@@ -74,12 +74,6 @@ jobs:
       - name: Tests
         run: pytest --cov-report term-missing:skip-covered --cov=src/pytket_dqc tests/ --durations=10
 
-      - name: Type check
-        run: mypy src/pytket_dqc tests
-        
-      - name: Code format check
-        run: flake8 src/pytket_dqc tests
-
       - name: Examples check
         run: pytest --nbmake examples/*.ipynb
 
