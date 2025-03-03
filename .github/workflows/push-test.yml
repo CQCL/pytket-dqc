@@ -17,7 +17,7 @@ jobs:
         id: cache-kahypar
         uses: actions/cache@v3
         with:
-          path: ~/kahypar.cpython-39-x86_64-linux-gnu.so
+          path: ~/kahypar.cpython-311-darwin.so
           key: kahypar_cache
 
       - name: Install boost
@@ -46,10 +46,11 @@ jobs:
           make
           cd python
           make
-          cp kahypar.cpython-39-x86_64-linux-gnu.so ~/
+          ls
+          cp kahypar.cpython-311-darwin.so ~/
 
       - name: Install kahypar
-        run: cp ~/kahypar.cpython-39-x86_64-linux-gnu.so /opt/hostedtoolcache/Python/3.9.12/x64/lib/python3.9/site-packages
+        run: cp ~/kahypar.cpython-311-darwin.so /opt/hostedtoolcache/Python/3.11.7/x64/lib/python3.11/site-packages
 
       - name: Checkout pytket-dqc
         uses: actions/checkout@v2
