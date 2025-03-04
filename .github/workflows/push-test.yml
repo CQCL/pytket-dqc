@@ -46,13 +46,11 @@ jobs:
           make
           cd python
           make
-          ls
           cp kahypar.cpython-311-darwin.so ~/
 
       - name: Install kahypar
-        run: |
-          python -m site
-          cp ~/kahypar.cpython-311-darwin.so /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages
+        run: cp ~/kahypar.cpython-311-darwin.so /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages
+      
       - name: Checkout pytket-dqc
         uses: actions/checkout@v2
 
@@ -69,6 +67,12 @@ jobs:
         run: |
           pip install ".[tests]"
           pytest --cov-report term-missing:skip-covered --cov=src/pytket_dqc tests/ --durations=10
+
+      - name: Type check
+        run: mypy src/pytket_dqc tests
+  
+      - name: Code format check
+        run: flake8 src/pytket_dqc tests
 
       - name: Examples check
         run: pytest --nbmake examples/*.ipynb
