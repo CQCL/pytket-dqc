@@ -79,7 +79,7 @@ jobs:
       
       - name: Build documentation
         run: |
-          pip install '.[docs]''
+          pip install ".[docs]"
           cd docs
           make html
       
