@@ -31,7 +31,7 @@ jobs:
 
       - name: Checkout kahypar
         if: ${{ steps.cache-kahypar.outputs.cache-hit != 'true' }}
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with: 
           repository: kahypar/kahypar
           submodules: recursive
@@ -52,7 +52,7 @@ jobs:
         run: cp ~/kahypar.cpython-311-darwin.so /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages
       
       - name: Checkout pytket-dqc
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: install graphviz
         run: | 
