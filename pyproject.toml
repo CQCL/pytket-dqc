@@ -11,7 +11,7 @@ dependencies = [
     'pytket >=1.31, <1.32',
     'hypernetx >=1.2, <1.3',
     'celluloid >=0.2, <0.3',
-    'igraph >=0.9.8, <0.10',
+    'igraph >=0.11.8, <0.12',
     'decorator >=5.1.0, <5.2',
     'pygraphviz >=1.14, <1.15',
     'importlib_resources >=5.7.1, <5.8',
@@ -24,7 +24,7 @@ tests = [
     'mypy >=0.920, <0.921',
     'pytest >=6.2.5, <6.3',
     'pytest-cov >=4.0.0, <4.1',
-    'flake8 >=4.0.1, <4.1',
+    'flake8 >=4.0.1, <7.2',
     'nbmake >=1.5.5, <1.6',
 ]
 docs = [
