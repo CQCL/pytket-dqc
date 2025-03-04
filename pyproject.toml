@@ -7,7 +7,7 @@ name = "pytket-dqc"
 version = "0.0.1"
 requires-python = ">= 3.8"
 dependencies = [
-    'numpy >=1.26, <1.27',
+    'numpy >=1.26, <2.3',
     'pytket >=1.31, <1.32',
     'hypernetx >=1.2, <2.5',
     'celluloid >=0.2, <0.3',
