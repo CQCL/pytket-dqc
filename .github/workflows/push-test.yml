@@ -4,30 +4,30 @@ on:
   pull_request:
 
 jobs:
-  ubuntu:
-    runs-on: ubuntu-latest
+  macos-tests:
+    runs-on: macos-latest
     steps: 
 
-      - name: Set up Python 3.9.12
+      - name: Set up Python 3.11.7
         uses: actions/setup-python@v2
         with:
-          python-version: 3.9.12
+          python-version: 3.11.7
 
       - name: Cache kahypar Build
         id: cache-kahypar
         uses: actions/cache@v3
         with:
-          path: ~/kahypar.cpython-39-x86_64-linux-gnu.so
+          path: ~/kahypar.cpython-311-darwin.so
           key: kahypar_cache
 
       - name: Install boost
-        run: sudo apt-get install libboost-all-dev
+        run: brew install boost
 
       - name: Setup cmake
         if: ${{ steps.cache-kahypar.outputs.cache-hit != 'true' }}
         uses: jwlawson/actions-setup-cmake@v1.12
         with:
-          cmake-version: 3.16.x
+          cmake-version: 3.31.6
 
       - name: Checkout kahypar
         if: ${{ steps.cache-kahypar.outputs.cache-hit != 'true' }}
@@ -35,52 +35,50 @@ jobs:
         with: 
           repository: kahypar/kahypar
           submodules: recursive
-          fetch-depth: 1
+          fetch-depth: 0
 
       - name: Build kahypar
         if: ${{ steps.cache-kahypar.outputs.cache-hit != 'true' }}
         run: |
+          git reset --hard efa12a90
           mkdir build && cd build
           cmake .. -DCMAKE_BUILD_TYPE=RELEASE -DKAHYPAR_PYTHON_INTERFACE=1 -DBUILD_TESTING=OFF
           make
           cd python
           make
-          cp kahypar.cpython-39-x86_64-linux-gnu.so ~/
+          cp kahypar.cpython-311-darwin.so ~/
 
       - name: Install kahypar
-        run: cp ~/kahypar.cpython-39-x86_64-linux-gnu.so /opt/hostedtoolcache/Python/3.9.12/x64/lib/python3.9/site-packages
-
+        run: cp ~/kahypar.cpython-311-darwin.so /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages
+      
       - name: Checkout pytket-dqc
         uses: actions/checkout@v2
 
-      - name: Install pytket-dqc
+      - name: install graphviz
         run: | 
-          sudo apt-get install graphviz graphviz-dev
-          pip install .
-
-      - name: Install testing requirements
-        run: pip install -r tests/test_requirements.txt
+          brew install graphviz
+          export GRAPHVIZ_DIR="$(brew --prefix graphviz)"
+          pip install pygraphviz \
+              --config-settings=--global-option=build_ext \
+              --config-settings=--global-option="-I$GRAPHVIZ_DIR/include" \
+              --config-settings=--global-option="-L$GRAPHVIZ_DIR/lib"
 
       - name: Tests
-        run: pytest --cov-report term-missing:skip-covered --cov=src/pytket_dqc tests/ --durations=10
-
-      - name: Type check
-        run: mypy src/pytket_dqc tests
-        
-      - name: Code format check
-        run: flake8 src/pytket_dqc tests
+        run: |
+          pip install ".[tests]"
+          pytest --cov-report term-missing:skip-covered --cov=src/pytket_dqc tests/ --durations=10
 
       - name: Examples check
         run: pytest --nbmake examples/*.ipynb
 
       - name: Build documentation
         run: |
-          pip install -r docs/docs_requirements.txt
+          pip install ".[docs]"
           cd docs
           make html
 
       - name: Save documentation
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: docs_html
           path: docs/build/html

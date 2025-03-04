@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from pytket import Circuit, OpType, Qubit
-from pytket.passes import auto_rebase_pass
+from pytket.passes import AutoRebase
 
 from pytket.extensions.pyzx import tk_to_pyzx  # type: ignore
 import pyzx as zx  # type: ignore
@@ -168,7 +168,7 @@ def to_pyzx(circuit: Circuit, mask: list[Qubit]) -> zx.Graph:
 
     # Rebase body_circ to a gateset that pytket-pyzx can handle
     pyzx_gateset = {OpType.H, OpType.Rz, OpType.Rx, OpType.CZ, OpType.CX}
-    auto_rebase_pass(pyzx_gateset).apply(the_circ)
+    AutoRebase(gateset=pyzx_gateset).apply(the_circ)
     zx_graph = tk_to_pyzx(the_circ).to_graph()
 
     # Add states 0 on link qubits and projections to state 0. To do so we
