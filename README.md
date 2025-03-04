@@ -27,7 +27,9 @@ but they should apply just the same for Linux systems by replacing `brew` with y
 (e.g. `apt` for Debian/Ubuntu users).
 
 ### [CMake](https://cmake.org/)
-This is required for building the other packages listed here.
+This is required for building KaHyPar.
+Please refer to [Building KaHyPar](https://github.com/kahypar/kahypar?tab=readme-ov-file#building-kahypar)
+for more details.
 
 <details>
 
@@ -39,7 +41,8 @@ This is required for building the other packages listed here.
 
 ### [KaHyPar (with Python interface)](https://github.com/kahypar/kahypar)
 
-This is required for the hypergraph partioning methods used in `pytket-dqc`.
+This is required for the hypergraph partitioning methods used in `pytket-dqc`.
+Note that continuous integration tests are run with v1.3.2, released with [this commit](https://github.com/kahypar/kahypar/releases/tag/1.3.2) and we recommend you use that version.
 
 We use an experimental feature from KaHyPar that let us select a different maximum weight for each block of the partition
 (i.e. a different qubit capacity for each server).
