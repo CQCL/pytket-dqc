@@ -15,7 +15,7 @@ jobs:
 
       - name: Cache kahypar Build
         id: cache-kahypar
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/kahypar.cpython-311-darwin.so
           key: kahypar_cache
