@@ -65,21 +65,17 @@ jobs:
               --config-settings=--global-option="-I$GRAPHVIZ_DIR/include" \
               --config-settings=--global-option="-L$GRAPHVIZ_DIR/lib"
 
-      - name: Install pytket-dqc
-        run: pip install .
-
-      - name: Install testing requirements
-        run: pip install . -tests
-
       - name: Tests
-        run: pytest --cov-report term-missing:skip-covered --cov=src/pytket_dqc tests/ --durations=10
+        run: |
+          pip install ".[tests]"
+          pytest --cov-report term-missing:skip-covered --cov=src/pytket_dqc tests/ --durations=10
 
       - name: Examples check
         run: pytest --nbmake examples/*.ipynb
 
       - name: Build documentation
         run: |
-          pip install . -docs
+          pip install ".[docs]"
           cd docs
           make html
 
