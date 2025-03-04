@@ -7,27 +7,27 @@ name = "pytket-dqc"
 version = "0.0.1"
 requires-python = ">= 3.8"
 dependencies = [
-    "numpy ^= 1.11",
-    "pytket ^= 1.7.3",
-    "hypernetx ^= 1.2",
-    "celluloid ^= 0.2",
-    "igraph ^= 0.9.8",
-    "decorator ^= 5.1.0",
-    "pygraphviz ^= 1.7",
-    "importlib_resources ^= 5.7.1",
-    "pyzx ^= 0.7.0",
-    "pytket-pyzx ^= 0.24.0",
+    numpy ^= 1.11,
+    pytket ^= 1.7.3,
+    hypernetx ^= 1.2,
+    celluloid ^= 0.2,
+    igraph ^= 0.9.8,
+    decorator ^= 5.1.0,
+    pygraphviz ^= 1.7,
+    importlib_resources ^= 5.7.1,
+    pyzx ^= 0.7.0,
+    pytket-pyzx ^= 0.24.0,
 ]
 
 [project.optional-dependencies]
 tests = [
-    "mypy ^= 0.920",
-    "pytest ^= 6.2.5",
-    "pytest-cov ^= 4.0.0",
-    "flake8 ^= 4.0.1",
-    "nbmake ^= 1.5.5",
+    mypy ^= 0.920,
+    pytest ^= 6.2.5,
+    pytest-cov ^= 4.0.0,
+    flake8 ^= 4.0.1,
+    nbmake ^= 1.5.5,
 ]
 docs = [
-  "sphinx^=8.2.3",
-  "sphinx-rtd-theme^=3.0.2",
+  sphinx ^= 8.2.3,
+  sphinx-rtd-theme ^= 3.0.2,
 ]
