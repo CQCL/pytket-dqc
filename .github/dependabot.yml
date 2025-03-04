@@ -9,7 +9,7 @@ updates:
     directory: "/" # Location of package manifests
     schedule:
       interval: "daily"
-      target-branch: "main"
+    target-branch: "main"
     commit-message:
       prefix: "ci(py-deps)"
   - package-ecosystem: github-actions
