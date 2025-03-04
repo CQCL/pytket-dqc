@@ -75,7 +75,7 @@ jobs:
               --config-settings=--global-option="-L$GRAPHVIZ_DIR/lib"
 
       - name: Setup Pages
-        uses: actions/configure-pages@v3
+        uses: actions/configure-pages@v5
       
       - name: Build documentation
         run: |
