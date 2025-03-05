@@ -33,9 +33,7 @@ class Distributor(ABC):
         pass
 
     @abstractmethod
-    def distribute(
-        self, circ: Circuit, network: NISQNetwork, **kwargs
-    ) -> Distribution:
+    def distribute(self, circ: Circuit, network: NISQNetwork, **kwargs) -> Distribution:
         """Abstract method producing a distribution of the given circuit
         onto the given network.
 

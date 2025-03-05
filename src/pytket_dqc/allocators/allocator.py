@@ -34,7 +34,5 @@ class Allocator(ABC):
 
     # TODO: Correct type here to be any subclass of ServerNetwork
     @abstractmethod
-    def allocate(
-        self, circ: Circuit, network: NISQNetwork, **kwargs
-    ) -> Distribution:
+    def allocate(self, circ: Circuit, network: NISQNetwork, **kwargs) -> Distribution:
         pass

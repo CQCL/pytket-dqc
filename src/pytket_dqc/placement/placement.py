@@ -62,16 +62,10 @@ class Placement:
         :return: Placement instance constructed from placement_dict.
         :rtype: Placement
         """
-        placement = {
-            int(node): int(server) for node, server in placement_dict.items()
-        }
+        placement = {int(node): int(server) for node, server in placement_dict.items()}
         return cls(placement=placement)
 
-    def is_valid(
-        self,
-        circuit: HypergraphCircuit,
-        network: NISQNetwork
-    ) -> bool:
+    def is_valid(self, circuit: HypergraphCircuit, network: NISQNetwork) -> bool:
         """Check if placement is valid. In particular check that no more
         qubits are allotted to a server than can be accommodated.
 
@@ -93,13 +87,12 @@ class Placement:
         # Check that no more qubits are allotted to a server than can be
         # accommodated.
         for server in network.server_qubits.keys():
-            vertices = [vertex for vertex in self.placement.keys()
-                        if self.placement[vertex] == server]
-            qubits = [
+            vertices = [
                 vertex
-                for vertex in vertices
-                if circuit.is_qubit_vertex(vertex)
+                for vertex in self.placement.keys()
+                if self.placement[vertex] == server
             ]
+            qubits = [vertex for vertex in vertices if circuit.is_qubit_vertex(vertex)]
             if len(qubits) > len(network.server_qubits[server]):
                 is_valid = False
 
@@ -127,8 +120,9 @@ class Placement:
         :rtype: List[List[int]]
         """
 
-        servers_used = [value for key,
-                        value in self.placement.items() if key in hyperedge]
+        servers_used = [
+            value for key, value in self.placement.items() if key in hyperedge
+        ]
         server_graph = network.get_server_nx()
 
         # The Steiner tree problem is NP-complete. Indeed the networkx
@@ -142,6 +136,5 @@ class Placement:
         return direct_from_origin(steiner_server_graph, qubit_server)
 
     def get_vertices_in(self, server: int) -> list[int]:
-        """Return the list of vertices placed in ``server``.
-        """
+        """Return the list of vertices placed in ``server``."""
         return [v for v, s in self.placement.items() if s == server]

@@ -66,9 +66,7 @@ class EagerHTypeMerge(Refiner):
                 # allowed for `Packet`s connected to different servers.
 
                 # Initial `Packet` to start with
-                current_packet: Packet = qubit_packets[
-                    0
-                ]
+                current_packet: Packet = qubit_packets[0]
                 currently_merging_hedges = {current_packet.parent_hedge}
                 all_hedges_to_merge.append(currently_merging_hedges)
                 end_merging_hedges = False
@@ -76,41 +74,31 @@ class EagerHTypeMerge(Refiner):
                     qubit_packets.remove(current_packet)
 
                     # Identify the next mergeable `Packet` via hopping
-                    next_hopper = pacman.get_subsequent_hopping_packet(
-                        current_packet
-                    )
+                    next_hopper = pacman.get_subsequent_hopping_packet(current_packet)
                     if next_hopper is not None:
                         hopping_packet = (current_packet, next_hopper)
                         # We only merge embeddings when there are no conflicts
                         # that have already been merged previously and none of
                         # the embedded gates are detached
-                        if (
-                            all(  # No conflicts
-                                conflict not in already_done_hoppings
-                                for conflict in pacman.get_conflict_hoppings(
-                                    hopping_packet
-                                )
-                            ) and all(  # No detached gates
-                                gate not in detached_gate_list for gate
-                                in hyp_circ.get_h_embedded_gate_vertices(
-                                    Hyperedge(
-                                        [qubit_vertex]
-                                        + current_packet.gate_vertices
-                                        + next_hopper.gate_vertices
-                                    )
+                        if all(  # No conflicts
+                            conflict not in already_done_hoppings
+                            for conflict in pacman.get_conflict_hoppings(hopping_packet)
+                        ) and all(  # No detached gates
+                            gate not in detached_gate_list
+                            for gate in hyp_circ.get_h_embedded_gate_vertices(
+                                Hyperedge(
+                                    [qubit_vertex]
+                                    + current_packet.gate_vertices
+                                    + next_hopper.gate_vertices
                                 )
                             )
                         ):
                             # Make a note that the hopping has now been done
                             # therefore we cannot do another hopping that
                             # conflicts with this one.
-                            already_done_hoppings.append(
-                                hopping_packet
-                            )
+                            already_done_hoppings.append(hopping_packet)
                             current_packet = next_hopper
-                            currently_merging_hedges.add(
-                                current_packet.parent_hedge
-                            )
+                            currently_merging_hedges.add(current_packet.parent_hedge)
                         else:
                             end_merging_hedges = True
                     else:
@@ -130,19 +118,15 @@ class EagerHTypeMerge(Refiner):
                             for merging_hedges in all_hedges_to_merge
                             if current_packet.parent_hedge in merging_hedges
                         ]
-                        assert len(potential_merging_hedges_list) <= 1,\
-                            "There should only be up to one merging_hedges " +\
-                            "for any hedge"
+                        assert len(potential_merging_hedges_list) <= 1, (
+                            "There should only be up to one merging_hedges "
+                            + "for any hedge"
+                        )
                         if potential_merging_hedges_list:
-                            currently_merging_hedges \
-                                = potential_merging_hedges_list[0]
+                            currently_merging_hedges = potential_merging_hedges_list[0]
                         else:
-                            currently_merging_hedges = {
-                                current_packet.parent_hedge
-                            }
-                            all_hedges_to_merge.append(
-                                currently_merging_hedges
-                            )
+                            currently_merging_hedges = {current_packet.parent_hedge}
+                            all_hedges_to_merge.append(currently_merging_hedges)
                         end_merging_hedges = False
 
         for merging_hedges in all_hedges_to_merge:
@@ -155,9 +139,7 @@ class EagerHTypeMerge(Refiner):
                 # an overall negative gain.
                 # Hence we verify that this is not the case
                 # before merging the hyperedges.
-                if (gain_mgr.merge_hyperedge_gain(
-                    list(merging_hedges)
-                )) >= 0:
+                if (gain_mgr.merge_hyperedge_gain(list(merging_hedges))) >= 0:
                     gain_mgr.merge_hyperedge(list(merging_hedges))
                     refinement_made = True
 

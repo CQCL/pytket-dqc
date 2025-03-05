@@ -120,7 +120,6 @@ def to_pyzx(circuit: Circuit, mask: list[Qubit]) -> zx.Graph:
     the_circ = Circuit(len(mask) + n_ebits)
     for command in circuit.get_commands():
         if command.op.type == OpType.CustomGate:
-
             if is_start_proc(command):
                 # Identify the qubit to share and create a new ancilla qubit
                 if command.qubits[0] not in qubit_dict.keys():
@@ -154,9 +153,7 @@ def to_pyzx(circuit: Circuit, mask: list[Qubit]) -> zx.Graph:
                 del qubit_dict[command.qubits[0]]
 
             else:
-                raise Exception(
-                    f"CustomGate {command.op.get_name()} not supported!"
-                )
+                raise Exception(f"CustomGate {command.op.get_name()} not supported!")
         else:
             if not all(q in qubit_dict.keys() for q in command.qubits):
                 raise Exception("Attempting to act on a discarded qubit")

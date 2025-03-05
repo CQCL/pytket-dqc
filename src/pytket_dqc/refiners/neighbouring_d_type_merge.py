@@ -39,7 +39,6 @@ class NeighbouringDTypeMerge(Refiner):
 
         # Iterate through all qubits, merging packets.
         for qubit_vertex in gain_mgr.distribution.circuit.get_qubit_vertices():
-
             # List of hyperedges acting on qubit
             hedge_list = gain_mgr.distribution.circuit.hyperedge_dict[
                 qubit_vertex
@@ -53,36 +52,39 @@ class NeighbouringDTypeMerge(Refiner):
             # the case where the first hops over the second.
             # Repeat until the list is empty.
             while len(hedge_list) >= 2:
-
                 # Hyperedges to try to merge.
                 hedge_one = hedge_list[0]
                 hedge_two = hedge_list[1]
 
-                hedge_one_gates = gain_mgr.distribution.circuit.get_gate_vertices(hedge_one)  # noqa: E501
-                hedge_two_gates = gain_mgr.distribution.circuit.get_gate_vertices(hedge_two)  # noqa: E501
+                hedge_one_gates = gain_mgr.distribution.circuit.get_gate_vertices(
+                    hedge_one
+                )  # noqa: E501
+                hedge_two_gates = gain_mgr.distribution.circuit.get_gate_vertices(
+                    hedge_two
+                )  # noqa: E501
 
                 # Gates intermediate between the fist gate in hedge_two,
                 # and the last gate in hedge_one which predeeds it.
-                intermediate_commands = gain_mgr.distribution.circuit.get_intermediate_commands(  # noqa: E501
-                    first_vertex=max(
-                        vertex for vertex in hedge_one_gates
-                        if vertex < min(hedge_two_gates)
-                    ),
-                    second_vertex=min(hedge_two_gates),
-                    qubit_vertex=qubit_vertex
+                intermediate_commands = (
+                    gain_mgr.distribution.circuit.get_intermediate_commands(  # noqa: E501
+                        first_vertex=max(
+                            vertex
+                            for vertex in hedge_one_gates
+                            if vertex < min(hedge_two_gates)
+                        ),
+                        second_vertex=min(hedge_two_gates),
+                        qubit_vertex=qubit_vertex,
+                    )
                 )
 
                 # If there are no Hadamard gates preventing the merge, and
                 # it it beneficial to do so, merge the hyperedges.
-                if OpType.H not in [
-                    command.op.type for command in intermediate_commands
-                ] and gain_mgr.merge_hyperedge_gain(
-                    [hedge_one, hedge_two]
-                ) >= 0:
-
-                    new_hyperedge = gain_mgr.merge_hyperedge(
-                        [hedge_one, hedge_two]
-                    )
+                if (
+                    OpType.H
+                    not in [command.op.type for command in intermediate_commands]
+                    and gain_mgr.merge_hyperedge_gain([hedge_one, hedge_two]) >= 0
+                ):
+                    new_hyperedge = gain_mgr.merge_hyperedge([hedge_one, hedge_two])
 
                     # Remove old and add new hyperedges
                     del hedge_list[:2]

@@ -24,9 +24,7 @@ if TYPE_CHECKING:
     from pytket_dqc.networks import NISQNetwork
 
 
-def order_reducing_size(
-    server_qubits: dict[int, list[int]]
-) -> dict[int, list[int]]:
+def order_reducing_size(server_qubits: dict[int, list[int]]) -> dict[int, list[int]]:
     """Reorder ``server_qubits`` dictionary so that servers are in
     reducing size.
 
@@ -46,7 +44,7 @@ def order_reducing_size(
 
     # Look through the list of servers n-1 times, where n is the number of
     # servers, for the largest. Add the largest found to the order list.
-    for _ in range(len(server_qubits)-1):
+    for _ in range(len(server_qubits) - 1):
         # Initialise with largest at start of list of servers with unknown
         # position in the order by size.
         largest_i = 0
@@ -73,15 +71,11 @@ class Ordered(Allocator):
     """Distribute hypergraph vertices onto servers, populating the largest
     servers first until all vertices are assigned.
     """
+
     def __init__(self) -> None:
         pass
 
-    def allocate(
-        self,
-        circ: Circuit,
-        network: NISQNetwork,
-        **kwargs
-    ) -> Distribution:
+    def allocate(self, circ: Circuit, network: NISQNetwork, **kwargs) -> Distribution:
         """Distribute ``circ`` onto ``network`` by placing quibts onto
         servers, in decreasing order of size, until they are full.
 
@@ -95,9 +89,7 @@ class Ordered(Allocator):
 
         dist_circ = HypergraphCircuit(circ)
         if not network.can_implement(dist_circ):
-            raise Exception(
-                "This circuit cannot be implemented on this network."
-                )
+            raise Exception("This circuit cannot be implemented on this network.")
 
         # Initialise a map from hypergraph vertices to the server on which
         # they are placed.
@@ -113,17 +105,17 @@ class Ordered(Allocator):
         qubit_vertex_list = [
             vertex
             for vertex, vertex_info in dist_circ._vertex_circuit_map.items()
-            if vertex_info['type'] == 'qubit'
+            if vertex_info["type"] == "qubit"
         ]
 
         for server, qubit_list in server_qubits.items():
             # Assign the first n qubit vertices to server, where
             # server has n vertices. This ensures that each server does not
             # have more qubits than it cas handle.
-            for vertex in qubit_vertex_list[:len(qubit_list)]:
+            for vertex in qubit_vertex_list[: len(qubit_list)]:
                 vertex_server_map[vertex] = server
             # Remove the vertices which have been assigned to a server.
-            qubit_vertex_list = qubit_vertex_list[len(qubit_list):]
+            qubit_vertex_list = qubit_vertex_list[len(qubit_list) :]
 
         # A list of all the vertices in the hypergraph which correspond to
         # gate in the original circuit.
@@ -132,7 +124,7 @@ class Ordered(Allocator):
         gate_vertex_list = [
             vertex
             for vertex, vertex_info in dist_circ._vertex_circuit_map.items()
-            if vertex_info['type'] == 'gate'
+            if vertex_info["type"] == "gate"
         ]
 
         # Assign all gate vertices to the first server.

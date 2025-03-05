@@ -34,9 +34,7 @@ class Brute(Allocator):
     def __init__(self) -> None:
         pass
 
-    def allocate(
-        self, circ: Circuit, network: NISQNetwork, **kwargs
-    ) -> Distribution:
+    def allocate(self, circ: Circuit, network: NISQNetwork, **kwargs) -> Distribution:
         """Distribute quantum circuit by looking at all possible placements
         and returning the one with the lowest cost.
 
@@ -51,9 +49,7 @@ class Brute(Allocator):
 
         dist_circ = HypergraphCircuit(circ)
         if not network.can_implement(dist_circ):
-            raise Exception(
-                "This circuit cannot be implemented on this network."
-            )
+            raise Exception("This circuit cannot be implemented on this network.")
 
         # List of all vertices to be placed
         vertex_list = dist_circ.vertex_list
@@ -69,16 +65,12 @@ class Brute(Allocator):
 
         # Iterate over all placements, even those that are not valid.
         # Determin if they are valid, and add them to list if so.
-        for placement_set in itertools.product(
-            server_list, repeat=len(vertex_list)
-        ):
-
+        for placement_set in itertools.product(server_list, repeat=len(vertex_list)):
             placement_list = list(placement_set)
 
             # build placement from list of vertices and servers.
             placement_dict = {
-                vertex: server
-                for vertex, server in zip(vertex_list, placement_list)
+                vertex: server for vertex, server in zip(vertex_list, placement_list)
             }
             placement = Placement(placement_dict)
 

@@ -27,12 +27,12 @@ from pytket.qasm import circuit_from_qasm_str
 
 
 def test_qasm():
-
     network = NISQNetwork([[0, 1], [0, 2]], {0: [0], 1: [1], 2: [2]})
 
     circ = Circuit(2)
-    circ.add_gate(OpType.CU1, 1.0, [0, 1]).H(0).Rz(
-        0.3, 0).H(0).add_gate(OpType.CU1, 1.0, [0, 1])
+    circ.add_gate(OpType.CU1, 1.0, [0, 1]).H(0).Rz(0.3, 0).H(0).add_gate(
+        OpType.CU1, 1.0, [0, 1]
+    )
 
     placement = Placement({0: 1, 1: 2, 2: 0, 3: 0})
     distribution = Distribution(HypergraphCircuit(circ), placement, network)
@@ -47,7 +47,6 @@ def test_qasm():
 
 
 def test_rebase():
-
     circ = Circuit(2).CY(0, 1)
     assert not (dqc_gateset_predicate.verify(circ))
     DQCPass().apply(circ)
@@ -56,7 +55,6 @@ def test_rebase():
 
 @pytest.mark.skip(reason="Support for CX gates temporarily disabled")
 def test_CX_circuit():
-
     circ = Circuit(3).CX(0, 1).CZ(1, 2).H(1).CX(1, 0)
     assert dqc_gateset_predicate.verify(circ)
 
@@ -78,7 +76,6 @@ def test_CX_circuit():
 
 
 def test_direct_from_origin():
-
     G = nx.Graph()
     edges = [(0, 1), (1, 2), (1, 3), (0, 4), (2, 5), (2, 7), (1, 6)]
     G.add_edges_from(edges)
@@ -90,16 +87,13 @@ def test_direct_from_origin():
     assert direct_from_origin(G, 2) == from_two_ideal
 
     G_reordered = nx.Graph()
-    G_reordered.add_edges_from(
-        [(3, 1), (1, 2), (0, 4), (1, 0), (5, 2), (1, 6), (2, 7)]
-    )
+    G_reordered.add_edges_from([(3, 1), (1, 2), (0, 4), (1, 0), (5, 2), (1, 6), (2, 7)])
 
     assert direct_from_origin(G_reordered, 1) == from_one_ideal
     assert direct_from_origin(G_reordered, 2) == from_two_ideal
 
 
 def test_symbolic_circuit():
-
     a = Symbol("alpha")
     circ = Circuit(1)
     circ.Rx(a, 0)
@@ -124,10 +118,7 @@ def test_ebit_memory_required():
 
 
 def test_detached_gate_count():
-
-    with open(
-        "tests/test_circuits/chemistry_aware_post_vertex_cover.json", 'r'
-    ) as fp:
+    with open("tests/test_circuits/chemistry_aware_post_vertex_cover.json", "r") as fp:
         distribution = Distribution.from_dict(json.load(fp))
 
     assert distribution.detached_gate_count() == 0
@@ -240,7 +231,6 @@ def test_verification_rebase_random():
     pauli_list = [Pauli.X, Pauli.Y, Pauli.X, Pauli.I]
 
     for _ in range(depth):
-
         # Randomly reorder the qubits on which the gate will act, generate
         # random angle, and choose random Pauli string.
         subset = np.random.permutation(qubit_list)
@@ -262,7 +252,6 @@ def test_verification_rebase_random():
 
 
 def test_tk2_to_cu1():
-
     np.random.seed(42)
     a = round(np.random.uniform(-2, 2), 2)
     b = round(np.random.uniform(-2, 2), 2)
@@ -279,7 +268,6 @@ def test_tk2_to_cu1():
 
 
 def test_tk1_to_euler():
-
     np.random.seed(42)
     a = round(np.random.uniform(-2, 2), 2)
     rnd_b = round(np.random.uniform(-2, 2), 2)
@@ -299,7 +287,6 @@ def test_tk1_to_euler():
 
 
 def test_verify_non_equal():
-
     h_circ = Circuit(1).H(0)
     s_circ = Circuit(1).S(0)
     assert not check_equivalence(h_circ, s_circ, {q: q for q in h_circ.qubits})
@@ -309,9 +296,7 @@ def test_verify_non_equal():
     # Check inequivalence of unitaries explicitly
     assert not np.allclose(ab_circ.get_unitary(), ba_circ.get_unitary())
     # Check inequivalence via PyZX
-    assert not check_equivalence(
-        ab_circ, ba_circ, {q: q for q in ab_circ.qubits}
-    )
+    assert not check_equivalence(ab_circ, ba_circ, {q: q for q in ab_circ.qubits})
 
 
 def test_to_euler_with_two_hadamards():

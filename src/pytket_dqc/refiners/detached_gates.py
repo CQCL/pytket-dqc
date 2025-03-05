@@ -47,7 +47,5 @@ class DetachedGates(Refiner):
         )
 
         return BoundaryReallocation().refine(
-            distribution,
-            fixed_vertices=fixed_vertices,
-            **kwargs
+            distribution, fixed_vertices=fixed_vertices, **kwargs
         )

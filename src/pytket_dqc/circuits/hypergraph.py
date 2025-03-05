@@ -40,14 +40,13 @@ class Hyperedge(NamedTuple):
         :rtype: dict[str, Union[list[Vertex], int]]
         """
         return {
-            'vertices': self.vertices,
-            'weight': self.weight,
+            "vertices": self.vertices,
+            "weight": self.weight,
         }
 
     @classmethod
     def from_dict(
-        cls,
-        hyperedge_dict: dict[str, Union[list[Vertex], int]]
+        cls, hyperedge_dict: dict[str, Union[list[Vertex], int]]
     ) -> Hyperedge:
         """Construct ``Hyperedge`` instance from JSON serialisable
         dictionary representation of the Hyperedge.
@@ -59,8 +58,8 @@ class Hyperedge(NamedTuple):
         :rtype: Hyperedge
         """
         return cls(
-            vertices=cast(list[Vertex], hyperedge_dict['vertices']),
-            weight=cast(int, hyperedge_dict['weight']),
+            vertices=cast(list[Vertex], hyperedge_dict["vertices"]),
+            weight=cast(int, hyperedge_dict["weight"]),
         )
 
 
@@ -82,8 +81,7 @@ class Hypergraph:
     """
 
     def __init__(self) -> None:
-        """Initialisation function. The hypergraph initialises as empty.
-        """
+        """Initialisation function. The hypergraph initialises as empty."""
         self.vertex_list: list[Vertex] = []
         self.hyperedge_list: list[Hyperedge] = []
         self.hyperedge_dict: dict[Vertex, list[Hyperedge]] = dict()
@@ -98,10 +96,10 @@ class Hypergraph:
         """Check equality based on equality of components"""
         if isinstance(other, Hypergraph):
             return (
-                self.vertex_list == other.vertex_list and
-                self.hyperedge_list == other.hyperedge_list and
-                self.hyperedge_dict == other.hyperedge_dict and
-                self.vertex_neighbours == other.vertex_neighbours
+                self.vertex_list == other.vertex_list
+                and self.hyperedge_list == other.hyperedge_list
+                and self.hyperedge_dict == other.hyperedge_dict
+                and self.vertex_neighbours == other.vertex_neighbours
             )
         return False
 
@@ -114,8 +112,8 @@ class Hypergraph:
         :rtype: dict[str, Union[list[Vertex], list[dict]]]
         """
         return {
-            'vertex_list': self.vertex_list,
-            'hyperedge_list': [
+            "vertex_list": self.vertex_list,
+            "hyperedge_list": [
                 hyperedge.to_dict() for hyperedge in self.hyperedge_list
             ],
         }
@@ -137,12 +135,10 @@ class Hypergraph:
 
         hypergraph = Hypergraph()
 
-        vertex_list = hypergraph_dict['vertex_list']
+        vertex_list = hypergraph_dict["vertex_list"]
         hyperedge_list = [
-            Hyperedge.from_dict(
-                cast(dict[str, Union[list[Vertex], int]], hyperedge)
-            )
-            for hyperedge in hypergraph_dict['hyperedge_list']
+            Hyperedge.from_dict(cast(dict[str, Union[list[Vertex], int]], hyperedge))
+            for hyperedge in hypergraph_dict["hyperedge_list"]
         ]
 
         hypergraph.add_vertices(cast(list[Vertex], vertex_list))
@@ -154,10 +150,7 @@ class Hypergraph:
 
         return hypergraph
 
-    def merge_hyperedge(
-        self,
-        to_merge_hyperedge_list: list[Hyperedge]
-    ) -> Hyperedge:
+    def merge_hyperedge(self, to_merge_hyperedge_list: list[Hyperedge]) -> Hyperedge:
         """Merge vertices of each of the hyperedges in to_merge_hyperedge_list
         into a single hyperedge. The new hyperedge will appear in
         `hyperedge_list` at the lowest index of the hyperedges in
@@ -177,8 +170,8 @@ class Hypergraph:
             for to_merge_hyperedge in to_merge_hyperedge_list
         ):
             raise Exception(
-                "At least one hyperedge in to_merge_hyperedge_list " +
-                "does not belong to this hypergraph."
+                "At least one hyperedge in to_merge_hyperedge_list "
+                + "does not belong to this hypergraph."
             )
 
         if not all(
@@ -197,7 +190,8 @@ class Hypergraph:
         for to_merge_hyperedge in to_merge_hyperedge_list:
             vertices.extend(
                 [
-                    vertex for vertex in to_merge_hyperedge.vertices
+                    vertex
+                    for vertex in to_merge_hyperedge.vertices
                     if vertex not in vertices
                 ]
             )
@@ -220,7 +214,7 @@ class Hypergraph:
             vertices=new_hyperedge.vertices,
             weight=new_hyperedge.weight,
             hyperedge_list_index=hyperedge_list_index,
-            hyperedge_dict_index=hyperedge_dict_index
+            hyperedge_dict_index=hyperedge_dict_index,
         )
 
         hyperedge_list_index_list = []
@@ -244,17 +238,17 @@ class Hypergraph:
                 for (
                     removed_hyperedge,
                     hyperedge_list_index,
-                    hyperedge_dict_index
+                    hyperedge_dict_index,
                 ) in zip(
                     reversed(to_merge_hyperedge_list[:i]),
                     reversed(hyperedge_list_index_list),
-                    reversed(hyperedge_dict_index_list)
+                    reversed(hyperedge_dict_index_list),
                 ):
                     self.add_hyperedge(
                         vertices=removed_hyperedge.vertices,
                         weight=removed_hyperedge.weight,
                         hyperedge_list_index=hyperedge_list_index,
-                        hyperedge_dict_index=hyperedge_dict_index
+                        hyperedge_dict_index=hyperedge_dict_index,
                     )
                 self.remove_hyperedge(new_hyperedge)
                 raise
@@ -262,9 +256,7 @@ class Hypergraph:
         return new_hyperedge
 
     def split_hyperedge(
-        self,
-        old_hyperedge: Hyperedge,
-        new_hyperedge_list: list[Hyperedge]
+        self, old_hyperedge: Hyperedge, new_hyperedge_list: list[Hyperedge]
     ):
         """Split `old_hyperedge` into the hyperedges in `new_hyperedge_list`.
         The new hyperedges will appear in `hyperedge_list` at the
@@ -281,13 +273,14 @@ class Hypergraph:
         """
 
         flat_vertex_list = [
-            vertex for hypergraph in new_hyperedge_list
+            vertex
+            for hypergraph in new_hyperedge_list
             for vertex in hypergraph.vertices
         ]
         if not (set(flat_vertex_list) == set(old_hyperedge.vertices)):
             raise Exception(
-                f"{new_hyperedge_list} does not " +
-                f"match the vertices in {old_hyperedge}"
+                f"{new_hyperedge_list} does not "
+                + f"match the vertices in {old_hyperedge}"
             )
 
         hyperedge_list_index = self.hyperedge_list.index(old_hyperedge)
@@ -320,9 +313,7 @@ class Hypergraph:
         """
 
         if old_hyperedge not in self.hyperedge_list:
-            raise KeyError(
-                f"The hyperedge {old_hyperedge} is not in this hypergraph."
-            )
+            raise KeyError(f"The hyperedge {old_hyperedge} is not in this hypergraph.")
 
         self.hyperedge_list.remove(old_hyperedge)
         # For every vertex in the hyperedge being removed, update
@@ -381,9 +372,7 @@ class Hypergraph:
         """
 
         # The following assert is guaranteed by construction
-        assert sorted(self.vertex_list) == sorted(
-            list(self.vertex_neighbours.keys())
-        )
+        assert sorted(self.vertex_list) == sorted(list(self.vertex_neighbours.keys()))
 
         vertex_list_sorted = self.vertex_list.copy()
         vertex_list_sorted.sort()
@@ -398,8 +387,7 @@ class Hypergraph:
         return unique_vertex_list_sorted == ideal_vertex_list
 
     def draw(self):
-        """Draw hypergraph, using hypernetx package.
-        """
+        """Draw hypergraph, using hypernetx package."""
         scenes = {}
         for i, edge in enumerate(self.hyperedge_list):
             scenes[str(i)] = set(edge.vertices)
@@ -431,7 +419,7 @@ class Hypergraph:
         vertices: list[Vertex],
         weight: int = 1,
         hyperedge_list_index: Optional[int] = None,
-        hyperedge_dict_index: Optional[list[int]] = None
+        hyperedge_dict_index: Optional[list[int]] = None,
     ):
         """Add hyperedge to hypergraph. Update vertex_neighbours.
 
@@ -469,8 +457,7 @@ class Hypergraph:
                 self.hyperedge_dict[vertex].append(hyperedge)
             else:
                 self.hyperedge_dict[vertex].insert(
-                    hyperedge_dict_index[vertex_index],
-                    hyperedge
+                    hyperedge_dict_index[vertex_index], hyperedge
                 )
 
             # Add in all vertices of the hyperedge to the neighbourhood. Since
@@ -496,9 +483,7 @@ class Hypergraph:
 
         # List all hyper edges as continuous list of vertices.
         hyperedges = [
-            vertex
-            for hyperedge in self.hyperedge_list
-            for vertex in hyperedge.vertices
+            vertex for hyperedge in self.hyperedge_list for vertex in hyperedge.vertices
         ]
 
         # Create list of intervals of hyperedges list which correspond to
@@ -509,9 +494,7 @@ class Hypergraph:
 
         hyperedge_indices = [0]
         for hyperedge in self.hyperedge_list:
-            hyperedge_indices.append(
-                len(hyperedge.vertices) + hyperedge_indices[-1]
-            )
+            hyperedge_indices.append(len(hyperedge.vertices) + hyperedge_indices[-1])
 
         return hyperedge_indices, hyperedges
 

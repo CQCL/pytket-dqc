@@ -60,7 +60,6 @@ def direct_from_origin(G: nx.Graph, origin: int) -> List[Tuple[int, int]]:
     # are added to the circuit in the order in which the server indices
     # increase.
     for n in sorted(G.neighbors(origin)):
-
         # Retrieve the connected component to which the neighbour belongs.
         c = nx.node_connected_component(G_reduced, n)
         # Continue exploring the graph if a leaf node is not reached.

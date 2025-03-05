@@ -9,7 +9,6 @@ from pytket import Circuit, OpType
 
 
 def test_distribution_valid():
-
     large_network = NISQNetwork(
         [[0, 1], [0, 2], [1, 2]], {0: [0, 1, 2], 1: [3, 4, 5], 2: [6, 7, 8, 9]}
     )
@@ -36,39 +35,20 @@ def test_distribution_valid():
     placement_eight = Placement({0: 1, 1: 0, 2: 1})
     placement_nine = Placement({0: 2, 1: 2, 2: 2})
 
-    assert not Distribution(
-        dist_med_circ, placement_one, large_network
-    ).is_valid()
+    assert not Distribution(dist_med_circ, placement_one, large_network).is_valid()
     assert Distribution(dist_med_circ, placement_two, large_network).is_valid()
-    assert Distribution(
-        dist_med_circ, placement_three, large_network
-    ).is_valid()
-    assert Distribution(
-        dist_med_circ, placement_four, large_network
-    ).is_valid()
-    assert not Distribution(
-        dist_med_circ, placement_five, large_network
-    ).is_valid()
-    assert not Distribution(
-        dist_med_circ, placement_six, large_network
-    ).is_valid()
-    assert not Distribution(
-        dist_small_circ, placement_seven, small_network
-    ).is_valid()
-    assert Distribution(
-        dist_small_circ, placement_eight, small_network
-    ).is_valid()
-    assert not Distribution(
-        dist_small_circ, placement_nine, small_network
-    ).is_valid()
+    assert Distribution(dist_med_circ, placement_three, large_network).is_valid()
+    assert Distribution(dist_med_circ, placement_four, large_network).is_valid()
+    assert not Distribution(dist_med_circ, placement_five, large_network).is_valid()
+    assert not Distribution(dist_med_circ, placement_six, large_network).is_valid()
+    assert not Distribution(dist_small_circ, placement_seven, small_network).is_valid()
+    assert Distribution(dist_small_circ, placement_eight, small_network).is_valid()
+    assert not Distribution(dist_small_circ, placement_nine, small_network).is_valid()
 
 
 def test_distribution_cost_no_embedding():
-
     two_CZ_circ = (
-        Circuit(3)
-        .add_gate(OpType.CU1, 1.0, [0, 1])
-        .add_gate(OpType.CU1, 1.0, [0, 2])
+        Circuit(3).add_gate(OpType.CU1, 1.0, [0, 1]).add_gate(OpType.CU1, 1.0, [0, 2])
     )
     dist_two_CZ_circ = HypergraphCircuit(two_CZ_circ)
 
@@ -78,30 +58,16 @@ def test_distribution_cost_no_embedding():
     )
 
     placement_one = Placement({0: 0, 1: 1, 2: 2, 3: 1, 4: 2})
-    assert (
-        Distribution(
-            dist_two_CZ_circ, placement_one, three_line_network
-        ).cost()
-        == 2
-    )
+    assert Distribution(dist_two_CZ_circ, placement_one, three_line_network).cost() == 2
     placement_two = Placement({0: 0, 1: 1, 2: 2, 3: 1, 4: 0})
-    assert (
-        Distribution(
-            dist_two_CZ_circ, placement_two, three_line_network
-        ).cost()
-        == 3
-    )
+    assert Distribution(dist_two_CZ_circ, placement_two, three_line_network).cost() == 3
     placement_three = Placement({0: 1, 1: 0, 2: 2, 3: 0, 4: 2})
     assert (
-        Distribution(
-            dist_two_CZ_circ, placement_three, three_line_network
-        ).cost()
-        == 2
+        Distribution(dist_two_CZ_circ, placement_three, three_line_network).cost() == 2
     )
 
 
 def test_alap():
-
     circ = Circuit(4)
     circ.add_gate(OpType.CU1, 0.1234, [1, 2])
     circ.add_gate(OpType.CU1, 0.1234, [0, 2])
@@ -176,11 +142,12 @@ def test_alap_on_hyperedge_requiring_euler():
     circ.H(0)
     circ.add_gate(OpType.CU1, [0.8], [0, 2])
 
-    network = NISQNetwork([[0, 1]], {0: [0], 1: [1, 2, 3, 4]},)
-
-    placement = Placement(
-        {0: 0, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1}
+    network = NISQNetwork(
+        [[0, 1]],
+        {0: [0], 1: [1, 2, 3, 4]},
     )
+
+    placement = Placement({0: 0, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1})
 
     distribution = Distribution(HypergraphCircuit(circ), placement, network)
     assert distribution.is_valid()
@@ -192,7 +159,6 @@ def test_alap_on_hyperedge_requiring_euler():
 
 
 def test_alap_on_hyperedge_mixing_H_and_D_embeddings():
-
     circ = Circuit(4)
     circ.add_gate(OpType.CU1, 0.1234, [0, 1])  # Gate 4
     circ.H(1)
@@ -204,9 +170,7 @@ def test_alap_on_hyperedge_mixing_H_and_D_embeddings():
 
     network = NISQNetwork([[0, 1], [1, 2]], {0: [0], 1: [1], 2: [2, 3]})
 
-    placement = Placement(
-        {0: 0, 1: 1, 2: 2, 3: 2, 4: 0, 5: 1, 6: 1, 7: 1, 8: 2}
-    )
+    placement = Placement({0: 0, 1: 1, 2: 2, 3: 2, 4: 0, 5: 1, 6: 1, 7: 1, 8: 2})
 
     distribution = Distribution(HypergraphCircuit(circ), placement, network)
     assert distribution.is_valid()
@@ -300,7 +264,6 @@ def test_distribution_cost_with_embedding():
 
 
 def test_detached_gate_list():
-
     circ = Circuit(3).CZ(0, 1).CZ(0, 2)
     DQCPass().apply(circ)
 

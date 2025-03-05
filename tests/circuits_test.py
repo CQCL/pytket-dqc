@@ -23,7 +23,7 @@ from pytket_dqc.utils import (
     check_equivalence,
     DQCPass,
     ConstraintException,
-    ebit_memory_required
+    ebit_memory_required,
 )
 from pytket_dqc.networks import NISQNetwork, ScaleFreeNISQNetwork
 from pytket.circuit import QControlBox, Op, OpType
@@ -34,7 +34,6 @@ from pytket.passes import DecomposeBoxes
 
 
 def test_embedding_and_not_embedding():
-
     network = NISQNetwork(
         server_coupling=[[0, 1], [1, 2], [1, 3]],
         server_qubits={0: [0], 1: [1], 2: [2], 3: [3]},
@@ -76,23 +75,16 @@ def test_embedding_and_not_embedding():
     hyp_circ.add_hyperedge([2, 6])
     hyp_circ.add_hyperedge([3, 6, 8])
 
-    placement = Placement(
-        {0: 0, 1: 1, 2: 2, 3: 3, 4: 2, 5: 1, 6: 2, 7: 2, 8: 1, 9: 0}
-    )
+    placement = Placement({0: 0, 1: 1, 2: 2, 3: 3, 4: 2, 5: 1, 6: 2, 7: 2, 8: 1, 9: 0})
 
-    distribution = Distribution(
-        circuit=hyp_circ, placement=placement, network=network
-    )
+    distribution = Distribution(circuit=hyp_circ, placement=placement, network=network)
 
     pytket_circ = distribution.to_pytket_circuit()
 
-    assert check_equivalence(
-        circ, pytket_circ, distribution.get_qubit_mapping()
-    )
+    assert check_equivalence(circ, pytket_circ, distribution.get_qubit_mapping())
 
 
 def test_failing_circuit_hyperedge_split_and_merge():
-
     circ = Circuit(3)
     circ.add_gate(OpType.CU1, 1.0, [0, 1])
     circ.H(0)
@@ -190,15 +182,12 @@ def test_failing_circuit_hyperedge_split_and_merge():
 
 
 def test_hypergraph_split_hyperedge():
-
     hypergraph = Hypergraph()
     hypergraph.add_vertices([Vertex(0), Vertex(1), Vertex(2)])
     hypergraph.add_hyperedge([0, 1, 2])
     hypergraph.add_hyperedge([0, 1])
 
-    old_hyperedge_one = Hyperedge(
-        vertices=[Vertex(0), Vertex(1), Vertex(2)], weight=1
-    )
+    old_hyperedge_one = Hyperedge(vertices=[Vertex(0), Vertex(1), Vertex(2)], weight=1)
     old_hyperedge_two = Hyperedge(vertices=[Vertex(0), Vertex(1)], weight=1)
     new_hyperedge_one = Hyperedge(vertices=[Vertex(0), Vertex(2)], weight=1)
     new_hyperedge_two = Hyperedge(vertices=[Vertex(1), Vertex(2)], weight=1)
@@ -239,19 +228,14 @@ def test_hypergraph_split_hyperedge():
 
 
 def test_hypergraph_merge_hyperedge():
-
     hypergraph = Hypergraph()
     hypergraph.add_vertices([Vertex(0), Vertex(1), Vertex(2)])
     hypergraph.add_hyperedge([0, 1])
     hypergraph.add_hyperedge([1, 2])
     hypergraph.add_hyperedge([2, 0])
 
-    to_merge_hyperedge_one = Hyperedge(
-        vertices=[Vertex(1), Vertex(2)], weight=1
-    )
-    to_merge_hyperedge_two = Hyperedge(
-        vertices=[Vertex(2), Vertex(0)], weight=1
-    )
+    to_merge_hyperedge_one = Hyperedge(vertices=[Vertex(1), Vertex(2)], weight=1)
+    to_merge_hyperedge_two = Hyperedge(vertices=[Vertex(2), Vertex(0)], weight=1)
     merged_hyperedge_one = Hyperedge(vertices=[Vertex(0), Vertex(1)], weight=1)
     merged_hyperedge_two = Hyperedge(
         vertices=[Vertex(0), Vertex(1), Vertex(2)], weight=1
@@ -325,7 +309,6 @@ def test_hypergraph_merge_hyperedge():
 
 
 def test_hypergraph_is_valid():
-
     hypgraph = Hypergraph()
     hypgraph.add_vertices([1, 2, 3])
     assert not hypgraph.is_valid()
@@ -335,7 +318,6 @@ def test_hypergraph_is_valid():
 
 # TODO: Include vertex type information in this test
 def test_distributed_circuit():
-
     circ = Circuit(2).add_gate(OpType.CU1, 1.0, [0, 1])
     dist_circ = HypergraphCircuit(circ)
 
@@ -348,7 +330,6 @@ def test_distributed_circuit():
 
 
 def test_regular_graph_distributed_circuit():
-
     circ = RegularGraphHypergraphCircuit(3, 2, 1, seed=0).get_circuit()
     network = NISQNetwork([[0, 1], [0, 2]], {0: [0, 1], 1: [2, 3, 4], 2: [5]})
     allocator = Brute()
@@ -356,13 +337,10 @@ def test_regular_graph_distributed_circuit():
     cost = distribution.cost()
 
     assert cost == 0
-    assert distribution.placement == Placement(
-        {0: 1, 3: 1, 4: 1, 1: 1, 5: 1, 2: 1}
-    )
+    assert distribution.placement == Placement({0: 1, 3: 1, 4: 1, 1: 1, 5: 1, 2: 1})
 
 
 def test_hypergraph():
-
     hypgra = Hypergraph()
     hypgra.add_vertex(0)
     hypgra.add_vertex(1)
@@ -377,7 +355,6 @@ def test_hypergraph():
 
 
 def test_hypergraph_is_placement():
-
     small_circ = Circuit(2).add_gate(OpType.CU1, 1.0, [0, 1])
     dist_small_circ = HypergraphCircuit(small_circ)
 
@@ -399,7 +376,6 @@ def test_hypergraph_is_placement():
 
 
 def test_hypergrpah_kahypar_hyperedges():
-
     hypgraph = Hypergraph()
 
     hypgraph.add_vertices([i + 1 for i in range(6)])
@@ -462,7 +438,6 @@ def test_CRz_circuit():
 
 @pytest.mark.skip(reason="QControlBox are not supported for now")
 def test_q_control_box_circuits():
-
     op = Op.create(OpType.V)
     cv = QControlBox(op, 1)
 
@@ -519,7 +494,6 @@ def test_q_control_box_circuits():
 
 
 def test_to_pytket_circuit_CRz():
-
     network = NISQNetwork([[0, 1], [1, 2], [0, 2]], {0: [0], 1: [1], 2: [2]})
 
     circ = (
@@ -544,18 +518,12 @@ def test_to_pytket_circuit_CRz():
 
     server_0_link = test_circ.add_q_register("server_0_link_register", 2)
 
-    test_circ.add_custom_gate(
-        start_proc(), [], [server_1[0], server_0_link[0]]
-    )
-    test_circ.add_custom_gate(
-        start_proc(), [], [server_2[0], server_0_link[1]]
-    )
+    test_circ.add_custom_gate(start_proc(), [], [server_1[0], server_0_link[0]])
+    test_circ.add_custom_gate(start_proc(), [], [server_2[0], server_0_link[1]])
     test_circ.add_gate(OpType.CU1, 0.3, [server_0_link[1], server_0_link[0]])
     test_circ.add_custom_gate(end_proc(), [], [server_0_link[0], server_1[0]])
     test_circ.H(server_1[0])
-    test_circ.add_custom_gate(
-        start_proc(), [], [server_1[0], server_0_link[0]]
-    )
+    test_circ.add_custom_gate(start_proc(), [], [server_1[0], server_0_link[0]])
     test_circ.add_gate(OpType.CU1, 1.0, [server_0_link[1], server_0_link[0]])
     test_circ.add_gate(OpType.CU1, 0.3, [server_0_link[1], server_0_link[0]])
     test_circ.add_custom_gate(end_proc(), [], [server_0_link[0], server_1[0]])
@@ -570,18 +538,14 @@ def test_to_pytket_circuit_CRz():
 
     assert test_circ_command_names == circ_with_dist_command_names
 
-    test_circ_command_qubits = [
-        command.qubits for command in test_circ.get_commands()
-    ]
+    test_circ_command_qubits = [command.qubits for command in test_circ.get_commands()]
     circ_with_dist_command_qubits = [
         command.qubits for command in circ_with_dist.get_commands()
     ]
 
     assert test_circ_command_qubits == circ_with_dist_command_qubits
 
-    assert check_equivalence(
-        circ, circ_with_dist, distribution.get_qubit_mapping()
-    )
+    assert check_equivalence(circ, circ_with_dist, distribution.get_qubit_mapping())
 
 
 def test_to_pytket_circuit_detached_gate():
@@ -611,22 +575,14 @@ def test_to_pytket_circuit_detached_gate():
     server_0_link = test_circ.add_q_register("server_0_link_register", 2)
     server_1_link = test_circ.add_q_register("server_1_link_register", 1)
 
-    test_circ.add_custom_gate(
-        start_proc(), [], [server_1[0], server_0_link[0]]
-    )
-    test_circ.add_custom_gate(
-        start_proc(), [], [server_2[0], server_1_link[0]]
-    )
-    test_circ.add_custom_gate(
-        start_proc(), [], [server_1_link[0], server_0_link[1]]
-    )
+    test_circ.add_custom_gate(start_proc(), [], [server_1[0], server_0_link[0]])
+    test_circ.add_custom_gate(start_proc(), [], [server_2[0], server_1_link[0]])
+    test_circ.add_custom_gate(start_proc(), [], [server_1_link[0], server_0_link[1]])
     test_circ.add_gate(OpType.CU1, 1.0, [server_0_link[1], server_0_link[0]])
     test_circ.add_custom_gate(end_proc(), [], [server_0_link[0], server_1[0]])
     test_circ.add_custom_gate(end_proc(), [], [server_1_link[0], server_2[0]])
     test_circ.H(server_1[0])
-    test_circ.add_custom_gate(
-        start_proc(), [], [server_1[0], server_0_link[0]]
-    )
+    test_circ.add_custom_gate(start_proc(), [], [server_1[0], server_0_link[0]])
     test_circ.add_gate(OpType.CU1, 1.0, [server_0_link[1], server_0_link[0]])
     test_circ.add_custom_gate(end_proc(), [], [server_0_link[0], server_1[0]])
     test_circ.add_custom_gate(end_proc(), [], [server_0_link[1], server_2[0]])
@@ -645,9 +601,7 @@ def test_to_pytket_circuit_detached_gate():
 
     assert test_circ_command_names == circ_with_dist_command_names
 
-    test_circ_command_qubits = [
-        command.qubits for command in test_circ.get_commands()
-    ]
+    test_circ_command_qubits = [command.qubits for command in test_circ.get_commands()]
     circ_with_dist_command_qubits = [
         command.qubits for command in circ_with_dist.get_commands()
     ]
@@ -656,13 +610,10 @@ def test_to_pytket_circuit_detached_gate():
 
     assert test_circ.q_registers == circ_with_dist.q_registers
 
-    assert check_equivalence(
-        circ, circ_with_dist, distribution.get_qubit_mapping()
-    )
+    assert check_equivalence(circ, circ_with_dist, distribution.get_qubit_mapping())
 
 
 def test_to_pytket_circuit_gates_on_different_servers():
-
     network = NISQNetwork([[0, 1], [1, 2]], {0: [0], 1: [1], 2: [2]})
 
     circ = (
@@ -687,22 +638,14 @@ def test_to_pytket_circuit_gates_on_different_servers():
     server_0_link = test_circ.add_q_register("server_0_link_register", 2)
     server_1_link = test_circ.add_q_register("server_1_link_register", 1)
 
-    test_circ.add_custom_gate(
-        start_proc(), [], [server_1[0], server_0_link[0]]
-    )
-    test_circ.add_custom_gate(
-        start_proc(), [], [server_2[0], server_1_link[0]]
-    )
-    test_circ.add_custom_gate(
-        start_proc(), [], [server_1_link[0], server_0_link[1]]
-    )
+    test_circ.add_custom_gate(start_proc(), [], [server_1[0], server_0_link[0]])
+    test_circ.add_custom_gate(start_proc(), [], [server_2[0], server_1_link[0]])
+    test_circ.add_custom_gate(start_proc(), [], [server_1_link[0], server_0_link[1]])
     test_circ.add_gate(OpType.CU1, 1.0, [server_0_link[1], server_0_link[0]])
     test_circ.add_custom_gate(end_proc(), [], [server_1_link[0], server_2[0]])
     test_circ.add_custom_gate(end_proc(), [], [server_0_link[1], server_2[0]])
     test_circ.H(server_2[0])
-    test_circ.add_custom_gate(
-        start_proc(), [], [server_2[0], server_1_link[0]]
-    )
+    test_circ.add_custom_gate(start_proc(), [], [server_2[0], server_1_link[0]])
     test_circ.add_gate(OpType.CU1, 1.0, [server_1_link[0], server_1[0]])
     test_circ.add_custom_gate(end_proc(), [], [server_0_link[0], server_1[0]])
     test_circ.add_custom_gate(end_proc(), [], [server_1_link[0], server_2[0]])
@@ -716,9 +659,7 @@ def test_to_pytket_circuit_gates_on_different_servers():
 
     assert test_circ_command_names == circ_with_dist_command_names
 
-    test_circ_command_qubits = [
-        command.qubits for command in test_circ.get_commands()
-    ]
+    test_circ_command_qubits = [command.qubits for command in test_circ.get_commands()]
     circ_with_dist_command_qubits = [
         command.qubits for command in circ_with_dist.get_commands()
     ]
@@ -727,22 +668,17 @@ def test_to_pytket_circuit_gates_on_different_servers():
 
     assert test_circ.q_registers == circ_with_dist.q_registers
 
-    assert check_equivalence(
-        circ, circ_with_dist, distribution.get_qubit_mapping()
-    )
+    assert check_equivalence(circ, circ_with_dist, distribution.get_qubit_mapping())
 
 
 def test_to_pytket_circuit_with_branching_distribution_tree():
-
     network = NISQNetwork(
         [[2, 1], [1, 0], [1, 3], [0, 4]],
         {0: [0], 1: [1], 2: [2], 3: [3], 4: [4]},
     )
 
     circ = (
-        Circuit(3)
-        .add_gate(OpType.CU1, 1.0, [0, 1])
-        .add_gate(OpType.CU1, 1.0, [0, 2])
+        Circuit(3).add_gate(OpType.CU1, 1.0, [0, 1]).add_gate(OpType.CU1, 1.0, [0, 2])
     )
     dist_circ = HypergraphCircuit(circ)
 
@@ -762,15 +698,9 @@ def test_to_pytket_circuit_with_branching_distribution_tree():
     server_2_link = test_circ.add_q_register("server_2_link_register", 1)
     server_3_link = test_circ.add_q_register("server_3_link_register", 1)
 
-    test_circ.add_custom_gate(
-        start_proc(), [], [server_0[0], server_1_link[0]]
-    )
-    test_circ.add_custom_gate(
-        start_proc(), [], [server_1_link[0], server_2_link[0]]
-    )
-    test_circ.add_custom_gate(
-        start_proc(), [], [server_1_link[0], server_3_link[0]]
-    )
+    test_circ.add_custom_gate(start_proc(), [], [server_0[0], server_1_link[0]])
+    test_circ.add_custom_gate(start_proc(), [], [server_1_link[0], server_2_link[0]])
+    test_circ.add_custom_gate(start_proc(), [], [server_1_link[0], server_3_link[0]])
     test_circ.add_gate(OpType.CU1, 1.0, [server_2[0], server_2_link[0]])
     test_circ.add_custom_gate(end_proc(), [], [server_1_link[0], server_0[0]])
     test_circ.add_gate(OpType.CU1, 1.0, [server_3[0], server_3_link[0]])
@@ -786,9 +716,7 @@ def test_to_pytket_circuit_with_branching_distribution_tree():
 
     assert test_circ_command_names == circ_with_dist_command_names
 
-    test_circ_command_qubits = [
-        command.qubits for command in test_circ.get_commands()
-    ]
+    test_circ_command_qubits = [command.qubits for command in test_circ.get_commands()]
     circ_with_dist_command_qubits = [
         command.qubits for command in circ_with_dist.get_commands()
     ]
@@ -797,9 +725,7 @@ def test_to_pytket_circuit_with_branching_distribution_tree():
 
     assert test_circ.q_registers == circ_with_dist.q_registers
 
-    assert check_equivalence(
-        circ, circ_with_dist, distribution.get_qubit_mapping()
-    )
+    assert check_equivalence(circ, circ_with_dist, distribution.get_qubit_mapping())
 
 
 def test_to_pytket_circuit_from_placed_circuit():
@@ -807,9 +733,7 @@ def test_to_pytket_circuit_from_placed_circuit():
     allocator = Random()
 
     for i in range(6):
-        with open(
-            f"tests/test_circuits/packing/networks/network{i}.pickle", "rb"
-        ) as f:
+        with open(f"tests/test_circuits/packing/networks/network{i}.pickle", "rb") as f:
             network_tuple = pickle.load(f)
         with open(
             "tests/test_circuits/packing/"
@@ -828,11 +752,10 @@ def test_to_pytket_circuit_from_placed_circuit():
 
 
 def test_to_pytket_constrained_mem_simple():
-
     network = NISQNetwork(
         server_coupling=[[0, 1], [0, 2]],
         server_qubits={0: [0], 1: [1], 2: [2]},
-        server_ebit_mem={0: 1, 1: 1, 2: 1}
+        server_ebit_mem={0: 1, 1: 1, 2: 1},
     )
 
     circ = (
@@ -856,13 +779,10 @@ def test_to_pytket_constrained_mem_simple():
 
     circ_with_dist = distribution.to_pytket_circuit(allow_update=True)
 
-    assert check_equivalence(
-        circ, circ_with_dist, distribution.get_qubit_mapping()
-    )
+    assert check_equivalence(circ, circ_with_dist, distribution.get_qubit_mapping())
 
 
 def test_to_pytket_circuit_with_embedding_1q():
-
     network = NISQNetwork(
         [[2, 1], [1, 0], [1, 3], [0, 4]],
         {0: [0], 1: [1], 2: [2], 3: [3], 4: [4, 5]},
@@ -890,13 +810,10 @@ def test_to_pytket_circuit_with_embedding_1q():
 
     circ_with_dist = distribution.to_pytket_circuit()
 
-    assert check_equivalence(
-        circ, circ_with_dist, distribution.get_qubit_mapping()
-    )
+    assert check_equivalence(circ, circ_with_dist, distribution.get_qubit_mapping())
 
 
 def test_to_pytket_circuit_with_embedding_2q():
-
     network = NISQNetwork(
         [[2, 1], [1, 0], [1, 3], [0, 4]],
         {0: [0], 1: [1], 2: [2], 3: [3], 4: [4, 5, 6]},
@@ -926,15 +843,13 @@ def test_to_pytket_circuit_with_embedding_2q():
 
     circ_with_dist = distribution.to_pytket_circuit()
 
-    assert check_equivalence(
-        circ, circ_with_dist, distribution.get_qubit_mapping()
-    )
+    assert check_equivalence(circ, circ_with_dist, distribution.get_qubit_mapping())
 
     # Try bounding the communication memory
     network = NISQNetwork(
         [[2, 1], [1, 0], [1, 3], [0, 4]],
         {0: [0], 1: [1], 2: [2], 3: [3], 4: [4, 5, 6]},
-        server_ebit_mem={0: 1, 1: 1, 2: 1, 3: 2, 4: 1}
+        server_ebit_mem={0: 1, 1: 1, 2: 1, 3: 2, 4: 1},
     )
     distribution = Distribution(hyp_circ, placement, network)
     assert distribution.is_valid()
@@ -951,7 +866,6 @@ def test_to_pytket_circuit_with_embedding_2q():
 
 
 def test_to_pytket_circuit_circ_with_embeddings_1():
-
     network = NISQNetwork(
         [[0, 1], [0, 2], [0, 3], [3, 4]],
         {0: [0], 1: [1, 2], 2: [3, 4], 3: [7], 4: [5, 6]},
@@ -1008,15 +922,13 @@ def test_to_pytket_circuit_circ_with_embeddings_1():
 
     circ_with_dist = distribution.to_pytket_circuit()
 
-    assert check_equivalence(
-        circ, circ_with_dist, distribution.get_qubit_mapping()
-    )
+    assert check_equivalence(circ, circ_with_dist, distribution.get_qubit_mapping())
 
     # Try bounding the communication memory
     network = NISQNetwork(
         [[0, 1], [0, 2], [0, 3], [3, 4]],
         {0: [0], 1: [1, 2], 2: [3, 4], 3: [7], 4: [5, 6]},
-        server_ebit_mem={0: 1, 1: 1, 2: 1, 3: 1, 4: 1}
+        server_ebit_mem={0: 1, 1: 1, 2: 1, 3: 1, 4: 1},
     )
     distribution = Distribution(hyp_circ, placement, network)
     assert distribution.is_valid()
@@ -1034,23 +946,20 @@ def test_to_pytket_circuit_circ_with_embeddings_1():
     network = NISQNetwork(
         [[0, 1], [0, 2], [0, 3], [3, 4]],
         {0: [0], 1: [1, 2], 2: [3, 4], 3: [7], 4: [5, 6]},
-        server_ebit_mem={0: 2, 1: 1, 2: 1, 3: 2, 4: 1}
+        server_ebit_mem={0: 2, 1: 1, 2: 1, 3: 2, 4: 1},
     )
     distribution = Distribution(hyp_circ, placement, network)
     assert distribution.is_valid()
 
     circ_with_dist = distribution.to_pytket_circuit(allow_update=True)
 
-    assert check_equivalence(
-        circ, circ_with_dist, distribution.get_qubit_mapping()
-    )
+    assert check_equivalence(circ, circ_with_dist, distribution.get_qubit_mapping())
 
     for server, ebit_req in ebit_memory_required(circ_with_dist).items():
         assert ebit_req <= network.server_ebit_mem[server]
 
 
 def test_to_pytket_circuit_circ_with_embeddings_2():
-
     network = NISQNetwork(
         [[0, 1], [0, 2], [0, 3], [3, 4]],
         {0: [0], 1: [1, 2], 2: [3, 4], 3: [7], 4: [5, 6]},
@@ -1129,15 +1038,13 @@ def test_to_pytket_circuit_circ_with_embeddings_2():
 
     circ_with_dist = distribution.to_pytket_circuit()
 
-    assert check_equivalence(
-        circ, circ_with_dist, distribution.get_qubit_mapping()
-    )
+    assert check_equivalence(circ, circ_with_dist, distribution.get_qubit_mapping())
 
     # Try bounding the communication memory
     network = NISQNetwork(
         [[0, 1], [0, 2], [0, 3], [3, 4]],
         {0: [0], 1: [1, 2], 2: [3, 4], 3: [7], 4: [5, 6]},
-        server_ebit_mem={0: 1, 1: 1, 2: 1, 3: 1, 4: 1}
+        server_ebit_mem={0: 1, 1: 1, 2: 1, 3: 1, 4: 1},
     )
     distribution = Distribution(hyp_circ, placement, network)
     assert distribution.is_valid()
@@ -1151,9 +1058,7 @@ def test_to_pytket_circuit_circ_with_embeddings_2():
 
     circ_with_dist = distribution.to_pytket_circuit(allow_update=True)
 
-    assert check_equivalence(
-        circ, circ_with_dist, distribution.get_qubit_mapping()
-    )
+    assert check_equivalence(circ, circ_with_dist, distribution.get_qubit_mapping())
 
     for server, ebit_req in ebit_memory_required(circ_with_dist).items():
         assert ebit_req <= network.server_ebit_mem[server]
@@ -1195,9 +1100,7 @@ def test_to_pytket_circuit_circ_with_embeddings_3():
 
     circ_with_dist = distribution.to_pytket_circuit()
 
-    assert check_equivalence(
-        circ, circ_with_dist, distribution.get_qubit_mapping()
-    )
+    assert check_equivalence(circ, circ_with_dist, distribution.get_qubit_mapping())
 
 
 def test_to_pytket_circuit_circ_with_intertwined_embeddings_1():
@@ -1231,25 +1134,23 @@ def test_to_pytket_circuit_circ_with_intertwined_embeddings_1():
     for new_hedge in new_hedge_list:
         hyp_circ.add_hyperedge(new_hedge)
 
-    placement = Placement(
-        {0: 0, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1}
-    )
+    placement = Placement({0: 0, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1})
 
     distribution = Distribution(
-        circuit=hyp_circ, placement=placement, network=network,
+        circuit=hyp_circ,
+        placement=placement,
+        network=network,
     )
     assert distribution.is_valid()
 
     circ_with_dist = distribution.to_pytket_circuit()
-    assert check_equivalence(
-        circ, circ_with_dist, distribution.get_qubit_mapping()
-    )
+    assert check_equivalence(circ, circ_with_dist, distribution.get_qubit_mapping())
 
     # Try bounding the communication memory
     network = NISQNetwork(
         server_coupling=[[0, 1]],
         server_qubits={0: [0], 1: [1, 2, 3, 4]},
-        server_ebit_mem={0: 1, 1: 1}
+        server_ebit_mem={0: 1, 1: 1},
     )
     distribution = Distribution(hyp_circ, placement, network)
     assert distribution.is_valid()
@@ -1263,9 +1164,7 @@ def test_to_pytket_circuit_circ_with_intertwined_embeddings_1():
 
     circ_with_dist = distribution.to_pytket_circuit(allow_update=True)
 
-    assert check_equivalence(
-        circ, circ_with_dist, distribution.get_qubit_mapping()
-    )
+    assert check_equivalence(circ, circ_with_dist, distribution.get_qubit_mapping())
 
     for server, ebit_req in ebit_memory_required(circ_with_dist).items():
         assert ebit_req <= network.server_ebit_mem[server]
@@ -1299,9 +1198,7 @@ def test_to_pytket_circuit_circ_with_intertwined_embeddings_2():
         i: set() for i in test_hyp_circuit.vertex_list
     }
     test_hyp_circuit.hyperedge_list = []
-    test_hyp_circuit.hyperedge_dict = {
-        i: [] for i in test_hyp_circuit.vertex_list
-    }
+    test_hyp_circuit.hyperedge_dict = {i: [] for i in test_hyp_circuit.vertex_list}
 
     new_hyperedge_list = [
         [0, 4, 7, 8, 11],
@@ -1314,8 +1211,7 @@ def test_to_pytket_circuit_circ_with_intertwined_embeddings_2():
         [3, 5, 6, 10],
     ]
     ideal_hyperedge_list = [
-        Hyperedge(vertices=vertices, weight=1)
-        for vertices in new_hyperedge_list
+        Hyperedge(vertices=vertices, weight=1) for vertices in new_hyperedge_list
     ]
     for new_hyperedge in new_hyperedge_list:
         test_hyp_circuit.add_hyperedge(new_hyperedge)
@@ -1385,28 +1281,28 @@ def test_to_pytket_circuit_circ_with_intertwined_embeddings_3():
     for new_hedge in new_hedge_list:
         hyp_circ.add_hyperedge(new_hedge)
 
-    placement = Placement(
-        {0: 0, 1: 2, 2: 2, 3: 2, 4: 2, 5: 0, 6: 2, 7: 2, 8: 2}
-    )
+    placement = Placement({0: 0, 1: 2, 2: 2, 3: 2, 4: 2, 5: 0, 6: 2, 7: 2, 8: 2})
 
     distribution = Distribution(
-        circuit=hyp_circ, placement=placement, network=network,
+        circuit=hyp_circ,
+        placement=placement,
+        network=network,
     )
     assert distribution.is_valid()
 
     circ_with_dist = distribution.to_pytket_circuit()
-    assert check_equivalence(
-        circ, circ_with_dist, distribution.get_qubit_mapping()
-    )
+    assert check_equivalence(circ, circ_with_dist, distribution.get_qubit_mapping())
 
     # Try bounding the communication memory
     network = NISQNetwork(
         server_coupling=[[0, 1], [1, 2]],
         server_qubits={0: [0], 1: [1], 2: [2, 3, 4, 5]},
-        server_ebit_mem={0: 1, 1: 1, 2: 1}
+        server_ebit_mem={0: 1, 1: 1, 2: 1},
     )
     distribution = Distribution(
-        circuit=hyp_circ, placement=placement, network=network,
+        circuit=hyp_circ,
+        placement=placement,
+        network=network,
     )
     assert distribution.is_valid()
 
@@ -1419,9 +1315,7 @@ def test_to_pytket_circuit_circ_with_intertwined_embeddings_3():
 
     circ_with_dist = distribution.to_pytket_circuit(allow_update=True)
 
-    assert check_equivalence(
-        circ, circ_with_dist, distribution.get_qubit_mapping()
-    )
+    assert check_equivalence(circ, circ_with_dist, distribution.get_qubit_mapping())
 
     for server, ebit_req in ebit_memory_required(circ_with_dist).items():
         assert ebit_req <= network.server_ebit_mem[server]
@@ -1434,9 +1328,7 @@ def test_to_pytket_circuit_M_P_choice_collision():
     # the CU1 gates.
     # Note: The circuit CAN be distributed, but it's subtle.
 
-    network = NISQNetwork(
-        server_coupling=[[0, 1]], server_qubits={0: [0], 1: [1]}
-    )
+    network = NISQNetwork(server_coupling=[[0, 1]], server_qubits={0: [0], 1: [1]})
 
     circ = Circuit(2)
     circ.add_gate(OpType.CU1, 1.0, [0, 1])  # Gate: 2
@@ -1481,29 +1373,29 @@ def test_to_pytket_circuit_M_P_choice_collision():
     hedge_B = Hyperedge(new_hedge_list[1])
     assert hyp_circ.get_h_embedded_gate_vertices(hedge_B) == [5, 6, 7]
 
-    placement = Placement(
-        {0: 0, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1}
-    )
+    placement = Placement({0: 0, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1})
 
     distribution = Distribution(
-        circuit=hyp_circ, placement=placement, network=network,
+        circuit=hyp_circ,
+        placement=placement,
+        network=network,
     )
     assert distribution.is_valid()
     assert distribution.cost() == 5
 
     circ_with_dist = distribution.to_pytket_circuit()
-    assert check_equivalence(
-        circ, circ_with_dist, distribution.get_qubit_mapping()
-    )
+    assert check_equivalence(circ, circ_with_dist, distribution.get_qubit_mapping())
 
     # Try bounding the communication memory
     network = NISQNetwork(
         server_coupling=[[0, 1]],
         server_qubits={0: [0], 1: [1]},
-        server_ebit_mem={0: 2, 1: 2}
+        server_ebit_mem={0: 2, 1: 2},
     )
     distribution = Distribution(
-        circuit=hyp_circ, placement=placement, network=network,
+        circuit=hyp_circ,
+        placement=placement,
+        network=network,
     )
     assert distribution.is_valid()
 
@@ -1516,16 +1408,13 @@ def test_to_pytket_circuit_M_P_choice_collision():
 
     circ_with_dist = distribution.to_pytket_circuit(allow_update=True)
 
-    assert check_equivalence(
-        circ, circ_with_dist, distribution.get_qubit_mapping()
-    )
+    assert check_equivalence(circ, circ_with_dist, distribution.get_qubit_mapping())
 
     for server, ebit_req in ebit_memory_required(circ_with_dist).items():
         assert ebit_req <= network.server_ebit_mem[server]
 
 
 def test_to_pytket_circuit_with_D_embedding():
-
     test_network = NISQNetwork(
         server_coupling=[[0, 1], [1, 2]],
         server_qubits={0: [0], 1: [1], 2: [2]},
@@ -1543,9 +1432,7 @@ def test_to_pytket_circuit_with_D_embedding():
         i: set() for i in test_hyp_circuit.vertex_list
     }
     test_hyp_circuit.hyperedge_list = []
-    test_hyp_circuit.hyperedge_dict = {
-        i: [] for i in test_hyp_circuit.vertex_list
-    }
+    test_hyp_circuit.hyperedge_dict = {i: [] for i in test_hyp_circuit.vertex_list}
 
     new_hyperedge_list = [
         [0, 3, 5],
@@ -1572,12 +1459,9 @@ def test_to_pytket_circuit_with_D_embedding():
 
 
 def test_to_pytket_circuit_mixing_H_and_D_embeddings():
-
     network = NISQNetwork([[0, 1], [1, 2]], {0: [0], 1: [1], 2: [2, 3]})
 
-    placement = Placement(
-        {0: 0, 1: 1, 2: 2, 3: 2, 4: 0, 5: 1, 6: 1, 7: 1, 8: 2}
-    )
+    placement = Placement({0: 0, 1: 1, 2: 2, 3: 2, 4: 0, 5: 1, 6: 1, 7: 1, 8: 2})
 
     circ = Circuit(4)
     circ.add_gate(OpType.CU1, 0.1234, [0, 1])  # Gate 4
@@ -1607,18 +1491,18 @@ def test_to_pytket_circuit_mixing_H_and_D_embeddings():
 
     circ_with_dist = distribution.to_pytket_circuit()
 
-    assert check_equivalence(
-        circ, circ_with_dist, distribution.get_qubit_mapping()
-    )
+    assert check_equivalence(circ, circ_with_dist, distribution.get_qubit_mapping())
 
     # Try bounding the communication memory
     network = NISQNetwork(
         server_coupling=[[0, 1], [1, 2]],
         server_qubits={0: [0], 1: [1], 2: [2, 3]},
-        server_ebit_mem={0: 2, 1: 1, 2: 2}
+        server_ebit_mem={0: 2, 1: 1, 2: 2},
     )
     distribution = Distribution(
-        circuit=hyp_circ, placement=placement, network=network,
+        circuit=hyp_circ,
+        placement=placement,
+        network=network,
     )
     assert distribution.is_valid()
 
@@ -1631,9 +1515,7 @@ def test_to_pytket_circuit_mixing_H_and_D_embeddings():
 
     circ_with_dist = distribution.to_pytket_circuit(allow_update=True)
 
-    assert check_equivalence(
-        circ, circ_with_dist, distribution.get_qubit_mapping()
-    )
+    assert check_equivalence(circ, circ_with_dist, distribution.get_qubit_mapping())
 
     for server, ebit_req in ebit_memory_required(circ_with_dist).items():
         assert ebit_req <= network.server_ebit_mem[server]
@@ -1659,11 +1541,12 @@ def test_to_pytket_circuit_with_hyperedge_requiring_euler():
     circ.Rz(0.3, 0)
     circ.H(0)
 
-    network = NISQNetwork([[0, 1]], {0: [0], 1: [1, 2, 3, 4]},)
-
-    placement = Placement(
-        {0: 0, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1}
+    network = NISQNetwork(
+        [[0, 1]],
+        {0: [0], 1: [1, 2, 3, 4]},
     )
+
+    placement = Placement({0: 0, 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1})
 
     hyp_circ = HypergraphCircuit(circ)
     hyp_circ.hyperedge_list = []
@@ -1691,9 +1574,7 @@ def test_to_pytket_circuit_with_hyperedge_requiring_euler():
 @pytest.mark.high_compute
 def test_to_pytket_circuit_with_pauli_circ():
     # Randomly generated circuit of type pauli, depth 10 and 10 qubits
-    with open(
-        "tests/test_circuits/to_pytket_circuit/pauli_10.json", "r"
-    ) as fp:
+    with open("tests/test_circuits/to_pytket_circuit/pauli_10.json", "r") as fp:
         circ = Circuit().from_dict(json.load(fp))
 
     DQCPass().apply(circ)
@@ -1716,7 +1597,7 @@ def test_to_pytket_circuit_with_pauli_circ():
     network = NISQNetwork(
         server_coupling=[[2, 1], [1, 0], [1, 3], [0, 4]],
         server_qubits={0: [0, 1, 2], 1: [3, 4], 2: [5, 6, 7], 3: [8], 4: [9]},
-        server_ebit_mem={0: 1, 1: 2, 2: 1, 3: 3, 4: 3}
+        server_ebit_mem={0: 1, 1: 2, 2: 1, 3: 3, 4: 3},
     )
     distribution = allocator.allocate(circ, network, num_rounds=0)
     assert distribution.is_valid()
@@ -1730,9 +1611,7 @@ def test_to_pytket_circuit_with_pauli_circ():
 
     circ_with_dist = distribution.to_pytket_circuit(allow_update=True)
 
-    assert check_equivalence(
-        circ, circ_with_dist, distribution.get_qubit_mapping()
-    )
+    assert check_equivalence(circ, circ_with_dist, distribution.get_qubit_mapping())
 
     for server, ebit_req in ebit_memory_required(circ_with_dist).items():
         assert ebit_req <= network.server_ebit_mem[server]
@@ -1740,9 +1619,7 @@ def test_to_pytket_circuit_with_pauli_circ():
 
 def test_to_pytket_circuit_with_random_circ():
     # Randomly generated circuit of type random, depth 6 and 6 qubits
-    with open(
-        "tests/test_circuits/to_pytket_circuit/random_6.json", "r"
-    ) as fp:
+    with open("tests/test_circuits/to_pytket_circuit/random_6.json", "r") as fp:
         circ = Circuit().from_dict(json.load(fp))
 
     network = NISQNetwork(
@@ -1762,9 +1639,7 @@ def test_to_pytket_circuit_with_random_circ():
 
 def test_to_pytket_circuit_with_frac_cz_circ():
     # Randomly generated circuit of type frac_CZ, depth 10 and 10 qubits
-    with open(
-        "tests/test_circuits/to_pytket_circuit/frac_CZ_10.json", "r"
-    ) as fp:
+    with open("tests/test_circuits/to_pytket_circuit/frac_CZ_10.json", "r") as fp:
         circ = Circuit().from_dict(json.load(fp))
 
     DQCPass().apply(circ)
@@ -1787,7 +1662,7 @@ def test_to_pytket_circuit_with_frac_cz_circ():
     network = NISQNetwork(
         server_coupling=[[2, 1], [1, 0], [1, 3], [0, 4]],
         server_qubits={0: [0, 1, 2], 1: [3, 4], 2: [5, 6, 7], 3: [8], 4: [9]},
-        server_ebit_mem={0: 2, 2: 3, 1: 1, 3: 1, 4: 3}
+        server_ebit_mem={0: 2, 2: 3, 1: 1, 3: 1, 4: 3},
     )
     distribution = allocator.allocate(circ, network, num_rounds=0)
     assert distribution.is_valid()
@@ -1798,12 +1673,9 @@ def test_to_pytket_circuit_with_frac_cz_circ():
     except ConstraintException:
         caught = True
     if caught:
-
         circ_with_dist = distribution.to_pytket_circuit(allow_update=True)
 
-        assert check_equivalence(
-            circ, circ_with_dist, distribution.get_qubit_mapping()
-        )
+        assert check_equivalence(circ, circ_with_dist, distribution.get_qubit_mapping())
 
         for server, ebit_req in ebit_memory_required(circ_with_dist).items():
             assert ebit_req <= network.server_ebit_mem[server]
@@ -1820,10 +1692,7 @@ def test_to_pytket_circuit_pr78_bug():
 
 @pytest.mark.skip(reason="Support for teleportation has been disabled")
 def test_to_pytket_circuit_with_teleportation():
-
-    network = NISQNetwork(
-        [[0, 1], [1, 2], [1, 3]], {0: [0], 1: [1], 2: [2], 3: [3]}
-    )
+    network = NISQNetwork([[0, 1], [1, 2], [1, 3]], {0: [0], 1: [1], 2: [2], 3: [3]})
 
     circ = Circuit(2).add_gate(OpType.CU1, 1.0, [0, 1]).H(1).CX(1, 0)
     dist_circ = HypergraphCircuit(circ)
@@ -1844,35 +1713,19 @@ def test_to_pytket_circuit_with_teleportation():
     server_1_link_2 = test_circ.add_q_register("server_1_link_edge_2", 1)
     server_2_link_1 = test_circ.add_q_register("server_2_link_edge_1", 1)
 
-    test_circ.add_custom_gate(
-        start_proc(), [], [server_1[0], server_0_link_0[0]]
-    )
-    test_circ.add_custom_gate(
-        start_proc(), [], [server_2[0], server_1_link_2[0]]
-    )
+    test_circ.add_custom_gate(start_proc(), [], [server_1[0], server_0_link_0[0]])
+    test_circ.add_custom_gate(start_proc(), [], [server_2[0], server_1_link_2[0]])
     test_circ.add_custom_gate(
         start_proc(), [], [server_1_link_2[0], server_0_link_2[0]]
     )
-    test_circ.add_gate(
-        OpType.CU1, 1.0, [server_0_link_0[0], server_0_link_2[0]]
-    )
-    test_circ.add_custom_gate(
-        end_proc(), [], [server_0_link_0[0], server_1[0]]
-    )
-    test_circ.add_custom_gate(
-        end_proc(), [], [server_0_link_2[0], server_1_link_2[0]]
-    )
-    test_circ.add_custom_gate(
-        end_proc(), [], [server_1_link_2[0], server_2[0]]
-    )
+    test_circ.add_gate(OpType.CU1, 1.0, [server_0_link_0[0], server_0_link_2[0]])
+    test_circ.add_custom_gate(end_proc(), [], [server_0_link_0[0], server_1[0]])
+    test_circ.add_custom_gate(end_proc(), [], [server_0_link_2[0], server_1_link_2[0]])
+    test_circ.add_custom_gate(end_proc(), [], [server_1_link_2[0], server_2[0]])
     test_circ.H(server_2[0])
-    test_circ.add_custom_gate(
-        telep_proc(), [], [server_1[0], server_2_link_1[0]]
-    )
+    test_circ.add_custom_gate(telep_proc(), [], [server_1[0], server_2_link_1[0]])
     test_circ.CX(server_2[0], server_2_link_1[0])
-    test_circ.add_custom_gate(
-        telep_proc(), [], [server_2_link_1[0], server_1[0]]
-    )
+    test_circ.add_custom_gate(telep_proc(), [], [server_2_link_1[0], server_1[0]])
 
     test_circ_command_names = [
         command.op.get_name() for command in test_circ.get_commands()
@@ -1883,9 +1736,7 @@ def test_to_pytket_circuit_with_teleportation():
 
     assert test_circ_command_names == circ_with_dist_command_names
 
-    test_circ_command_qubits = [
-        command.qubits for command in test_circ.get_commands()
-    ]
+    test_circ_command_qubits = [command.qubits for command in test_circ.get_commands()]
     circ_with_dist_command_qubits = [
         command.qubits for command in circ_with_dist.get_commands()
     ]
@@ -1894,17 +1745,14 @@ def test_to_pytket_circuit_with_teleportation():
 
     assert test_circ.q_registers == circ_with_dist.q_registers
 
-    assert check_equivalence(
-        circ, circ_with_dist, distribution.get_qubit_mapping()
-    )
+    assert check_equivalence(circ, circ_with_dist, distribution.get_qubit_mapping())
 
 
 def test_to_pytket_satisfy_bound_flag():
-
     network = NISQNetwork(
         server_coupling=[[0, 1], [0, 2]],
         server_qubits={0: [0], 1: [1], 2: [2]},
-        server_ebit_mem={0: 1, 1: 1, 2: 1}
+        server_ebit_mem={0: 1, 1: 1, 2: 1},
     )
 
     circ = (
@@ -1934,22 +1782,16 @@ def test_to_pytket_satisfy_bound_flag():
     assert not caught  # Bounds are ignored and, hence, no exception is raised
 
     circ_with_dist = distribution.to_pytket_circuit(
-        satisfy_bound=True,
-        allow_update=True
+        satisfy_bound=True, allow_update=True
     )
 
-    assert check_equivalence(
-        circ, circ_with_dist, distribution.get_qubit_mapping()
-    )
+    assert check_equivalence(circ, circ_with_dist, distribution.get_qubit_mapping())
 
 
 @pytest.mark.skip(reason="Tests a function that has been removed")
 def test_to_relabeled_registers():
-
     circ = Circuit(3)
-    circ.add_gate(OpType.CU1, 1.0, [0, 1]).H(0).add_gate(
-        OpType.CU1, 1.0, [0, 1]
-    )
+    circ.add_gate(OpType.CU1, 1.0, [0, 1]).H(0).add_gate(OpType.CU1, 1.0, [0, 1])
     dist_circ = HypergraphCircuit(circ)
 
     placement = Placement({0: 1, 1: 2, 2: 2, 3: 0, 4: 1})
@@ -1968,7 +1810,6 @@ def test_to_relabeled_registers():
 
 
 def test_distribution_initialisation():
-
     circ = Circuit(3)
     circ.add_gate(OpType.CU1, 1.0, [0, 1]).add_gate(OpType.CU1, 1.0, [0, 2])
     dist_circ = HypergraphCircuit(circ)
@@ -1976,14 +1817,14 @@ def test_distribution_initialisation():
     placement = Placement({0: 1, 1: 2, 2: 2, 3: 0, 4: 1})
 
     network = NISQNetwork(
-        [[0, 1], [1, 2]], {0: [0, 1, 2], 1: [3, 4, 5], 2: [6, 7, 8]},
+        [[0, 1], [1, 2]],
+        {0: [0, 1, 2], 1: [3, 4, 5], 2: [6, 7, 8]},
     )
 
     Distribution(dist_circ, placement, network)
 
 
 def test_get_hyperedge_subcircuit():
-
     # The test circuit
     circ = Circuit(3)
     circ.add_gate(OpType.CU1, 0.1, [0, 1])  # Gate 3
@@ -2052,7 +1893,6 @@ def test_get_hyperedge_subcircuit_complex():
 
 
 def test_requires_h_embedded_cu1():
-
     circ = Circuit(4)
     circ.add_gate(OpType.CU1, 0.1234, [1, 2])
     circ.add_gate(OpType.CU1, 0.1234, [0, 2])
@@ -2134,9 +1974,7 @@ def test_get_vertex_to_command_index_map():
     hypergraph_circuit = HypergraphCircuit(test_circuit)
     commands = test_circuit.get_commands()
     cu1_command_indices = [
-        i
-        for i, command in enumerate(commands)
-        if command.op.type == OpType.CU1
+        i for i, command in enumerate(commands) if command.op.type == OpType.CU1
     ]
     vertex_to_command_index_reference = {
         i + len(test_circuit.qubits): cu1_command_indices[i]
@@ -2149,10 +1987,9 @@ def test_get_vertex_to_command_index_map():
 
 
 def test_distribution_to_dict(tmpdir_factory):
-
     network = ScaleFreeNISQNetwork(n_servers=3, n_qubits=7, seed=0)
 
-    with open('tests/test_circuits/random_width_5_depth_5.json', 'r') as fp:
+    with open("tests/test_circuits/random_width_5_depth_5.json", "r") as fp:
         circuit = Circuit().from_dict(json.load(fp))
 
     DecomposeBoxes().apply(circuit)
@@ -2164,10 +2001,10 @@ def test_distribution_to_dict(tmpdir_factory):
     temp_dir = tmpdir_factory.mktemp("artifact")
     file_name = temp_dir.join("/distribution.json")
 
-    with open(file_name, 'w') as fp:
+    with open(file_name, "w") as fp:
         json.dump(distribution_dict, fp)
 
-    with open(file_name, 'r') as fp:
+    with open(file_name, "r") as fp:
         retrieved_distribution_dict = json.load(fp)
 
     new_distribution = distribution.from_dict(retrieved_distribution_dict)
@@ -2180,7 +2017,7 @@ def test_embedding_detached():
     warnings.filterwarnings("error")
 
     with open(
-        "tests/test_circuits/chemistry_aware_embedding_detatched.json", 'r'
+        "tests/test_circuits/chemistry_aware_embedding_detatched.json", "r"
     ) as fp:
         distribution = Distribution.from_dict(json.load(fp))
 

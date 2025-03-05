@@ -31,9 +31,7 @@ if TYPE_CHECKING:
 # for details of this implementation.
 
 
-def acceptance_criterion(
-    gain: int, iteration: int, initial_temperature: float = 1
-):
+def acceptance_criterion(gain: int, iteration: int, initial_temperature: float = 1):
     """Acceptance criterion, to be used during simulated annealing.
     If ``gain`` is positive (improvement) the output will be greater than 1.
     If ``gain`` is negative the output will be a probability from 0 to 1.
@@ -64,9 +62,7 @@ class Annealing(Allocator):
     def __init__(self) -> None:
         pass
 
-    def allocate(
-        self, circ: Circuit, network: NISQNetwork, **kwargs
-    ) -> Distribution:
+    def allocate(self, circ: Circuit, network: NISQNetwork, **kwargs) -> Distribution:
         """Distribute quantum circuit using simulated annealing approach.
 
         :param circ: Circuit to distribute.
@@ -89,9 +85,7 @@ class Annealing(Allocator):
 
         dist_circ = HypergraphCircuit(circ)
         if not network.can_implement(dist_circ):
-            raise Exception(
-                "This circuit cannot be implemented on this network."
-            )
+            raise Exception("This circuit cannot be implemented on this network.")
 
         iterations = kwargs.get("iterations", 30000)
         initial_aloc = kwargs.get("initial_place_method", Random())
@@ -119,7 +113,6 @@ class Annealing(Allocator):
         # an improvement. Change to new placement with small probability if
         # there is no improvement.
         for i in range(iterations):
-
             # Choose a random vertex to move.
             vertex_to_move = random.choice(distribution.circuit.vertex_list)
 
@@ -134,12 +127,9 @@ class Annealing(Allocator):
             # If the vertex to move corresponds to a qubit
             swap_vertex = None
             if (
-                distribution.circuit._vertex_circuit_map[vertex_to_move][
-                    "type"
-                ]
+                distribution.circuit._vertex_circuit_map[vertex_to_move]["type"]
                 == "qubit"
             ):
-
                 # List all qubit vertices
                 dest_qubit_list = distribution.circuit.get_qubit_vertices()
 
@@ -160,10 +150,7 @@ class Annealing(Allocator):
                     swap_vertex = random.choice(dest_qubit_list)
 
             # Calculate gain
-            gain = gain_manager.move_vertex_gain(
-                vertex_to_move,
-                destination_server
-            )
+            gain = gain_manager.move_vertex_gain(vertex_to_move, destination_server)
             if swap_vertex is not None:
                 # In order to accurately calculate the gain of moving
                 # ``swap_vertex`` we need to move ``vertex_to_move``
