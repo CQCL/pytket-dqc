@@ -415,7 +415,7 @@ class PacMan:
         command_dict = self.hypergraph_circuit._commands[command_index]
         command = command_dict["command"]
         assert (
-            type(command) == Command
+            type(command) is Command
         )
         qubits = command.qubits
         qubit_vertex_candidates = [

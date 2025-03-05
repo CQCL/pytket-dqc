@@ -798,7 +798,7 @@ class HypergraphCircuit(Hypergraph):
         for command_index, command_dict in enumerate(self._commands):
             if command_dict["type"] == "distributed gate":
                 vertex = command_dict["vertex"]
-                assert type(vertex) == Vertex
+                assert type(vertex) is Vertex
                 vertex_to_command_index_map[vertex] = command_index
         return vertex_to_command_index_map
 
@@ -853,7 +853,7 @@ class HypergraphCircuit(Hypergraph):
             first_command_index + 1 : second_command_index  # noqa: E203
         ]:
             command = command_dict["command"]
-            assert type(command) == Command
+            assert type(command) is Command
             if qubit in command.qubits:
                 intermediate_commands.append(cast(Command, command_dict["command"]))
 
