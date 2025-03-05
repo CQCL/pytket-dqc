@@ -16,12 +16,13 @@ from __future__ import annotations
 from pytket_dqc.networks.server_network import ServerNetwork
 from itertools import combinations
 import networkx as nx  # type:ignore
-from pytket.placement import NoiseAwarePlacement  # type:ignore
-from pytket.architecture import Architecture  # type:ignore
-from pytket.circuit import Node  # type:ignore
+from pytket.placement import NoiseAwarePlacement
+from pytket.architecture import Architecture
+from pytket.circuit import Node
 from pytket_dqc.circuits.hypergraph_circuit import HypergraphCircuit
 from typing import Tuple, Union, cast, Optional
-import matplotlib.pyplot as plt  # type:ignore
+import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
 
 
 class NISQNetwork(ServerNetwork):
@@ -34,7 +35,7 @@ class NISQNetwork(ServerNetwork):
         self,
         server_coupling: list[list[int]],
         server_qubits: dict[int, list[int]],
-        server_ebit_mem: Optional[dict[int, int]] = None
+        server_ebit_mem: Optional[dict[int, int]] = None,
     ) -> None:
         """Initialisation function. Performs checks on inputted network
         description.
@@ -68,8 +69,7 @@ class NISQNetwork(ServerNetwork):
             # Check that each server appears on `server_qubits`.
             if server not in self.server_qubits.keys():
                 raise Exception(
-                    f"The qubits in server {server}"
-                    " have not been specified."
+                    f"The qubits in server {server} have not been specified."
                 )
             # Check that each server appears on `server_ebit_mem`.
             if server not in self.server_ebit_mem.keys():
@@ -82,14 +82,14 @@ class NISQNetwork(ServerNetwork):
         # servers in the network.
         if len(self.server_qubits.keys()) > len(server_list):
             raise Exception(
-                    "The network defined does not cover all servers with"
-                    "qubits allocated to them."
-                )
+                "The network defined does not cover all servers with"
+                "qubits allocated to them."
+            )
         if len(self.server_ebit_mem.keys()) > len(server_list):
             raise Exception(
-                    "The network defined does not cover all servers that"
-                    "have a bound to communication memory assigned to them."
-                )
+                "The network defined does not cover all servers that"
+                "have a bound to communication memory assigned to them."
+            )
 
         qubit_list = self.get_qubit_list()
         # Check that each qubit belongs to only one server.
@@ -106,17 +106,15 @@ class NISQNetwork(ServerNetwork):
         """Check equality based on equality of components"""
         if isinstance(other, NISQNetwork):
             return (
-                self.server_qubits == other.server_qubits and
-                self.server_ebit_mem == other.server_ebit_mem and
-                super().__eq__(other)
+                self.server_qubits == other.server_qubits
+                and self.server_ebit_mem == other.server_ebit_mem
+                and super().__eq__(other)
             )
         return False
 
     def to_dict(
-        self
-    ) -> dict[str, Union[
-        list[list[int]], dict[int, list[int]], dict[int, int]
-    ]]:
+        self,
+    ) -> dict[str, Union[list[list[int]], dict[int, list[int]], dict[int, int]]]:
         """Serialise NISQNetwork.
 
         :return: Dictionary serialisation of NISQNetwork. Dictionary has keys
@@ -126,15 +124,14 @@ class NISQNetwork(ServerNetwork):
         """
 
         return {
-            'server_coupling': self.server_coupling,
-            'server_qubits': self.server_qubits,
-            'server_ebit_mem': self.server_ebit_mem
+            "server_coupling": self.server_coupling,
+            "server_qubits": self.server_qubits,
+            "server_ebit_mem": self.server_ebit_mem,
         }
 
     @classmethod
     def from_dict(
-        cls,
-        network_dict: dict[str, Union[list[list[int]], dict[int, list[int]]]]
+        cls, network_dict: dict[str, Union[list[list[int]], dict[int, list[int]]]]
     ) -> NISQNetwork:
         """Constructor for ``NISQNetwork`` using dictionary created by
         ``to_dict``.
@@ -148,27 +145,17 @@ class NISQNetwork(ServerNetwork):
         :rtype: NISQNetwork
         """
 
-        server_coupling = cast(
-            list[list[int]], network_dict['server_coupling']
-        )
-        server_coupling = [
-            list(server_pair) for server_pair in server_coupling
-        ]
+        server_coupling = cast(list[list[int]], network_dict["server_coupling"])
+        server_coupling = [list(server_pair) for server_pair in server_coupling]
 
-        server_qubits = cast(
-            dict[int, list[int]], network_dict['server_qubits']
-        )
+        server_qubits = cast(dict[int, list[int]], network_dict["server_qubits"])
         server_qubits = {
-            int(server): qubit_list
-            for server, qubit_list in server_qubits.items()
+            int(server): qubit_list for server, qubit_list in server_qubits.items()
         }
 
-        server_ebit_mem = cast(
-            dict[int, int], network_dict['server_ebit_mem']
-        )
+        server_ebit_mem = cast(dict[int, int], network_dict["server_ebit_mem"])
         server_ebit_mem = {
-            int(server): int(bound)
-            for server, bound in server_ebit_mem.items()
+            int(server): int(bound) for server, bound in server_ebit_mem.items()
         }
 
         return cls(
@@ -178,7 +165,6 @@ class NISQNetwork(ServerNetwork):
         )
 
     def can_implement(self, dist_circ: HypergraphCircuit) -> bool:
-
         if len(self.get_qubit_list()) < len(dist_circ.get_qubit_vertices()):
             return False
         return True
@@ -192,9 +178,7 @@ class NISQNetwork(ServerNetwork):
 
         # Combine all lists of qubits belonging to each server into one list.
         qubit_list = [
-            qubit
-            for qubit_list in self.server_qubits.values()
-            for qubit in qubit_list
+            qubit for qubit_list in self.server_qubits.values() for qubit in qubit_list
         ]
 
         return qubit_list
@@ -219,11 +203,7 @@ class NISQNetwork(ServerNetwork):
 
         return arc, node_qubit_map
 
-    def get_placer(self) -> Tuple[
-        Architecture,
-        dict[Node, int],
-        NoiseAwarePlacement
-    ]:
+    def get_placer(self) -> Tuple[Architecture, dict[Node, int], NoiseAwarePlacement]:
         """Return `tket NoiseAwarePlacement
         <https://cqcl.github.io/tket/pytket/api/routing.html#pytket.routing.NoiseAwarePlacement>`_  # noqa:E501
         which places onto the network, taking edges between servers to be
@@ -249,14 +229,14 @@ class NISQNetwork(ServerNetwork):
         # to edge weight.
         for u, v in G.edges:
             edge_data = G.get_edge_data(u, v)
-            link_errors[(Node(u), Node(v))] = edge_data['weight']
+            link_errors[(Node(u), Node(v))] = edge_data["weight"]
 
         arc, node_qubit_map = self.get_architecture()
 
         return (
             arc,
             node_qubit_map,
-            NoiseAwarePlacement(arc=arc, link_errors=link_errors)
+            NoiseAwarePlacement(arc=arc, link_errors=link_errors),
         )
 
     def get_nisq_nx(self) -> nx.Graph:
@@ -286,25 +266,20 @@ class NISQNetwork(ServerNetwork):
 
         return G
 
-    def draw_nisq_network(self) -> None:
-        """Draw network using netwrokx draw method.
-        """
+    def draw_nisq_network(self) -> Figure:
+        """Draw network using netwrokx draw method."""
 
         G = self.get_nisq_nx()
         colors = [G[u][v]["color"] for u, v in G.edges()]
         f = plt.figure()
         nx.draw(
-            G,
-            with_labels=True,
-            edge_color=colors,
-            pos=nx.nx_agraph.graphviz_layout(G)
+            G, with_labels=True, edge_color=colors, pos=nx.nx_agraph.graphviz_layout(G)
         )
         return f
 
 
 class AllToAll(NISQNetwork):
-    """NISQNetwork consisting of uniformly sized, all to all connected servers.
-    """
+    """NISQNetwork consisting of uniformly sized, all to all connected servers."""
 
     def __init__(self, n_servers: int, qubits_per_server: int):
         """Initialisation function
@@ -315,15 +290,18 @@ class AllToAll(NISQNetwork):
         :type qubits_per_server: int
         """
 
-        server_coupling = [list(combination) for combination in combinations(
-            [i for i in range(n_servers)], 2)]
+        server_coupling = [
+            list(combination)
+            for combination in combinations([i for i in range(n_servers)], 2)
+        ]
 
-        qubits = [i for i in range(n_servers*qubits_per_server)]
+        qubits = [i for i in range(n_servers * qubits_per_server)]
         server_qubits_list = [
-            qubits[i:i + qubits_per_server]
+            qubits[i : i + qubits_per_server]
             for i in range(0, len(qubits), qubits_per_server)
         ]
-        server_qubits = {i: qubits_list for i,
-                         qubits_list in enumerate(server_qubits_list)}
+        server_qubits = {
+            i: qubits_list for i, qubits_list in enumerate(server_qubits_list)
+        }
 
         super().__init__(server_coupling, server_qubits)

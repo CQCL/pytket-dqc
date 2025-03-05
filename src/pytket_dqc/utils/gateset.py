@@ -12,17 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np  # type: ignore
+import numpy as np
 import logging
 
-from pytket.predicates import (  # type: ignore
+from pytket.predicates import (
     GateSetPredicate,
     NoSymbolsPredicate,
     UserDefinedPredicate,
 )
 
-from pytket import OpType, Circuit, Qubit  # type: ignore
-from pytket.passes import (  # type: ignore
+from pytket import OpType, Circuit, Qubit
+from pytket.passes import (
     CustomPass,
     EulerAngleReduction,
     RebaseCustom,
@@ -31,7 +31,7 @@ from pytket.passes import (  # type: ignore
     SequencePass,
     BasePass,
 )
-from pytket.circuit import CustomGateDef, Op, Command  # type: ignore
+from pytket.circuit import CustomGateDef, Op, Command
 from typing import Optional
 import sympy  # type: ignore
 
@@ -49,10 +49,9 @@ dqc_gateset = dqc_1_qubit.union(dqc_2_qubit)
 
 
 def check_function(circ):
-
-    return NoSymbolsPredicate().verify(circ) and GateSetPredicate(
-        dqc_gateset
-    ).verify(circ)
+    return NoSymbolsPredicate().verify(circ) and GateSetPredicate(dqc_gateset).verify(
+        circ
+    )
 
 
 #: Predicate for checking gateset is valid
@@ -60,8 +59,7 @@ dqc_gateset_predicate = UserDefinedPredicate(check_function)
 
 
 def cz_to_cu1(circ: Circuit) -> Circuit:
-    """Convert all CZ gates in the circuit to CU1 gates.
-    """
+    """Convert all CZ gates in the circuit to CU1 gates."""
     new_circ = Circuit()
     for q in circ.qubits:
         new_circ.add_qubit(q)
@@ -85,13 +83,11 @@ def tk2_to_cu1(a, b, c) -> Circuit:
     # The ZZPhase(c) gate
     circ.add_gate(OpType.CU1, -2 * c, [0, 1]).Rz(c, 0).Rz(c, 1)
     # The YYPhase(b) gate
-    circ.Sdg(0).Sdg(1).H(0).H(1).add_gate(OpType.CU1, -2 * b, [0, 1]).Rz(
-        b, 0
-    ).Rz(b, 1).H(0).H(1).S(0).S(1)
+    circ.Sdg(0).Sdg(1).H(0).H(1).add_gate(OpType.CU1, -2 * b, [0, 1]).Rz(b, 0).Rz(
+        b, 1
+    ).H(0).H(1).S(0).S(1)
     # The XXPhase(a) gate
-    circ.H(0).H(1).add_gate(OpType.CU1, -2 * a, [0, 1]).Rz(a, 0).Rz(a, 1).H(
-        0
-    ).H(1)
+    circ.H(0).H(1).add_gate(OpType.CU1, -2 * a, [0, 1]).Rz(a, 0).Rz(a, 1).H(0).H(1)
     # The global phase (we could ignore it, but TKET lets us track it)
     circ.add_phase((a + b + c) / 2)
     return circ
@@ -118,7 +114,7 @@ def tk1_to_euler(a, b, c) -> Circuit:
     # We then use the decomposition of H = Rz(0.5)*Rx(0.5)*Rz(0.5) and
     # H = Rz(-0.5)*Rx(-0.5)*Rz(-0.5) to introduce the H gates as needed.
 
-    if any(type(x) == sympy.core.mul.Mul for x in [a, b, c]):
+    if any(type(x) is sympy.core.mul.Mul for x in [a, b, c]):
         raise Exception("Symbolic parameters are not supported")
 
     circ = Circuit(1)
@@ -148,17 +144,13 @@ def to_euler_with_two_hadamards(ops: list[Op]) -> list[Op]:
     NOTE: Global Phases are not preserved.
     """
 
-    hadamard_indices = [
-        i for i, op in enumerate(ops) if op.type == OpType.H
-    ]
+    hadamard_indices = [i for i, op in enumerate(ops) if op.type == OpType.H]
     id_rz = Op.create(OpType.Rz, [0])
     hadamard = Op.create(OpType.H)
     hadamard_count = len(hadamard_indices)
 
     # The following should be guranteed by DQCPass()
-    assert (
-        hadamard_count <= 2
-    ), f"There should not be more than 2 Hadamards. {ops}"
+    assert hadamard_count <= 2, f"There should not be more than 2 Hadamards. {ops}"
 
     new_ops: list[Op] = []
 
@@ -183,9 +175,7 @@ def to_euler_with_two_hadamards(ops: list[Op]) -> list[Op]:
         new_ops.append(id_rz)
 
     else:
-        assert (
-            len(ops) <= 3
-        ), "There can only be up to 3 ops in this decomposition."
+        assert len(ops) <= 3, "There can only be up to 3 ops in this decomposition."
         s_op = Op.create(OpType.Rz, [0.5])
 
         # The list is just [H]
@@ -194,9 +184,7 @@ def to_euler_with_two_hadamards(ops: list[Op]) -> list[Op]:
 
         # The list is [H, Op] or [Op, H]
         elif len(ops) == 2:
-            phase_op_index = int(
-                not hadamard_indices[0]
-            )  # only takes value of 1 or 0
+            phase_op_index = int(not hadamard_indices[0])  # only takes value of 1 or 0
             phase_op = ops[phase_op_index]
             phase = phase_op.params[0]  # phase in turns of pi
             new_phase_op = Op.create(
@@ -211,9 +199,7 @@ def to_euler_with_two_hadamards(ops: list[Op]) -> list[Op]:
             first_phase = ops[0].params[0]
             second_phase = ops[2].params[0]
             first_new_phase_op = Op.create(OpType.Rz, [first_phase + 0.5])
-            second_new_phase_op = Op.create(
-                OpType.Rz, [second_phase + 0.5]
-            )
+            second_new_phase_op = Op.create(OpType.Rz, [second_phase + 0.5])
             new_ops += [
                 first_new_phase_op,
                 hadamard,
@@ -225,13 +211,15 @@ def to_euler_with_two_hadamards(ops: list[Op]) -> list[Op]:
     logging.debug(f"Converted {ops} for {new_ops}")
 
     assert len(new_ops) == 5
-    assert all([
+    assert all(
+        [
             new_ops[0].type == OpType.Rz,
             new_ops[1].type == OpType.H,
             new_ops[2].type == OpType.Rz,
             new_ops[3].type == OpType.H,
             new_ops[4].type == OpType.Rz,
-        ])
+        ]
+    )
     return new_ops
 
 
@@ -260,7 +248,7 @@ def start_proc(origin: Optional[Qubit] = None) -> CustomGateDef:
     if origin is None:
         name = "starting_process"
     else:
-        name = "starting_process_"+str(origin)
+        name = "starting_process_" + str(origin)
     return CustomGateDef.define(name, def_circ, [])
 
 
@@ -305,7 +293,7 @@ def origin_of_start_proc(cmd: Command, all_qubits: list[Qubit]) -> Qubit:
     # recorded when constructing this start_proc.
     assert name.startswith("starting_process_")
 
-    qubit_str = name[len("starting_process_"):]
+    qubit_str = name[len("starting_process_") :]
     potential_qubits = [q for q in all_qubits if str(q) == qubit_str]
 
     assert len(potential_qubits) == 1

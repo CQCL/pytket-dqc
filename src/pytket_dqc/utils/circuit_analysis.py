@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from pytket import Circuit, OpType  # type: ignore
+from pytket import Circuit, OpType
 
 
 class ConstraintException(Exception):
@@ -20,6 +20,7 @@ class ConstraintException(Exception):
     exceeded. Stores the offending server and gate vertex at which
     the constraint was violated.
     """
+
     def __init__(self, message, server):
         super().__init__(message)
         self.server = server
@@ -27,11 +28,8 @@ class ConstraintException(Exception):
 
 
 def all_cu1_local(circ: Circuit) -> bool:
-    """Checks that all of the CU1 gates in the circuit are local.
-    """
-    cu1_gates = [
-        gate for gate in circ.get_commands() if gate.op.type == OpType.CU1
-    ]
+    """Checks that all of the CU1 gates in the circuit are local."""
+    cu1_gates = [gate for gate in circ.get_commands() if gate.op.type == OpType.CU1]
     for gate in cu1_gates:
         q0 = gate.qubits[0]
         q1 = gate.qubits[1]
@@ -65,7 +63,6 @@ def ebit_memory_required(circ: Circuit) -> dict[int, int]:
     # Scan the circuit for starting and ending EJPP processes and update
     #   the ebit memory requirement accordingly
     for command in circ.get_commands():
-
         # Increase the current memory if an EJPP process starts
         if command.op.get_name() == "starting_process":
             link_qubit = command.qubits[1]
@@ -130,7 +127,6 @@ def ebit_cost(circ: Circuit) -> int:
     telep_count = 0
 
     for command in circ.get_commands():
-
         if command.op.get_name() == "starting_process":
             starting_count += 1
         elif command.op.get_name() == "ending_process":

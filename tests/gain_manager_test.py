@@ -144,14 +144,10 @@ def test_gain_no_embeddings():
     new_cost = steiner_cost_14 + steiner_cost_4
     assert manager.move_vertex_gain(12, 4) == current_cost - new_cost
     # Check that, indeed, the costs are updated accordingly
-    assert (
-        manager.hyperedge_cost_map[Hyperedge([0, 11, 12])] == steiner_cost_13
-    )
+    assert manager.hyperedge_cost_map[Hyperedge([0, 11, 12])] == steiner_cost_13
     assert manager.hyperedge_cost_map[Hyperedge([3, 9, 12])] == steiner_cost_34
     manager.move_vertex(12, 4)
-    assert (
-        manager.hyperedge_cost_map[Hyperedge([0, 11, 12])] == steiner_cost_14
-    )
+    assert manager.hyperedge_cost_map[Hyperedge([0, 11, 12])] == steiner_cost_14
     assert manager.hyperedge_cost_map[Hyperedge([3, 9, 12])] == steiner_cost_4
     # Move back
     manager.move_vertex(12, 3)
@@ -167,60 +163,44 @@ def test_gain_no_embeddings():
     assert manager.move_vertex_gain(0, 2) == current_cost - new_cost
     # Check that, indeed, the costs are updated accordingly
     assert manager.hyperedge_cost_map[Hyperedge([0, 5, 7])] == steiner_cost_1
-    assert (
-        manager.hyperedge_cost_map[Hyperedge([0, 11, 12])] == steiner_cost_13
-    )
+    assert manager.hyperedge_cost_map[Hyperedge([0, 11, 12])] == steiner_cost_13
     assert manager.hyperedge_cost_map[Hyperedge([0, 8, 9])] == steiner_cost_124
     manager.move_vertex(0, 2)
     assert manager.hyperedge_cost_map[Hyperedge([0, 5, 7])] == steiner_cost_12
-    assert (
-        manager.hyperedge_cost_map[Hyperedge([0, 11, 12])] == steiner_cost_123
-    )
+    assert manager.hyperedge_cost_map[Hyperedge([0, 11, 12])] == steiner_cost_123
     assert manager.hyperedge_cost_map[Hyperedge([0, 8, 9])] == steiner_cost_24
     # Move back
     manager.move_vertex(0, 1)
 
     # Check that the cache is correct
     assert (
-        manager.steiner_cache[frozenset([1, 3])].edges
-        == steiner_tree(g, [1, 3]).edges
+        manager.steiner_cache[frozenset([1, 3])].edges == steiner_tree(g, [1, 3]).edges
     )
     assert (
-        manager.steiner_cache[frozenset([3, 4])].edges
-        == steiner_tree(g, [3, 4]).edges
+        manager.steiner_cache[frozenset([3, 4])].edges == steiner_tree(g, [3, 4]).edges
     )
     assert (
-        manager.steiner_cache[frozenset([1, 4])].edges
-        == steiner_tree(g, [1, 4]).edges
+        manager.steiner_cache[frozenset([1, 4])].edges == steiner_tree(g, [1, 4]).edges
     )
-    assert (
-        manager.steiner_cache[frozenset([4])].edges
-        == steiner_tree(g, [4]).edges
-    )
-    assert (
-        manager.steiner_cache[frozenset([1])].edges
-        == steiner_tree(g, [1]).edges
-    )
+    assert manager.steiner_cache[frozenset([4])].edges == steiner_tree(g, [4]).edges
+    assert manager.steiner_cache[frozenset([1])].edges == steiner_tree(g, [1]).edges
     assert (
         manager.steiner_cache[frozenset([1, 2, 4])].edges
         == steiner_tree(g, [1, 2, 4]).edges
     )
     assert (
-        manager.steiner_cache[frozenset([1, 2])].edges
-        == steiner_tree(g, [1, 2]).edges
+        manager.steiner_cache[frozenset([1, 2])].edges == steiner_tree(g, [1, 2]).edges
     )
     assert (
         manager.steiner_cache[frozenset([1, 2, 3])].edges
         == steiner_tree(g, [1, 2, 3]).edges
     )
     assert (
-        manager.steiner_cache[frozenset([2, 4])].edges
-        == steiner_tree(g, [2, 4]).edges
+        manager.steiner_cache[frozenset([2, 4])].edges == steiner_tree(g, [2, 4]).edges
     )
 
 
 def test_split_merge():
-
     circ = Circuit(3)
     circ.add_gate(OpType.CU1, 1.0, [0, 1])
     circ.add_gate(OpType.CU1, 1.0, [0, 2])
@@ -235,58 +215,42 @@ def test_split_merge():
     placement = Placement({0: 1, 1: 2, 2: 3, 3: 2, 4: 3})
     network = NISQNetwork(
         server_coupling=[[0, 1], [0, 2], [0, 3]],
-        server_qubits={0: [0], 1: [1], 2: [2], 3: [3]}
+        server_qubits={0: [0], 1: [1], 2: [2], 3: [3]},
     )
     distribution = Distribution(hyp_circ, placement, network)
     gain_manager = GainManager(distribution)
     gain_manager.split_hyperedge(
         old_hyperedge=old_hyperedge,
-        new_hyperedge_list=[to_merge_hyperedge_one, to_merge_hyperedge_two]
+        new_hyperedge_list=[to_merge_hyperedge_one, to_merge_hyperedge_two],
     )
     split_hyperedge_list = gain_manager.distribution.circuit.hyperedge_list
 
     merge_gain = gain_manager.merge_hyperedge_gain(
-        to_merge_hyperedge_list=[
-            to_merge_hyperedge_one,
-            to_merge_hyperedge_two
-        ]
+        to_merge_hyperedge_list=[to_merge_hyperedge_one, to_merge_hyperedge_two]
     )
     assert merge_gain == 1
     # Check that the hypergraph is not changed by this gain calculation
-    assert (
-        gain_manager.distribution.circuit.hyperedge_list ==
-        split_hyperedge_list
-    )
+    assert gain_manager.distribution.circuit.hyperedge_list == split_hyperedge_list
 
     gain_manager.merge_hyperedge(
-        to_merge_hyperedge_list=[
-            to_merge_hyperedge_one,
-            to_merge_hyperedge_two
-        ]
+        to_merge_hyperedge_list=[to_merge_hyperedge_one, to_merge_hyperedge_two]
     )
 
     # Check that merge recovers original circuit. I assume the order of
     # hyperedges in the hyperedge_list does not matter. This may be reckless.
-    assert (
-        merge_hyperedge_list ==
-        gain_manager.distribution.circuit.hyperedge_list
-    )
+    assert merge_hyperedge_list == gain_manager.distribution.circuit.hyperedge_list
 
     split_gain = gain_manager.split_hyperedge_gain(
         old_hyperedge=old_hyperedge,
-        new_hyperedge_list=[
-            to_merge_hyperedge_one,
-            to_merge_hyperedge_two
-        ]
+        new_hyperedge_list=[to_merge_hyperedge_one, to_merge_hyperedge_two],
     )
     assert split_gain == -merge_gain
 
 
 def test_merge_with_embedding():
-
     network = NISQNetwork(
         server_coupling=[[0, 1], [0, 2], [0, 3]],
-        server_qubits={0: [0], 1: [1], 2: [2], 3: [3]}
+        server_qubits={0: [0], 1: [1], 2: [2], 3: [3]},
     )
 
     circ = Circuit(3)
@@ -301,11 +265,7 @@ def test_merge_with_embedding():
 
     placement = Placement({0: 1, 1: 2, 2: 3, 3: 3, 4: 2, 5: 3, 6: 3})
 
-    distribution = Distribution(
-        circuit=hyp_circ,
-        placement=placement,
-        network=network
-    )
+    distribution = Distribution(circuit=hyp_circ, placement=placement, network=network)
     assert distribution.cost() == 7
 
     gain_mgr = GainManager(initial_distribution=distribution)
@@ -315,10 +275,11 @@ def test_merge_with_embedding():
     # embedding to implement the last CZ
     to_merge_hyperedge_list = [
         Hyperedge(vertices=[0, 3, 4], weight=1),
-        Hyperedge(vertices=[0, 6], weight=1)
+        Hyperedge(vertices=[0, 6], weight=1),
     ]
-    assert gain_mgr.merge_hyperedge_gain(
-        to_merge_hyperedge_list=to_merge_hyperedge_list
-    ) == 2
+    assert (
+        gain_mgr.merge_hyperedge_gain(to_merge_hyperedge_list=to_merge_hyperedge_list)
+        == 2
+    )
     gain_mgr.merge_hyperedge(to_merge_hyperedge_list=to_merge_hyperedge_list)
     assert gain_mgr.distribution.cost() == 5

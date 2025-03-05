@@ -17,8 +17,7 @@ from pytket_dqc.circuits.distribution import Distribution
 
 
 class SequenceRefiner(Refiner):
-    """Performs sequence of :class:`.Refiner` as provided by the user.
-    """
+    """Performs sequence of :class:`.Refiner` as provided by the user."""
 
     def __init__(self, refiner_list: list[Refiner]):
         """SequenceRefiner is initialised with a list of :class:`.Refiner`

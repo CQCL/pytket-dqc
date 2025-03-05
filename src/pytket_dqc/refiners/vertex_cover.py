@@ -55,9 +55,9 @@ class VertexCover(Refiner):
         ]:
             raise Exception(
                 "You must provide a vertex_cover_alg. Either:\n"
-                + "\t\t\"all_brute_force\" -> "
+                + '\t\t"all_brute_force" -> '
                 + "exhaustive search of all minimum vertex covers\n"
-                + "\t\t\"networkx\" -> "
+                + '\t\t"networkx" -> '
                 + "use NetworkX's algorithm to find a vertex cover\n"
             )
 
@@ -80,9 +80,7 @@ class VertexCover(Refiner):
             hyperedges: list[Hyperedge] = []
             for packet in merged_packet:
                 assert qubit_vertex == packet.qubit_vertex
-                hyperedges.append(
-                    Hyperedge([qubit_vertex] + packet.gate_vertices)
-                )
+                hyperedges.append(Hyperedge([qubit_vertex] + packet.gate_vertices))
             # And merge them
             new_hyp_circ.merge_hyperedge(hyperedges)
         # Update the hypergraph in ``distribution``
@@ -104,15 +102,10 @@ class VertexCover(Refiner):
         for vertex in new_hyp_circ.vertex_list:
             if vertex not in new_placement.keys():
                 gate = new_hyp_circ.get_gate_of_vertex(vertex)
-                q_vertices = [
-                    new_hyp_circ.get_vertex_of_qubit(q) for q in gate.qubits
-                ]
+                q_vertices = [new_hyp_circ.get_vertex_of_qubit(q) for q in gate.qubits]
 
                 # Sanity check: it is a local gate
-                assert (
-                    new_placement[q_vertices[0]]
-                    == new_placement[q_vertices[1]]
-                )
+                assert new_placement[q_vertices[0]] == new_placement[q_vertices[1]]
                 # Place it in the local server
                 new_placement[vertex] = new_placement[q_vertices[0]]
 
@@ -140,14 +133,10 @@ class VertexCover(Refiner):
         # Find the vertex covers of each connected component separately
         full_valid_cover: list[MergedPacket] = []
         for subgraph in [
-            merged_graph.subgraph(c)
-            for c in nx.connected_components(merged_graph)
+            merged_graph.subgraph(c) for c in nx.connected_components(merged_graph)
         ]:
-
             # Step 1. Find all minimum vertex coverings of subgraph
-            min_covers: list[set[MergedPacket]] = get_min_covers(
-                list(subgraph.edges)
-            )
+            min_covers: list[set[MergedPacket]] = get_min_covers(list(subgraph.edges))
 
             # Find the best way to remove conflicts for each cover
             best_cover = None
@@ -176,14 +165,12 @@ class VertexCover(Refiner):
 
             # Step 5. Update ``best_cover`` by splitting according to
             # ``best_conflict_removal``
-            for (p0, p1) in best_conflict_removal:
+            for p0, p1 in best_conflict_removal:
                 # Retrieve the merged packet containing this conflict
                 merged_packet = pacman.get_containing_merged_packet(p0)
                 assert merged_packet == pacman.get_containing_merged_packet(p1)
                 # Split the packet
-                packet_a, packet_b = pacman.get_split_packets(
-                    merged_packet, (p0, p1)
-                )
+                packet_a, packet_b = pacman.get_split_packets(merged_packet, (p0, p1))
                 # Update the ``best_cover``
                 best_cover.remove(merged_packet)
                 best_cover.add(packet_a)
@@ -211,20 +198,14 @@ class VertexCover(Refiner):
         conflict_graph, c_topnodes = pacman.get_nx_graph_conflict()
 
         # Find a vertex cover
-        matching = bipartite.maximum_matching(
-            merged_graph, top_nodes=m_topnodes
-        )
-        cover = bipartite.to_vertex_cover(
-            merged_graph, matching, top_nodes=m_topnodes
-        )
+        matching = bipartite.maximum_matching(merged_graph, top_nodes=m_topnodes)
+        cover = bipartite.to_vertex_cover(merged_graph, matching, top_nodes=m_topnodes)
         # Find all of the hopping packets in ``cover``
         hop_packets = pacman.get_hopping_packets_within(cover)
 
         # Find a way to remove the conflicts on ``cover``
         true_conflict_graph = conflict_graph.subgraph(hop_packets)
-        tc_topnodes = {
-            node for node in true_conflict_graph.nodes if node in c_topnodes
-        }
+        tc_topnodes = {node for node in true_conflict_graph.nodes if node in c_topnodes}
         matching = bipartite.maximum_matching(
             true_conflict_graph, top_nodes=tc_topnodes
         )
@@ -233,14 +214,12 @@ class VertexCover(Refiner):
         )
 
         # Update ``cover`` by splitting according to ``conflict_removal``
-        for (p0, p1) in conflict_removal:
+        for p0, p1 in conflict_removal:
             # Retrieve the merged packet containing this conflict
             merged_packet = pacman.get_containing_merged_packet(p0)
             assert merged_packet == pacman.get_containing_merged_packet(p1)
             # Split the packet
-            packet_a, packet_b = pacman.get_split_packets(
-                merged_packet, (p0, p1)
-            )
+            packet_a, packet_b = pacman.get_split_packets(merged_packet, (p0, p1))
             # Update ``cover``
             cover.remove(merged_packet)
             cover.add(packet_a)
@@ -265,24 +244,18 @@ def get_min_covers(edges: list[tuple[Any, Any]]) -> list[set[Any]]:
         else:
             (v0, v1) = edges[0]
             # Omit all edges covered by v0 in recursive call
-            covers_w_v0 = get_covers(
-                [e for e in edges if e[0] != v0 and e[1] != v0]
-            )
+            covers_w_v0 = get_covers([e for e in edges if e[0] != v0 and e[1] != v0])
             for c in covers_w_v0:
                 c.add(v0)
             # Omit all edges covered by v1 in recursive call
-            covers_w_v1 = get_covers(
-                [e for e in edges if e[0] != v1 and e[1] != v1]
-            )
+            covers_w_v1 = get_covers([e for e in edges if e[0] != v1 and e[1] != v1])
             for c in covers_w_v1:
                 c.add(v1)
             # Return the union
             # NOTE: I'm not using set[set[Any]] instead of list[set[Any]]
             # due to set not being hashable -> I'd need set[frozenset[Any]]
             # but then it'd be a mess of types and I'd rather do this
-            return covers_w_v0 + [
-                c for c in covers_w_v1 if c not in covers_w_v0
-            ]
+            return covers_w_v0 + [c for c in covers_w_v1 if c not in covers_w_v0]
 
     # Filter out the covers that are not optimal
     covers = get_covers(edges)

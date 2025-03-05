@@ -16,17 +16,13 @@ from __future__ import annotations
 from pytket_dqc.circuits import HypergraphCircuit, Hyperedge
 from pytket_dqc.placement import Placement
 from pytket_dqc.networks import NISQNetwork
-from pytket_dqc.utils import (
-    steiner_tree,
-    check_equivalence,
-    ConstraintException
-)
+from pytket_dqc.utils import steiner_tree, check_equivalence, ConstraintException
 from pytket_dqc.utils.gateset import (
     start_proc,
     is_start_proc,
     end_proc,
     is_end_proc,
-    origin_of_start_proc
+    origin_of_start_proc,
 )
 from pytket_dqc.utils.circuit_analysis import (
     all_cu1_local,
@@ -34,18 +30,17 @@ from pytket_dqc.utils.circuit_analysis import (
     get_server_id,
     is_link_qubit,
 )
-from pytket import Circuit, OpType, Qubit  # type: ignore
-from pytket.circuit import Command  # type: ignore
+from pytket import Circuit, OpType, Qubit
+from pytket.circuit import Command
 import networkx as nx  # type: ignore
-from numpy import isclose  # type: ignore
-import warnings  # type: ignore
+from numpy import isclose
+import warnings
 from typing import NamedTuple
 from .hypergraph import Vertex
 
 
 class Distribution:
-    """Class containing all information required to generate pytket circuit.
-    """
+    """Class containing all information required to generate pytket circuit."""
 
     def __init__(
         self,
@@ -75,9 +70,9 @@ class Distribution:
         """Check equality based on equality of components"""
         if isinstance(other, Distribution):
             return (
-                self.circuit == other.circuit and
-                self.placement == other.placement and
-                self.network == other.network
+                self.circuit == other.circuit
+                and self.placement == other.placement
+                and self.network == other.network
             )
         return False
 
@@ -90,9 +85,9 @@ class Distribution:
         :rtype: dict[str, dict]
         """
         return {
-            'circuit': self.circuit.to_dict(),
-            'placement': self.placement.to_dict(),
-            'network': self.network.to_dict(),
+            "circuit": self.circuit.to_dict(),
+            "placement": self.placement.to_dict(),
+            "network": self.network.to_dict(),
         }
 
     @classmethod
@@ -107,14 +102,13 @@ class Distribution:
         :rtype: Distribution
         """
         return cls(
-            circuit=HypergraphCircuit.from_dict(distribution_dict['circuit']),
-            placement=Placement.from_dict(distribution_dict['placement']),
-            network=NISQNetwork.from_dict(distribution_dict['network']),
+            circuit=HypergraphCircuit.from_dict(distribution_dict["circuit"]),
+            placement=Placement.from_dict(distribution_dict["placement"]),
+            network=NISQNetwork.from_dict(distribution_dict["network"]),
         )
 
     def is_valid(self) -> bool:
-        """Check that this distribution can be implemented.
-        """
+        """Check that this distribution can be implemented."""
 
         # TODO: There may be some other checks that we want to do here to check
         # that the hypergraph is not totally nonsensical.
@@ -163,9 +157,7 @@ class Distribution:
         non_local_list = []
 
         for vertex in self.circuit.vertex_list:
-
             if not self.circuit.is_qubit_vertex(vertex):
-
                 # Qubits gate acts on in original circuit
                 q_1, q_2 = self.circuit.get_gate_of_vertex(vertex).qubits
 
@@ -198,9 +190,7 @@ class Distribution:
         detached_list = []
 
         for vertex in self.circuit.vertex_list:
-
             if not self.circuit.is_qubit_vertex(vertex):
-
                 # Qubits gate acts on in original circuit
                 q_1, q_2 = self.circuit.get_gate_of_vertex(vertex).qubits
 
@@ -285,9 +275,7 @@ class Distribution:
 
         # If not known, check if H-embedding of CU1 is required
         if requires_h_embedded_cu1 is None:
-            requires_h_embedded_cu1 = dist_circ.requires_h_embedded_cu1(
-                hyperedge
-            )
+            requires_h_embedded_cu1 = dist_circ.requires_h_embedded_cu1(hyperedge)
 
         # If not required, we can easily calculate the cost
         if not requires_h_embedded_cu1:
@@ -313,7 +301,6 @@ class Distribution:
             currently_h_embedding = False  # Switched when finding a Hadamard
             connected_servers = {home_server}  # With access to shared_qubit
             for command in commands:
-
                 if command.op.type == OpType.H:
                     currently_h_embedding = not currently_h_embedding
 
@@ -326,17 +313,13 @@ class Distribution:
                     )
 
                 elif command.op.type == OpType.CU1:
-
                     if currently_h_embedding:  # The gate is to be H-embedded
                         assert isclose(command.op.params[0] % 2, 1)  # CZ gate
 
                         q_vertices = [
-                            dist_circ.get_vertex_of_qubit(q)
-                            for q in command.qubits
+                            dist_circ.get_vertex_of_qubit(q) for q in command.qubits
                         ]
-                        remote_vertex = [
-                            q for q in q_vertices if q != shared_qubit
-                        ][0]
+                        remote_vertex = [q for q in q_vertices if q != shared_qubit][0]
                         remote_server = placement_map[remote_vertex]
 
                         # The only two servers from ``connected_servers`` that
@@ -423,9 +406,7 @@ class Distribution:
         return qubit_map
 
     def to_pytket_circuit(
-        self,
-        satisfy_bound: bool = True,
-        allow_update: bool = False
+        self, satisfy_bound: bool = True, allow_update: bool = False
     ) -> Circuit:
         """Generate the circuit corresponding to this `Distribution`.
 
@@ -454,8 +435,8 @@ class Distribution:
 
         # -- INTERNAL CLASSES -- #
         class EjppAction(NamedTuple):
-            """Encodes the information to create Starting and EndingProcesses
-            """
+            """Encodes the information to create Starting and EndingProcesses"""
+
             from_qubit: Qubit
             to_qubit: Qubit
 
@@ -477,16 +458,11 @@ class Distribution:
             """
 
             def __init__(self, hyperedge: Hyperedge, servers: list[int]):
-
                 self.hyperedge: Hyperedge = hyperedge
                 # A dictionary of serverId to list of available link qubits.
-                self.available: dict[int, list[Qubit]] = {
-                    s: [] for s in servers
-                }
+                self.available: dict[int, list[Qubit]] = {s: [] for s in servers}
                 # A dictionary of serverId to list of occupied link qubits.
-                self.occupied: dict[int, list[Qubit]] = {
-                    s: [] for s in servers
-                }
+                self.occupied: dict[int, list[Qubit]] = {s: [] for s in servers}
                 # A dictionary of serverId to the link qubit holding a copy
                 # of the qubit of ``hyperedge``.
                 self.link_qubit_dict: dict[int, Qubit] = dict()
@@ -517,7 +493,8 @@ class Distribution:
                             "Communication memory capacity of server "
                             f"{server} exceeded. \n\tConsider setting "
                             "allow_update to True: \n\t"
-                            "to_pytket_circuit(allow_update=True)", server
+                            "to_pytket_circuit(allow_update=True)",
+                            server,
                         )
 
                 if not self.available[server]:
@@ -663,8 +640,7 @@ class Distribution:
                     self._release_link_qubit(new_link_qubit)
 
             def get_updated_name(self, qubit: Qubit) -> Qubit:
-                """Interface for `link_qubit_id_update`.
-                """
+                """Interface for `link_qubit_id_update`."""
                 if qubit in self.link_qubit_id_update.keys():
                     return self.link_qubit_id_update[qubit]
                 else:
@@ -751,7 +727,7 @@ class Distribution:
             linkman = LinkManager(hyperedge, self.network.get_server_list())
             #   `carry_phase` is the phase pushed around within an embedding
             #   unit
-            carry_phase = 0
+            carry_phase = 0.0
 
             # Iterate over the commands of `circ`
             commands = circ.get_commands()
@@ -762,9 +738,7 @@ class Distribution:
                 # Keep track of the occupation of link qubits
                 if is_start_proc(cmd):
                     try:
-                        linkman.update_occupation(
-                            cmd.qubits[1], starting=True
-                        )
+                        linkman.update_occupation(cmd.qubits[1], starting=True)
                     except ConstraintException as e:
                         e.v_gate = v_gate
                         raise e
@@ -773,9 +747,7 @@ class Distribution:
                         new_circ.add_qubit(remote_qubit)
                 if is_end_proc(cmd):
                     try:
-                        linkman.update_occupation(
-                            cmd.qubits[0], starting=False
-                        )
+                        linkman.update_occupation(cmd.qubits[0], starting=False)
                     except ConstraintException as e:
                         e.v_gate = v_gate
                         raise e
@@ -855,8 +827,7 @@ class Distribution:
                                 break
                             elif (
                                 is_start_proc(g)
-                                and q
-                                == origin_of_start_proc(g, new_circ.qubits)
+                                and q == origin_of_start_proc(g, new_circ.qubits)
                                 and requires_embedding_start_proc(commands[i:])
                             ):
                                 found_embedded_cmd = g
@@ -864,9 +835,7 @@ class Distribution:
                             elif (
                                 is_end_proc(g)
                                 and q == g.qubits[1]
-                                and requires_embedding_end_proc(
-                                    commands[: (i + 1)]
-                                )
+                                and requires_embedding_end_proc(commands[: (i + 1)])
                             ):
                                 found_embedded_cmd = g
                                 break
@@ -895,9 +864,7 @@ class Distribution:
                                 remote_qubit = found_embedded_cmd.qubits[1]
                             else:
                                 remote_qubit = [
-                                    rq
-                                    for rq in found_embedded_cmd.qubits
-                                    if rq != q
+                                    rq for rq in found_embedded_cmd.qubits if rq != q
                                 ][0]
                             # In the case of ``found_embedded_cmd`` being a
                             # CU1 gate that has already been distributed,
@@ -915,10 +882,7 @@ class Distribution:
                                 # will be the original qubit.
                                 original_remote = None
                                 for g in commands[i:]:
-                                    if (
-                                        is_end_proc(g)
-                                        and g.qubits[0] == remote_qubit
-                                    ):
+                                    if is_end_proc(g) and g.qubits[0] == remote_qubit:
                                         original_remote = g.qubits[1]
                                         break
                                 assert original_remote is not None
@@ -1074,9 +1038,7 @@ class Distribution:
                         # Correction gates might need to be added
                         if currently_h_embedding:
                             # The phase must be multiple of pi
-                            assert isclose(phase % 1, 0) or isclose(
-                                phase % 1, 1
-                            )
+                            assert isclose(phase % 1, 0) or isclose(phase % 1, 1)
 
                             # If the CU1 gate has already been distributed,
                             # ``rmt_qubit`` may be a link qubit, rather
@@ -1090,10 +1052,7 @@ class Distribution:
                                 # will be the original qubit.
                                 original_remote = None
                                 for g in commands[cmd_idx:]:
-                                    if (
-                                        is_end_proc(g)
-                                        and g.qubits[0] == rmt_qubit
-                                    ):
+                                    if is_end_proc(g) and g.qubits[0] == rmt_qubit:
                                         original_remote = g.qubits[1]
                                         break
                                 assert original_remote is not None
@@ -1151,7 +1110,7 @@ class Distribution:
                     if currently_h_embedding and src_qubit == orig_qubit:
                         # A correction gate must be applied only if the
                         # start_proc must be considered when embedding.
-                        if requires_embedding_end_proc(commands[:(cmd_idx+1)]):
+                        if requires_embedding_end_proc(commands[: (cmd_idx + 1)]):
                             # A correction gate must be applied on every link
                             # qubit that is currently alive and has been used
                             # to implement this hyperedge.
@@ -1280,12 +1239,14 @@ class Distribution:
                             "capacity less than two. Consider using an "
                             "approach that does not produce evicted gates, "
                             "or increase the communication memory of "
-                            f"server {placed_server}.", placed_server
+                            f"server {placed_server}.",
+                            placed_server,
                         )
                 # Otherwise, unexpected error
                 raise ConstraintException(
                     "The distribution could not be amended to satisfy "
-                    "the bound on communication capacity.", e.server
+                    "the bound on communication capacity.",
+                    e.server,
                 )
 
             # Split the chosen hyperedge
@@ -1329,9 +1290,7 @@ class Distribution:
 
         # Final sanity checks
         assert all_cu1_local(final_circ)
-        assert check_equivalence(
-            self.circuit.get_circuit(), final_circ, qubit_mapping
-        )
+        assert check_equivalence(self.circuit.get_circuit(), final_circ, qubit_mapping)
         if ebit_cost(final_circ) != self.cost():
             detached_gates = self.detached_gate_list()
             embedded_gates = self.circuit.get_all_h_embedded_gate_vertices()
@@ -1340,15 +1299,15 @@ class Distribution:
             # and it is here only for the sake of backwards compatibility.
             if any(detached in embedded_gates for detached in detached_gates):
                 warnings.warn(
-                    "Detected a gate that is both detached and embedded. " +
-                    "As a consequence, the estimated cost did not match " +
-                    f"actual cost. Estimate: {self.cost()}, " +
-                    f"real: {ebit_cost(final_circ)}."
+                    "Detected a gate that is both detached and embedded. "
+                    + "As a consequence, the estimated cost did not match "
+                    + f"actual cost. Estimate: {self.cost()}, "
+                    + f"real: {ebit_cost(final_circ)}."
                 )
             else:
                 raise Exception(
-                    "Estimated cost does not match actual cost. Estimate: " +
-                    f"{self.cost()}, real: {ebit_cost(final_circ)}."
+                    "Estimated cost does not match actual cost. Estimate: "
+                    + f"{self.cost()}, real: {ebit_cost(final_circ)}."
                 )
 
         return final_circ

@@ -60,7 +60,9 @@ class GainManager:
     """
 
     def __init__(
-        self, initial_distribution: Distribution, max_key_size: int = 5,
+        self,
+        initial_distribution: Distribution,
+        max_key_size: int = 5,
     ):
         self.distribution: Distribution = initial_distribution
         self.max_key_size: int = max_key_size
@@ -91,8 +93,7 @@ class GainManager:
 
         # Retrieve tree from cache or calculate it
         servers = frozenset(
-            self.distribution.placement.placement[v]
-            for v in hyperedge.vertices
+            self.distribution.placement.placement[v] for v in hyperedge.vertices
         )
         if len(servers) <= self.max_key_size:
             if servers not in self.steiner_cache.keys():
@@ -105,9 +106,9 @@ class GainManager:
 
         # Retrieve embedding information from cache or calculate it
         if hyperedge not in self.requires_h_embedded_cu1.keys():
-            self.requires_h_embedded_cu1[
-                hyperedge
-            ] = self.distribution.circuit.requires_h_embedded_cu1(hyperedge)
+            self.requires_h_embedded_cu1[hyperedge] = (
+                self.distribution.circuit.requires_h_embedded_cu1(hyperedge)
+            )
 
         # Update the cost of the hyperedge
         self.hyperedge_cost_map[hyperedge] = self.distribution.hyperedge_cost(
@@ -117,9 +118,7 @@ class GainManager:
         )
 
     def split_hyperedge_gain(
-        self,
-        old_hyperedge: Hyperedge,
-        new_hyperedge_list: list[Hyperedge]
+        self, old_hyperedge: Hyperedge, new_hyperedge_list: list[Hyperedge]
     ) -> int:
         """Calculate the cost gain from splitting a hyperedge.
         This uses `hyperedge_cost_map`, a stored hyperedge cost
@@ -149,7 +148,7 @@ class GainManager:
         self,
         old_hyperedge: Hyperedge,
         new_hyperedge_list: list[Hyperedge],
-        recalculate_cost: bool = True
+        recalculate_cost: bool = True,
     ):
         """Split hyperedge `old_hyperedge` into hyperedges in
         `new_hyperedge_list`. This method utilises the
@@ -174,10 +173,7 @@ class GainManager:
             for hypedge in new_hyperedge_list:
                 self.update_cost(hypedge)
 
-    def merge_hyperedge_gain(
-        self,
-        to_merge_hyperedge_list: list[Hyperedge]
-    ) -> int:
+    def merge_hyperedge_gain(self, to_merge_hyperedge_list: list[Hyperedge]) -> int:
         """Calculate the gain from merging a list of hyperedges.
         This uses `hyperedge_cost_map`, a stored hyperedge cost
         dictionary to reduce cost recalculation. The cost may be
@@ -195,8 +191,7 @@ class GainManager:
             raise Exception("The hyperedges to be merged must be unique.")
 
         current_cost = sum(
-            self.hyperedge_cost_map[hyperedge]
-            for hyperedge in to_merge_hyperedge_list
+            self.hyperedge_cost_map[hyperedge] for hyperedge in to_merge_hyperedge_list
         )
 
         # Create new hyperedge by merging given list.
@@ -208,7 +203,7 @@ class GainManager:
                     for vertex in hyperedge.vertices
                 )
             ),
-            weight=to_merge_hyperedge_list[0].weight
+            weight=to_merge_hyperedge_list[0].weight,
         )
 
         # Add cost of hyperedge to hyperedge_cost_map if it does not
@@ -220,9 +215,7 @@ class GainManager:
         return current_cost - new_cost
 
     def merge_hyperedge(
-        self,
-        to_merge_hyperedge_list: list[Hyperedge],
-        recalculate_cost: bool = True
+        self, to_merge_hyperedge_list: list[Hyperedge], recalculate_cost: bool = True
     ) -> Hyperedge:
         """Merge `to_merge_hyperedge_list`, a list of given hyperedges
         and update `hyperedge_cost_map`, a stored hyperedge cost
@@ -286,12 +279,7 @@ class GainManager:
 
         return prev_cost - new_cost
 
-    def move_vertex(
-        self,
-        vertex: int,
-        server: int,
-        recalculate_cost: bool = True
-    ):
+    def move_vertex(self, vertex: int, server: int, recalculate_cost: bool = True):
         """Moves ``vertex`` to ``server``, updating ``placement`` and
         ``occupancy`` accordingly.
         By default it updates the cost of the hyperedge, but this can
@@ -313,12 +301,13 @@ class GainManager:
         if dist_circ.is_qubit_vertex(vertex) and any(
             b for b in self.requires_h_embedded_cu1.values()
         ):
-            raise Exception("Changing the placement after gates are embedded \
-                             is not allowed.")
+            raise Exception(
+                "Changing the placement after gates are embedded \
+                             is not allowed."
+            )
 
         # Ignore if the move would leave in the same server
         if placement_dict[vertex] != server:
-
             if vertex in self.qubit_vertices:
                 self.occupancy[server] += 1
                 self.occupancy[placement_dict[vertex]] -= 1
@@ -330,7 +319,7 @@ class GainManager:
                     self.update_cost(hypedge)
 
     def is_move_valid(self, vertex: int, server: int) -> bool:
-        """ The move is only invalid when ``vertex`` is a qubit vertex and
+        """The move is only invalid when ``vertex`` is a qubit vertex and
         ``server`` is at its maximum occupancy. Notice that ``server`` may
         be where ``vertex`` was already placed.
         """
@@ -347,11 +336,9 @@ class GainManager:
             return True
 
     def current_server(self, vertex: int):
-        """Return the server that ``vertex`` is placed at.
-        """
+        """Return the server that ``vertex`` is placed at."""
         return self.distribution.placement.placement[vertex]
 
     def set_max_key_size(self, max_key_size: int):
-        """Set the ``max_key_size`` parameter.
-        """
+        """Set the ``max_key_size`` parameter."""
         self.max_key_size = max_key_size

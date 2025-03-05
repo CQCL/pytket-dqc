@@ -21,7 +21,7 @@ from .hypergraph_circuit import (  # noqa:F401
 from .hypergraph import (  # noqa:F401
     Hypergraph,
     Hyperedge,
-    Vertex
+    Vertex,
 )
 
 from .distribution import Distribution  # noqa:F401

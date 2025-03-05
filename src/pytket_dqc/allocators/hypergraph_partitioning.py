@@ -37,9 +37,7 @@ class HypergraphPartitioning(Allocator):
     connectivity of the NISQNetwork.
     """
 
-    def allocate(
-        self, circ: Circuit, network: NISQNetwork, **kwargs
-    ) -> Distribution:
+    def allocate(self, circ: Circuit, network: NISQNetwork, **kwargs) -> Distribution:
         """Distribute ``circ`` onto ``network``. The distribution
         is found by KaHyPar using the connectivity metric. All-to-all
         connectivity of the network of modules is assumed; you may wish
@@ -61,9 +59,7 @@ class HypergraphPartitioning(Allocator):
 
         dist_circ = HypergraphCircuit(circ)
         if not network.can_implement(dist_circ):
-            raise Exception(
-                "This circuit cannot be implemented on this network."
-            )
+            raise Exception("This circuit cannot be implemented on this network.")
 
         package_path = importlib_resources.files("pytket_dqc")
         default_ini = f"{package_path}/allocators/km1_kKaHyPar_sea20.ini"
@@ -72,9 +68,7 @@ class HypergraphPartitioning(Allocator):
 
         # First step is to call KaHyPar using the connectivity metric (i.e. no
         # knowledge about network topology other than server sizes)
-        placement = self.initial_distribute(
-            dist_circ, network, ini_path, seed=seed
-        )
+        placement = self.initial_distribute(dist_circ, network, ini_path, seed=seed)
 
         distribution = Distribution(dist_circ, placement, network)
         self.make_valid(distribution, seed=seed)
@@ -201,9 +195,7 @@ class HypergraphPartitioning(Allocator):
                 hypergraph.blockID(i) for i in range(hypergraph.numNodes())
             ]
 
-            placement_dict = {
-                i: server for i, server in enumerate(partition_list)
-            }
+            placement_dict = {i: server for i, server in enumerate(partition_list)}
             placement = Placement(placement_dict)
 
         return placement

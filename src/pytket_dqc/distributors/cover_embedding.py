@@ -29,14 +29,12 @@ from pytket_dqc.refiners import (
 
 
 class CoverEmbedding(Distributor):
-    """ Distributor applying :class:`.VertexCover` refinement to an
+    """Distributor applying :class:`.VertexCover` refinement to an
     initial distribution. This workflow
     is the simplest one considering embedding in the first instance.
     """
 
-    def distribute(
-        self, circ: Circuit, network: NISQNetwork, **kwargs
-    ) -> Distribution:
+    def distribute(self, circ: Circuit, network: NISQNetwork, **kwargs) -> Distribution:
         """Method producing a distribution of the given circuit
         onto the given network.
 
@@ -57,24 +55,20 @@ class CoverEmbedding(Distributor):
         """
 
         initial_distributor = kwargs.get(
-            'initial_distributor', PartitioningHeterogeneous()
+            "initial_distributor", PartitioningHeterogeneous()
         )
-        distribution = initial_distributor.distribute(
-            circ, network, **kwargs
-        )
+        distribution = initial_distributor.distribute(circ, network, **kwargs)
         VertexCover().refine(distribution, **kwargs)
 
         return distribution
 
 
 class CoverEmbeddingSteiner(Distributor):
-    """ Distributor refining the output of :class:`.CoverEmbedding`
+    """Distributor refining the output of :class:`.CoverEmbedding`
     to make use of Steiner trees.
     """
 
-    def distribute(
-        self, circ: Circuit, network: NISQNetwork, **kwargs
-    ) -> Distribution:
+    def distribute(self, circ: Circuit, network: NISQNetwork, **kwargs) -> Distribution:
         """Abstract method producing a distribution of the given circuit
         onto the given network.
 
@@ -95,22 +89,18 @@ class CoverEmbeddingSteiner(Distributor):
         ]
         refiner = RepeatRefiner(SequenceRefiner(refiner_list))
 
-        distribution = CoverEmbedding().distribute(
-            circ, network, **kwargs
-        )
+        distribution = CoverEmbedding().distribute(circ, network, **kwargs)
         refiner.refine(distribution)
 
         return distribution
 
 
 class CoverEmbeddingSteinerDetached(Distributor):
-    """ Distributor refining  the output of
+    """Distributor refining  the output of
     :class:`.BipartiteEmbeddingSteiner` to make use of detached gates.
     """
 
-    def distribute(
-        self, circ: Circuit, network: NISQNetwork, **kwargs
-    ) -> Distribution:
+    def distribute(self, circ: Circuit, network: NISQNetwork, **kwargs) -> Distribution:
         """Abstract method producing a distribution of the given circuit
         onto the given network.
 
@@ -126,9 +116,7 @@ class CoverEmbeddingSteinerDetached(Distributor):
         :rtype: Distribution
         """
 
-        distribution = CoverEmbeddingSteiner().distribute(
-            circ, network, **kwargs
-        )
+        distribution = CoverEmbeddingSteiner().distribute(circ, network, **kwargs)
         DetachedGates().refine(
             distribution,
             **kwargs,

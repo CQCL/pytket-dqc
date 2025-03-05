@@ -9,7 +9,6 @@ from pytket_dqc.utils import DQCPass
 
 
 def small_circuit_network():
-
     circ = Circuit(3).CZ(0, 1).CZ(1, 2)
     DQCPass().apply(circ)
     network = NISQNetwork(
@@ -20,7 +19,6 @@ def small_circuit_network():
 
 
 def test_vertex_cover_steiner():
-
     circ, network = small_circuit_network()
     dist = CoverEmbeddingSteinerDetached().distribute(
         circ=circ,
@@ -31,7 +29,6 @@ def test_vertex_cover_steiner():
 
 
 def test_partitioning_embedding():
-
     circ, network = small_circuit_network()
     dist = PartitioningHeterogeneousEmbedding().distribute(
         circ=circ,

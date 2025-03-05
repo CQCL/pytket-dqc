@@ -2,7 +2,7 @@ from pytket_dqc.packing import PacMan, Packet
 from pytket_dqc.placement import Placement
 from pytket_dqc.circuits import HypergraphCircuit, Hyperedge
 from pytket import Circuit, OpType
-from pytket.circuit import Op  # type: ignore
+from pytket.circuit import Op
 
 cz = Op.create(OpType.CU1, 1)  # For the sake of convinience
 
@@ -35,11 +35,7 @@ def test_build_packets():
     P5 = Packet(5, 2, 0, [4], H3)
     P6 = Packet(6, 2, 1, [6, 7], H3)
 
-    packets_by_qubit = {
-        0: [P0, P1],
-        1: [P2, P3, P4],
-        2: [P5, P6]
-    }
+    packets_by_qubit = {0: [P0, P1], 1: [P2, P3, P4], 2: [P5, P6]}
 
     assert packets_by_qubit == pacman.packets_by_qubit
 
@@ -67,8 +63,8 @@ def test_identify_neighbouring_packets_00():
         old_hyperedge=Hyperedge(vertices=[0, 6, 7], weight=1),
         new_hyperedge_list=[
             Hyperedge(vertices=[0, 7], weight=1),
-            Hyperedge(vertices=[0, 6], weight=1)
-        ]
+            Hyperedge(vertices=[0, 6], weight=1),
+        ],
     )
 
     # Pass into PacMan
@@ -152,8 +148,8 @@ def test_identify_neighbouring_packets_02():
         old_hyperedge=Hyperedge(vertices=[0, 6, 7, 8, 9], weight=1),
         new_hyperedge_list=[
             Hyperedge(vertices=[0, 6, 7], weight=1),
-            Hyperedge(vertices=[0, 8, 9], weight=1)
-        ]
+            Hyperedge(vertices=[0, 8, 9], weight=1),
+        ],
     )
 
     # Pass into PacMan
@@ -523,7 +519,6 @@ def test_identify_hopping_packets_10():
 
 
 def test_merge_packets():
-
     big_circ = Circuit(6)
     for subcircuit in subcircuits:
         big_circ.add_circuit(subcircuit, list(range(6)))
@@ -577,7 +572,11 @@ def test_merge_packets():
             (P3, P5, P7, P8, P10),
             (P11, P13),
             (P14, P16),
-            (P17, P19, P22,),
+            (
+                P17,
+                P19,
+                P22,
+            ),
             (P20,),
             (P21,),
             (P23,),
@@ -626,9 +625,7 @@ def test_intertwining_embeddings_0():
 def test_intertwining_embeddings_1():
     circ = Circuit(6)
     circ.add_gate(cz, [0, 1]).H(0).add_gate(cz, [0, 2]).H(0)
-    circ.add_gate(cz, [0, 3]).H(0).add_gate(cz, [0, 4]).H(0).add_gate(
-        cz, [0, 5]
-    )
+    circ.add_gate(cz, [0, 3]).H(0).add_gate(cz, [0, 4]).H(0).add_gate(cz, [0, 5])
     placement_dict = {
         0: 0,
         1: 1,

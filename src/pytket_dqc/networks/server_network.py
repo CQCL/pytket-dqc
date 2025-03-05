@@ -23,8 +23,7 @@ if TYPE_CHECKING:
 
 
 class ServerNetwork:
-    """Class for the management of networks of quantum computers.
-    """
+    """Class for the management of networks of quantum computers."""
 
     def __init__(self, server_coupling: list[list[int]]):
         """Initialisation function.
@@ -38,8 +37,7 @@ class ServerNetwork:
 
         for server_list in server_coupling:
             if not len(server_list) == 2:
-                raise Exception(
-                    "server_coupling should be a list of pairs of servers.")
+                raise Exception("server_coupling should be a list of pairs of servers.")
 
         self.server_coupling = server_coupling
 
@@ -103,8 +101,7 @@ class ServerNetwork:
         return G
 
     def draw_server_network(self) -> None:
-        """Draw server network using networkx draw method.
-        """
+        """Draw server network using networkx draw method."""
 
         G = self.get_server_nx()
         nx.draw(G, with_labels=True, pos=nx.nx_agraph.graphviz_layout(G))

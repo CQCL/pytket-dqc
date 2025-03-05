@@ -24,12 +24,9 @@ from pytket import Circuit
 
 
 class PartitioningAnnealing(Distributor):
-    """ Distributor using the :class:`.Annealing` allocator.
-    """
+    """Distributor using the :class:`.Annealing` allocator."""
 
-    def distribute(
-        self, circ: Circuit, network: NISQNetwork, **kwargs
-    ) -> Distribution:
+    def distribute(self, circ: Circuit, network: NISQNetwork, **kwargs) -> Distribution:
         """Method producing a distribution of the given circuit
         onto the given network.
 
@@ -44,19 +41,15 @@ class PartitioningAnnealing(Distributor):
         :rtype: Distribution
         """
 
-        return Annealing().allocate(
-            circ, network, **kwargs
-        )
+        return Annealing().allocate(circ, network, **kwargs)
 
 
 class PartitioningHeterogeneous(Distributor):
-    """ Distributor refining the output of :class:`.HypergraphPartitioning`
+    """Distributor refining the output of :class:`.HypergraphPartitioning`
     to adapt the result to heterogeneous networks.
     """
 
-    def distribute(
-        self, circ: Circuit, network: NISQNetwork, **kwargs
-    ) -> Distribution:
+    def distribute(self, circ: Circuit, network: NISQNetwork, **kwargs) -> Distribution:
         """Method producing a distribution of the given circuit
         onto the given network.
 
@@ -72,9 +65,7 @@ class PartitioningHeterogeneous(Distributor):
         :rtype: Distribution
         """
 
-        distribution = HypergraphPartitioning().allocate(
-            circ, network, **kwargs
-        )
+        distribution = HypergraphPartitioning().allocate(circ, network, **kwargs)
         refiner = BoundaryReallocation()
         refiner.refine(distribution, **kwargs)
 
@@ -82,13 +73,11 @@ class PartitioningHeterogeneous(Distributor):
 
 
 class PartitioningHeterogeneousEmbedding(Distributor):
-    """ Distributor refining the output of :class:`.PartitioningHeterogeneous`
+    """Distributor refining the output of :class:`.PartitioningHeterogeneous`
     to make use of embedding.
     """
 
-    def distribute(
-        self, circ: Circuit, network: NISQNetwork, **kwargs
-    ) -> Distribution:
+    def distribute(self, circ: Circuit, network: NISQNetwork, **kwargs) -> Distribution:
         """Method producing a distribution of the given circuit
         onto the given network.
 
@@ -104,12 +93,10 @@ class PartitioningHeterogeneousEmbedding(Distributor):
         """
 
         initial_distributor = kwargs.get(
-            'initial_distributor', PartitioningHeterogeneous()
+            "initial_distributor", PartitioningHeterogeneous()
         )
 
-        distribution = initial_distributor.distribute(
-            circ, network, **kwargs
-        )
+        distribution = initial_distributor.distribute(circ, network, **kwargs)
         refiner = RepeatRefiner(EagerHTypeMerge())
         refiner.refine(distribution)
 

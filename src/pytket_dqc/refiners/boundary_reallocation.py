@@ -87,9 +87,7 @@ class BoundaryReallocation(Refiner):
         while round_id < num_rounds and proportion_moved > stop_parameter:
             active_vertices = dist_circ.get_boundary(placement)
             # Filter out gates that are fixed
-            active_vertices = [
-                v for v in active_vertices if v not in fixed_vertices
-            ]
+            active_vertices = [v for v in active_vertices if v not in fixed_vertices]
 
             moves = 0
             for vertex in active_vertices:
@@ -123,18 +121,14 @@ class BoundaryReallocation(Refiner):
 
                         vs = placement.get_vertices_in(server)
                         valid_swaps = [
-                            vertex
-                            for vertex in vs
-                            if dist_circ.is_qubit_vertex(vertex)
+                            vertex for vertex in vs if dist_circ.is_qubit_vertex(vertex)
                         ]
 
                         # To obtain the gain accurately, we move ``vertex`` to
                         # ``server`` first and move it back at the end. This is
                         # possible because ``move`` is an unsafe function, i.e.
                         # it does not require that the move is valid.
-                        gain_manager.move_vertex(
-                            vertex, server, recalculate_cost=False
-                        )
+                        gain_manager.move_vertex(vertex, server, recalculate_cost=False)
 
                         best_swap_gain = float("-inf")
                         for swap_vertex in valid_swaps:
@@ -188,9 +182,7 @@ class BoundaryReallocation(Refiner):
                     if best_best_swap is not None:
                         # This means that the move was not valid, so we need
                         # to swap to make it valid
-                        gain_manager.move_vertex(
-                            best_best_swap, current_server
-                        )
+                        gain_manager.move_vertex(best_best_swap, current_server)
                     refinement_made = True
                     # Either if we swap or we don't, we count it as one move
                     # since this is meant to count 'rounds with change' rather
@@ -198,9 +190,7 @@ class BoundaryReallocation(Refiner):
                     moves += 1
 
             round_id += 1
-            proportion_moved = (
-                moves / len(active_vertices) if active_vertices else 0
-            )
+            proportion_moved = moves / len(active_vertices) if active_vertices else 0
 
         assert gain_manager.distribution.is_valid()
         # GainManager has updated ``distribution`` in place:

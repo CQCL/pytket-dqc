@@ -42,10 +42,10 @@ class RandomNISQNetwork(NISQNetwork):
 
         if n_qubits < n_servers:
             raise Exception(
-                "The number of qubits must be greater ",
-                "than the number of servers.")
+                "The number of qubits must be greater ", "than the number of servers."
+            )
 
-        edge_prob = kwargs.get("edge_prob", 2/(n_servers-1))
+        edge_prob = kwargs.get("edge_prob", 2 / (n_servers - 1))
         seed = kwargs.get("seed", None)
         np.random.seed(seed)
 
@@ -70,7 +70,7 @@ class RandomNISQNetwork(NISQNetwork):
             server_qubits[server] = server_qubits[server] + [qubit]
 
         server_ebit_mem = {
-            server: max((n_qubits-1)//(n_servers), 2)
+            server: max((n_qubits - 1) // (n_servers), 2)
             for server in server_qubits.keys()
         }
 
@@ -102,20 +102,16 @@ class ScaleFreeNISQNetwork(NISQNetwork):
 
         if n_qubits < n_servers:
             raise Exception(
-                "The number of qubits must be greater ",
-                "than the number of servers."
+                "The number of qubits must be greater ", "than the number of servers."
             )
 
-        m = kwargs.get('m', 1)
-        seed = kwargs.get('seed', None)
-        initial_graph = kwargs.get('initial_graph', None)
+        m = kwargs.get("m", 1)
+        seed = kwargs.get("seed", None)
+        initial_graph = kwargs.get("initial_graph", None)
 
         # Generate barabasi albert graph
         graph = nx.barabasi_albert_graph(
-            n=n_servers,
-            m=m,
-            seed=seed,
-            initial_graph=initial_graph
+            n=n_servers, m=m, seed=seed, initial_graph=initial_graph
         )
         server_coupling = [list(edge) for edge in graph.edges]
 
@@ -129,7 +125,7 @@ class ScaleFreeNISQNetwork(NISQNetwork):
             server_qubits[server] = server_qubits[server] + [qubit]
 
         server_ebit_mem = {
-            server: max((n_qubits-1)//(n_servers), 2)
+            server: max((n_qubits - 1) // (n_servers), 2)
             for server in server_qubits.keys()
         }
 
@@ -162,14 +158,13 @@ class SmallWorldNISQNetwork(NISQNetwork):
 
         if n_qubits < n_servers:
             raise Exception(
-                "The number of qubits must be greater ",
-                "than the number of servers."
+                "The number of qubits must be greater ", "than the number of servers."
             )
 
-        k = kwargs.get('k', 2)
-        seed = kwargs.get('seed', None)
-        p = kwargs.get('p', 0.5)
-        tries = kwargs.get('tries', 1000)
+        k = kwargs.get("k", 2)
+        seed = kwargs.get("seed", None)
+        p = kwargs.get("p", 0.5)
+        tries = kwargs.get("tries", 1000)
 
         # Generate watts strogatz graph
         graph = nx.connected_watts_strogatz_graph(
@@ -191,7 +186,7 @@ class SmallWorldNISQNetwork(NISQNetwork):
             server_qubits[server] = server_qubits[server] + [qubit]
 
         server_ebit_mem = {
-            server: max((n_qubits-1)//(n_servers), 2)
+            server: max((n_qubits - 1) // (n_servers), 2)
             for server in server_qubits.keys()
         }
 

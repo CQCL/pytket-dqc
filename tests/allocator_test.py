@@ -13,7 +13,7 @@ from pytket_dqc.networks import NISQNetwork
 from pytket_dqc.allocators.ordered import order_reducing_size
 from pytket_dqc.placement import Placement
 import kahypar as kahypar  # type:ignore
-from pytket.circuit import QControlBox, Op, OpType  # type:ignore
+from pytket.circuit import QControlBox, Op, OpType
 import importlib_resources
 import pytest
 import json
@@ -24,7 +24,6 @@ import json
 
 
 def get_H_ladder_circ():
-
     circ = (
         Circuit(4)
         .add_gate(OpType.CU1, 1.0, [0, 3])
@@ -39,7 +38,6 @@ def get_H_ladder_circ():
 
 
 def get_Rz_ladder_circ():
-
     circ = (
         Circuit(4)
         .add_gate(OpType.CU1, 1.0, [0, 3])
@@ -58,7 +56,6 @@ def get_line_network():
 
 
 def test_annealing_distribute():
-
     network = get_line_network()
 
     circ = get_H_ladder_circ()
@@ -108,21 +105,17 @@ def test_annealing_distribute():
 
 
 def test_acceptance_criterion():
-
     assert acceptance_criterion(1, 10) >= 1
     assert acceptance_criterion(-1, 10) < 1
 
 
 def test_graph_initial_partitioning():
-
     network = get_line_network()
     circ = get_H_ladder_circ()
 
     allocator = HypergraphPartitioning()
 
-    initial_distribution = allocator.allocate(
-        circ, network, seed=1
-    )
+    initial_distribution = allocator.allocate(circ, network, seed=1)
 
     assert initial_distribution.placement == Placement(
         {0: 2, 1: 0, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1}
@@ -132,7 +125,6 @@ def test_graph_initial_partitioning():
 
 
 def test_graph_partitioning_make_valid():
-
     network = NISQNetwork([[0, 1], [0, 2]], {0: [0], 1: [1, 2], 2: [3, 4, 5]})
 
     circ = (
@@ -153,9 +145,7 @@ def test_graph_partitioning_make_valid():
     bad_placement = Placement({v: 2 for v in dist_circ.vertex_list})
     assert not bad_placement.is_valid(dist_circ, network)
 
-    distribution = Distribution(
-        dist_circ, bad_placement, network
-    )
+    distribution = Distribution(dist_circ, bad_placement, network)
     allocator.make_valid(distribution, seed=1)
     good_placement = Placement(
         {0: 0, 1: 2, 2: 2, 3: 2, 4: 2, 5: 2, 6: 2, 7: 2, 8: 2, 9: 2}
@@ -192,7 +182,6 @@ def test_refinement_makes_valid():
 
 
 def test_graph_partitioning_unused_qubits():
-
     network = get_line_network()
     allocator = HypergraphPartitioning()
 
@@ -215,7 +204,6 @@ def test_graph_partitioning_unused_qubits():
 
 
 def test_kahypar_install():
-
     num_nodes = 4
     num_nets = 3
 
@@ -254,11 +242,8 @@ def test_order_reducing_size():
 
 
 def test_random_allocator():
-
     circ = (
-        Circuit(3)
-        .add_gate(OpType.CU1, 1.0, [0, 2])
-        .add_gate(OpType.CU1, 1.0, [1, 2])
+        Circuit(3).add_gate(OpType.CU1, 1.0, [0, 2]).add_gate(OpType.CU1, 1.0, [1, 2])
     )
 
     network = NISQNetwork([[0, 1], [0, 2]], {0: [0, 1], 1: [2, 3], 2: [4]})
@@ -271,7 +256,6 @@ def test_random_allocator():
 
 
 def test_ordered_allocator():
-
     small_circ = Circuit(2).add_gate(OpType.CU1, 1.0, [0, 1])
 
     med_circ = (
@@ -299,7 +283,6 @@ def test_ordered_allocator():
 
 
 def test_brute_distribute_small_hyperedge():
-
     network = get_line_network()
     circ = get_H_ladder_circ()
 
@@ -313,7 +296,6 @@ def test_brute_distribute_small_hyperedge():
 
 
 def test_brute_distribute():
-
     small_network = NISQNetwork([[0, 1]], {0: [0, 1], 1: [2]})
     small_circ = Circuit(2).add_gate(OpType.CU1, 1.0, [0, 1])
 
@@ -339,7 +321,6 @@ def test_brute_distribute():
 
 
 def test_routing_allocator():
-
     small_network = NISQNetwork([[0, 1], [0, 2]], {0: [0], 1: [1], 2: [2, 3]})
     small_circ = (
         Circuit(4)
@@ -382,9 +363,7 @@ def test_routing_allocator():
         .add_gate(OpType.CU1, 1.0, [2, 3])
     )
 
-    routing_distribution = allocator.allocate(
-        med_circ_flipped, med_network
-    )
+    routing_distribution = allocator.allocate(med_circ_flipped, med_network)
     ideal_placement = Placement(
         {0: 0, 8: 1, 9: 0, 10: 1, 1: 0, 2: 1, 6: 1, 7: 1, 3: 1, 5: 1, 4: 1}
     )
@@ -395,7 +374,6 @@ def test_routing_allocator():
 
 @pytest.mark.skip(reason="QControlBox are not supported for now")
 def test_q_control_box_circuits():
-
     network = NISQNetwork([[0, 1]], {0: [0], 1: [1]})
 
     op = Op.create(OpType.V)
@@ -420,7 +398,6 @@ def test_q_control_box_circuits():
 
 
 def test_CRz_circuits():
-
     network = NISQNetwork([[0, 1]], {0: [0], 1: [1]})
 
     circ = Circuit(2)
