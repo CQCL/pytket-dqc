@@ -12,17 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np  # type: ignore
+import numpy as np
 import logging
 
-from pytket.predicates import (  # type: ignore
+from pytket.predicates import (
     GateSetPredicate,
     NoSymbolsPredicate,
     UserDefinedPredicate,
 )
 
-from pytket import OpType, Circuit, Qubit  # type: ignore
-from pytket.passes import (  # type: ignore
+from pytket import OpType, Circuit, Qubit
+from pytket.passes import (
     CustomPass,
     EulerAngleReduction,
     RebaseCustom,
@@ -31,7 +31,7 @@ from pytket.passes import (  # type: ignore
     SequencePass,
     BasePass,
 )
-from pytket.circuit import CustomGateDef, Op, Command  # type: ignore
+from pytket.circuit import CustomGateDef, Op, Command
 from typing import Optional
 import sympy  # type: ignore
 

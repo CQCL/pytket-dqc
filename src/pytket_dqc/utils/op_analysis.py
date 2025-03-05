@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import numpy as np
-from pytket.circuit import OpType  # type: ignore
+from pytket.circuit import OpType
 
 distributable_1q_op_types = [
     OpType.Rz,

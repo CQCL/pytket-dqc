@@ -16,12 +16,13 @@ from __future__ import annotations
 from pytket_dqc.networks.server_network import ServerNetwork
 from itertools import combinations
 import networkx as nx  # type:ignore
-from pytket.placement import NoiseAwarePlacement  # type:ignore
-from pytket.architecture import Architecture  # type:ignore
-from pytket.circuit import Node  # type:ignore
+from pytket.placement import NoiseAwarePlacement
+from pytket.architecture import Architecture
+from pytket.circuit import Node
 from pytket_dqc.circuits.hypergraph_circuit import HypergraphCircuit
 from typing import Tuple, Union, cast, Optional
-import matplotlib.pyplot as plt  # type:ignore
+import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
 
 
 class NISQNetwork(ServerNetwork):
@@ -286,7 +287,7 @@ class NISQNetwork(ServerNetwork):
 
         return G
 
-    def draw_nisq_network(self) -> None:
+    def draw_nisq_network(self) -> Figure:
         """Draw network using netwrokx draw method.
         """
 

@@ -1,5 +1,5 @@
-import json  # type: ignore
-from pytket import Circuit, OpType  # type: ignore
+import json
+from pytket import Circuit, OpType
 from pytket_dqc import Distribution
 from pytket_dqc.circuits import HypergraphCircuit
 from pytket_dqc.circuits.hypergraph import Hyperedge

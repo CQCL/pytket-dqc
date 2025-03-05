@@ -2,7 +2,7 @@ from pytket_dqc.packing import PacMan, Packet
 from pytket_dqc.placement import Placement
 from pytket_dqc.circuits import HypergraphCircuit, Hyperedge
 from pytket import Circuit, OpType
-from pytket.circuit import Op  # type: ignore
+from pytket.circuit import Op
 
 cz = Op.create(OpType.CU1, 1)  # For the sake of convinience
 

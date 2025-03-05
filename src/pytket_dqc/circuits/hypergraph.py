@@ -81,7 +81,7 @@ class Hypergraph:
     :type vertex_neighbours: dict[Vertex, set[Vertex]]
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialisation function. The hypergraph initialises as empty.
         """
         self.vertex_list: list[Vertex] = []
@@ -89,7 +89,7 @@ class Hypergraph:
         self.hyperedge_dict: dict[Vertex, list[Hyperedge]] = dict()
         self.vertex_neighbours: dict[Vertex, set[Vertex]] = dict()
 
-    def __str__(self):
+    def __str__(self) -> str:
         out_string = f"Hyperedges: {self.hyperedge_list}"
         out_string += f"\nVertices: {self.vertex_list}"
         return out_string

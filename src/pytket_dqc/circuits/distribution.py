@@ -34,11 +34,11 @@ from pytket_dqc.utils.circuit_analysis import (
     get_server_id,
     is_link_qubit,
 )
-from pytket import Circuit, OpType, Qubit  # type: ignore
-from pytket.circuit import Command  # type: ignore
+from pytket import Circuit, OpType, Qubit
+from pytket.circuit import Command
 import networkx as nx  # type: ignore
-from numpy import isclose  # type: ignore
-import warnings  # type: ignore
+from numpy import isclose
+import warnings
 from typing import NamedTuple
 from .hypergraph import Vertex
 
@@ -751,7 +751,7 @@ class Distribution:
             linkman = LinkManager(hyperedge, self.network.get_server_list())
             #   `carry_phase` is the phase pushed around within an embedding
             #   unit
-            carry_phase = 0
+            carry_phase = 0.0
 
             # Iterate over the commands of `circ`
             commands = circ.get_commands()

@@ -24,7 +24,7 @@ from typing import (
 
 from pytket_dqc.circuits import HypergraphCircuit, Hyperedge, Vertex
 from pytket_dqc.placement import Placement
-from pytket.circuit import Command, OpType, Op  # type: ignore
+from pytket.circuit import Command, OpType, Op
 from pytket_dqc.utils import (
     is_distributable,
     to_euler_with_two_hadamards,
@@ -165,7 +165,7 @@ class PacMan:
                 for packet in packets:
                     self.packets_by_qubit[qubit_vertex].append(packet)
 
-    def identify_neighbouring_packets(self):
+    def identify_neighbouring_packets(self) -> None:
         """Populate ``.neighbouring_packets`` by finding groups of packets
         that can be merged by neighbouring packing.
 
@@ -889,7 +889,7 @@ class PacMan:
         # only time we may not have an Rz at the end
         # of the ops list
         if not len(prior_1q_ops) == 5 and prior_1q_ops[-1].type == OpType.H:
-            prior_phase = 0
+            prior_phase = 0.0
 
         else:
             prior_op = prior_1q_ops[-1]
@@ -904,7 +904,7 @@ class PacMan:
         # only time we may not have an Rz at the start
         # of the ops list.
         if not len(post_1q_ops) == 5 and post_1q_ops[0].type == OpType.H:
-            post_phase = 0
+            post_phase = 0.0
 
         else:
             post_op = post_1q_ops[0]

@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 from pytket_dqc.allocators import Allocator
-from pytket.passes import (  # type:ignore
+from pytket.passes import (
     DecomposeSwapsToCXs,
     PlacementPass,
     RoutingPass

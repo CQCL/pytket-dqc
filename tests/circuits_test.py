@@ -1,6 +1,6 @@
-import pickle  # type: ignore
-import warnings  # type: ignore
-import json  # type: ignore
+import pickle
+import warnings
+import json
 import pytest
 from pytket import Circuit
 from pytket_dqc.placement import Placement
@@ -26,9 +26,9 @@ from pytket_dqc.utils import (
     ebit_memory_required
 )
 from pytket_dqc.networks import NISQNetwork, ScaleFreeNISQNetwork
-from pytket.circuit import QControlBox, Op, OpType  # type: ignore
+from pytket.circuit import QControlBox, Op, OpType
 from pytket_dqc.allocators import Annealing
-from pytket.passes import DecomposeBoxes  # type: ignore
+from pytket.passes import DecomposeBoxes
 
 # TODO: Test new circuit classes
 

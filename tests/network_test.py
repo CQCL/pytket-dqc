@@ -6,9 +6,9 @@ from pytket_dqc.networks import (
     RandomNISQNetwork,
     AllToAll,
 )
-from pytket.placement import NoiseAwarePlacement  # type:ignore
-from pytket.architecture import Architecture  # type:ignore
-from pytket.circuit import Node  # type:ignore
+from pytket.placement import NoiseAwarePlacement
+from pytket.architecture import Architecture
+from pytket.circuit import Node
 import pytest
 from pytket_dqc.placement import Placement
 from pytket_dqc import HypergraphCircuit

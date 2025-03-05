@@ -13,7 +13,7 @@ from pytket_dqc.networks import NISQNetwork
 from pytket_dqc.allocators.ordered import order_reducing_size
 from pytket_dqc.placement import Placement
 import kahypar as kahypar  # type:ignore
-from pytket.circuit import QControlBox, Op, OpType  # type:ignore
+from pytket.circuit import QControlBox, Op, OpType
 import importlib_resources
 import pytest
 import json

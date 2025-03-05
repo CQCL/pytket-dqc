@@ -16,10 +16,10 @@ from __future__ import annotations
 
 from .hypergraph import Hypergraph, Hyperedge, Vertex
 from pytket import OpType, Circuit, Qubit
-from pytket.circuit import Command, Op, Unitary2qBox  # type: ignore
+from pytket.circuit import Command, Op, Unitary2qBox
 from scipy.stats import unitary_group  # type: ignore
 import numpy as np
-from pytket.passes import DecomposeBoxes  # type: ignore
+from pytket.passes import DecomposeBoxes
 import networkx as nx  # type: ignore
 import random
 from pytket_dqc.utils import (
@@ -108,7 +108,7 @@ class HypergraphCircuit(Hypergraph):
         """
 
         hypergraph_circuit = cls(
-            Circuit.from_dict(hypergraph_circuit_dict['circuit'])
+            Circuit.from_dict(cast(dict, hypergraph_circuit_dict['circuit']))
         )
         hypergraph_circuit.vertex_list = []
         hypergraph_circuit.hyperedge_list = []
@@ -384,7 +384,7 @@ class HypergraphCircuit(Hypergraph):
                 prepared_cmds += embed_cmds[: cu1_indices[0]]
                 # Remove the last Rz and remember its phase so that it may be
                 # squashed with the Rz after the embedded CU1 gate
-                prev_phase = 0
+                prev_phase = 0.0
                 if prepared_cmds[-1].op.type == OpType.Rz:
                     prev_phase = prepared_cmds[-1].op.params[0]
                     prepared_cmds.pop()  # Remove the Rz gate
@@ -847,7 +847,7 @@ class HypergraphCircuit(Hypergraph):
         first_command_index = vertex_to_command_index_map[first_vertex]
         second_command_index = vertex_to_command_index_map[second_vertex]
 
-        intermediate_commands = []
+        intermediate_commands: list[Command] = []
 
         for command_dict in self._commands[
             first_command_index + 1 : second_command_index  # noqa: E203
@@ -855,7 +855,7 @@ class HypergraphCircuit(Hypergraph):
             command = command_dict["command"]
             assert type(command) == Command
             if qubit in command.qubits:
-                intermediate_commands.append(command_dict["command"])
+                intermediate_commands.append(cast(Command, command_dict["command"]))
 
         return intermediate_commands
 
@@ -885,8 +885,8 @@ class HypergraphCircuit(Hypergraph):
             return False
 
         return (
-            np.isclose(command.op.params[0] % 1, 0)
-            or np.isclose(command.op.params[0] % 1, 1)
+            bool(np.isclose(command.op.params[0] % 1, 0))
+            or bool(np.isclose(command.op.params[0] % 1, 1))
         )
 
 

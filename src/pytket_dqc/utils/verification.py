@@ -15,7 +15,7 @@
 from pytket import Circuit, OpType, Qubit
 from pytket.passes import AutoRebase
 
-from pytket.extensions.pyzx import tk_to_pyzx  # type: ignore
+from pytket.extensions.pyzx import tk_to_pyzx
 import pyzx as zx  # type: ignore
 from .gateset import is_start_proc, is_end_proc
 

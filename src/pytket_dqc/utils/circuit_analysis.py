@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from pytket import Circuit, OpType  # type: ignore
+from pytket import Circuit, OpType
 
 
 class ConstraintException(Exception):

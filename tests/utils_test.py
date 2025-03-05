@@ -6,9 +6,9 @@ from pytket_dqc.utils import (
     check_equivalence,
     to_euler_with_two_hadamards,
 )
-from pytket import Circuit, OpType  # type: ignore
-from pytket.circuit import Op  # type: ignore
-from pytket.pauli import Pauli  # type: ignore
+from pytket import Circuit, OpType
+from pytket.circuit import Op
+from pytket.pauli import Pauli
 from pytket_dqc import Distribution
 from pytket_dqc.circuits import HypergraphCircuit
 from pytket_dqc.networks import NISQNetwork
@@ -16,12 +16,12 @@ from pytket_dqc.allocators import Brute
 from pytket_dqc.placement import Placement
 import networkx as nx  # type: ignore
 from sympy import Symbol  # type: ignore
-import json  # type: ignore
-import pickle  # type: ignore
-from pytket.circuit import PauliExpBox  # type: ignore
-from pytket.passes import DecomposeBoxes  # type: ignore
-import numpy as np  # type: ignore
-import pytest  # type: ignore
+import json
+import pickle
+from pytket.circuit import PauliExpBox
+from pytket.passes import DecomposeBoxes
+import numpy as np
+import pytest
 from pytket_dqc.utils.qasm import to_qasm_str
 from pytket.qasm import circuit_from_qasm_str
 

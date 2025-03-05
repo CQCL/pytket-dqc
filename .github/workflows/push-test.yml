@@ -71,6 +71,15 @@ jobs:
       - name: Examples check
         run: pytest --nbmake examples/*.ipynb
 
+      - name: Type Check
+        run: mypy src/pytket_dqc tests --warn-unused-ignores
+
+      - name: Lint Check
+        run: ruff check
+
+      - name: Format Check
+        run: ruff format --check
+
       - name: Build documentation
         run: |
           pip install ".[docs]"
