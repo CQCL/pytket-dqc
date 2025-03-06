@@ -15,7 +15,7 @@ dependencies = [
     'decorator >=5.1.0, <5.3',
     'pygraphviz >=1.14, <1.15',
     'importlib_resources >=5.7.1, <5.8',
-    'pyzx >=0.7.0, <0.8',
+    'pyzx >=0.7.0, <0.10',
     'pytket-pyzx >=0.24.0, <0.25',
 ]
 
