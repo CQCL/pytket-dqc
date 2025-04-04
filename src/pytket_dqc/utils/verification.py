@@ -16,7 +16,7 @@ from pytket import Circuit, OpType, Qubit
 from pytket.passes import AutoRebase
 
 from pytket.extensions.pyzx import tk_to_pyzx
-import pyzx as zx  # type: ignore
+import pyzx as zx
 from .gateset import is_start_proc, is_end_proc
 
 
@@ -80,7 +80,7 @@ def check_equivalence(
     )
 
 
-def to_pyzx(circuit: Circuit, mask: list[Qubit]) -> zx.Graph:
+def to_pyzx(circuit: Circuit, mask: list[Qubit]) -> zx.graph.base.BaseGraph:
     """Convert a circuit to a ZX diagram in PyZX. Every starting EJPP
     process and ending EJPP process is converted to a CX gate. All non-ancilla
     qubits should be in ``mask`` and no ancilla qubits should be in ``mask``.
