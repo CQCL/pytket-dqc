@@ -16,7 +16,7 @@ dependencies = [
     'pygraphviz >=1.14, <1.15',
     'importlib_resources >=5.7.1, <6.6',
     'pyzx >=0.7.0, <0.10',
-    'pytket-pyzx >=0.24.0, <0.25',
+    'pytket-pyzx >=0.24.0, <0.36',
 ]
 
 [project.optional-dependencies]
