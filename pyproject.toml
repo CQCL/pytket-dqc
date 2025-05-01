@@ -8,7 +8,7 @@ version = "0.0.1"
 requires-python = ">= 3.10"
 dependencies = [
     'numpy >=1.26, <2.3',
-    'pytket >=1.31, <2.1',
+    'pytket >=1.31, <2.3',
     'hypernetx >=1.2, <2.5',
     'celluloid >=0.2, <0.3',
     'igraph >=0.11.8, <0.12',
