@@ -43,7 +43,7 @@ jobs:
           cmake-version: 3.31.6
 
       - name: Checkout kahypar
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with: 
           repository: kahypar/kahypar
           submodules: recursive
@@ -63,7 +63,7 @@ jobs:
         run: cp ~/kahypar.cpython-311-darwin.so /Library/Frameworks/Python.framework/Versions/3.11/lib/python3.11/site-packages
 
       - name: Checkout pytket-dqc
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: install graphviz
         run: | 
