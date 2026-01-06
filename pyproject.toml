@@ -28,6 +28,6 @@ tests = [
     'nbmake >=1.5.5, <1.6',
 ]
 docs = [
-    'sphinx >=8, <8.3',
+    'sphinx >=8, <9.2',
     'sphinx-rtd-theme >=3.0.2, <3.1',
 ]
