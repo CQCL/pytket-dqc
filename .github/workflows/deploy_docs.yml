@@ -38,7 +38,7 @@ jobs:
         run: brew install boost
 
       - name: Setup cmake
-        uses: jwlawson/actions-setup-cmake@v2.0
+        uses: jwlawson/actions-setup-cmake@v2.1
         with:
           cmake-version: 3.31.6
 
